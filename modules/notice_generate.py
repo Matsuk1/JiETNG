@@ -17,7 +17,6 @@ def notice_generate(timestamp, lines):
     dt = datetime.datetime.fromtimestamp(timestamp)
     time_str = f"{dt.year} · {dt.month:02d} · {dt.day:02d}"
 
-    # 写右下角时间
     time_position = (120, 1240)
     draw.text(time_position, time_str, font=time_font, fill=(80, 80, 80, 255))
 
@@ -32,11 +31,9 @@ def notice_generate(timestamp, lines):
         prefix = "· "
         full_text = prefix + raw_line
 
-        # 先测量“· ”这部分的宽度
         indent_bbox = draw.textbbox((0, 0), prefix, font=line_font)
         indent_width = indent_bbox[2] - indent_bbox[0]
 
-        # 准备写一条（带换行）
         current_line = ""
         is_first_line = True
 
@@ -45,11 +42,9 @@ def notice_generate(timestamp, lines):
             bbox = draw.textbbox((0, 0), test_line, font=line_font)
             line_width = bbox[2] - bbox[0]
 
-            # 判断宽度
             if (start_x + line_width) <= (start_x + max_width):
                 current_line = test_line
             else:
-                # 超了，写一行
                 draw.text(
                     (start_x if is_first_line else start_x + indent_width, current_y),
                     current_line,
@@ -60,7 +55,6 @@ def notice_generate(timestamp, lines):
                 current_line = char
                 is_first_line = False
 
-        # 写最后一部分
         if current_line:
             draw.text(
                 (start_x if is_first_line else start_x + indent_width, current_y),
