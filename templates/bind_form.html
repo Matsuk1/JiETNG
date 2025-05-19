@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SEGA アカウント連携 | JiETNG</title>
+  <style>
+    body {
+      background-color: #f4faff;
+      font-family: "Helvetica Neue", "Yu Gothic", "Meiryo", sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background-color: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      padding: 40px 30px;
+      width: 100%;
+      max-width: 400px;
+      box-sizing: border-box;
+    }
+
+    h2 {
+      text-align: center;
+      color: #1e90ff;
+      margin-bottom: 24px;
+      font-size: 24px;
+      letter-spacing: 1px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #333;
+      font-weight: 500;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #cce0f5;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 16px;
+      box-sizing: border-box;
+      transition: border-color 0.3s;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #1e90ff;
+    }
+
+    input[type="submit"] {
+      width: 100%;
+      padding: 12px;
+      background-color: #1e90ff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    input[type="submit"]:hover {
+      background-color: #157dd6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>SEGA アカウント連携</h2>
+    <form method="POST">
+      <label for="segaid">SEGA ID</label>
+      <input type="text" id="segaid" name="segaid" required />
+
+      <label for="password">パスワード</label>
+      <input type="password" id="password" name="password" required />
+
+      <input type="submit" value="連携する" />
+    </form>
+
+    <div style="background-color: #f0f0f0; border-radius: 12px; padding: 16px; font-size: 13px; color: #555; margin-top: 30px; line-height: 1.6;">
+      <strong>ご利用に関するご注意</strong><br>
+      ご入力いただいた情報はすべて暗号化された形式で安全に保存され、第三者に提供されることはありません。<br>
+      ウェブサイトの管理者であっても、保存された情報の内容を直接閲覧することはできません。<br>
+      <br>
+      ただし、本サービスは個人によって運営されており、公式な保証やサポートは提供されておりません。<br>
+      本サービスの性質上、セキュリティや運用方針に不安がある場合は、利用をお控えいただくようお願いいたします。<br>
+      情報提供はあくまでご自身の判断と責任にてお願いいたします。
+    </div>
+  </div>
+</body>
+</html>
