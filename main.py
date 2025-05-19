@@ -590,27 +590,14 @@ def create_user_info_img(user_id, scale=1.5):
             except Exception as e:
                 print(f"加载图片失败 {user_info[key]}: {e}")
 
-    # 背景为名牌图
     paste_image("nameplate_url", (0, 0), (802, 128))
-
-    # 玩家图标（左侧）
     paste_image("icon_url", (15, 13), (100, 100))
-
-    # 等级评分块
     paste_image("rating_block_url", (129, 13), (131, 34))
     draw.text((188, 17), f"{user_info['rating']}", fill=(255, 255, 255), font=font_large)
-
-    # 名字
     draw.rectangle([129, 51, 129 + 266, 51 + 33], fill=(255, 255, 255))
     draw.text((135, 54), user_info['name'], fill=(0, 0, 0), font=font_large)
-
-    # 段位块
     paste_image("class_rank_url", (296, 10), (61, 37))
-
-    # 段位课程块
     paste_image("cource_rank_url", (322, 52), (75, 33))
-
-    # 奖杯信息
     def trophy_color(type):
         return {
             "normal": (255, 255, 255),
@@ -798,7 +785,7 @@ def get_ping(host):
 
     return None
 
-def check_host(host="jietng.matsuki.top"):
+def check_host(host="jietng.matsuki.work"):
     ping_data = get_ping(host)
     return f"[{host}] - {ping_data} ms"
 
