@@ -37,13 +37,6 @@
 
 ---
 
-## 💻 ソースコード
-
-現在、以下の排卡対応版のみ一般公開中：  
-[Game Centers maimai Player Count Checking Bot (GitHub)](https://github.com/Matsuk1/Game-Centers-maimai-Player-Count-Checking-Bot-of-Line)
-
----
-
 ## 🔗 開発者情報
 
 - 📖 [作者ポータル - Matsuki.work](https://www.matsuki.work)
