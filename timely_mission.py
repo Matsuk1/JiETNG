@@ -7,7 +7,7 @@ import time
 import main
 import os
 
-log_path = os.path.join("logs", "timely_mission.log")  # 相对路径：./logs/timely_mission.log
+log_path = os.path.join("logs", "timely_mission.log")
 os.makedirs(os.path.dirname(log_path), exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
