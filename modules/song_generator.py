@@ -57,7 +57,7 @@ def _render_basic_info_image(song_json, cover_img):
 
     # 文字区域
     text_x = cover_x + cover_size + text_gap
-    text_y = cover_y
+    text_y = cover_y - 10
     title = song_json.get("title", "タイトル不明")
     artist = song_json.get("artist", "アーティスト不明")
     category = song_json.get("category", "類別不明")
