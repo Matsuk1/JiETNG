@@ -334,7 +334,7 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD"):
 
     # 根据实际文本宽度设置卡片宽度
     card_width = max_text_width + card_padding * 2
-    card_height = text_total_height + card_padding * 2
+    card_height = text_total_height + card_padding * 2 - 10
 
     # 绘制带圆角的半透明背景框
     draw.rounded_rectangle(
@@ -375,9 +375,9 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD"):
         Image.BICUBIC
     )
 
-    # 将斜体标题粘贴到主图层（继续往左上移动）
-    title_x = img_width - side_width - title_width - 60
-    title_y = card_y - 40
+    # 将斜体标题粘贴到主图层
+    title_x = img_width - side_width - title_width - 50
+    title_y = card_y - 45
     combined.paste(title_layer, (title_x, title_y), title_layer)
 
     up_thumbnails = [create_thumbnail(song, thumb_size) for song in up_songs[:grid_size[0] * grid_size[1]]]
