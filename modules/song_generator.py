@@ -140,10 +140,10 @@ def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0):
             notes["slide"],
             notes["touch"] if notes["touch"] else "-",
             notes["break"],
-            "✓" if regions.get("jp") else "✗",
-            "✓" if regions.get("intl") else "✗",
-            "✓" if regions.get("usa") else "✗",
-            "✓" if regions.get("cn") else "✗"
+            "✓" if regions.get("jp") else "✕",
+            "✓" if regions.get("intl") else "✕",
+            "✓" if regions.get("usa") else "✕",
+            "✓" if regions.get("cn") else "✕"
         ]
 
         for col_idx, cell in enumerate(data):

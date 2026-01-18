@@ -510,7 +510,7 @@ POST     /admin/trigger_cleanup    # 手動メモリクリーンアップ
         "override_list": "./data/intl_override.csv",
         "user_list": "./data/user.json.enc",
         "notice_file": "./data/notice.json",
-        "font": "./assets/fonts/mplus-jietng.ttf",
+        "font": "./assets/fonts/line_seed_jietng.ttf",
         "logo": "./assets/pics/logo.png"
     },
     "record_database": {
@@ -585,7 +585,7 @@ SHOW GRANTS FOR 'jietng'@'localhost';
 **解決方法**:
 ```bash
 # フォントファイルを確認
-ls assets/fonts/mplus-jietng.ttf
+ls assets/fonts/line_seed_jietng.ttf
 
 # アイコンディレクトリを確認
 ls assets/icon/combo/

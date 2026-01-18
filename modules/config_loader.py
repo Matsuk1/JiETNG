@@ -39,7 +39,7 @@ default_config = {
         "tip_ad_file": "./data/tip_ad.json",
         "backup": "./data/backup",
         "dev_tokens": "./data/dev_tokens.json",
-        "font": "./assets/fonts/mplus-jietng.ttf",
+        "font": "./assets/fonts/line_seed_jietng.ttf",
         "logo": "./assets/pics/logo.png",
         "versions": "./assets/versions",
         "covers": "./assets/covers",

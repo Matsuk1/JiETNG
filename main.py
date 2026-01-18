@@ -1904,7 +1904,7 @@ def generate_profile(user_info, scale=1.7):
     char_width = 13  # 每个字符的固定宽度
     start_x = 187
     for i, char in enumerate(rating_text):
-        draw.text((start_x + i * char_width, 17), char, fill=(255, 255, 255), font=font_stadium)
+        draw.text((start_x + i * char_width, 16), char, fill=(255, 255, 255), font=font_stadium)
 
     # 绘制带灰色边框的圆角矩形
     draw.rounded_rectangle([129, 51, 129 + 266, 51 + 33], radius=10, fill=(255, 255, 255), outline=(180, 180, 180), width=2)
