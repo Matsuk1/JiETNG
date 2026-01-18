@@ -113,6 +113,25 @@ b50 -ver festival+ buddies         # FESTiVAL PLUS and Buddies versions
 - Multiple versions can be specified, separated by spaces
 :::
 
+#### Filter by Difficulty
+
+```
+b50 -diff mas                      # MASTER difficulty only
+b50 -diff mas rem                  # MASTER and Re:MASTER difficulties
+b50 -diff bas adv exp              # BASIC, ADVANCED, and EXPERT difficulties
+```
+
+::: tip Difficulty Abbreviations
+- `bas` = BASIC
+- `adv` = ADVANCED
+- `exp` = EXPERT
+- `mas` = MASTER
+- `rem` = Re:MASTER
+- Full names can also be used (e.g., `basic`, `master`)
+- Difficulty names are case-insensitive
+- Multiple difficulties can be specified, separated by spaces
+:::
+
 ### Combining Filters
 
 You can combine multiple filters:
@@ -122,6 +141,8 @@ b50 -lv 15 -scr 100.5                    # Level 15 with achievement rate 100.5%
 b50 -ra 200 -dx 95                       # Rating 200+ with DX score 95%+
 b50 -ver buddies -lv 14                  # Buddies version with level ≥14
 b50 -ver splash splash+ -scr 100         # Splash/Splash+ with achievement ≥100%
+b50 -diff mas -lv 14                     # MASTER difficulty with level ≥14
+b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER with achievement 100.5%+
 b50 -lv 14 15 -scr 99.5 -dx 90           # Complex filtering
 ```
 

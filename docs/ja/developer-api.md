@@ -309,7 +309,13 @@ GET /api/v1/records/<user_id>?type=<record_type>&command=<filter>
 
 **パラメータ:**
 - `type`: レコードタイプ (best50/best100/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idealb50、オプション、デフォルトはbest50)
-- `command`: フィルターコマンド（オプション、-ver、-fc、-rate などをサポート）
+- `command`: フィルターコマンド（オプション）、以下のパラメータをサポート：
+  - `-lv <定数>` または `-lv <最小> <最大>` - 譜面定数でフィルター
+  - `-ra <rating>` または `-ra <最小> <最大>` - 単曲Ratingでフィルター
+  - `-scr <達成率>` または `-scr <最小> <最大>` - 達成率でフィルター
+  - `-dx <スコア>` または `-dx <最小> <最大>` - でらっくすスコアでフィルター
+  - `-ver <バージョン1> [バージョン2] ...` - ゲームバージョンでフィルター（複数のバージョンをスペース区切りでサポート）
+  - `-diff <難易度1> [難易度2] ...` - 譜面難易度でフィルター（bas/adv/exp/mas/rem、複数の難易度をスペース区切りでサポート）
 
 **例:**
 ```bash
@@ -317,7 +323,16 @@ GET /api/v1/records/<user_id>?type=<record_type>&command=<filter>
 curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50"
 
 # 特定のバージョンでフィルター
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-ver%20DX%20FESTiVAL%20PLUS"
+curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-ver%20buddies"
+
+# MASTER難易度でフィルター
+curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-diff%20mas"
+
+# 定数14.0以上でフィルター
+curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-lv%2014.0"
+
+# 組み合わせフィルター：MASTER難易度かつ定数14.0-15.0
+curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-diff%20mas%20-lv%2014.0%2015.0"
 ```
 
 **レスポンス:**

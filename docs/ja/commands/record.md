@@ -113,6 +113,25 @@ b50 -ver festival+ buddies         # FESTiVAL PLUS と Buddies バージョン
 - 複数のバージョンをスペースで区切って指定できます
 :::
 
+#### 難易度でフィルター
+
+```
+b50 -diff mas                      # MASTER 難易度のみ
+b50 -diff mas rem                  # MASTER と Re:MASTER 難易度
+b50 -diff bas adv exp              # BASIC、ADVANCED、EXPERT 難易度
+```
+
+::: tip 難易度の略語
+- `bas` = BASIC
+- `adv` = ADVANCED
+- `exp` = EXPERT
+- `mas` = MASTER
+- `rem` = Re:MASTER
+- フルネームも使用できます（例：`basic`、`master`）
+- 難易度名は大文字小文字を区別しません
+- 複数の難易度をスペースで区切って指定できます
+:::
+
 ### フィルターの組み合わせ
 
 複数のフィルターを組み合わせることができます：
@@ -122,6 +141,8 @@ b50 -lv 15 -scr 100.5                    # レベル 15 かつ達成率 100.5%+ 
 b50 -ra 200 -dx 95                       # Rating 200+ かつ でらっくす score 95%+
 b50 -ver buddies -lv 14                  # Buddies バージョンかつレベル ≥14 の楽曲
 b50 -ver splash splash+ -scr 100         # Splash/Splash+ かつ達成率 ≥100% の楽曲
+b50 -diff mas -lv 14                     # MASTER 難易度かつレベル ≥14 の楽曲
+b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER 難易度かつ達成率 100.5%+
 b50 -lv 14 15 -scr 99.5 -dx 90           # 複雑なフィルター
 ```
 

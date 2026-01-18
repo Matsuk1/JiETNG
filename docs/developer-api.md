@@ -308,7 +308,13 @@ GET /api/v1/records/<user_id>?type=<record_type>&command=<filter>
 
 **参数:**
 - `type`: 记录类型 (best50/best100/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idealb50，可选，默认 best50)
-- `command`: 筛选命令（可选，支持 -ver、-fc、-rate 等）
+- `command`: 筛选命令（可选），支持以下参数：
+  - `-lv <定数>` 或 `-lv <最小定数> <最大定数>` - 按谱面定数筛选
+  - `-ra <rating>` 或 `-ra <最小rating> <最大rating>` - 按单曲 Rating 筛选
+  - `-scr <达成率>` 或 `-scr <最小达成率> <最大达成率>` - 按达成率筛选
+  - `-dx <DX分数>` 或 `-dx <最小DX分数> <最大DX分数>` - 按 DX Score 筛选
+  - `-ver <版本1> [版本2] ...` - 按游戏版本筛选（支持多个版本，空格分隔）
+  - `-diff <难度1> [难度2] ...` - 按谱面难度筛选（bas/adv/exp/mas/rem，支持多个难度，空格分隔）
 
 **示例:**
 ```bash
@@ -316,7 +322,16 @@ GET /api/v1/records/<user_id>?type=<record_type>&command=<filter>
 curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50"
 
 # 筛选特定版本
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-ver%20DX%20FESTiVAL%20PLUS"
+curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-ver%20buddies"
+
+# 筛选 MASTER 难度
+curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-diff%20mas"
+
+# 筛选定数 14.0 以上
+curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-lv%2014.0"
+
+# 组合筛选：MASTER 难度且定数 14.0-15.0
+curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-diff%20mas%20-lv%2014.0%2015.0"
 ```
 
 **响应:**

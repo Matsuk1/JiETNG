@@ -311,7 +311,13 @@ GET /api/v1/records/<user_id>?type=<record_type>&command=<filter>
 
 **Parameters:**
 - `type`: Record type (best50/best100/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idealb50, optional, defaults to best50)
-- `command`: Filter command (optional, supports -ver, -fc, -rate, etc.)
+- `command`: Filter command (optional), supports the following parameters:
+  - `-lv <constant>` or `-lv <min> <max>` - Filter by chart constant
+  - `-ra <rating>` or `-ra <min> <max>` - Filter by single song rating
+  - `-scr <achievement>` or `-scr <min> <max>` - Filter by achievement rate
+  - `-dx <score>` or `-dx <min> <max>` - Filter by DX score
+  - `-ver <version1> [version2] ...` - Filter by game version (supports multiple versions, space-separated)
+  - `-diff <difficulty1> [difficulty2] ...` - Filter by chart difficulty (bas/adv/exp/mas/rem, supports multiple difficulties, space-separated)
 
 **Example:**
 ```bash
@@ -319,7 +325,16 @@ GET /api/v1/records/<user_id>?type=<record_type>&command=<filter>
 curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50"
 
 # Filter specific version
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-ver%20DX%20FESTiVAL%20PLUS"
+curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-ver%20buddies"
+
+# Filter MASTER difficulty
+curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-diff%20mas"
+
+# Filter constant 14.0 and above
+curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-lv%2014.0"
+
+# Combined filter: MASTER difficulty and constant 14.0-15.0
+curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-diff%20mas%20-lv%2014.0%2015.0"
 ```
 
 **Response:**

@@ -1928,7 +1928,32 @@ def select_records(song_record, type="best50", command="", ver="jp"):
     if not command == "":
         cmds = re.findall(r"-(\w+)\s+([^ -][^-]*)", command)
         for cmd, cmd_num in cmds:
-            if cmd == "lv":
+            if cmd == "diff":
+                # 处理难度筛选：-diff bas adv exp mas rem
+                # 难度简写映射
+                diff_map = {
+                    'bas': 'basic',
+                    'adv': 'advanced',
+                    'exp': 'expert',
+                    'mas': 'master',
+                    'rem': 'remaster'
+                }
+
+                raw_diffs = cmd_num.split()
+                difficulties = []
+                for d in raw_diffs:
+                    d_lower = d.strip().lower()
+                    if d_lower:
+                        # 支持简写和全名
+                        if d_lower in diff_map:
+                            difficulties.append(diff_map[d_lower])
+                        elif d_lower in ['basic', 'advanced', 'expert', 'master', 'remaster']:
+                            difficulties.append(d_lower)
+
+                # 筛选指定难度的记录
+                if difficulties:
+                    song_record = list(filter(lambda x: x.get('difficulty', '').lower() in difficulties, song_record))
+            elif cmd == "lv":
                 parts = cmd_num.split()
                 if len(parts) == 1:
                     lv_start = float(parts[0])

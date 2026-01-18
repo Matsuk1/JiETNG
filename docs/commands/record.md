@@ -113,6 +113,25 @@ b50 -ver festival+ buddies         # FESTiVAL PLUS 和 Buddies 版本
 - 可以同时指定多个版本，用空格分隔
 :::
 
+#### 按难度过滤
+
+```
+b50 -diff mas                      # 仅 MASTER 难度
+b50 -diff mas rem                  # MASTER 和 Re:MASTER 难度
+b50 -diff bas adv exp              # BASIC、ADVANCED 和 EXPERT 难度
+```
+
+::: tip 难度简写说明
+- `bas` = BASIC
+- `adv` = ADVANCED
+- `exp` = EXPERT
+- `mas` = MASTER
+- `rem` = Re:MASTER
+- 也可以使用全名（如 `basic`、`master`）
+- 难度名称不区分大小写
+- 可以同时指定多个难度，用空格分隔
+:::
+
 ### 组合过滤器
 
 您可以组合多个过滤器：
@@ -122,6 +141,8 @@ b50 -lv 15 -scr 100.5                    # 等级 15 且达成率 100.5%+ 的歌
 b50 -ra 200 -dx 95                       # Rating 200+ 且 DX score 95%+
 b50 -ver buddies -lv 14                  # Buddies 版本且等级 ≥14 的歌曲
 b50 -ver splash splash+ -scr 100         # Splash/Splash+ 且达成率 ≥100% 的歌曲
+b50 -diff mas -lv 14                     # MASTER 难度且等级 ≥14 的歌曲
+b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER 难度且达成率 100.5%+
 b50 -lv 14 15 -scr 99.5 -dx 90           # 复杂过滤
 ```
 

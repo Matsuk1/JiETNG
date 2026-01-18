@@ -74,6 +74,7 @@ b50 -lv 14.0 14.9    # Filter by difficulty rating 14.0-14.9
 b50 -ra 200 250      # Filter by rating value 200-250
 b50 -scr 99.5        # Filter by achievement rate >= 99.5%
 b50 -dx 95           # Filter by DX score percentage >= 95%
+b50 -diff mas rem    # Filter by difficulty (mas=MASTER, rem=Re:MASTER)
 ```
 
 ### Song Queries
