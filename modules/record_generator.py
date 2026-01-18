@@ -187,7 +187,7 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
               fill=text_color, font=font_small)
 
     draw.text((score_x_offset, padding + line_spacing * 2),
-              song['dx_score'], fill=text_color, font=font_small, anchor="ra")
+              song['dx_score'].replace(",", ""), fill=text_color, font=font_small, anchor="ra")
 
     # --- 最下面的横线 ---
     draw.line([(0, thumb_size[1]), (thumb_size[0], thumb_size[1])], fill=(255, 255, 255), width=90)
