@@ -155,7 +155,7 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     # 根据缩略图尺寸动态计算布局
     line_spacing = int(thumb_size[1] * 0.187)  # 28/150 ≈ 0.187
     text_x_offset = padding + cover_size + 10
-    score_x_offset = thumb_size[0] - 20
+    score_x_offset = thumb_size[0] - 15
 
     # --- 歌曲标题 ---
     max_text_width = thumb_size[0] - text_x_offset - 20
