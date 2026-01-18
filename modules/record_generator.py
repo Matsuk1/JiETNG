@@ -365,7 +365,7 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD"):
     title_layer = Image.new('RGBA', (layer_width, layer_height), (255, 255, 255, 0))
     title_draw = ImageDraw.Draw(title_layer)
     # 文字绘制在图层中央偏上位置
-    title_draw.text((70, 15), title, fill=(206, 206, 206, 255), font=font_record_title)
+    title_draw.text((70, 15), title, fill=(190, 190, 190, 255), font=font_record_title)
 
     # 应用斜体变换 (正向斜体 "/" 方向)
     title_layer = title_layer.transform(
