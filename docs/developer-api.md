@@ -307,7 +307,7 @@ GET /api/v1/records/<user_id>?type=<record_type>&command=<filter>
 ```
 
 **参数:**
-- `type`: 记录类型 (best50/best100/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idealb50，可选，默认 best50)
+- `type`: 记录类型 (best50/best100/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idlb50，可选，默认 best50)
 - `command`: 筛选命令（可选），支持以下参数：
   - `-lv <定数>` 或 `-lv <最小定数> <最大定数>` - 按谱面定数筛选
   - `-ra <rating>` 或 `-ra <最小rating> <最大rating>` - 按单曲 Rating 筛选

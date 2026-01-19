@@ -2054,7 +2054,7 @@ def select_records(song_record, type="best50", command="", ver="jp"):
     elif type == "rct50":
         up_songs = song_record
 
-    elif type == "idealb50":
+    elif type == "idlb50":
         for rcd in up_songs_data:
             ideal_score, score_icon = get_ideal_score(float(rcd['score'][:-1]))
             rcd['score'] = f"{ideal_score:.4f}%"
@@ -2928,7 +2928,7 @@ def handle_sync_text_command(event):
         ("apb50", "ap50", "all perfect 50", "オールパーフェクト50"): "apb50",
         ("fdxb50", "fdx50", "Full DX 50", "フールでらっくす50"): "fdxb50",
         ("rct50", "r50", "recent50", "recent 50"): "rct50",
-        ("idealb50", "idlb50", "ideal best 50", "理想的ベスト50"): "idealb50",
+        ("idealb50", "idlb50", "ideal best 50", "理想的ベスト50"): "idlb50",
         ("unknown", "unknown songs", "unknown data", "未発見"): "UNKNOWN",
     }
 
@@ -5111,7 +5111,7 @@ def api_get_records(user_id):
 
     参数:
     - type: 可选，记录类型，默认为 best50
-      可选值: best50, best100, best35, best15, allb50, allb100, allb200, allb35, apb50, rct50, idealb50, UNKNOWN
+      可选值: best50, best100, best35, best15, allb50, allb100, allb200, allb35, apb50, rct50, idlb50, UNKNOWN
     - command: 可选，过滤命令，如 "-lv 14 15 -ra 100 200"
     """
     try:
@@ -5124,7 +5124,7 @@ def api_get_records(user_id):
         logger.info(f"[API] Get records: user_id={user_id}, type={record_type}, token_id={token_info['token_id']}, note={token_info['note']}")
 
         # 验证 record_type
-        valid_types = ["best50", "best40", "best100", "best35", "best15", "allb50", "allb100", "allb200", "allb35", "apb50", "rct50", "idealb50", "UNKNOWN"]
+        valid_types = ["best50", "best40", "best100", "best35", "best15", "allb50", "allb100", "allb200", "allb35", "apb50", "rct50", "idlb50", "UNKNOWN"]
         if record_type not in valid_types:
             return jsonify({
                 "error": "Invalid type",
