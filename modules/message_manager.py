@@ -1,5 +1,5 @@
-from modules.config_loader import SUPPORT_PAGE, USERS
-from modules.user_manager import get_notice_interaction
+from modules.config_loader import SUPPORT_PAGE, USERS, LINE_ACCOUNT_ID
+from modules.user_manager import get_notice_interaction, get_user_timezone
 from modules.tip_ad_manager import get_random_tip, get_random_ad
 from linebot.v3.messaging import (
     TextMessage,
@@ -37,6 +37,20 @@ def get_user_language(user_id):
     if user_id and user_id in USERS:
         return USERS[user_id].get('language', 'ja')
     return 'ja'
+
+def format_timezone_string(user_id):
+    """
+    格式化用户时区字符串
+
+    Args:
+        user_id: 用户ID
+
+    Returns:
+        str: 格式化的时区字符串，如 "(UTC+9)"
+    """
+    tz_offset = get_user_timezone(user_id)
+    tz_sign = '+' if tz_offset >= 0 else ''
+    return f"(UTC{tz_sign}{tz_offset})"
 
 def get_multilingual_text(message_dict, user_id=None, language=None):
     """
@@ -430,9 +444,58 @@ language_set_success_text = {
 
 # 已绑定账号的提示
 already_bound_text = {
-    "ja": "⚠️ すでに SEGA アカウントが連携されています。\n再度連携する場合は、先に unbind コマンドで連携を解除してください。",
-    "en": "⚠️ A SEGA account is already linked.\nTo rebind, please use the unbind command first to unlink your account.",
-    "zh": "⚠️ 已绑定 SEGA 账号。\n如需重新绑定，请先使用 unbind 命令解除绑定。"
+    "ja": "⚠️ すでに SEGA アカウントが連携されています。\n再度連携する場合は、先に unbind コマンドで連携を解除してください。\n\n💡 パスワード、バージョン、タイムゾーン、言語のみを変更したい場合は、profile コマンドまたは rebind コマンドを使用してください。",
+    "en": "⚠️ A SEGA account is already linked.\nTo rebind, please use the unbind command first to unlink your account.\n\n💡 If you only want to change password, version, timezone, or language, please use the profile or rebind command.",
+    "zh": "⚠️ 已绑定 SEGA 账号。\n如需重新绑定，请先使用 unbind 命令解除绑定。\n\n💡 如果只想修改密码、版本、时区或语言，请使用 profile 或 rebind 命令。"
+}
+
+# Unbind 确认消息
+unbind_confirm_text = {
+    "ja": "⚠️ アカウント連携を解除しようとしています。\n\nこの操作により、連携されている SEGA ID、パスワード、その他すべての設定が削除されます。\n\n🔴 この操作は取り消せません。\n\n続行するには、以下のコマンドを送信してください：\nunbind confirm",
+    "en": "⚠️ You are about to unbind your account.\n\nThis will delete your linked SEGA ID, password, and all other settings.\n\n🔴 This action cannot be undone.\n\nTo proceed, please send the following command:\nunbind confirm",
+    "zh": "⚠️ 您即将解除账号绑定。\n\n此操作将删除您绑定的 SEGA ID、密码以及所有其他设置。\n\n🔴 此操作无法撤销。\n\n若要继续，请发送以下命令：\nunbind confirm"
+}
+
+# Bind 命令群聊警告
+bind_group_warning_text = {
+    "ja": "⚠️ セキュリティのため、bind コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
+    "en": "⚠️ For security reasons, the bind command can only be used in private chat. Please message the bot directly.",
+    "zh": "⚠️ 出于安全考虑，bind 命令只能在私聊中使用。请直接向机器人发送消息。"
+}
+
+# Rebind/Profile 命令群聊警告
+rebind_group_warning_text = {
+    "ja": "⚠️ セキュリティのため、rebind / profile コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
+    "en": "⚠️ For security reasons, the rebind / profile command can only be used in private chat. Please message the bot directly.",
+    "zh": "⚠️ 出于安全考虑，rebind / profile 命令只能在私聊中使用。请直接向机器人发送消息。"
+}
+
+# Rebind 未绑定提示
+rebind_not_bound_text = {
+    "ja": "まだ SEGA アカウントが連携されていません。bind コマンドで連携してください。",
+    "en": "No SEGA account linked yet. Please use the bind command to link your account.",
+    "zh": "尚未绑定 SEGA 账号。请使用 bind 命令进行绑定。"
+}
+
+# Rebind 按钮模板 - 标题 / Alt
+rebind_title_alt_text = {
+    "ja": "アカウント設定の編集",
+    "en": "Edit Account Settings",
+    "zh": "编辑账号设置"
+}
+
+# Rebind 按钮模板 - 描述
+rebind_description_text = {
+    "ja": "パスワード、バージョン、タイムゾーン、言語を変更できます。",
+    "en": "You can change password, version, timezone, and language.",
+    "zh": "您可以更改密码、版本、时区和语言。"
+}
+
+# Rebind 按钮模板 - 按钮标签
+rebind_button_text = {
+    "ja": "設定を編集",
+    "en": "Edit Settings",
+    "zh": "编辑设置"
 }
 
 # 公告标题
@@ -975,9 +1038,9 @@ def generate_notice_flex(notice_json, user_id=None):
             }
         else:  # message
             action = {
-                "type": "message",
+                "type": "uri",
                 "label": button_label_with_arrow,
-                "text": button_value
+                "uri": f"https://line.me/R/oaMessage/{LINE_ACCOUNT_ID}/?{button_value}"
             }
 
         # 添加按钮卡片
@@ -1316,9 +1379,9 @@ user_info_flex_text = {
         'zh': '用户信息'
     },
     'last_update_label': {
-        'ja': '最終更新 (UTC+9)',
-        'en': 'Last Update (UTC+9)',
-        'zh': '最后更新 (UTC+9)'
+        'ja': '最終更新',
+        'en': 'Last Update',
+        'zh': '最后更新'
     },
     'not_bound': {
         'ja': '未連携',
@@ -1474,9 +1537,10 @@ def generate_user_info_flex(user_id):
 
                 # 添加最后更新时间（如果存在）
                 if 'last_update' in user_data:
+                    tz_str = format_timezone_string(user_id)
                     rating_contents.append({
                         "type": "text",
-                        "text": f"・{get_multilingual_text(texts['last_update_label'], language=lang)}: {user_data['last_update']}",
+                        "text": f"・{get_multilingual_text(texts['last_update_label'], language=lang)} {tz_str}: {user_data['last_update']}",
                         "size": "xs",
                         "color": "#666666",
                         "margin": "sm"
@@ -1653,9 +1717,9 @@ update_result_flex_text = {
         'zh': 'Rating'
     },
     'update_time_label': {
-        'ja': '更新日時 (UTC+9)',
-        'en': 'Update Time (UTC+9)',
-        'zh': '更新时间 (UTC+9)'
+        'ja': '更新日時',
+        'en': 'Update Time',
+        'zh': '更新时间'
     },
     'elapsed_time_label': {
         'ja': '処理時間',
@@ -1776,6 +1840,7 @@ def generate_update_result_flex(user_id, username, rating, update_time, elapsed_
     })
 
     # 更新时间
+    tz_str = format_timezone_string(user_id)
     content_rows.append({
         "type": "box",
         "layout": "vertical",
@@ -1783,7 +1848,7 @@ def generate_update_result_flex(user_id, username, rating, update_time, elapsed_
         "contents": [
             {
                 "type": "text",
-                "text": get_multilingual_text(texts['update_time_label'], language=lang),
+                "text": f"{get_multilingual_text(texts['update_time_label'], language=lang)} {tz_str}",
                 "size": "xs",
                 "color": "#999999"
             },
@@ -1996,9 +2061,9 @@ def generate_tip_ad_box(tip_ad, lang):
             }
         else:  # message
             action = {
-                "type": "message",
+                "type": "uri",
                 "label": button_label_with_arrow,
-                "text": button_value
+                "uri": f"https://line.me/R/oaMessage/{LINE_ACCOUNT_ID}/?{button_value}"
             }
 
         # 添加按钮

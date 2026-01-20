@@ -32,7 +32,8 @@ def add_user(user_id: str) -> None:
         return
 
     USERS[user_id] = {
-        "notice_interactions": {}
+        "notice_interactions": {},
+        "timezone": 9  # 默认 UTC+9（日本标准时间）
     }
     mark_user_dirty()
     write_user()
@@ -87,6 +88,22 @@ def edit_user_value(user_id: str, key: str, word: Any, operation: int = 0) -> No
 
     mark_user_dirty()
     write_user(force=True)
+
+
+def get_user_timezone(user_id: str) -> int:
+    """
+    获取用户的时区设置（UTC偏移小时数）
+
+    Args:
+        user_id: 用户ID
+
+    Returns:
+        int: 时区偏移（小时数），默认 9（UTC+9）
+    """
+    if user_id not in USERS:
+        return 9  # 默认 UTC+9
+
+    return USERS[user_id].get('timezone', 9)
 
 
 def clear_user_value(key: str, word: Any, operation: int = 0) -> None:

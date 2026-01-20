@@ -713,13 +713,17 @@ def website_segaid_bind():
 
     Query Args:
         token: 绑定Token (GET/POST)
+        mode: 模式 (bind/rebind，默认 bind)
 
     Form Data (POST):
         segaid: SEGA ID
         password: 密码
         ver: 服务器版本 (jp/intl)
+        timezone: 时区
+        language: 语言 (rebind 模式下)
     """
     token = request.args.get("token")
+    mode = request.args.get("mode", "bind")
     if not token:
         # Token 未提供的错误消息（此时还没有 user_id，三语同时显示）
         token_missing_message = """トークンが提供されていません。<br />
@@ -743,20 +747,45 @@ Token not provided. <br />
         segaid = request.form.get("segaid")
         password = request.form.get("password")
         user_version = request.form.get("ver", "jp")
+        user_timezone = request.form.get("timezone", "9")
 
-        # 从用户数据中获取语言设置，默认为 ja
-        user_language = USERS.get(user_id, {}).get("language", "ja")
-
-        # 检查用户是否已经绑定账号
+        # 获取用户数据
         user_data = USERS.get(user_id, {})
+
+        # 在 rebind 模式下，从表单获取语言；否则从用户数据获取
+        if mode == "rebind":
+            user_language = request.form.get("language", user_data.get("language", "ja"))
+        else:
+            user_language = user_data.get("language", "ja")
+
+        # 检查用户是否已经绑定账号（仅在 bind 模式下检查）
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
-        if has_account:
+
+        if mode == "bind" and has_account:
             error_messages = {
                 "ja": "すでに SEGA アカウントが連携されています。再度連携する場合は、先に unbind コマンドで連携を解除してください。",
                 "en": "A SEGA account is already linked. To rebind, please use the unbind command first to unlink your account.",
                 "zh": "已绑定 SEGA 账号。如需重新绑定，请先使用 unbind 命令解除绑定。"
             }
             return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
+
+        # 在 rebind 模式下，验证 segaid 必须与现有的一致
+        if mode == "rebind":
+            if not has_account:
+                error_messages = {
+                    "ja": "アカウントが連携されていません。",
+                    "en": "No account is linked.",
+                    "zh": "未绑定账号。"
+                }
+                return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
+
+            if segaid != user_data.get('sega_id'):
+                error_messages = {
+                    "ja": "SEGA ID を変更することはできません。",
+                    "en": "You cannot change the SEGA ID.",
+                    "zh": "无法更改 SEGA ID。"
+                }
+                return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
 
         if not segaid or not password:
             missing_fields_messages = {
@@ -766,7 +795,13 @@ Token not provided. <br />
             }
             return render_template("error.html", message=missing_fields_messages.get(user_language, missing_fields_messages["ja"]), language=user_language), 400
 
-        result = asyncio.run(process_sega_credentials(user_id, segaid, password, user_version, user_language))
+        # 转换时区为整数
+        try:
+            timezone_int = int(user_timezone)
+        except (ValueError, TypeError):
+            timezone_int = 9  # 默认 UTC+9
+
+        result = asyncio.run(process_sega_credentials(user_id, segaid, password, user_version, user_language, timezone_int))
         if result == "MAINTENANCE":
             maintenance_messages = {
                 "ja": "公式サイトがメンテナンス中です。しばらくしてからもう一度お試しください。",
@@ -775,7 +810,7 @@ Token not provided. <br />
             }
             return render_template("error.html", message=maintenance_messages.get(user_language, maintenance_messages["ja"]), language=user_language), 503
         elif result:
-            return render_template("success.html", language=user_language)
+            return render_template("success.html", language=user_language, mode=mode)
         else:
             invalid_credentials_messages = {
                 "ja": "SEGA ID または パスワード が正しくありません。もう一度確認してください。",
@@ -784,12 +819,26 @@ Token not provided. <br />
             }
             return render_template("error.html", message=invalid_credentials_messages.get(user_language, invalid_credentials_messages["ja"]), language=user_language), 500
 
-    # GET 请求时，从用户数据中获取语言设置
-    user_language = USERS.get(user_id, {}).get("language", "ja")
-    return render_template("bind_form.html", user_language=user_language)
+    # GET 请求时，从用户数据中获取语言设置和其他信息
+    user_data = USERS.get(user_id, {})
+    user_language = user_data.get("language", "ja")
+
+    # 在 rebind 模式下，传递现有数据到模板
+    if mode == "rebind":
+        return render_template(
+            "bind_form.html",
+            user_language=user_language,
+            mode="rebind",
+            segaid=user_data.get('sega_id', ''),
+            password=user_data.get('sega_pwd', ''),
+            version=user_data.get('version', 'jp'),
+            timezone=user_data.get('timezone', 9)
+        )
+    else:
+        return render_template("bind_form.html", user_language=user_language, mode="bind")
 
 
-async def process_sega_credentials(user_id, segaid, password, ver="jp", language="ja"):
+async def process_sega_credentials(user_id, segaid, password, ver="jp", language="ja", timezone=9):
     base = (
         "https://maimaidx-eng.com/maimai-mobile"
         if ver == "intl"
@@ -817,6 +866,7 @@ async def process_sega_credentials(user_id, segaid, password, ver="jp", language
     user_bind_sega_pwd(user_id, password)
     user_set_version(user_id, ver)
     user_set_language(user_id, language)
+    user_set_timezone(user_id, timezone)
     if "registered_via_token" not in USERS[user_id]:
         try:
             smart_push(user_id, bind_msg(user_id), configuration)
@@ -852,6 +902,11 @@ def user_set_language(user_id, language):
     if user_id not in USERS:
         add_user(user_id)
     edit_user_value(user_id, 'language', language)
+
+def user_set_timezone(user_id, timezone):
+    if user_id not in USERS:
+        add_user(user_id)
+    edit_user_value(user_id, 'timezone', timezone)
 
 
 # ==================== 异步任务处理函数 ====================
@@ -1131,7 +1186,8 @@ def random_song(user_id, key="", ver="jp"):
     song = random.choice(valid_songs)
     song_id = song.get('id')
 
-    original_url, preview_url = smart_upload(song_info_generate(song))
+    user_tz = get_user_timezone(user_id)
+    original_url, preview_url = smart_upload(song_info_generate(song, timezone_offset=user_tz))
     result.append(ImageMessage(original_content_url=original_url, preview_image_url=preview_url))
     result.append(generate_calc_button(song_id, user_id))
     return result
@@ -1163,8 +1219,9 @@ def search_song(user_id, acronym, ver="jp"):
 
     # 单个结果：返回图片 + 按钮
     result = []
+    user_tz = get_user_timezone(user_id)
     for song in matching_songs:
-        original_url, preview_url = smart_upload(song_info_generate(song))
+        original_url, preview_url = smart_upload(song_info_generate(song, timezone_offset=user_tz))
         message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
         result.append(message)
         song_id = song.get('id')
@@ -1198,7 +1255,8 @@ def search_song_by_id(user_id, song_id, ver="jp"):
         return song_error(user_id)
 
     # 返回图片 + 按钮
-    original_url, preview_url = smart_upload(song_info_generate(matching_song))
+    user_tz = get_user_timezone(user_id)
+    original_url, preview_url = smart_upload(song_info_generate(matching_song, timezone_offset=user_tz))
     image_message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
     return [image_message, generate_calc_button(song_id, user_id)]
 
@@ -1376,6 +1434,7 @@ def get_song_record(user_id, id_use, acronym, ver="jp"):
 
     # 生成图片消息列表
     result = []
+    user_tz = get_user_timezone(id_use)
     for song in songs_with_records:
         played_data = []
 
@@ -1384,7 +1443,7 @@ def get_song_record(user_id, id_use, acronym, ver="jp"):
             if is_exact_song_match(rcd['cover_name'], song['cover_name']) and rcd['type'] == song['type']:
                 played_data.append(rcd)
 
-        original_url, preview_url = smart_upload(song_info_generate(song, played_data))
+        original_url, preview_url = smart_upload(song_info_generate(song, played_data, timezone_offset=user_tz))
         message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
         result.append(message)
 
@@ -1438,7 +1497,8 @@ def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
         return song_error(user_id)
 
     # 生成歌曲信息图片
-    original_url, preview_url = smart_upload(song_info_generate(matching_song, played_data))
+    user_tz = get_user_timezone(id_use)
+    original_url, preview_url = smart_upload(song_info_generate(matching_song, played_data, timezone_offset=user_tz))
     result = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
 
     return result
@@ -1589,7 +1649,8 @@ def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use]['personal_info']
     profile_img = generate_profile(user_info)
-    img = compose_images([profile_img, plate_img])
+    user_tz = get_user_timezone(id_use)
+    img = compose_images([profile_img, plate_img], timezone_offset=user_tz)
 
     # 清理中间图片对象
     del profile_img, plate_img
@@ -1724,7 +1785,8 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp", page=1)
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use]['personal_info']
     profile_img = generate_profile(user_info)
-    img = compose_images([profile_img, record_img])
+    user_tz = get_user_timezone(id_use)
+    img = compose_images([profile_img, record_img], timezone_offset=user_tz)
 
     del profile_img, record_img
     gc.collect(0)
@@ -1822,7 +1884,8 @@ def generate_internallevel_songs(user_id, level, ver="jp"):
         level_img = generate_internallevel_image(target_data, level)
 
         # 用compose函数包装
-        final_img = compose_images([level_img])
+        user_tz = get_user_timezone(user_id)
+        final_img = compose_images([level_img], timezone_offset=user_tz)
 
         # 清理中间图片对象
         del level_img
@@ -2100,7 +2163,8 @@ def generate_records(user_id, id_use, type="best50", command="", ver="jp"):
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use]['personal_info']
     profile_img = generate_profile(user_info)
-    img = compose_images([profile_img, record_img])
+    user_tz = get_user_timezone(id_use)
+    img = compose_images([profile_img, record_img], timezone_offset=user_tz)
 
     # 清理中间图片对象
     del profile_img, record_img
@@ -2161,7 +2225,8 @@ def generate_friend_b50(user_id, friend_code, ver="jp"):
 
     user_info_img = generate_profile(friend_info)
     rcd_img = generate_records_picture(up_songs, down_songs, "BEST50")
-    img = compose_images([user_info_img, rcd_img])
+    user_tz = get_user_timezone(user_id)
+    img = compose_images([user_info_img, rcd_img], timezone_offset=user_tz)
 
     # 清理中间图片对象
     del user_info_img, rcd_img
@@ -2224,7 +2289,8 @@ def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use]['personal_info']
     profile_img = generate_profile(user_info)
-    img = compose_images([profile_img, record_img])
+    user_tz = get_user_timezone(id_use)
+    img = compose_images([profile_img, record_img], timezone_offset=user_tz)
 
     # 清理中间图片对象
     del profile_img, record_img
@@ -2270,10 +2336,11 @@ def generate_version_songs(user_id, version_title, ver="jp"):
     songs_data = list(filter(lambda x: x['version'] in target_version and x['type'] not in ['utage'], SONGS))
     version_list_img = generate_version_list(songs_data)
 
+    user_tz = get_user_timezone(user_id)
     if version_img is None:
-        img = compose_images([version_list_img])
+        img = compose_images([version_list_img], timezone_offset=user_tz)
     else:
-        img = compose_images([version_img, version_list_img], border_width=0)
+        img = compose_images([version_img, version_list_img], border_width=0, timezone_offset=user_tz)
 
     # 清理中间图片对象
     if version_img is not None:
@@ -2792,6 +2859,21 @@ def handle_sync_text_command(event):
         mai_ver_use = "jp"
 
     # ========================================
+    # 0. Unbind 命令特殊处理（需要二次确认）
+    # ========================================
+    UNBIND_COMMANDS = ["unbind", "アンバインド"]
+    if user_message in UNBIND_COMMANDS:
+        # 第一步：返回确认提示
+        reply_message = TextMessage(text=get_multilingual_text(unbind_confirm_text, user_id))
+        return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+
+    UNBIND_CONFIRM_COMMANDS = ["unbind confirm", "アンバインド confirm", "アンバインド コンファーム"]
+    if user_message in UNBIND_CONFIRM_COMMANDS:
+        # 第二步：执行解绑操作
+        reply_message = user_unbind(user_id)
+        return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+
+    # ========================================
     # 1. 基础命令 - 精确匹配
     # ========================================
     COMMAND_MAP = {
@@ -2800,8 +2882,7 @@ def handle_sync_text_command(event):
         "ドネーション": lambda: donate_message,
 
         # 账户管理
-        "unbind": lambda: user_unbind(user_id),
-        "アンバインド": lambda: user_unbind(user_id),
+        # unbind 已移至上方特殊处理
         "get me": lambda: generate_user_info_flex(user_id),
         "getme": lambda: generate_user_info_flex(user_id),
         "ゲットミー": lambda: generate_user_info_flex(user_id),
@@ -2883,7 +2964,7 @@ def handle_sync_text_command(event):
         # 难度+评级达成情况（如 "13sss+進捗", "14ap progress"）
         # 难度+评级达成情况（如 "13sss+進捗", "14AP progress 2", "15SSS進捗 3"）
         # 支持大小写，长的评级放在前面避免被短的提前匹配，支持可选页码
-        (lambda msg: re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fdx\+|sss|ss|ap|fdx|s)\s*(progress|進捗)[ 　]*\d*$", msg.lower()),
+        (lambda msg: re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fdx\+|sss|ss|ap|fdx|s)\s*(progress|進捗|进度)[ 　]*\d*$", msg.lower()),
          lambda msg: generate_level_rank_progress(
              user_id,
              id_use,
@@ -2942,6 +3023,13 @@ def handle_sync_text_command(event):
     # ========================================
     BIND_COMMANDS = ["bind", "segaid bind", "バインド"]
     if user_message.lower() in BIND_COMMANDS:
+        # 检查是否在群聊中发送
+        source_type = getattr(event.source, 'type', 'user')
+        if source_type != 'user':
+            # 在群聊中，返回警告消息
+            reply_message = TextMessage(text=get_multilingual_text(bind_group_warning_text, user_id))
+            return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+
         # 检查用户是否已设置语言
         user_data = USERS.get(user_id, {})
         has_language = 'language' in user_data
@@ -2986,6 +3074,46 @@ def handle_sync_text_command(event):
         )
         reply_message = TemplateMessage(
             alt_text=get_multilingual_text(sega_bind_alt_text, user_id),
+            template=buttons_template
+        )
+
+        return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+
+    # ========================================
+    # 4.5 账号重新绑定 (rebind)
+    # ========================================
+    REBIND_COMMANDS = ["profile", "rebind", "プロフィール", "个人资料"]
+    if user_message.lower() in REBIND_COMMANDS:
+        # 检查是否在群聊中发送
+        source_type = getattr(event.source, 'type', 'user')
+        if source_type != 'user':
+            # 在群聊中，返回警告消息
+            reply_message = TextMessage(text=get_multilingual_text(rebind_group_warning_text, user_id))
+            return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+
+        # 检查用户是否已绑定账号
+        user_data = USERS.get(user_id, {})
+        has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
+
+        if not has_account:
+            # 未绑定账号，提示先绑定
+            reply_message = TextMessage(text=get_multilingual_text(rebind_not_bound_text, user_id))
+            return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+
+        # 用户已绑定账号，显示 rebind 按钮
+        rebind_url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(user_id)}&mode=rebind"
+
+        # 使用多语言文本
+        buttons_template = ButtonsTemplate(
+            title=get_multilingual_text(rebind_title_alt_text, user_id),
+            text=get_multilingual_text(rebind_description_text, user_id),
+            actions=[URIAction(
+                label=get_multilingual_text(rebind_button_text, user_id),
+                uri=rebind_url
+            )]
+        )
+        reply_message = TemplateMessage(
+            alt_text=get_multilingual_text(rebind_title_alt_text, user_id),
             template=buttons_template
         )
 

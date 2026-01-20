@@ -80,10 +80,31 @@
       color: var(--text-tertiary);
     }
 
+    input[type="text"][readonly] {
+      background: #f5f5f5;
+      color: #888;
+      cursor: not-allowed;
+      border-color: #d0d0d0;
+    }
+
+    .hint-text {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: -15px;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+
+    .hint-text.hidden {
+      display: none;
+    }
+
     select {
       appearance: none;
       -webkit-appearance: none;
       -moz-appearance: none;
+      padding-right: 40px !important; /* 为箭头留出空间 */
+      background-color: var(--surface-bg);
       background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239CA3AF'><polygon points='0,0 12,0 6,7'/></svg>");
       background-repeat: no-repeat;
       background-position: right 16px center;
@@ -93,6 +114,7 @@
 
     @media (prefers-color-scheme: dark) {
       select {
+        background-color: var(--surface-bg);
         background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394A3B8'><polygon points='0,0 12,0 6,7'/></svg>");
       }
     }
@@ -168,16 +190,61 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
       <label for="segaid" id="label-segaid">セガID</label>
-      <input type="text" id="segaid" name="segaid" required />
+      <input type="text" id="segaid" name="segaid" required {% if mode == 'rebind' %}value="{{ segaid }}" readonly{% endif %} />
 
       <label for="password" id="label-password">パスワード</label>
-      <input type="password" id="password" name="password" required />
+      <input type="password" id="password" name="password" required {% if mode == 'rebind' %}value="{{ password }}"{% endif %} />
 
       <label for="ver" id="label-version">バージョン</label>
       <select id="ver" name="ver" required>
-        <option value="jp" id="opt-jp" selected>日本版「maimaidx.jp」</option>
-        <option value="intl" id="opt-intl">海外版「maimaidx-eng.com」</option>
+        <option value="jp" id="opt-jp" {% if mode != 'rebind' or version == 'jp' %}selected{% endif %}>日本版「maimaidx.jp」</option>
+        <option value="intl" id="opt-intl" {% if mode == 'rebind' and version == 'intl' %}selected{% endif %}>海外版「maimaidx-eng.com」</option>
       </select>
+
+      <label for="timezone" id="label-timezone">タイムゾーン</label>
+      <select id="timezone" name="timezone" required>
+        <option value="-12">UTC-12</option>
+        <option value="-11">UTC-11</option>
+        <option value="-10">UTC-10</option>
+        <option value="-9">UTC-9</option>
+        <option value="-8">UTC-8</option>
+        <option value="-7">UTC-7</option>
+        <option value="-6">UTC-6</option>
+        <option value="-5">UTC-5</option>
+        <option value="-4">UTC-4</option>
+        <option value="-3">UTC-3</option>
+        <option value="-2">UTC-2</option>
+        <option value="-1">UTC-1</option>
+        <option value="0">UTC+0</option>
+        <option value="1">UTC+1</option>
+        <option value="2">UTC+2</option>
+        <option value="3">UTC+3</option>
+        <option value="4">UTC+4</option>
+        <option value="5">UTC+5</option>
+        <option value="6">UTC+6</option>
+        <option value="7">UTC+7</option>
+        <option value="8">UTC+8</option>
+        <option value="9">UTC+9</option>
+        <option value="10">UTC+10</option>
+        <option value="11">UTC+11</option>
+        <option value="12">UTC+12</option>
+        <option value="13">UTC+13</option>
+        <option value="14">UTC+14</option>
+      </select>
+      <div class="hint-text {% if mode == 'rebind' %}hidden{% endif %}" id="timezone-hint">
+        <span id="hint-text-ja">💡 お使いのデバイスから自動検出されました</span>
+        <span id="hint-text-en" style="display: none;">💡 Auto-detected from your device</span>
+        <span id="hint-text-zh" style="display: none;">💡 已从您的设备自动检测</span>
+      </div>
+
+      {% if mode == 'rebind' %}
+      <label for="language" id="label-language">言語</label>
+      <select id="language" name="language" required>
+        <option value="ja" id="opt-lang-ja">日本語</option>
+        <option value="en" id="opt-lang-en">English</option>
+        <option value="zh" id="opt-lang-zh">简体中文</option>
+      </select>
+      {% endif %}
 
       <input type="submit" id="submit-btn" value="連携" />
     </form>
@@ -205,59 +272,81 @@
     const translations = {
       ja: {
         pageTitle: 'SEGA アカウント連携 | JiETNG',
+        pageTitleRebind: 'アカウント設定の編集 | JiETNG',
         heading: 'SEGA アカウント連携',
+        headingRebind: 'アカウント設定の編集',
         labelSegaid: 'セガID',
         labelPassword: 'パスワード',
         labelVersion: 'バージョン',
         optJp: '日本版「maimaidx.jp」',
         optIntl: '海外版「maimaidx-eng.com」',
+        labelTimezone: 'タイムゾーン',
+        labelLanguage: '言語',
         submitBtn: '連携',
+        submitBtnRebind: '更新',
         noticeTitle: 'ご利用に関するご注意'
       },
       en: {
         pageTitle: 'SEGA Account Binding | JiETNG',
+        pageTitleRebind: 'Edit Account Settings | JiETNG',
         heading: 'SEGA Account Binding',
+        headingRebind: 'Edit Account Settings',
         labelSegaid: 'SEGA ID',
         labelPassword: 'Password',
         labelVersion: 'Version',
         optJp: 'JP Version「maimaidx.jp」',
         optIntl: 'INTL Version「maimaidx-eng.com」',
+        labelTimezone: 'Timezone',
+        labelLanguage: 'Language',
         submitBtn: 'Bind',
+        submitBtnRebind: 'Update',
         noticeTitle: 'Notice'
       },
       zh: {
         pageTitle: 'SEGA 账号绑定 | JiETNG',
+        pageTitleRebind: '编辑账号设置 | JiETNG',
         heading: 'SEGA 账号绑定',
+        headingRebind: '编辑账号设置',
         labelSegaid: '世嘉ID',
         labelPassword: '密码',
         labelVersion: '版本',
         optJp: '日本版「maimaidx.jp」',
         optIntl: '国际版「maimaidx-eng.com」',
+        labelTimezone: '时区',
+        labelLanguage: '语言',
         submitBtn: '绑定',
+        submitBtnRebind: '更新',
         noticeTitle: '使用须知'
       }
     };
 
     function updateLanguage(lang) {
       const t = translations[lang];
+      const mode = '{{ mode }}' || 'bind';
 
       // Update page title
-      document.getElementById('page-title').textContent = t.pageTitle;
+      document.getElementById('page-title').textContent = mode === 'rebind' ? t.pageTitleRebind : t.pageTitle;
 
       // Update heading
-      document.getElementById('page-heading').textContent = t.heading;
+      document.getElementById('page-heading').textContent = mode === 'rebind' ? t.headingRebind : t.heading;
 
       // Update labels
       document.getElementById('label-segaid').textContent = t.labelSegaid;
       document.getElementById('label-password').textContent = t.labelPassword;
       document.getElementById('label-version').textContent = t.labelVersion;
+      document.getElementById('label-timezone').textContent = t.labelTimezone;
+
+      // Update language label if in rebind mode
+      if (mode === 'rebind' && document.getElementById('label-language')) {
+        document.getElementById('label-language').textContent = t.labelLanguage;
+      }
 
       // Update version options
       document.getElementById('opt-jp').textContent = t.optJp;
       document.getElementById('opt-intl').textContent = t.optIntl;
 
       // Update submit button
-      document.getElementById('submit-btn').value = t.submitBtn;
+      document.getElementById('submit-btn').value = mode === 'rebind' ? t.submitBtnRebind : t.submitBtn;
 
       // Update notice title
       document.getElementById('notice-title').textContent = t.noticeTitle;
@@ -266,12 +355,68 @@
       document.getElementById('notice-ja').style.display = lang === 'ja' ? 'block' : 'none';
       document.getElementById('notice-en').style.display = lang === 'en' ? 'block' : 'none';
       document.getElementById('notice-zh').style.display = lang === 'zh' ? 'block' : 'none';
+
+      // Toggle timezone hint text (only in bind mode)
+      if (mode === 'bind') {
+        const hintJa = document.getElementById('hint-text-ja');
+        const hintEn = document.getElementById('hint-text-en');
+        const hintZh = document.getElementById('hint-text-zh');
+        if (hintJa && hintEn && hintZh) {
+          hintJa.style.display = lang === 'ja' ? 'inline' : 'none';
+          hintEn.style.display = lang === 'en' ? 'inline' : 'none';
+          hintZh.style.display = lang === 'zh' ? 'inline' : 'none';
+        }
+      }
     }
 
-    // 页面加载时自动设置用户语言
+    // 自动检测用户时区并转换为 UTC 偏移量
+    function detectUserTimezone() {
+      try {
+        // 获取当前时间的 UTC 偏移量（分钟）
+        const offsetMinutes = -new Date().getTimezoneOffset();
+        // 转换为小时
+        const offsetHours = Math.floor(offsetMinutes / 60);
+        return offsetHours;
+      } catch (e) {
+        // 如果检测失败，返回 UTC+9（日本标准时间）
+        return 9;
+      }
+    }
+
+    // 页面加载时自动设置用户语言和预填充数据
     window.addEventListener('DOMContentLoaded', function() {
       const userLanguage = '{{ user_language }}' || 'ja';
+      const mode = '{{ mode }}' || 'bind';
       updateLanguage(userLanguage);
+
+      // 在 rebind 模式下，设置预填充的 timezone 和 language
+      if (mode === 'rebind') {
+        const timezone = '{{ timezone }}';
+        if (timezone) {
+          const timezoneSelect = document.getElementById('timezone');
+          timezoneSelect.value = timezone;
+        }
+
+        const languageSelect = document.getElementById('language');
+        if (languageSelect) {
+          languageSelect.value = userLanguage;
+
+          // 监听语言选择变化，实时切换界面语言
+          languageSelect.addEventListener('change', function() {
+            updateLanguage(this.value);
+          });
+        }
+      } else {
+        // bind 模式下自动检测用户时区
+        const timezoneSelect = document.getElementById('timezone');
+        const detectedTimezone = detectUserTimezone();
+        timezoneSelect.value = detectedTimezone.toString();
+
+        // 如果检测到的时区在选项中不存在，则使用 UTC+9
+        if (!timezoneSelect.value) {
+          timezoneSelect.value = '9';
+        }
+      }
     });
   </script>
 </body>

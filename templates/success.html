@@ -4,12 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>
-    {% if language == 'en' %}
-    Binding Successful | JiETNG
-    {% elif language == 'zh' %}
-    绑定成功 | JiETNG
+    {% if mode == 'rebind' %}
+      {% if language == 'en' %}
+      Update Successful | JiETNG
+      {% elif language == 'zh' %}
+      更新成功 | JiETNG
+      {% else %}
+      更新成功 | JiETNG
+      {% endif %}
     {% else %}
-    連携成功 | JiETNG
+      {% if language == 'en' %}
+      Binding Successful | JiETNG
+      {% elif language == 'zh' %}
+      绑定成功 | JiETNG
+      {% else %}
+      連携成功 | JiETNG
+      {% endif %}
     {% endif %}
   </title>
   <link rel="icon" type="image/png" href="/static/pics/logo.png">
@@ -143,22 +153,42 @@
     <div class="success-icon">✓</div>
 
     <h1>
-      {% if language == 'en' %}
-      Binding Successful
-      {% elif language == 'zh' %}
-      绑定成功
+      {% if mode == 'rebind' %}
+        {% if language == 'en' %}
+        Update Successful
+        {% elif language == 'zh' %}
+        更新成功
+        {% else %}
+        更新成功
+        {% endif %}
       {% else %}
-      バインド成功
+        {% if language == 'en' %}
+        Binding Successful
+        {% elif language == 'zh' %}
+        绑定成功
+        {% else %}
+        バインド成功
+        {% endif %}
       {% endif %}
     </h1>
 
     <p>
-      {% if language == 'en' %}
-      Successfully linked with JiETNG.
-      {% elif language == 'zh' %}
-      已成功与 JiETNG 连携。
+      {% if mode == 'rebind' %}
+        {% if language == 'en' %}
+        Your account settings have been successfully updated.
+        {% elif language == 'zh' %}
+        您的账号设置已成功更新。
+        {% else %}
+        アカウント設定が正常に更新されました。
+        {% endif %}
       {% else %}
-      JiETNGとの連携が成功しました。
+        {% if language == 'en' %}
+        Successfully linked with JiETNG.
+        {% elif language == 'zh' %}
+        已成功与 JiETNG 连携。
+        {% else %}
+        JiETNGとの連携が成功しました。
+        {% endif %}
       {% endif %}
     </p>
 
