@@ -14,7 +14,6 @@ from modules.config_loader import (
 )
 from modules.dbpool_manager import get_connection
 
-# 获取logger
 logger = logging.getLogger(__name__)
 
 def get_single_ra(level: float, score: float, ap_clear: bool = False, recent_type: bool = False) -> int:
@@ -285,7 +284,7 @@ def get_detailed_info(song_record, ver="jp", recent_type=False):
                     record['new_song'] = True if song['version'] in MAIMAI_VERSION[ver] else False
                     record['version'] = song['version']
                     ap_clear = "ap" in record['combo_icon']
-                    record['ra'] = get_single_ra(float(record['internalLevelValue']), float(record['score'][:-1]), (ap_clear and ver == "jp"), recent_type)
+                    record['ra'] = get_single_ra(float(record['internalLevelValue']), float(record['score'][:-1]), ap_clear, recent_type)
                     record['cover_url'] = song['cover_url']
                     record['cover_name'] = song['cover_name']
                     break

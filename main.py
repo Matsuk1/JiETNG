@@ -64,8 +64,9 @@ from linebot.v3.messaging.models import MarkMessagesAsReadByTokenRequest
 from linebot.v3.webhooks import (
     MessageEvent,
     PostbackEvent,
+    JoinEvent,
+    MemberJoinedEvent,
     TextMessageContent,
-    ImageMessageContent,
     LocationMessageContent
 )
 
@@ -3483,6 +3484,26 @@ def handle_postback(event):
     except Exception as e:
         logger.error(f"[Postback] ✗ Error processing postback: user_id={user_id}, data={postback_data}, error={e}")
         logger.error(traceback.format_exc())
+
+
+# Join 事件处理
+@handler.add(JoinEvent)
+def handle_join(event):
+    reply_token = event.reply_token
+    group_id = event.source.group_id
+    logger.info(f"[JoinEvent] Joined {group_id}")
+    reply_msg = TextMessage(text="JiETNG・カヰテーで有りんす。\nお願ひ申し候。")
+    return smart_reply(None, reply_token, reply_msg, configuration, False)
+
+
+# MemberJoined 事件处理
+@handler.add(MemberJoinedEvent)
+def handle_member_joined(event):
+    reply_token = event.reply_token
+    logger.info(f"[MemberJoinedEvent] New Member(s) Joined")
+    reply_msg = TextMessage(text="ようお出で。\nお出迎え有りんす。")
+    return smart_reply(None, reply_token, reply_msg, configuration, False)
+
 
 # ==================== 管理后台路由 ====================
 

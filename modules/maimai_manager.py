@@ -189,7 +189,7 @@ async def fetch_dom(session: aiohttp.ClientSession, url: str, session_id: str, v
         return None
 
 
-async def login_to_maimai(sega_id: str, password: str, ver="jp"):
+async def login_to_maimai(sega_id: str, password: str, ver="jp", card=0):
     """异步版本的 login_to_maimai
 
     Args:
@@ -285,7 +285,7 @@ async def login_to_maimai(sega_id: str, password: str, ver="jp"):
                 pass
 
             # 选择 AIME 卡
-            async with session.get("https://maimaidx.jp/maimai-mobile/aimeList/submit/?idx=0") as aime_choose:
+            async with session.get(f"https://maimaidx.jp/maimai-mobile/aimeList/submit/?idx={card}") as aime_choose:
                 pass
 
             return session.cookie_jar.filter_cookies("https://maimaidx.jp")
