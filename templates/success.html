@@ -78,28 +78,6 @@
       text-align: center;
     }
 
-    a.button {
-      display: inline-block;
-      padding: 12px 28px;
-      background: var(--accent-color);
-      color: #ffffff;
-      text-decoration: none;
-      border-radius: var(--radius-md);
-      font-size: 15px;
-      font-weight: 600;
-      border: none;
-      transition: all var(--transition-base);
-    }
-
-    a.button:hover {
-      background: var(--accent-hover);
-      box-shadow: var(--shadow-md);
-    }
-
-    a.button:active {
-      transform: scale(0.98);
-    }
-
     .notice {
       background: var(--surface-bg);
       border: 1px solid var(--border-color);
@@ -191,16 +169,6 @@
         {% endif %}
       {% endif %}
     </p>
-
-    <a href="/" class="button">
-      {% if language == 'en' %}
-      Back to Home
-      {% elif language == 'zh' %}
-      返回主页
-      {% else %}
-      ホームに戻る
-      {% endif %}
-    </a>
 
     <div class="notice">
       {% if language == 'en' %}
