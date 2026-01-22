@@ -2,7 +2,7 @@
 
 ## Proprietary License
 
-**Copyright © 2025 Matsuki (Matsuk1). All Rights Reserved.**
+**Copyright © 2025 - 2026 Matsuki (Matsuk1). All Rights Reserved.**
 
 This software and associated documentation files (the "Software") are the proprietary and confidential information of Matsuki (Matsuk1).
 

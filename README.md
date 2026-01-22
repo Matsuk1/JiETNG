@@ -649,7 +649,7 @@ journalctl -u jietng -f
 
 ## 许可证
 
-**Copyright © 2025 Matsuki. All Rights Reserved.**
+**Copyright © 2025 - 2026 Matsuki. All Rights Reserved.**
 
 本软件为专有软件，保留所有权利。未经版权所有者明确书面许可，严禁复制、修改、分发或使用本软件。
 

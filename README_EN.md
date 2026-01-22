@@ -706,7 +706,7 @@ Contributions are welcome! Please submit Issues and Pull Requests.
 
 ## License
 
-**Copyright © 2025 Matsuki. All Rights Reserved.**
+**Copyright © 2025 - 2026 Matsuki. All Rights Reserved.**
 
 This software is proprietary. Copying, modification, distribution, or use of this software is strictly prohibited without express written permission from the copyright holder.
 

@@ -644,7 +644,7 @@ Issue と Pull Request の提出を歓迎します！
 
 ## ライセンス
 
-**Copyright © 2025 Matsuki. All Rights Reserved.**
+**Copyright © 2025 - 2026 Matsuki. All Rights Reserved.**
 
 本ソフトウェアはプロプライエタリソフトウェアです。著作権者の明示的な書面による許可なく、本ソフトウェアの複製、変更、配布、使用は固く禁じられています。
 

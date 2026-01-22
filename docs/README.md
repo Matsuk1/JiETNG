@@ -194,4 +194,4 @@ Search is enabled by default using VitePress's built-in local search.
 
 ## License
 
-Copyright © 2025 Matsuki. All Rights Reserved.
+Copyright © 2025 - 2026 Matsuki. All Rights Reserved.
