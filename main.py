@@ -62,6 +62,8 @@ from linebot.v3.messaging import (
 )
 from linebot.v3.messaging.models import MarkMessagesAsReadByTokenRequest
 from linebot.v3.webhooks import (
+    FollowEvent,
+    UnfollowEvent,
     MessageEvent,
     PostbackEvent,
     JoinEvent,
@@ -3532,13 +3534,48 @@ def handle_postback(event):
         logger.error(traceback.format_exc())
 
 
+# Follow 事件处理
+@handler.add(FollowEvent)
+def handle_follow(event):
+    user_id = event.source.user_id
+    reply_token = event.reply_token
+
+    buttons_template = ButtonsTemplate(
+        title=language_select_title,
+        text=language_select_description,
+        actions=[
+            MessageAction(label=language_button_ja, text="language ja"),
+            MessageAction(label=language_button_en, text="language en"),
+            MessageAction(label=language_button_zh, text="language zh")
+        ]
+    )
+
+    reply_message = [
+        TextMessage(text=welcome_msg_text),
+        TemplateMessage(
+            alt_text=language_select_alt,
+            template=buttons_template
+        )
+    ]
+
+    return smart_reply(user_id, reply_token, reply_message, configuration, False)
+
+
+# Unfollow 事件处理
+@handler.add(UnfollowEvent)
+def handle_unfollow(event):
+    user_id = event.source.user_id
+    logger.info(f"[UnfollowEvent] {user_id} left")
+    return delete_user(user_id)
+
+
 # Join 事件处理
 @handler.add(JoinEvent)
 def handle_join(event):
     reply_token = event.reply_token
     group_id = event.source.group_id
     logger.info(f"[JoinEvent] Joined {group_id}")
-    reply_msg = TextMessage(text="JiETNG・カヰテーで有りんす。\nお願ひ申し候。")
+    reply_msg = TextMessage(text=welcome_msg_text)
     return smart_reply(None, reply_token, reply_msg, configuration, False)
 
 
@@ -3547,7 +3584,7 @@ def handle_join(event):
 def handle_member_joined(event):
     reply_token = event.reply_token
     logger.info(f"[MemberJoinedEvent] New Member(s) Joined")
-    reply_msg = TextMessage(text="ようお出で。\nお出迎え有りんす。")
+    reply_msg = TextMessage(text=group_welcome_msg_text)
     return smart_reply(None, reply_token, reply_msg, configuration, False)
 
 

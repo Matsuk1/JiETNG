@@ -76,6 +76,9 @@ def get_multilingual_text(message_dict, user_id=None, language=None):
 # アカウント連携関連 / Account Binding
 # ============================================================
 
+welcome_msg_text = "『JiETNG・カヰテー』で有りんす。\nお願ひ申し候。"
+group_welcome_msg_text = "『JiETNG・カヰテー』で有りんす。\nお出迎え有りんす。"
+
 bind_msg_text = {
     "ja": "✅ SEGA IDの連携できたよ！",
     "en": "✅ SEGA ID linked successfully!",
@@ -426,13 +429,13 @@ sega_bind_alt_text = {
 
 # 语言选择消息（用于首次绑定时）
 # 这些文本在用户未选择语言时显示，所以直接显示三语
-language_select_title = "言語選択 / Language Selection / 语言选择"
+language_select_title = "言語選択"
 
-language_select_description = """言語を選択 / Select language / 选择语言"""
+language_select_description = """Language Selection・语言选择"""
 
-language_button_ja = "🇯🇵 日本語"
-language_button_en = "🇺🇸 English"
-language_button_zh = "🇨🇳 中文"
+language_button_ja = "日本語"
+language_button_en = "English"
+language_button_zh = "简体中文"
 
 language_select_alt = "Language Selection / 言語選択 / 语言选择"
 
