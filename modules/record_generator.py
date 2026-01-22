@@ -426,7 +426,7 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD"):
     return combined
 
 
-def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_name=None, complete_info=None):
+def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_name=None, complete_info=None, difficulty=None, achieved=None):
     """
     生成歌曲封面图片，带有类型标识和可选图标
 
@@ -437,28 +437,46 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
         icon_type: 可选的图标类型（如 "combo", "score", "sync"）
         size: 封面尺寸（默认150）
         cover_name: 封面文件名（包含扩展名），优先使用本地文件
+        difficulty: 难度名称（如 "basic", "advanced" 等），用于边框颜色
+        achieved: 是否达成目标（True=已完成/False=未完成/None=不添加蒙层）
     """
     img_width = size
     img_height = size
-    record_img = Image.new("RGB", (img_width, img_height), (255, 255, 255))
+
+    # 如果指定了难度，添加难度颜色边框
+    border_width = 4 if difficulty else 0
+    inner_size = size - border_width * 2
+
+    # 创建底图
+    if difficulty:
+        # 使用难度颜色作为背景（边框）
+        difficulty_color = _get_difficulty_color(difficulty)
+        record_img = Image.new("RGB", (img_width, img_height), difficulty_color)
+    else:
+        record_img = Image.new("RGB", (img_width, img_height), (255, 255, 255))
 
     # 加载封面图片
     cover_img = get_cover_image(cover_url=cover_url, cover_name=cover_name)
 
     if cover_img:
-        cover_img = cover_img.resize((size, size))
-        record_img.paste(cover_img, (0, 0))
+        if difficulty:
+            # 缩小封面，留出边框空间
+            cover_img = cover_img.resize((inner_size, inner_size))
+            record_img.paste(cover_img, (border_width, border_width))
+        else:
+            cover_img = cover_img.resize((size, size))
+            record_img.paste(cover_img, (0, 0))
 
     # 添加 type 图标（std/dx）- 按比例缩放
     # 如果有 complete_info，放在右上角；否则放在右下角
-    type_width = int(size * 0.5)
-    type_height = int(size * 0.15)
+    type_width = int(inner_size * 0.5) if difficulty else int(size * 0.5)
+    type_height = int(inner_size * 0.15) if difficulty else int(size * 0.15)
     if complete_info is not None:
         # 有圆点信息时，type 放在右上角
-        type_position = (img_width - type_width, 0)
+        type_position = (img_width - type_width - border_width, border_width)
     else:
         # 无圆点信息时，type 放在右下角（原位置）
-        type_position = (img_width - type_width, img_height - type_height)
+        type_position = (img_width - type_width - border_width, img_height - type_height - border_width)
 
     paste_icon_optimized(
         record_img,
@@ -476,6 +494,14 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
         difficulties = ["basic", "advanced", "expert", "master"]
         has_bottom_content = any(complete_info.get(diff, False) for diff in difficulties)
 
+    # 添加灰色蒙层（在 icon 之前，这样不会遮挡 icon）
+    # 只有已完成的才添加灰色蒙层，未完成的保持原样
+    if achieved is True:
+        record_img = record_img.convert("RGBA")
+        # 已完成：灰色蒙层
+        overlay = Image.new("RGBA", record_img.size, (50, 50, 50, 180))
+        record_img = Image.alpha_composite(record_img, overlay)
+
     # 如果提供了 icon 和 icon_type，显示对应的图标
     if icon and icon_type and icon != "back":
         try:
@@ -487,8 +513,9 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
                 # 转换为 RGBA 以支持透明度
                 record_img = record_img.convert("RGBA")
 
-                # 计算缩放 - 按比例缩放图标（缩小一点）
-                icon_width = int(size * 0.75)  # 原来 0.867，缩小到 0.75
+                # 计算缩放 - 按比例缩放图标（考虑边框）
+                base_size = inner_size if difficulty else size
+                icon_width = int(base_size * 0.75)  # 原来 0.867，缩小到 0.75
                 aspect_ratio = icon_img.height / icon_img.width
                 new_height = int(icon_width * aspect_ratio)
                 resized_img = icon_img.resize((icon_width, new_height), Image.Resampling.LANCZOS)
@@ -497,10 +524,10 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
                 shadow = Image.new("RGBA", record_img.size, (0, 0, 0, 150))
                 record_img = Image.alpha_composite(record_img, shadow)
 
-                # 粘贴图标（只有底部有内容时才往上移）
+                # 粘贴图标（只有底部有内容时才往上移，考虑边框）
                 x_offset = (record_img.width - icon_width) // 2
                 if has_bottom_content:
-                    y_offset = (record_img.height - new_height) // 2 - int(size * 0.08)  # 往上移动 8%
+                    y_offset = (record_img.height - new_height) // 2 - int(base_size * 0.08)  # 往上移动 8%
                 else:
                     y_offset = (record_img.height - new_height) // 2  # 垂直居中
                 record_img.paste(resized_img, (x_offset, y_offset), resized_img.convert("RGBA"))
@@ -521,9 +548,10 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
             record_img = record_img.convert("RGBA")
             draw = ImageDraw.Draw(record_img)
 
-            # 圆点参数（放大为原来的 1.5 倍）
-            dot_radius = int(size * 0.04 * 1.5)  # 圆点半径：size 的 6%
-            dot_y = img_height - dot_radius - int(size * 0.05)  # 距离底部 5%
+            # 圆点参数（放大为原来的 1.5 倍，考虑边框）
+            base_size = inner_size if difficulty else size
+            dot_radius = int(base_size * 0.04 * 1.5)  # 圆点半径：size 的 6%
+            dot_y = img_height - dot_radius - int(base_size * 0.05) - border_width  # 距离底部 5%
 
             # 计算圆点间距和起始位置（固定为4个位置，居中）
             num_positions = len(difficulties)
@@ -578,7 +606,10 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
     rows_num = 0
     level_list = ["15", "14+", "14", "13+", "13", "12+", "12", "11+", "11", "10+", "10"]
     for level in level_list:
-        row_imgs = [entry["img"] for entry in target_data if entry["level"] == level]
+        level_entries = [entry for entry in target_data if entry["level"] == level]
+        # 按达成状态和达成率排序：已达成在前，未达成的按达成率从大到小
+        level_entries.sort(key=lambda x: (not x.get("achieved", False), -x.get("achievement_rate", 0.0)))
+        row_imgs = [entry["img"] for entry in level_entries]
         rows_num += math.ceil(len(row_imgs) / max_per_row)
         if row_imgs:
             rows.append((level, row_imgs))
@@ -796,5 +827,166 @@ def generate_internallevel_image(target_data, level_name, img_width=2400, max_pe
             y_offset += img_size + level_gap
         else:
             y_offset += img_size  # 最后一个定数只需要加上图片高度
+
+    return final_img
+
+
+def generate_level_rank_progress_image(target_data, level_name, rank_name, stats, img_width=2700, max_per_row=15, margin=20):
+    """
+    生成难度评级进度图片，顶部显示总体统计卡片，下方显示按定数分组的封面列表
+
+    参数:
+        target_data: 歌曲数据列表，每个元素为 {"img": PIL.Image, "internal_level": float, "achieved": bool, "difficulty": str, "achievement_rate": float}
+        level_name: 难度名称（如 "13", "13+", "14", "14+"）
+        rank_name: 评级名称（如 "SSS⁺", "AP", "FDX"）
+        stats: 统计信息字典 {"achieved": int, "unachieved": int, "unplayed": int, "total": int}
+        img_width: 图片总宽度
+        max_per_row: 每行最多显示的歌曲数量
+        margin: 边距
+    """
+    level_width = 100
+    img_size = 150  # 与牌子达成率保持一致
+    row_height = img_size + margin  # 与牌子达成率保持一致
+
+    # 统计卡片区域高度（2x2布局）
+    card_area_height = 180
+
+    all_data = target_data
+
+    # 按照定数分组（降序），每组内已达成的排在前面
+    rows = []
+    total_rows = 0
+
+    internal_levels = sorted(set(entry["internal_level"] for entry in all_data), reverse=True)
+
+    for internal_level in internal_levels:
+        level_str = f"{internal_level:.1f}"
+        row_entries = [entry for entry in all_data if entry["internal_level"] == internal_level]
+
+        # 按达成状态和达成率排序：已达成在前，未达成的按达成率从大到小
+        # (not achieved, -achievement_rate)
+        # achieved=True -> False -> 0, achieved=False -> True -> 1
+        # 所以已达成的(0)会排在未达成的(1)前面
+        # -achievement_rate 让达成率大的排在前面
+        row_entries.sort(key=lambda x: (not x["achieved"], -x.get("achievement_rate", 0.0)))
+
+        if row_entries:
+            rows.append((level_str, row_entries))
+            total_rows += math.ceil(len(row_entries) / max_per_row)
+
+    # 计算总高度
+    # 卡片总高度 = 2行卡片 + 中间间距（放大1.2倍）
+    cards_total_height = 2 * int(65 * 1.2) + int(12 * 1.2)
+    # 总高度 = 顶部边距 + 卡片区域 + 卡片到内容间距 + 内容高度 + 底部边距
+    total_height = margin + 15 + cards_total_height + 60 + total_rows * row_height + margin
+
+    final_img = Image.new("RGB", (img_width, total_height), "white")
+    draw = ImageDraw.Draw(final_img)
+
+    # 绘制统计卡片（2x2布局，放大1.2倍）
+    card_start_x = margin + 5
+    card_y = margin + 15
+    card_width = int(305 * 1.2)  # 366
+    card_height = int(65 * 1.2)  # 78
+    card_gap_x = int(15 * 1.2)   # 18
+    card_gap_y = int(12 * 1.2)   # 14
+    border_width = 8
+
+    # 四个统计卡片：完了、未完了、未プレイ、总计
+    card_data = [
+        ("完了", stats["achieved"], (76, 175, 80)),       # 绿色
+        ("未完了", stats["unachieved"], (255, 152, 0)),   # 橙色
+        ("未プレイ", stats["unplayed"], (158, 158, 158)), # 灰色
+        ("総計", stats["total"], (66, 133, 244))          # 蓝色
+    ]
+
+    final_img_rgba = final_img.convert("RGBA")
+
+    for idx, (label, count, color) in enumerate(card_data):
+        # 计算卡片位置（2列布局，先上下后左右）
+        row = idx % 2
+        col = idx // 2
+        card_x = card_start_x + col * (card_width + card_gap_x)
+        current_y = card_y + row * (card_height + card_gap_y)
+
+        # 创建卡片层用于阴影和圆角
+        card_layer = Image.new("RGBA", final_img_rgba.size, (0, 0, 0, 0))
+        card_draw = ImageDraw.Draw(card_layer)
+
+        # 绘制阴影效果
+        shadow_offset = 3
+        card_draw.rounded_rectangle(
+            [card_x + shadow_offset, current_y + shadow_offset,
+             card_x + card_width + shadow_offset, current_y + card_height + shadow_offset],
+            radius=12,
+            fill=(0, 0, 0, 30)
+        )
+
+        # 绘制卡片主体背景（使用浅色版本）
+        r, g, b = color
+        light_r = int(r + (255 - r) * 0.85)
+        light_g = int(g + (255 - g) * 0.85)
+        light_b = int(b + (255 - b) * 0.85)
+        bg_color = (light_r, light_g, light_b, 255)
+
+        card_draw.rounded_rectangle(
+            [card_x, current_y, card_x + card_width, current_y + card_height],
+            radius=12,
+            fill=bg_color
+        )
+
+        # 绘制左侧彩色边框
+        card_draw.rounded_rectangle(
+            [card_x, current_y, card_x + border_width, current_y + card_height],
+            radius=12,
+            fill=color + (255,)
+        )
+
+        # 将卡片层合成到图像上
+        final_img_rgba = Image.alpha_composite(final_img_rgba, card_layer)
+        card_draw = ImageDraw.Draw(final_img_rgba)
+
+        # 绘制标签（左侧，边框后）
+        text_x = card_x + border_width + 15
+        text_y = current_y + (card_height - 30) // 2
+        card_draw.text((text_x, text_y), label, fill=(60, 60, 60), font=font_large)
+
+        # 绘制数量（右侧对齐）
+        data_text = str(count)
+        data_text_width = card_draw.textlength(data_text, font=font_large)
+        data_x = card_x + card_width - data_text_width - 15
+        card_draw.text((data_x, text_y), data_text, fill=(40, 40, 40), font=font_large)
+
+    final_img = final_img_rgba.convert("RGB")
+    draw = ImageDraw.Draw(final_img)
+
+    # 绘制右侧标题
+    title_text = f"{level_name} {rank_name}"
+    title_text_size = draw.textlength(title_text, font=font_record_title)
+    title_x = img_width - margin - title_text_size - 30
+    title_y = 5
+    draw.text((title_x, title_y), title_text, fill=(206, 206, 206), font=font_record_title)
+
+    # 渲染主体图像内容（定数列表，与牌子达成率保持一致）
+    # 2x2卡片布局：2行，每行高度 card_height，加上中间间距 card_gap_y
+    cards_total_height = 2 * card_height + card_gap_y
+    y_offset = card_y + cards_total_height + 60
+
+    for level_str, entries_list in rows:
+        draw.text((margin, y_offset + img_size // 3), level_str, fill="black", font=font_level_badge)
+
+        x_offset = level_width + margin
+
+        for i, entry in enumerate(entries_list):
+            if i > 0 and i % max_per_row == 0:
+                y_offset += row_height
+                x_offset = level_width + margin
+
+            # 获取封面图片（灰色蒙层已在 generate_cover 中添加）
+            cover_img = entry["img"]
+            final_img.paste(cover_img, (x_offset, y_offset))
+            x_offset += img_size + margin
+
+        y_offset += row_height
 
     return final_img

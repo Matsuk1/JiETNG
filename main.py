@@ -1596,6 +1596,8 @@ def generate_plate_rcd(user_id, id_use, title, ver="jp"):
                 continue
 
             icon = "back"
+            achieved = False
+            achievement_rate = 0.0
             target_num[sheet['difficulty']]['all'] += 1
 
             # O(1) 哈希查找，尝试多种匹配策略
@@ -1608,8 +1610,12 @@ def generate_plate_rcd(user_id, id_use, title, ver="jp"):
             if key1 in rcd_map:
                 rcd = rcd_map[key1]
                 icon = rcd[f'{target_type}_icon']
+                # 获取达成率
+                score_str = rcd.get('score', '0.0000%')
+                achievement_rate = float(score_str[:-1]) if score_str.endswith('%') else 0.0
                 if icon in target_icon:
                     target_num[difficulty]['clear'] += 1
+                    achieved = True
             else:
                 # 尝试标准化匹配
                 normalized_title = normalize_text(song_title)
@@ -1617,8 +1623,12 @@ def generate_plate_rcd(user_id, id_use, title, ver="jp"):
                 if key2 in rcd_map:
                     rcd = rcd_map[key2]
                     icon = rcd[f'{target_type}_icon']
+                    # 获取达成率
+                    score_str = rcd.get('score', '0.0000%')
+                    achievement_rate = float(score_str[:-1]) if score_str.endswith('%') else 0.0
                     if icon in target_icon:
                         target_num[difficulty]['clear'] += 1
+                        achieved = True
 
             if sheet['difficulty'] == "master":
                 # 构建 complete_info：检查所有难度是否符合牌子条件
@@ -1641,8 +1651,10 @@ def generate_plate_rcd(user_id, id_use, title, ver="jp"):
                     complete_info[diff] = meets_condition
 
                 target_data.append({
-                    "img": generate_cover(song['cover_url'], song_type, icon, target_type, cover_name=song.get('cover_name'), complete_info=complete_info),
-                    "level": sheet['level']
+                    "img": generate_cover(song['cover_url'], song_type, icon, target_type, cover_name=song.get('cover_name'), complete_info=complete_info, achieved=achieved),
+                    "level": sheet['level'],
+                    "achieved": achieved,
+                    "achievement_rate": achievement_rate
                 })
 
     plate_img = generate_plate_image(target_data, title, headers = target_num)
@@ -1667,9 +1679,9 @@ def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     return message
 
 
-def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp", page=1):
+def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp"):
     """
-    生成指定难度和评级的达成情况图片
+    生成指定难度和评级的达成情况图片（定数列表+统计卡片）
 
     参数:
         user_id: 请求用户ID
@@ -1677,7 +1689,6 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp", page=1)
         level: 难度等级（如 "13", "13+", "14", "14+", "15"）
         rank: 评级（如 "s", "s+", "ss", "ss+", "sss", "sss+", "ap", "ap+", "fdx", "fdx+"）
         ver: 服务器版本（"jp" 或 "intl"）
-        page: 页码（默认为1）
     """
 
     if id_use not in USERS:
@@ -1699,6 +1710,8 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp", page=1)
         "ss+": ("score", ["ssp", "sss", "sssp"]),
         "sss": ("score", ["sss", "sssp"]),
         "sss+": ("score", ["sssp"]),
+        "fc": ("combo", ["fc", "fcp", "ap", "app"]),
+        "fc+": ("combo", ["fcp", "ap", "app"]),
         "ap": ("combo", ["ap", "app"]),
         "ap+": ("combo", ["app"]),
         "fdx": ("sync", ["fdx", "fdxp"]),
@@ -1717,8 +1730,29 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp", page=1)
 
     region_key = ver
 
-    # 先统计该等级在 dxdata 中的总歌曲数
-    total_songs_in_dxdata = 0
+    # 构建用户记录的哈希表
+    rcd_map = {}
+    for rcd in song_record:
+        name = rcd['name']
+        difficulty = rcd['difficulty']
+        type = rcd['type']
+
+        # 策略1: 精确匹配
+        key1 = (name, difficulty, type)
+        rcd_map[key1] = rcd
+
+        # 策略2: 标准化匹配
+        normalized_name = normalize_text(name)
+        key2 = (normalized_name, difficulty, type)
+        rcd_map[key2] = rcd
+
+    # 收集数据并统计
+    target_data = []
+    total_charts = 0  # 总谱面数
+    achieved_count = 0  # 已达成
+    unachieved_count = 0  # 未达成（有记录但未达标）
+    unplayed_count = 0  # 未游玩
+
     for song in SONGS:
         if song['type'] == 'utage':
             continue
@@ -1727,65 +1761,93 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp", page=1)
             if not sheet['regions'].get(region_key, False):
                 continue
 
-            if sheet['level'] == level:
-                total_songs_in_dxdata += 1
+            # 只处理指定等级的谱面
+            if sheet['level'] != level:
+                continue
 
-    achieved_songs = []  # 已达成
-    unachieved_songs = []  # 未达成
+            difficulty = sheet['difficulty']
+            total_charts += 1
 
-    for rcd in song_record:
-        # 只处理指定难度的记录
-        if rcd.get('internalLevelValue') not in parse_level_value(level):
-            continue
+            # 查找用户记录
+            song_title = song['title']
+            song_type = song['type']
+            icon = "back"
+            achieved = False
+            has_record = False
+            achievement_rate = 0.0  # 达成率
 
-        # 检查是否达到目标评级
-        user_icon = rcd.get(f'{target_type}_icon', "back")
-        if user_icon in target_icons:
-            # 已达成
-            achieved_songs.append(rcd)
-        else:
-            # 未达成（有记录但未达到目标）
-            unachieved_songs.append(rcd)
+            # 尝试精确匹配
+            key1 = (song_title, difficulty, song_type)
+            if key1 in rcd_map:
+                rcd = rcd_map[key1]
+                user_icon = rcd.get(f'{target_type}_icon', "back")
+                icon = user_icon  # 始终显示用户实际达到的评级
+                has_record = True
+                # 获取达成率
+                score_str = rcd.get('score', '0.0000%')
+                achievement_rate = float(score_str[:-1]) if score_str.endswith('%') else 0.0
+                if user_icon in target_icons:
+                    achieved = True
+                    achieved_count += 1
+                else:
+                    unachieved_count += 1
+            else:
+                # 尝试标准化匹配
+                normalized_title = normalize_text(song_title)
+                key2 = (normalized_title, difficulty, song_type)
+                if key2 in rcd_map:
+                    rcd = rcd_map[key2]
+                    user_icon = rcd.get(f'{target_type}_icon', "back")
+                    icon = user_icon  # 始终显示用户实际达到的评级
+                    has_record = True
+                    # 获取达成率
+                    score_str = rcd.get('score', '0.0000%')
+                    achievement_rate = float(score_str[:-1]) if score_str.endswith('%') else 0.0
+                    if user_icon in target_icons:
+                        achieved = True
+                        achieved_count += 1
+                    else:
+                        unachieved_count += 1
 
-    # 统计信息
-    achieved_count = len(achieved_songs)
-    unachieved_count = len(unachieved_songs)
-    unplayed_count = total_songs_in_dxdata - achieved_count - unachieved_count
+            # 如果没有记录，算作未游玩
+            if not has_record:
+                unplayed_count += 1
 
-    if not achieved_songs and not unachieved_songs:
+            # 生成所有难度的封面
+            target_data.append({
+                "img": generate_cover(song['cover_url'], song_type, icon, target_type, size=150, cover_name=song.get('cover_name'), difficulty=difficulty, achieved=achieved),
+                "internal_level": sheet['internalLevelValue'],
+                "achieved": achieved,
+                "difficulty": difficulty,
+                "achievement_rate": achievement_rate
+            })
+
+    if not target_data:
         return record_error(user_id)
-
-    # 按达成率排序
-    achieved_songs.sort(key=lambda r: float(r['score'][:-1]), reverse=True)
-    unachieved_songs.sort(key=lambda r: float(r['score'][:-1]), reverse=True)
-
-    # 分页处理
-    page_size_up = 35
-    page_size_down = 15
-
-    start_up = (page - 1) * page_size_up
-    end_up = start_up + page_size_up
-
-    start_down = (page - 1) * page_size_down
-    end_down = start_down + page_size_down
-
-    up_songs = achieved_songs[start_up:end_up]
-    down_songs = unachieved_songs[start_down:end_down]
-
-    if not up_songs and not down_songs:
-        return level_record_not_found(f"{level} {rank.upper()}", page, user_id)
 
     # 生成标题
     level_display = level.replace("+", "⁺")
     rank_display = rank.upper().replace("+", "⁺")
-    title = f"{level_display} {rank_display}"
 
-    # 生成图片
-    record_img = generate_records_picture(up_songs, down_songs, title)
+    # 总体统计数据
+    stats = {
+        "achieved": achieved_count,
+        "unachieved": unachieved_count,
+        "unplayed": unplayed_count,
+        "total": total_charts
+    }
+
+    # 生成图片（定数列表+统计卡片）
+    record_img = generate_level_rank_progress_image(
+        target_data,
+        level_display,
+        rank_display,
+        stats
+    )
 
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use]['personal_info']
-    profile_img = generate_profile(user_info)
+    profile_img = generate_profile(user_info, scale=2.55)
     user_tz = get_user_timezone(id_use)
     img = compose_images([profile_img, record_img], timezone_offset=user_tz)
 
@@ -1793,25 +1855,10 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp", page=1)
     gc.collect(0)
 
     original_url, preview_url = smart_upload(img)
+    message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
 
     del img
     gc.collect(0)
-
-    # 构建返回消息
-    message = [ImageMessage(original_content_url=original_url, preview_image_url=preview_url)]
-
-    if page == 1:
-        # 第1页显示统计信息和翻页提示
-        stats_text = {
-            "ja": f"完了: {achieved_count}譜面 | 未完了: {unachieved_count}譜面\n未プレイ: {unplayed_count}譜面 (合計: {total_songs_in_dxdata}譜面)",
-            "zh": f"已完成: {achieved_count}谱面 | 未完成: {unachieved_count}谱面\n未游玩: {unplayed_count}谱面 (总计: {total_songs_in_dxdata}谱面)",
-            "en": f"Completed: {achieved_count} charts | Incomplete: {unachieved_count} charts\nUnplayed: {unplayed_count} charts (Total: {total_songs_in_dxdata})"
-        }
-        message.append(TextMessage(text=get_multilingual_text(stats_text, user_id)))
-        message.append(level_record_page_hint(page, user_id))
-    else:
-        # 其他页显示当前页码（使用已定义的页码提示）
-        message.append(level_record_page_hint(page, user_id))
 
     return message
 
@@ -2126,7 +2173,7 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 rcd['score_icon'] = score_icon
             if ideal_score == 101:
                 rcd['combo_icon'] = "app"
-            rcd['ra'] = get_single_ra(rcd['internalLevelValue'], ideal_score, (ideal_score == 101 and ver == "jp"))
+            rcd['ra'] = get_single_ra(rcd['internalLevelValue'], ideal_score, ideal_score == 101)
 
         for rcd in down_songs_data:
             ideal_score, score_icon = get_ideal_score(float(rcd['score'][:-1]))
@@ -2135,7 +2182,7 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 rcd['score_icon'] = score_icon
             if ideal_score == 101:
                 rcd['combo_icon'] = "app"
-            rcd['ra'] = get_single_ra(rcd['internalLevelValue'], ideal_score, (ideal_score == 101 and ver == "jp"))
+            rcd['ra'] = get_single_ra(rcd['internalLevelValue'], ideal_score, ideal_score == 101)
 
         up_songs = sorted(up_songs_data, key=lambda x: -x["ra"])[:35]
         down_songs = sorted(down_songs_data, key=lambda x: -x["ra"])[:15]
@@ -2963,16 +3010,15 @@ def handle_sync_text_command(event):
          lambda msg: generate_internallevel_songs(user_id, re.sub(r"\s*(の定数リスト|のレベルリスト|level-list)$", "", msg), mai_ver)),
 
         # 难度+评级达成情况（如 "13sss+進捗", "14ap progress"）
-        # 难度+评级达成情况（如 "13sss+進捗", "14AP progress 2", "15SSS進捗 3"）
-        # 支持大小写，长的评级放在前面避免被短的提前匹配，支持可选页码
-        (lambda msg: re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fdx\+|sss|ss|ap|fdx|s)\s*(progress|進捗|进度)[ 　]*\d*$", msg.lower()),
+        # 难度+评级达成情况（如 "13sss+進捗", "14AP progress", "15SSS進捗"）
+        # 支持大小写，长的评级放在前面避免被短的提前匹配
+        (lambda msg: re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)$", msg.lower()),
          lambda msg: generate_level_rank_progress(
              user_id,
              id_use,
              re.match(r"^(\d+\+?)", msg.lower()).group(1),
-             re.search(r"(sss\+|ss\+|s\+|ap\+|fdx\+|sss|ss|ap|fdx|s)", msg.lower()).group(1),
-             mai_ver_use,
-             int(re.search(r"(\d+)$", msg).group(1)) if re.search(r"(\d+)$", msg) else 1)),
+             re.search(r"(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)", msg.lower()).group(1),
+             mai_ver_use)),
 
         # 权限请求管理
         (lambda msg: msg.startswith("accept-perm-request "),
