@@ -151,7 +151,7 @@ FESTiVAL achievement
 | `[song name] record` | View your score for that song |
 | `14 record-list` | View all level 14 scores |
 | `friend list` | View your friends |
-| `get me` | View account information |
+| `profile` | View account information |
 | `unbind` | Unbind SEGA ID |
 
 ## Troubleshooting
@@ -175,7 +175,7 @@ FESTiVAL achievement
 ### "Command doesn't work"
 
 **Checklist**:
-- ✅ Have you bound your account? (`get me`)
+- ✅ Have you bound your account? (`profile`)
 - ✅ Have you updated your scores? (`maimai update`)
 - ✅ Is the spelling correct?
 - ✅ Are you using the right command?

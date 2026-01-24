@@ -127,7 +127,7 @@ See [Account Binding](/en/guide/binding).
 
 **Troubleshooting steps:**
 1. Check spelling and syntax
-2. Verify you're bound (`get me`)
+2. Verify you're bound (`profile`)
 3. Update scores (`maimai update`)
 4. Check [Command Reference](/en/commands/basic)
 5. Try simpler command first (e.g., `b50` before `b50 -lv 14`)

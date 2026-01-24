@@ -54,7 +54,7 @@ bind
 检查绑定是否成功：
 
 ```
-get me
+profile
 ```
 
 您应该看到您的 SEGA ID、版本和语言信息。
@@ -151,7 +151,7 @@ FESTiVAL achievement
 | `[曲名] record` | 查看您在该曲目的成绩 |
 | `14 record-list` | 查看所有 14 级成绩 |
 | `friend list` | 查看您的好友 |
-| `get me` | 查看账号信息 |
+| `profile` | 查看账号信息 |
 | `unbind` | 解除绑定 SEGA ID |
 
 ## 故障排除
@@ -175,7 +175,7 @@ FESTiVAL achievement
 ### "命令不起作用"
 
 **检查列表**：
-- ✅ 是否已绑定？（`get me`）
+- ✅ 是否已绑定？（`profile`）
 - ✅ 是否已更新成绩？（`maimai update`）
 - ✅ 拼写是否正确？
 - ✅ 使用的是正确的命令吗？

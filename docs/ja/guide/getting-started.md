@@ -54,7 +54,7 @@ bind
 連携が成功したか確認：
 
 ```
-get me
+profile
 ```
 
 SEGA ID、バージョン、言語情報が表示されるはずです。
@@ -151,7 +151,7 @@ FESTiVAL achievement
 | `[曲名] record` | その楽曲のスコアを表示 |
 | `14 record-list` | すべてのレベル 14 のスコアを表示 |
 | `friend list` | フレンドを表示 |
-| `get me` | アカウント情報を表示 |
+| `profile` | アカウント情報を表示 |
 | `unbind` | SEGA ID の連携を解除 |
 
 ## トラブルシューティング
@@ -175,7 +175,7 @@ FESTiVAL achievement
 ### 「コマンドが機能しない」
 
 **チェックリスト**：
-- ✅ 連携済みですか？（`get me`）
+- ✅ 連携済みですか？（`profile`）
 - ✅ スコアは更新済みですか？（`maimai update`）
 - ✅ スペルは正しいですか？
 - ✅ 正しいコマンドを使っていますか？

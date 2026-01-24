@@ -47,7 +47,7 @@ Supports Japanese and International servers
 | Feature | Command | Description |
 |---------|---------|-------------|
 | Bind Account | `segaid bind` | Link SEGA account to LINE profile |
-| View Binding | `getme` | Display current account binding status |
+| View Binding | `profile` | Display current account binding status |
 | Unbind Account | `unbind` | Remove account binding |
 
 ### Score Queries

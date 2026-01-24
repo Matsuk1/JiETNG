@@ -60,6 +60,7 @@ Web 表单将要求您输入：
 验证您的账号是否已绑定：
 
 ```
+profile
 get me
 getme
 ゲットミー

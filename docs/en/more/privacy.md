@@ -49,7 +49,7 @@ We use the collected information to:
 ### Data Retention
 
 - **Active Accounts**: We retain your data as long as your account is active
-- **Account Deletion**: When you use the \`unbind\` command, all stored data is permanently deleted
+- **Account Deletion**: When you use the `unbind` command, all stored data is permanently deleted
 
 ### Access Control
 
@@ -72,17 +72,17 @@ You have the following rights regarding your data:
 
 ### Right to Access
 
-- Use the \`get me\` command to view stored account information
+- Use the `profile` command to view stored account information
 
 ### Right to Deletion
 
-- Use the \`unbind\` command to delete all stored data
+- Use the `unbind` command to delete all stored data
 - Deletion is immediate and permanent
 
 ### Right to Update
 
-- Use the \`bind\` command to update your credentials
-- Use the \`maimai update\` command to refresh your score data
+- Use the `bind` command to update your credentials
+- Use the `maimai update` command to refresh your score data
 
 ## Cookies and Tracking
 

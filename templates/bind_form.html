@@ -201,6 +201,15 @@
         <option value="intl" id="opt-intl" {% if mode == 'rebind' and version == 'intl' %}selected{% endif %}>海外版「maimaidx-eng.com」</option>
       </select>
 
+      <div id="aime-container" {% if mode == 'rebind' and version == 'intl' %}style="display: none;"{% endif %}>
+        <label for="aime" id="label-aime">Aime</label>
+        <select id="aime" name="aime">
+          <option value="0" {% if mode != 'rebind' or aime == 0 %}selected{% endif %}>1</option>
+          <option value="1" {% if mode == 'rebind' and aime == 1 %}selected{% endif %}>2</option>
+          <option value="2" {% if mode == 'rebind' and aime == 2 %}selected{% endif %}>3</option>
+        </select>
+      </div>
+
       <label for="timezone" id="label-timezone">タイムゾーン</label>
       <select id="timezone" name="timezone" required>
         <option value="-12">UTC-12</option>
@@ -280,6 +289,7 @@
         labelVersion: 'バージョン',
         optJp: '日本版「maimaidx.jp」',
         optIntl: '海外版「maimaidx-eng.com」',
+        labelAime: 'Aime',
         labelTimezone: 'タイムゾーン',
         labelLanguage: '言語',
         submitBtn: '連携',
@@ -296,6 +306,7 @@
         labelVersion: 'Version',
         optJp: 'JP Version「maimaidx.jp」',
         optIntl: 'INTL Version「maimaidx-eng.com」',
+        labelAime: 'Aime',
         labelTimezone: 'Timezone',
         labelLanguage: 'Language',
         submitBtn: 'Bind',
@@ -312,6 +323,7 @@
         labelVersion: '版本',
         optJp: '日本版「maimaidx.jp」',
         optIntl: '国际版「maimaidx-eng.com」',
+        labelAime: 'Aime',
         labelTimezone: '时区',
         labelLanguage: '语言',
         submitBtn: '绑定',
@@ -334,6 +346,7 @@
       document.getElementById('label-segaid').textContent = t.labelSegaid;
       document.getElementById('label-password').textContent = t.labelPassword;
       document.getElementById('label-version').textContent = t.labelVersion;
+      document.getElementById('label-aime').textContent = t.labelAime;
       document.getElementById('label-timezone').textContent = t.labelTimezone;
 
       // Update language label if in rebind mode
@@ -383,11 +396,34 @@
       }
     }
 
+    // 控制 Aime 容器显示/隐藏
+    function toggleAimeContainer() {
+      const verSelect = document.getElementById('ver');
+      const aimeContainer = document.getElementById('aime-container');
+      const aimeSelect = document.getElementById('aime');
+
+      if (verSelect.value === 'intl') {
+        // intl 版本：隐藏 Aime 容器，设置值为 0
+        aimeContainer.style.display = 'none';
+        aimeSelect.value = '0';
+      } else {
+        // jp 版本：显示 Aime 容器
+        aimeContainer.style.display = 'block';
+      }
+    }
+
     // 页面加载时自动设置用户语言和预填充数据
     window.addEventListener('DOMContentLoaded', function() {
       const userLanguage = '{{ user_language }}' || 'ja';
       const mode = '{{ mode }}' || 'bind';
       updateLanguage(userLanguage);
+
+      // 监听版本选择变化，控制 Aime 容器显示
+      const verSelect = document.getElementById('ver');
+      verSelect.addEventListener('change', toggleAimeContainer);
+
+      // 初始化 Aime 容器显示状态
+      toggleAimeContainer();
 
       // 在 rebind 模式下，设置预填充的 timezone 和 language
       if (mode === 'rebind') {

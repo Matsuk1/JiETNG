@@ -622,7 +622,7 @@ def check_user_permission(user_id, token_id):
         }), 404
 
     # 检查权限：方式1 - 用户是通过该 token 创建的
-    if 'registered_via_token' in USERS[user_id] and USERS[user_id]['registered_via_token'] == token_id:
+    if 'registered_via_token' in USERS[user_id] and USERS[user_id].get('registered_via_token') == token_id:
         return True, None
 
     # 检查权限：方式2 - token 的 allowed_users 列表包含该用户
@@ -722,6 +722,7 @@ def website_segaid_bind():
         segaid: SEGA ID
         password: 密码
         ver: 服务器版本 (jp/intl)
+        aime: Aime卡选择 (仅jp有，intl默认1)
         timezone: 时区
         language: 语言 (rebind 模式下)
     """
@@ -750,6 +751,7 @@ Token not provided. <br />
         segaid = request.form.get("segaid")
         password = request.form.get("password")
         user_version = request.form.get("ver", "jp")
+        aime = request.form.get("aime", "0")
         user_timezone = request.form.get("timezone", "9")
 
         # 获取用户数据
@@ -804,7 +806,13 @@ Token not provided. <br />
         except (ValueError, TypeError):
             timezone_int = 9  # 默认 UTC+9
 
-        result = asyncio.run(process_sega_credentials(user_id, segaid, password, user_version, user_language, timezone_int))
+        # 转换 aime 为整数
+        try:
+            aime_int = int(aime)
+        except (ValueError, TypeError):
+            aime_int = 0  # 默认 0
+
+        result = asyncio.run(process_sega_credentials(user_id, segaid, password, user_version, user_language, timezone_int, aime_int))
         if result == "MAINTENANCE":
             maintenance_messages = {
                 "ja": "公式サイトがメンテナンス中です。しばらくしてからもう一度お試しください。",
@@ -835,20 +843,21 @@ Token not provided. <br />
             segaid=user_data.get('sega_id', ''),
             password=user_data.get('sega_pwd', ''),
             version=user_data.get('version', 'jp'),
+            aime=user_data.get('aime', 0),
             timezone=user_data.get('timezone', 9)
         )
     else:
         return render_template("bind_form.html", user_language=user_language, mode="bind")
 
 
-async def process_sega_credentials(user_id, segaid, password, ver="jp", language="ja", timezone=9):
+async def process_sega_credentials(user_id, segaid, password, ver="jp", language="ja", timezone=9, aime=0):
     base = (
         "https://maimaidx-eng.com/maimai-mobile"
         if ver == "intl"
         else "https://maimaidx.jp/maimai-mobile"
     )
 
-    cookies = await login_to_maimai(segaid, password, ver=ver)
+    cookies = await login_to_maimai(segaid, password, ver=ver, aime=aime)
     if cookies == "MAINTENANCE":
         return "MAINTENANCE"
     if not cookies:
@@ -865,11 +874,13 @@ async def process_sega_credentials(user_id, segaid, password, ver="jp", language
         if dom is None:
             return False
 
-    user_bind_sega_id(user_id, segaid)
-    user_bind_sega_pwd(user_id, password)
-    user_set_version(user_id, ver)
-    user_set_language(user_id, language)
-    user_set_timezone(user_id, timezone)
+    edit_user_value(user_id, 'sega_id', segaid)
+    edit_user_value(user_id, 'sega_pwd', password)
+    edit_user_value(user_id, 'version', ver)
+    edit_user_value(user_id, 'aime', aime)
+    edit_user_value(user_id, 'language', language)
+    edit_user_value(user_id, 'timezone', timezone)
+
     if "registered_via_token" not in USERS[user_id]:
         try:
             smart_push(user_id, bind_msg(user_id), configuration)
@@ -885,32 +896,6 @@ def user_unbind(user_id):
     msg = unbind_msg(user_id)
     delete_user(user_id)
     return msg
-
-def user_bind_sega_id(user_id, sega_id):
-    if user_id not in USERS:
-        add_user(user_id)
-    edit_user_value(user_id, 'sega_id', sega_id)
-
-def user_bind_sega_pwd(user_id, sega_pwd):
-    if user_id not in USERS:
-        add_user(user_id)
-    edit_user_value(user_id, 'sega_pwd', sega_pwd)
-
-def user_set_version(user_id, version):
-    if user_id not in USERS:
-        add_user(user_id)
-    edit_user_value(user_id, 'version', version)
-
-def user_set_language(user_id, language):
-    if user_id not in USERS:
-        add_user(user_id)
-    edit_user_value(user_id, 'language', language)
-
-def user_set_timezone(user_id, timezone):
-    if user_id not in USERS:
-        add_user(user_id)
-    edit_user_value(user_id, 'timezone', timezone)
-
 
 # ==================== 异步任务处理函数 ====================
 
@@ -990,8 +975,9 @@ def maimai_update(user_id, ver="jp"):
     elif 'sega_id' not in USERS[user_id] or 'sega_pwd' not in USERS[user_id]:
         return segaid_error(user_id)
 
-    sega_id = USERS[user_id]['sega_id']
-    sega_pwd = USERS[user_id]['sega_pwd']
+    sega_id = USERS[user_id].get('sega_id')
+    sega_pwd = USERS[user_id].get('sega_pwd')
+    aime = USERS[user_id].get('aime', 0)
 
     # 定义数据获取函数（在重试循环外定义一次）
     async def fetch_all_data(cookies):
@@ -1004,7 +990,7 @@ def maimai_update(user_id, ver="jp"):
 
     user_info = maimai_records = recent_records = friends_list = None
 
-    cookies = asyncio.run(login_to_maimai(sega_id, sega_pwd, ver))
+    cookies = asyncio.run(login_to_maimai(sega_id, sega_pwd, ver, aime=aime))
     if cookies is None:
         logger.warning(f"[User] ⚠ Login failed: user_id={user_id}")
         return segaid_error(user_id)
@@ -1321,7 +1307,7 @@ def get_friend_list(user_id):
     elif 'mai_friends' not in USERS[user_id]:
         return friend_error(user_id)
 
-    friend_list = copy.deepcopy(get_user_value(user_id, "mai_friends"))
+    friend_list = copy.deepcopy(USERS[user_id].get("mai_friends"))
     if not friend_list:
         friend_list = []
 
@@ -1662,7 +1648,7 @@ def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     plate_img = generate_plate_image(target_data, title, headers = target_num)
 
     # 获取用户信息并创建用户信息图片
-    user_info = USERS[id_use]['personal_info']
+    user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info)
     user_tz = get_user_timezone(id_use)
     img = compose_images([profile_img, plate_img], timezone_offset=user_tz)
@@ -1764,8 +1750,13 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp"):
                 continue
 
             # 只处理指定等级的谱面
-            if sheet['level'] != level:
-                continue
+            # 14+ 包含 14+ 和 15 级别
+            if level == "14+":
+                if sheet['level'] not in ["14+", "15"]:
+                    continue
+            else:
+                if sheet['level'] != level:
+                    continue
 
             difficulty = sheet['difficulty']
             total_charts += 1
@@ -1848,7 +1839,7 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp"):
     )
 
     # 获取用户信息并创建用户信息图片
-    user_info = USERS[id_use]['personal_info']
+    user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, scale=2.55)
     user_tz = get_user_timezone(id_use)
     img = compose_images([profile_img, record_img], timezone_offset=user_tz)
@@ -2211,7 +2202,7 @@ def generate_records(user_id, id_use, type="best50", command="", ver="jp"):
     record_img = generate_records_picture(up_songs, down_songs, type.upper())
 
     # 获取用户信息并创建用户信息图片
-    user_info = USERS[id_use]['personal_info']
+    user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info)
     user_tz = get_user_timezone(id_use)
     img = compose_images([profile_img, record_img], timezone_offset=user_tz)
@@ -2337,7 +2328,7 @@ def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     record_img = generate_records_picture(up_level_list, down_level_list, title.replace("+", "⁺"))
 
     # 获取用户信息并创建用户信息图片
-    user_info = USERS[id_use]['personal_info']
+    user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info)
     user_tz = get_user_timezone(id_use)
     img = compose_images([profile_img, record_img], timezone_offset=user_tz)
@@ -2851,7 +2842,7 @@ def handle_sync_text_command(event):
     同步处理文本命令 - 直接在主线程执行
 
     命令分类：
-    1. 基础命令 - donate, unbind, get me, friend list
+    1. 基础命令 - donate, unbind, profile, friend list
     2. 模糊匹配命令 - 歌曲查询、Rating 对照、达成情况等
     3. B 系列命令 - b50, b100, rct50, apb50 等
     4. 特殊命令 - bind, language, calc
@@ -2932,7 +2923,7 @@ def handle_sync_text_command(event):
         "ドネーション": lambda: donate_message,
 
         # 账户管理
-        # unbind 已移至上方特殊处理
+        "profile": lambda: generate_user_info_flex(user_id),
         "get me": lambda: generate_user_info_flex(user_id),
         "getme": lambda: generate_user_info_flex(user_id),
         "ゲットミー": lambda: generate_user_info_flex(user_id),
@@ -3131,7 +3122,7 @@ def handle_sync_text_command(event):
     # ========================================
     # 4.5 账号重新绑定 (rebind)
     # ========================================
-    REBIND_COMMANDS = ["profile", "rebind", "プロフィール", "个人资料"]
+    REBIND_COMMANDS = ["settings", "rebind"]
     if user_message.lower() in REBIND_COMMANDS:
         # 检查是否在群聊中发送
         source_type = getattr(event.source, 'type', 'user')
@@ -3171,25 +3162,6 @@ def handle_sync_text_command(event):
     # ========================================
     # 5. 语言设置
     # ========================================
-    # 5.1 语言选择菜单 (不带语言代码，直接显示选择按钮)
-    LANGUAGE_COMMANDS = ["language", "lang", "言語", "语言"]
-    if user_message in LANGUAGE_COMMANDS:
-        buttons_template = ButtonsTemplate(
-            title=language_select_title,
-            text=language_select_description,
-            actions=[
-                MessageAction(label=language_button_ja, text="language ja"),
-                MessageAction(label=language_button_en, text="language en"),
-                MessageAction(label=language_button_zh, text="language zh")
-            ]
-        )
-        reply_message = TemplateMessage(
-            alt_text=language_select_alt,
-            template=buttons_template
-        )
-        return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
-
-    # 5.2 设置具体语言 (带语言代码)
     if user_message.startswith("language "):
         lang_code = user_message[9:].strip().lower()
 
@@ -3199,7 +3171,7 @@ def handle_sync_text_command(event):
             return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
 
         # 设置用户语言
-        user_set_language(user_id, lang_code)
+            edit_user_value(user_id, 'language', lang_code)
 
         # 检查用户是否已绑定
         user_data = USERS.get(user_id, {})
@@ -3412,7 +3384,7 @@ def handle_location_message(event):
     lng = event.message.longitude
     user_id = event.source.user_id
 
-    stores = asyncio.run(get_nearby_maimai_stores(lat, lng, USERS[user_id]['version']))
+    stores = asyncio.run(get_nearby_maimai_stores(lat, lng, USERS[user_id].get('version', "jp")))
 
     # 检查维护状态
     if stores == "MAINTENANCE":
@@ -4818,7 +4790,7 @@ def api_register_user(user_id):
 
         # 初始化用户数据
         add_user(user_id)
-        user_set_language(user_id, language)
+        edit_user_value(user_id, "language", language)
         edit_user_value(user_id, "nickname", nickname)
         edit_user_value(user_id, "registered_via_token", token_info['token_id'])
         edit_user_value(user_id, "registered_at", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
@@ -5453,7 +5425,7 @@ def api_search_songs():
                     "message": f"User {user_id} has no personal info, please update first"
                 }), 400
 
-            ver = get_user_value(user_id, "version")
+            ver = USERS[user_id].get('version', "jp")
 
         if ver not in ['jp', 'intl']:
             return jsonify({

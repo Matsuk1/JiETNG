@@ -127,7 +127,7 @@ maimai update
 
 **排查步骤**:
 1. 检查拼写和语法
-2. 验证您已绑定（`get me`）
+2. 验证您已绑定（`profile`）
 3. 更新成绩（`maimai update`）
 4. 查看[命令参考](/commands/basic)
 5. 先尝试简单命令（例如，在 `b50 -lv 14` 之前尝试 `b50`）

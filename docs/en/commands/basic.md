@@ -59,7 +59,7 @@ Displays achievement rate values for each note type.
 ### Get User Information
 
 ```
-getme
+profile
 ```
 
 ## Help & Information

@@ -119,26 +119,6 @@ def clear_user_value(key: str, word: Any, operation: int = 0) -> None:
         edit_user_value(user_id, key, word, operation)
 
 
-def get_user_value(user_id: str, key: str = "") -> Optional[Any]:
-    """
-    获取用户状态
-
-    Args:
-        user_id: 用户ID
-        key: 状态键名,为空则返回全部状态
-
-    Returns:
-        指定键的值,或全部状态字典
-    """
-    if user_id not in USERS:
-        add_user(user_id)
-
-    if key:
-        return USERS[user_id].get(key, None)
-    else:
-        return USERS[user_id]
-
-
 def get_user_nickname(user_id: str, line_bot_api, use_cache: bool = True) -> str:
     """
     通过LINE SDK获取用户昵称

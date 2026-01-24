@@ -447,9 +447,9 @@ language_set_success_text = {
 
 # 已绑定账号的提示
 already_bound_text = {
-    "ja": "⚠️ すでに SEGA アカウントが連携されています。\n再度連携する場合は、先に unbind コマンドで連携を解除してください。\n\n💡 パスワード、バージョン、タイムゾーン、言語のみを変更したい場合は、profile コマンドまたは rebind コマンドを使用してください。",
-    "en": "⚠️ A SEGA account is already linked.\nTo rebind, please use the unbind command first to unlink your account.\n\n💡 If you only want to change password, version, timezone, or language, please use the profile or rebind command.",
-    "zh": "⚠️ 已绑定 SEGA 账号。\n如需重新绑定，请先使用 unbind 命令解除绑定。\n\n💡 如果只想修改密码、版本、时区或语言，请使用 profile 或 rebind 命令。"
+    "ja": "⚠️ すでに SEGA アカウントが連携されています。\n再度連携する場合は、先に unbind コマンドで連携を解除してください。\n\n💡 パスワード、バージョン、タイムゾーン、言語のみを変更したい場合は、settings コマンドまたは rebind コマンドを使用してください。",
+    "en": "⚠️ A SEGA account is already linked.\nTo rebind, please use the unbind command first to unlink your account.\n\n💡 If you only want to change password, version, timezone, or language, please use the settings or rebind command.",
+    "zh": "⚠️ 已绑定 SEGA 账号。\n如需重新绑定，请先使用 unbind 命令解除绑定。\n\n💡 如果只想修改密码、版本、时区或语言，请使用 settings 或 rebind 命令。"
 }
 
 # Unbind 确认消息
@@ -466,11 +466,11 @@ bind_group_warning_text = {
     "zh": "⚠️ 出于安全考虑，bind 命令只能在私聊中使用。请直接向机器人发送消息。"
 }
 
-# Rebind/Profile 命令群聊警告
+# Rebind/Settings 命令群聊警告
 rebind_group_warning_text = {
-    "ja": "⚠️ セキュリティのため、rebind / profile コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
-    "en": "⚠️ For security reasons, the rebind / profile command can only be used in private chat. Please message the bot directly.",
-    "zh": "⚠️ 出于安全考虑，rebind / profile 命令只能在私聊中使用。请直接向机器人发送消息。"
+    "ja": "⚠️ セキュリティのため、rebind / settings コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
+    "en": "⚠️ For security reasons, the rebind / settings command can only be used in private chat. Please message the bot directly.",
+    "zh": "⚠️ 出于安全考虑，rebind / settings 命令只能在私聊中使用。请直接向机器人发送消息。"
 }
 
 # Rebind 未绑定提示

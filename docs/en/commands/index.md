@@ -34,7 +34,7 @@ This document lists all available commands for the JiETNG LINE Bot.
 | Command | Aliases | Description |
 |---------|---------|-------------|
 | `bind` | `segaid bind`, `バインド` | Bind SEGA account |
-| `get me` | `getme`, `ゲットミー` | View current account binding info |
+| `profile` | `get me`, `getme`, `ゲットミー` | View current account binding info |
 | `unbind` | `アンバインド` | Unbind account |
 
 ### Data Update

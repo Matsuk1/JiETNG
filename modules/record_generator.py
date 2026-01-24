@@ -39,8 +39,8 @@ def create_thumbnail_in_line(song, thumb_size=(400, 100), scale=1.5):
     text_color = (0, 0, 0)
 
     # --- 基础分数 ---
-    draw.text((15, 13), song['score'], fill=text_color, font=font_large)
-    draw.text((175, 21), song['dx_score'], fill=text_color, font=font_stadium)
+    draw.text((15, 10), song['score'], fill=text_color, font=font_large)
+    draw.text((183, 21), song['dx_score'], fill=text_color, font=font_stadium)
 
     # --- score_icon 图标 ---
     # 根据缩略图尺寸动态计算图标大小
@@ -77,6 +77,7 @@ def create_thumbnail_in_line(song, thumb_size=(400, 100), scale=1.5):
     if 'dx_score' in song and song['dx_score']:
         try:
             dx_score = eval(song['dx_score'])
+            star_num = 0
             if 0 <= dx_score < 0.85:
                 star_num = 0
             elif 0.85 <= dx_score < 0.9:
@@ -196,6 +197,7 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     if 'dx_score' in song and song['dx_score']:
         try:
             dx_score = eval(song['dx_score'])
+            star_num = 0
             if 0 <= dx_score < 0.85:
                 star_num = 0
             elif 0.85 <= dx_score < 0.9:

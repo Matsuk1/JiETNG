@@ -7,7 +7,7 @@
 import logging
 from datetime import datetime
 from modules.config_loader import USERS
-from modules.user_manager import get_user_value, edit_user_value
+from modules.user_manager import edit_user_value
 from modules.devtoken_manager import load_dev_tokens, save_dev_tokens
 from modules.message_manager import segaid_error
 

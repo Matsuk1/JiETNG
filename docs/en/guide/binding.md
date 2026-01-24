@@ -60,6 +60,7 @@ After successful binding, you'll receive a confirmation message and can start us
 Verify if your account is bound:
 
 ```
+profile
 get me
 getme
 ゲットミー

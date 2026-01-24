@@ -19,7 +19,6 @@ from linebot.v3.messaging import (
 )
 from modules.config_loader import USERS
 from modules.user_manager import (
-    get_user_value,
     edit_user_value,
     has_user_read_notice,
     record_notice_read
