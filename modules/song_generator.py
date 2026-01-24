@@ -16,13 +16,13 @@ def song_info_generate(song_json, played_data = [], timezone_offset=9):
     else:
         cover_img = cover_img.convert("RGBA")
 
-    img1 = _render_basic_info_image(song_json, round_corner(cover_img))
+    img1 = resize_by_width(_render_basic_info_image(song_json, round_corner(cover_img)), 850)
 
-    if not played_data:
-        img2 = resize_by_width(_generate_song_table_image(song_json), 1200)
+    if played_data:
+        img2 = resize_by_width(_makeup_played_data(played_data), 780)
 
     else:
-        img2 = resize_by_width(_makeup_played_data(played_data), 800)
+        img2 = resize_by_width(_generate_song_table_image(song_json), 930)
 
     song_img = compose_images([img1, img2], timezone_offset=timezone_offset)
 
@@ -58,18 +58,18 @@ def _render_basic_info_image(song_json, cover_img):
     # 文字区域
     text_x = cover_x + cover_size + text_gap
     text_y = cover_y - 10
-    title = song_json.get("title", "タイトル不明")
-    artist = song_json.get("artist", "アーティスト不明")
-    category = song_json.get("category", "類別不明")
+    title = song_json.get("title", "UNKNOWN")
+    artist = song_json.get("artist", "UNKNOWN")
+    category = song_json.get("category", "UNKNOWN")
     bpm = song_json.get("bpm", "-")
-    version = song_json.get("version", "バージョン不明")
+    version = song_json.get("version", "UNKNOWN")
     id = song_json.get("id", "N/A")
 
     info_text = [
-        truncate_text(draw, f"アーティスト: {artist}", font_song_info, canvas_width - text_x - margin),
-        f"類別: {category}",
+        truncate_text(draw, f"ARTIST: {artist}", font_song_info, canvas_width - text_x - margin),
+        f"CATEGORY: {category}",
         f"BPM: {bpm}",
-        f"バージョン: {version}"
+        f"VERSION: {version}"
     ]
 
     # 标题
@@ -89,8 +89,8 @@ def _render_basic_info_image(song_json, cover_img):
     return img
 
 def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0):
-    headers = ["Difficulty", "Level", "Total", "TAP", "HOLD", "SLIDE", "TOUCH", "BREAK", "JP", "INTL", "USA", "CN"]
-    base_col_widths = [160, 90, 80, 80, 80, 80, 80, 80, 60, 70, 60, 60]
+    headers = ["Difficulty", "Level", "Total", "TAP", "HOLD", "SLIDE", "TOUCH", "BREAK", "JP", "INTL", "USA"]
+    base_col_widths = [160, 90, 80, 80, 80, 90, 90, 90, 60, 70, 60]
     col_widths = [int(w * scale_width) for w in base_col_widths]
     row_height = int(48 * scale_height)
     col_offsets = [sum(col_widths[:i]) for i in range(len(col_widths))]  # 缓存列起始坐标
@@ -110,7 +110,7 @@ def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0):
     block_ranges = {
         "info": range(0, 2),
         "notes": range(2, 8),
-        "regions": range(8, 12)
+        "regions": range(8, 11)
     }
 
     # 绘制表头
@@ -142,8 +142,7 @@ def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0):
             notes["break"] if notes["break"] else "-",
             "✓" if regions.get("jp") else "✕",
             "✓" if regions.get("intl") else "✕",
-            "✓" if regions.get("usa") else "✕",
-            "✓" if regions.get("cn") else "✕"
+            "✓" if regions.get("usa") else "✕"
         ]
 
         for col_idx, cell in enumerate(data):

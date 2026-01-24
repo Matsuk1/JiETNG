@@ -40,7 +40,7 @@ def create_thumbnail_in_line(song, thumb_size=(400, 100), scale=1.5):
 
     # --- 基础分数 ---
     draw.text((15, 10), song['score'], fill=text_color, font=font_large)
-    draw.text((183, 21), song['dx_score'], fill=text_color, font=font_stadium)
+    draw.text((187, 21), song['dx_score'], fill=text_color, font=font_stadium)
 
     # --- score_icon 图标 ---
     # 根据缩略图尺寸动态计算图标大小
@@ -301,9 +301,9 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD"):
 
     header_text = [
         f"でらっくす RATING: {all_ra} = {up_ra} + {down_ra}" if up_ra and down_ra else f"でらっくす RATING: {all_ra}",
-        f"平均レーティング: {round(float(all_ra)/num, 2):.2f}",
-        f"平均レベル: {round(float(all_level)/num, 2):.2f}",
-        f"平均達成率: {round(all_score/num, 4):.4f}%"
+        f"AVG RATING: {round(float(all_ra)/num, 2):.2f}",
+        f"AVG LEVEL: {round(float(all_level)/num, 2):.2f}",
+        f"AVG ACHIEVEMENT: {round(all_score/num, 4):.4f}%"
     ]
 
     # 绘制统计信息背景卡片
