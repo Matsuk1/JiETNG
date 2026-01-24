@@ -1164,7 +1164,7 @@ def random_song(user_id, key="", ver="jp"):
 
     for song in SONGS:
         for sheet in song['sheets']:
-            if sheet['regions']['jp']:
+            if sheet['regions'][ver]:
                 if not key or sheet['internalLevelValue'] in level_values:
                     valid_songs.append(song)
                     break
@@ -1580,7 +1580,7 @@ def generate_plate_rcd(user_id, id_use, title, ver="jp"):
             continue
 
         for sheet in song['sheets']:
-            if not sheet['regions']['jp'] or sheet["difficulty"] not in target_num:
+            if not sheet['regions'][ver] or sheet["difficulty"] not in target_num:
                 continue
 
             icon = "back"
@@ -1667,7 +1667,7 @@ def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     return message
 
 
-def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp"):
+def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="jp"):
     """
     生成指定难度和评级的达成情况图片（定数列表+统计卡片）
 
@@ -1675,7 +1675,7 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp"):
         user_id: 请求用户ID
         id_use: 目标用户ID
         level: 难度等级（如 "13", "13+", "14", "14+", "15"）
-        rank: 评级（如 "s", "s+", "ss", "ss+", "sss", "sss+", "ap", "ap+", "fdx", "fdx+"）
+        rank: 评级（如 "s", "s+", "ss", "ss+", "sss", "sss+", "ap", "ap+", "fdx", "fdx+"），可选
         ver: 服务器版本（"jp" 或 "intl"）
     """
 
@@ -1706,10 +1706,10 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp"):
         "fdx+": ("sync", ["fdxp"])
     }
 
-    if rank not in rank_mapping:
+    if rank is not None and rank not in rank_mapping:
         return song_error(user_id)
 
-    target_type, target_icons = rank_mapping[rank]
+    target_type, target_icons = rank_mapping[rank] if rank else (None, None)
     read_dxdata(ver)
     song_record = read_record(id_use)
 
@@ -1773,34 +1773,48 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp"):
             key1 = (song_title, difficulty, song_type)
             if key1 in rcd_map:
                 rcd = rcd_map[key1]
-                user_icon = rcd.get(f'{target_type}_icon', "back")
-                icon = user_icon  # 始终显示用户实际达到的评级
                 has_record = True
                 # 获取达成率
                 score_str = rcd.get('score', '0.0000%')
                 achievement_rate = float(score_str[:-1]) if score_str.endswith('%') else 0.0
-                if user_icon in target_icons:
+
+                if rank is not None:
+                    # 如果指定了评级，检查是否达成
+                    user_icon = rcd.get(f'{target_type}_icon', "back")
+                    icon = user_icon  # 始终显示用户实际达到的评级
+                    if user_icon in target_icons:
+                        achieved = True
+                        achieved_count += 1
+                    else:
+                        unachieved_count += 1
+                else:
+                    # 如果没有指定评级，所有有记录的都算已达成
                     achieved = True
                     achieved_count += 1
-                else:
-                    unachieved_count += 1
             else:
                 # 尝试标准化匹配
                 normalized_title = normalize_text(song_title)
                 key2 = (normalized_title, difficulty, song_type)
                 if key2 in rcd_map:
                     rcd = rcd_map[key2]
-                    user_icon = rcd.get(f'{target_type}_icon', "back")
-                    icon = user_icon  # 始终显示用户实际达到的评级
                     has_record = True
                     # 获取达成率
                     score_str = rcd.get('score', '0.0000%')
                     achievement_rate = float(score_str[:-1]) if score_str.endswith('%') else 0.0
-                    if user_icon in target_icons:
+
+                    if rank is not None:
+                        # 如果指定了评级，检查是否达成
+                        user_icon = rcd.get(f'{target_type}_icon', "back")
+                        icon = user_icon  # 始终显示用户实际达到的评级
+                        if user_icon in target_icons:
+                            achieved = True
+                            achieved_count += 1
+                        else:
+                            unachieved_count += 1
+                    else:
+                        # 如果没有指定评级，所有有记录的都算已达成
                         achieved = True
                         achieved_count += 1
-                    else:
-                        unachieved_count += 1
 
             # 如果没有记录，算作未游玩
             if not has_record:
@@ -1808,7 +1822,7 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp"):
 
             # 生成所有难度的封面
             target_data.append({
-                "img": generate_cover(song['cover_url'], song_type, icon, target_type, size=150, cover_name=song.get('cover_name'), difficulty=difficulty, achieved=achieved),
+                "img": generate_cover(song['cover_url'], song_type, icon if rank else None, target_type if rank else None, size=150, cover_name=song.get('cover_name'), difficulty=difficulty, achieved=achieved if rank else None),
                 "internal_level": sheet['internalLevelValue'],
                 "achieved": achieved,
                 "difficulty": difficulty,
@@ -1820,7 +1834,7 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp"):
 
     # 生成标题
     level_display = level.replace("+", "⁺")
-    rank_display = rank.upper().replace("+", "⁺")
+    rank_display = rank.upper().replace("+", "⁺") if rank else ""
 
     # 总体统计数据
     stats = {
@@ -1855,95 +1869,6 @@ def generate_level_rank_progress(user_id, id_use, level, rank, ver="jp"):
 
     return message
 
-
-def generate_internallevel_songs(user_id, level, ver="jp"):
-    """
-    生成指定定数范围的歌曲列表图片（现场生成）
-
-    参数:
-        level: 难度等级（如 "13", "13+", "14", "14+"）
-        ver: 服务器版本（"jp" 或 "intl"）
-    """
-
-    # 检查等级是否支持（只支持12及以上）
-    supported_levels = ["12", "12+", "13", "13+", "14", "14+", "15"]
-    if level not in supported_levels:
-        return level_not_supported(user_id)
-
-    try:
-        logger.info(f"[LevelList] → Generating level list: user_id={user_id}, level={level}, server={ver.upper()}")
-
-        # 读取数据
-        read_dxdata(ver)
-
-        # 收集符合条件的歌曲信息
-        song_data_list = []
-        region_key = ver
-
-        for song in SONGS:
-            if song['type'] == 'utage':
-                continue
-
-            for sheet in song['sheets']:
-                if not sheet['regions'].get(region_key, False):
-                    continue
-
-                # 14+ 包含 14+ 和 15 级别
-                if level == "14+":
-                    if sheet['level'] not in ["14+", "15"]:
-                        continue
-                else:
-                    if sheet['level'] != level:
-                        continue
-
-                song_data_list.append({
-                    "cover_url": song['cover_url'],
-                    "cover_name": song.get('cover_name'),
-                    "type": song['type'],
-                    "internal_level": sheet['internalLevelValue']
-                })
-
-        if not song_data_list:
-            logger.warning(f"[LevelList] ⚠ No songs found: level={level}, server={ver.upper()}")
-            return system_error(user_id)
-
-        # 生成封面图片（使用已下载的图片）
-        target_data = []
-        for song_data in song_data_list:
-            cover_url = song_data['cover_url']
-            cover_img = generate_cover(cover_url, song_data['type'], size=135, cover_name=song_data.get('cover_name'))
-            target_data.append({
-                "img": cover_img,
-                "internal_level": song_data['internal_level']
-            })
-
-        if not target_data:
-            logger.warning(f"[LevelList] ⚠ Failed: level={level}, server={ver.upper()}")
-            return system_error(user_id)
-
-        # 生成图片
-        level_img = generate_internallevel_image(target_data, level)
-
-        # 用compose函数包装
-        user_tz = get_user_timezone(user_id)
-        final_img = compose_images([level_img], timezone_offset=user_tz)
-
-        # 清理中间图片对象
-        del level_img
-        gc.collect(0)
-
-        # 上传图片
-        original_url, preview_url = smart_upload(final_img)
-
-        # 清理最终图片对象
-        del final_img
-        gc.collect(0)
-
-        return ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
-
-    except Exception as e:
-        logger.error(f"[LevelList] ✗ Generation failed: user_id={user_id}, level={level}, error={e}", exc_info=True)
-        return system_error(user_id)
 
 def generate_profile(user_info, scale=1.7):
     """
@@ -3000,7 +2925,7 @@ def handle_sync_text_command(event):
 
         # 定数查询
         (lambda msg: msg.endswith(("の定数リスト", "のレベルリスト", "level-list")),
-         lambda msg: generate_internallevel_songs(user_id, re.sub(r"\s*(の定数リスト|のレベルリスト|level-list)$", "", msg), mai_ver)),
+         lambda msg: generate_level_rank_progress(user_id, user_id, re.sub(r"\s*(の定数リスト|のレベルリスト|level-list)$", "", msg), ver=mai_ver)),
 
         # 难度+评级达成情况（如 "13sss+進捗", "14ap progress"）
         # 难度+评级达成情况（如 "13sss+進捗", "14AP progress", "15SSS進捗"）

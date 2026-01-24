@@ -544,7 +544,7 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
 
             # 绘制半透明灰白色背景容器
             container_padding_horizontal = int(dot_radius * 2.0)  # 左右内边距更大
-            container_padding_vertical = int(dot_radius * 0.8)    # 上下内边距更小
+            container_padding_vertical = int(dot_radius * 0.8) - 5    # 上下内边距更小
             container_x1 = start_x - container_padding_horizontal
             container_y1 = dot_y - dot_radius - container_padding_vertical
             container_x2 = start_x + total_dots_width + container_padding_horizontal
@@ -603,9 +603,9 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
     draw = ImageDraw.Draw(final_img)
 
     # 绘制左侧信息栏：卡片式容器（2列布局）
-    card_start_x = margin + 5
+    card_start_x = margin - 10
     card_y = margin + 15
-    card_width = 305
+    card_width = 325
     card_height = 65
     card_gap_x = 15  # 横向间距
     card_gap_y = 12  # 纵向间距
@@ -627,7 +627,7 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
         card_layer = Image.new("RGBA", final_img.size, (0, 0, 0, 0))
         card_draw = ImageDraw.Draw(card_layer)
 
-        # 绘制阴影效果（稍微偏移）
+        # 绘制阴影效果
         shadow_offset = 3
         card_draw.rounded_rectangle(
             [card_x + shadow_offset, current_y + shadow_offset,
@@ -662,7 +662,7 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
 
         # 绘制难度名称（左侧，边框后）
         text_x = card_x + border_width + 15
-        text_y = current_y + (card_height - 30) // 2
+        text_y = current_y + (card_height - 30) // 2 - 5
         difficulty_text = f"{key.upper()}"
         draw.text((text_x, text_y), difficulty_text, fill=(60, 60, 60), font=font_large)
 
@@ -682,7 +682,7 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
         draw.text((data_x, text_y), data_text, fill=(40, 40, 40), font=font_large)
 
     final_img = final_img.convert("RGB")
-    draw = ImageDraw.Draw(final_img)  # 转换后重新创建 draw 对象
+    draw = ImageDraw.Draw(final_img)
 
     # 添加右侧标题（称号图片）
     try:
@@ -690,17 +690,16 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
         if os.path.exists(plate_path):
             plate_img = Image.open(plate_path).convert("RGBA")
 
-            # 原图尺寸 390x60，缩放到合适大小（保持宽高比）
-            # 目标高度 160px（120 * 4/3）
+            # 原图尺寸 390x60，缩放到合适大小
             target_height = 160
             aspect_ratio = plate_img.width / plate_img.height
             target_width = int(target_height * aspect_ratio)
             plate_img = plate_img.resize((target_width, target_height), Image.Resampling.LANCZOS)
 
-            # 位置：右上角，横向中轴线不变（调整 y 坐标以保持中轴线）
-            plate_x = img_width - margin - target_width - 5
-            original_center_y = margin + 30 + 60  # 原来 120px 高度时的中心线
-            plate_y = original_center_y - target_height // 2  # 新的 y 坐标
+            # 位置：右上角，横向中轴线不变
+            plate_x = img_width - margin - target_width + 10
+            original_center_y = margin + 90
+            plate_y = original_center_y - target_height // 2
 
             # 贴上称号图片（支持透明）
             final_img.paste(plate_img, (plate_x, plate_y), plate_img)
@@ -734,82 +733,6 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
             x_offset += img_size + margin
 
         y_offset += row_height
-
-    return final_img
-
-def generate_internallevel_image(target_data, level_name, img_width=2400, max_per_row=12, margin=20):
-    """
-    生成定数查询图片，左侧显示定数（如 13.0, 13.1），右侧显示歌曲封面
-
-    参数:
-        target_data: 歌曲数据列表，每个元素为 {"img": PIL.Image, "internal_level": float}
-        level_name: 难度名称（如 "13", "13+", "14", "14+"）
-        img_width: 图片总宽度
-        max_per_row: 每行最多显示的歌曲数量
-        margin: 边距（外边距，用于不同定数行之间）
-    """
-    level_width = 100
-    img_size = 180  # 提升清晰度: 135 -> 180 (增加33%)
-    img_gap = 5  # 同一行内封面之间的间距
-    row_gap = 5  # 同一定数内不同行之间的间距
-    level_gap = margin  # 不同定数之间的间距（保持原有的 margin）
-    row_height = img_size + level_gap  # 用于计算总高度
-
-    # 按照定数分组（13.0, 13.1, 13.2, ...）
-    rows = []
-    total_rows = 0  # 所有行数
-    num_levels = 0  # 不同定数的数量
-
-    # 获取所有不重复的定数并排序
-    internal_levels = sorted(set(entry["internal_level"] for entry in target_data), reverse=True)
-
-    for internal_level in internal_levels:
-        # 格式化定数显示（保留一位小数）
-        level_str = f"{internal_level:.1f}"
-        row_imgs = [entry["img"] for entry in target_data if entry["internal_level"] == internal_level]
-        if row_imgs:
-            rows.append((level_str, row_imgs))
-            num_levels += 1
-            total_rows += math.ceil(len(row_imgs) / max_per_row)
-
-    # 计算总高度
-    # = 每行图片高度 * 总行数 + 同定数内行间距 * (总行数 - 不同定数数量) + 不同定数间距 * (定数数量 - 1) + 顶部区域
-    content_height = (img_size * total_rows +
-                     row_gap * (total_rows - num_levels) +
-                     level_gap * (num_levels - 1))
-    total_height = content_height + margin + 170
-
-    final_img = Image.new("RGB", (img_width, total_height), "white")
-    draw = ImageDraw.Draw(final_img)
-
-    # 添加右侧标题
-    title_text = f"{level_name} 定数リスト"
-    title_text_size = draw.textlength(title_text, font=font_record_title)
-    title_x = img_width - margin - title_text_size - 30
-    title_y = margin - 45
-    draw.text((title_x, title_y), title_text, fill=(206, 206, 206), font=font_record_title)
-
-    # 渲染主体图像内容
-    y_offset = margin + 30 + 140
-    for level_idx, (level_str, img_list) in enumerate(rows):
-        draw.text((margin, y_offset + img_size // 3), level_str, fill="black", font=font_level_badge)
-
-        x_offset = level_width + margin
-        row_count = 0  # 当前定数的行数计数
-        for i, img in enumerate(img_list):
-            if i > 0 and i % max_per_row == 0:
-                y_offset += img_size + row_gap  # 同一定数内行间距
-                x_offset = level_width + margin
-                row_count += 1
-
-            final_img.paste(img, (x_offset, y_offset))
-            x_offset += img_size + img_gap  # 同一行内封面间距
-
-        # 移动到下一个定数: 当前行底部 + 定数间距
-        if level_idx < len(rows) - 1:  # 如果不是最后一个定数
-            y_offset += img_size + level_gap
-        else:
-            y_offset += img_size  # 最后一个定数只需要加上图片高度
 
     return final_img
 
@@ -858,7 +781,7 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
             total_rows += math.ceil(len(row_entries) / max_per_row)
 
     # 计算总高度
-    # 卡片总高度 = 2行卡片 + 中间间距（放大1.2倍）
+    # 卡片总高度 = 2行卡片 + 中间间距
     cards_total_height = 2 * int(65 * 1.2) + int(12 * 1.2)
     # 总高度 = 顶部边距 + 卡片区域 + 卡片到内容间距 + 内容高度 + 底部边距
     total_height = margin + 15 + cards_total_height + 60 + total_rows * row_height + margin
@@ -866,20 +789,20 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
     final_img = Image.new("RGB", (img_width, total_height), "white")
     draw = ImageDraw.Draw(final_img)
 
-    # 绘制统计卡片（2x2布局，放大1.2倍）
+    # 绘制统计卡片
     card_start_x = margin + 5
-    card_y = margin + 15
-    card_width = int(305 * 1.2)  # 366
-    card_height = int(65 * 1.2)  # 78
-    card_gap_x = int(15 * 1.2)   # 18
-    card_gap_y = int(12 * 1.2)   # 14
+    card_y = margin + 30
+    card_width = 366
+    card_height = 78
+    card_gap_x = 18
+    card_gap_y = 14
     border_width = 8
 
     # 四个统计卡片：完了、未完了、未プレイ、总计
     card_data = [
         ("完了", stats["achieved"], (76, 175, 80)),       # 绿色
         ("未完了", stats["unachieved"], (255, 152, 0)),   # 橙色
-        ("未プレイ", stats["unplayed"], (158, 158, 158)), # 灰色
+        ("未プレイ", stats["unplayed"], (158, 158, 158)),  # 灰色
         ("総計", stats["total"], (66, 133, 244))          # 蓝色
     ]
 
@@ -944,16 +867,19 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
     draw = ImageDraw.Draw(final_img)
 
     # 绘制右侧标题
-    title_text = f"{level_name} {rank_name} PROGRESS"
+    if rank_name:
+        title_text = f"{level_name} {rank_name} PROGRESS"
+    else:
+        title_text = f"{level_name} LEVEL LIST"
     title_text_size = draw.textlength(title_text, font=font_record_title)
     title_x = img_width - margin - title_text_size - 15
     title_y = 5
     draw.text((title_x, title_y), title_text, fill=(206, 206, 206), font=font_record_title)
 
-    # 渲染主体图像内容（定数列表，与牌子达成率保持一致）
+    # 渲染主体图像内容
     # 2x2卡片布局：2行，每行高度 card_height，加上中间间距 card_gap_y
     cards_total_height = 2 * card_height + card_gap_y
-    y_offset = card_y + cards_total_height + 60
+    y_offset = card_y + cards_total_height + 40
 
     for level_str, entries_list in rows:
         draw.text((margin, y_offset + img_size // 3), level_str, fill="black", font=font_level_badge)
@@ -965,7 +891,7 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
                 y_offset += row_height
                 x_offset = level_width + margin
 
-            # 获取封面图片（灰色蒙层已在 generate_cover 中添加）
+            # 获取封面图片
             cover_img = entry["img"]
             final_img.paste(cover_img, (x_offset, y_offset))
             x_offset += img_size + margin
