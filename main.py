@@ -2086,11 +2086,11 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 parts = cmd_num.split()
                 if len(parts) == 1:
                     dx_score = int(re.sub(r"\D", "", parts[0]))
-                    song_record = list(filter(lambda x: eval(x['dx_score'].replace(",", "")) * 100 >= dx_score, song_record))
+                    song_record = list(filter(lambda x: eval(x['dx_score']) * 100 >= dx_score, song_record))
                 else:
                     dx_start = int(re.sub(r"\D", "", parts[0]))
                     dx_stop = int(re.sub(r"\D", "", parts[1]))
-                    song_record = list(filter(lambda x: dx_start <= eval(x['dx_score'].replace(",", "")) * 100 <= dx_stop, song_record))
+                    song_record = list(filter(lambda x: dx_start <= eval(x['dx_score']) * 100 <= dx_stop, song_record))
             elif cmd == "scr":
                 parts = cmd_num.split()
                 if len(parts) == 1:

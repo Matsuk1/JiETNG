@@ -76,7 +76,7 @@ def create_thumbnail_in_line(song, thumb_size=(400, 100), scale=1.5):
     # --- dx_star 星星图标 ---
     if 'dx_score' in song and song['dx_score']:
         try:
-            dx_score = eval(song['dx_score'].replace(",", ""))
+            dx_score = eval(song['dx_score'])
             if 0 <= dx_score < 0.85:
                 star_num = 0
             elif 0.85 <= dx_score < 0.9:
@@ -187,7 +187,7 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
               fill=text_color, font=font_small)
 
     draw.text((score_x_offset, padding + line_spacing * 2),
-              song['dx_score'].replace(",", ""), fill=text_color, font=font_small, anchor="ra")
+              song['dx_score'], fill=text_color, font=font_small, anchor="ra")
 
     # --- 最下面的横线 ---
     draw.line([(0, thumb_size[1]), (thumb_size[0], thumb_size[1])], fill=(255, 255, 255), width=90)
@@ -195,7 +195,7 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     # --- dx_star 星星图标 ---
     if 'dx_score' in song and song['dx_score']:
         try:
-            dx_score = eval(song['dx_score'].replace(",", ""))
+            dx_score = eval(song['dx_score'])
             if 0 <= dx_score < 0.85:
                 star_num = 0
             elif 0.85 <= dx_score < 0.9:

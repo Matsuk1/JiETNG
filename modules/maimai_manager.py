@@ -446,7 +446,7 @@ async def get_maimai_records(cookies: dict, ver="jp"):
                     "difficulty": difficulty[page_num],
                     "type": type,
                     "score": score,
-                    "dx_score": dx_score,
+                    "dx_score": dx_score.replace(",", ""),
                     "score_icon": score_icon,
                     "combo_icon": combo_icon,
                     "sync_icon": sync_icon
@@ -538,7 +538,7 @@ async def get_recent_records(cookies: dict, ver="jp"):
                     "difficulty": difficulty,
                     "type": type,
                     "score": score,
-                    "dx_score": dx_score,
+                    "dx_score": dx_score.replace(",", ""),
                     "score_icon": score_icon.replace("plus", "p"),
                     "combo_icon": combo_icon.replace("plus", "p"),
                     "sync_icon": sync_icon.replace("fsd", "fdx").replace("plus", "p")
