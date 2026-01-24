@@ -356,31 +356,12 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD"):
         fill=(40, 40, 40)  # 深灰色文字，更柔和
     )
 
-    # 绘制斜体标题
+    # 绘制标题（非斜体）
     bbox = draw.textbbox((0, 0), title, font=font_record_title)
     title_width = bbox[2] - bbox[0]
-    title_height = bbox[3] - bbox[1]
-
-    # 创建临时图层用于绘制标题（留更多空间避免裁剪）
-    layer_width = title_width + 150
-    layer_height = title_height + 120
-    title_layer = Image.new('RGBA', (layer_width, layer_height), (255, 255, 255, 0))
-    title_draw = ImageDraw.Draw(title_layer)
-    # 文字绘制在图层中央偏上位置
-    title_draw.text((70, 15), title, fill=(190, 190, 190, 255), font=font_record_title)
-
-    # 应用斜体变换 (正向斜体 "/" 方向)
-    title_layer = title_layer.transform(
-        (layer_width, layer_height),
-        Image.AFFINE,
-        (1, 0.2, 0, 0, 1, 0),  # 正向斜切，斜度0.2
-        Image.BICUBIC
-    )
-
-    # 将斜体标题粘贴到主图层
-    title_x = img_width - side_width - title_width - 50
-    title_y = card_y - 45
-    combined.paste(title_layer, (title_x, title_y), title_layer)
+    title_x = img_width - side_width - title_width - 30
+    title_y = card_y - 35
+    draw.text((title_x, title_y), title, fill=(190, 190, 190), font=font_record_title)
 
     up_thumbnails = [create_thumbnail(song, thumb_size) for song in up_songs[:grid_size[0] * grid_size[1]]]
     down_thumbnails = [create_thumbnail(song, thumb_size) for song in down_songs[:grid_size[0] * grid_size[1]]]
@@ -963,9 +944,9 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
     draw = ImageDraw.Draw(final_img)
 
     # 绘制右侧标题
-    title_text = f"{level_name} {rank_name}"
+    title_text = f"{level_name} {rank_name} PROGRESS"
     title_text_size = draw.textlength(title_text, font=font_record_title)
-    title_x = img_width - margin - title_text_size - 30
+    title_x = img_width - margin - title_text_size - 15
     title_y = 5
     draw.text((title_x, title_y), title_text, fill=(206, 206, 206), font=font_record_title)
 
