@@ -1928,14 +1928,19 @@ def generate_profile(user_info, scale=1.7):
 
     paste_image("rating_block_url", (129, 13), (131, 34))
 
-    # 使用等宽方式绘制 rating 数字
+    # 使用等宽方式绘制 rating 数字，每个数字在自己的位置内居中
     rating_text = user_info['rating'].rjust(5)
     char_width = 13  # 每个字符的固定宽度
-    start_x = 187
+    start_x = 186
     for i, char in enumerate(rating_text):
-        draw.text((start_x + i * char_width, 16), char, fill=(255, 255, 255), font=font_stadium)
+        # 计算字符的实际宽度
+        char_bbox = draw.textbbox((0, 0), char, font=font_stadium)
+        actual_char_width = char_bbox[2] - char_bbox[0]
+        # 在固定宽度区域内居中
+        offset = (char_width - actual_char_width) / 2
+        draw.text((start_x + i * char_width + offset, 15), char, fill=(255, 255, 255), font=font_stadium)
 
-    # 绘制带灰色边框的圆角矩形
+    # 绘制昵称
     draw.rounded_rectangle([129, 51, 129 + 266, 51 + 33], radius=10, fill=(255, 255, 255), outline=(180, 180, 180), width=2)
     draw.text((138, 54), user_info['name'], fill=(0, 0, 0), font=font_stadium)
 
@@ -2034,48 +2039,48 @@ def select_records(song_record, type="best50", command="", ver="jp"):
     down_songs_data = list(filter(lambda x: x['new_song'] == True, song_record))
 
     if type == "best50":
-        up_songs = sorted(up_songs_data, key=lambda x: -x["ra"])[:35]
-        down_songs = sorted(down_songs_data, key=lambda x: -x["ra"])[:15]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
 
     elif type == "best40":
-        up_songs = sorted(up_songs_data, key=lambda x: -x["ra"])[:25]
-        down_songs = sorted(down_songs_data, key=lambda x: -x["ra"])[:15]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:25]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
 
     elif type == "best100":
-        up_songs = sorted(up_songs_data, key=lambda x: -x["ra"])[:70]
-        down_songs = sorted(down_songs_data, key=lambda x: -x["ra"])[:30]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:70]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:30]
 
     elif type == "best35":
-        up_songs = sorted(up_songs_data, key=lambda x: -x["ra"])[:35]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
 
     elif type == "best15":
-        down_songs = sorted(down_songs_data, key=lambda x: -x["ra"])[:15]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
 
     elif type == "allb50":
-        up_songs = sorted(song_record, key=lambda x: -x["ra"])[:50]
+        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:50]
 
     elif type == "allb100":
-        up_songs = sorted(song_record, key=lambda x: -x["ra"])[:100]
+        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:100]
 
     elif type == "allb200":
-        up_songs = sorted(song_record, key=lambda x: -x["ra"])[:200]
+        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:200]
 
     elif type == "allb35":
-        up_songs = sorted(song_record, key=lambda x: -x["ra"])[:35]
+        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
 
     elif type == "apb50":
         up_songs_data = [x for x in up_songs_data if x.get("combo_icon") in ("ap", "app")]
-        up_songs = sorted(up_songs_data, key=lambda x: x.get("ra", 0), reverse=True)[:35]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
 
         down_songs_data = [x for x in down_songs_data if x.get("combo_icon") in ("ap", "app")]
-        down_songs = sorted(down_songs_data, key=lambda x: x.get("ra", 0), reverse=True)[:15]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
 
     elif type == "fdxb50":
         up_songs_data = [x for x in up_songs_data if x.get("sync_icon") in ("fdx", "fdxp")]
-        up_songs = sorted(up_songs_data, key=lambda x: x.get("ra", 0), reverse=True)[:35]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
 
         down_songs_data = [x for x in down_songs_data if x.get("sync_icon") in ("fdx", "fdxp")]
-        down_songs = sorted(down_songs_data, key=lambda x: x.get("ra", 0), reverse=True)[:15]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
 
     elif type == "UNKNOWN":
         up_songs = list(filter(lambda x: x['version'] == "UNKNOWN", song_record))
@@ -2102,8 +2107,8 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 rcd['combo_icon'] = "app"
             rcd['ra'] = get_single_ra(rcd['internalLevelValue'], ideal_score, ideal_score == 101)
 
-        up_songs = sorted(up_songs_data, key=lambda x: -x["ra"])[:35]
-        down_songs = sorted(down_songs_data, key=lambda x: -x["ra"])[:15]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
 
     return up_songs, down_songs;
 
@@ -2230,8 +2235,8 @@ def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     up_level_list_data = list(filter(lambda x: x['internalLevelValue'] in level_value, up_songs_data))
     down_level_list_data = list(filter(lambda x: x['internalLevelValue'] in level_value, down_songs_data))
 
-    up_level_list = sorted(up_level_list_data, key=lambda x: -x["ra"])
-    down_level_list = sorted(down_level_list_data, key=lambda x: -x["ra"])
+    up_level_list = sorted(up_level_list_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)
+    down_level_list = sorted(down_level_list_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)
 
     page_size_up = 35
     page_size_down = 15
@@ -2248,7 +2253,7 @@ def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     if not up_level_list and not down_level_list:
         return level_record_not_found(level, page, user_id)
 
-    title = f"Lv{level} #{page}"
+    title = f"Lv {level}"
 
     record_img = generate_records_picture(up_level_list, down_level_list, title.replace("+", "⁺"))
 
