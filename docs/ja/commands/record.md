@@ -34,6 +34,9 @@ best15       # トップ 15 新曲のみを表示
 ab35         # All Best 35 （楽曲バージョンを無視）
 ab50         # All Best 50 （楽曲バージョンを無視）
 ab100        # All Best 100（楽曲バージョンを無視）
+nxtb50       # Next Best 50（次のバージョン）
+nxtb35       # Next Best 35（次のバージョン）
+nxtb15       # Next Best 15（次のバージョン）
 apb50        # All Perfect Best 50（AP/AP+ スコアのみ）
 fdxb50       # Full DX Best 50（FDX/FDX+ スコアのみ）
 idlb50       # Ideal Best 50（最高スコアをシミュレート）

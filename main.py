@@ -2056,6 +2056,9 @@ def select_records(song_record, type="best50", command="", ver="jp"):
     elif type == "best15":
         down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
 
+    elif type == "allb35":
+        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
+
     elif type == "allb50":
         up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:50]
 
@@ -2065,8 +2068,21 @@ def select_records(song_record, type="best50", command="", ver="jp"):
     elif type == "allb200":
         up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:200]
 
-    elif type == "allb35":
-        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
+    elif type == "nxtb50":
+        up_addition_songs = list(filter(lambda x: x['version'] != MAIMAI_VERSION[ver][-1], down_songs_data))
+        down_songs_data = list(filter(lambda x: x['version'] == MAIMAI_VERSION[ver][-1], down_songs_data))
+        up_songs_data += up_addition_songs
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
+
+    elif type == "nxtb35":
+        up_addition_songs = list(filter(lambda x: x['version'] != MAIMAI_VERSION[ver][-1], down_songs_data))
+        up_songs_data += up_addition_songs
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
+
+    elif type == "nxtb15":
+        down_songs_data = list(filter(lambda x: x['version'] == MAIMAI_VERSION[ver][-1], down_songs_data))
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
 
     elif type == "apb50":
         up_songs_data = [x for x in up_songs_data if x.get("combo_icon") in ("ap", "app")]
@@ -2452,6 +2468,9 @@ IMAGE_TASK_ROUTES = {
         "ab35", "allb35", "all best 35", "オールベスト35",
         "ab50", "allb50", "all best 50", "オールベスト50",
         "ab100", "allb100", "all best 100", "オールベスト100",
+        "nxtb50", "nextb50", "next best 50", "ネクストベスト50",
+        "nxtb35", "nextb35", "next best 35", "ネクストベスト35",
+        "nxtb15", "nextb15", "next best 15", "ネクストベスト15",
         "apb50", "ap50", "all perfect 50", "オールパーフェクト50",
         "fdxb50", "fdx50", "Full DX 50", "フールでらっくす50",
         "rct50", "r50", "recent50", "recent 50",
@@ -2974,6 +2993,11 @@ def handle_sync_text_command(event):
         ("ab35", "allb35", "all best 35", "オールベスト35"): "allb35",
         ("ab50", "allb50", "all best 50", "オールベスト50"): "allb50",
         ("ab100", "allb100", "all best 100", "オールベスト100"): "allb100",
+
+        # Next Best
+        ("nxtb50", "nextb50", "next best 50", "ネクストベスト50"): "nxtb50",
+        ("nxtb35", "nextb35", "next best 35", "ネクストベスト35"): "nxtb35",
+        ("nxtb15", "nextb15", "next best 15", "ネクストベスト15"): "nxtb15",
 
         # 特殊系列
         ("apb50", "ap50", "all perfect 50", "オールパーフェクト50"): "apb50",
