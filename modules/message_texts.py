@@ -1,0 +1,815 @@
+"""
+多语言消息文本定义 / Multilingual Message Text Definitions
+
+此模块包含所有的多语言消息文本定义，供 message_manager.py 使用。
+This module contains all multilingual message text definitions for use by message_manager.py.
+"""
+
+from linebot.v3.messaging import (
+    FlexMessage,
+    URIAction
+)
+
+from linebot.v3.messaging.models import (
+    FlexBubble,
+    FlexBox,
+    FlexText,
+    FlexSeparator
+)
+
+
+welcome_msg_text = "『JiETNG・カヰテー』で有りんす。\nお願ひ申し候。"
+group_welcome_msg_text = "『JiETNG・カヰテー』で有りんす。\nお出迎え有りんす。"
+
+bind_msg_text = {
+    "ja": "✅ SEGA IDの連携できたよ！",
+    "en": "✅ SEGA ID linked successfully!",
+    "zh": "✅ SEGA ID 绑定成功！"
+}
+
+unbind_msg_text = {
+    "ja": "✅ SEGA IDの連携を解除したよ！",
+    "en": "✅ SEGA ID unlinked successfully!",
+    "zh": "✅ SEGA ID 解绑成功！"
+}
+
+# ============================================================
+# データ更新関連 / Data Update
+# ============================================================
+
+update_over_text = {
+    "ja": "✅ アップデート完了！",
+    "en": "✅ Update completed!",
+    "zh": "✅ 更新完成！"
+}
+
+update_error_text = {
+    "ja": "❗️あれ？アップデート中にエラーが出ちゃった！",
+    "en": "❗️Oops! An error occurred during the update!",
+    "zh": "❗️哎呀？更新过程中出现错误了！"
+}
+
+# ============================================================
+# エラーメッセージ / Error Messages
+# ============================================================
+
+segaid_error_text = {
+    "ja": "SEGAアカウントまだ連携してないよね？",
+    "en": "You haven't linked your SEGA account yet, right?",
+    "zh": "你还没有绑定 SEGA 账号吧？"
+}
+
+record_error_text = {
+    "ja": "maimaiレコードまだアップデートしてないみたい！",
+    "en": "Looks like you haven't updated your maimai records yet!",
+    "zh": "看起来你还没有更新 maimai 记录！"
+}
+
+info_error_text = {
+    "ja": "ごめん！maimai個人情報まだメモしてないわ！",
+    "en": "Sorry! Your maimai profile hasn't been saved yet!",
+    "zh": "抱歉！你的 maimai 个人信息还没有保存！"
+}
+
+access_error_text = {
+    "ja": "🙇 今めっちゃアクセス多いんだよね…ちょっと後でもう一回試してみて！",
+    "en": "🙇 There's a lot of traffic right now... Please try again later!",
+    "zh": "🙇 现在访问量很大…请稍后再试！"
+}
+
+system_error_text = {
+    "ja": "😵 システムエラーが発生しました…管理者に通知済みです。しばらくしてから再度お試しください。",
+    "en": "😵 A system error occurred... The administrator has been notified. Please try again later.",
+    "zh": "😵 发生系统错误…已通知管理员。请稍后再试。"
+}
+
+input_error_text = {
+    "ja": "全然わかんないなー",
+    "en": "I don't understand what you mean...",
+    "zh": "我完全不明白你的意思..."
+}
+
+picture_error_text = {
+    "ja": "画像処理しっぱい〜〜",
+    "en": "Image processing failed~~",
+    "zh": "图片处理失败~~"
+}
+
+song_error_text = {
+    "ja": "条件に合う楽曲がないかも...",
+    "en": "No songs match the criteria...",
+    "zh": "没有符合条件的歌曲..."
+}
+
+level_not_supported_text = {
+    "ja": "このレベルの定数表はサポートされていません。\nレベル12以上のみ対応しています。",
+    "en": "This level constant table is not supported.\nOnly levels 12 and above are available.",
+    "zh": "不支持该等级的定数表。\n仅支持12级及以上。"
+}
+
+
+plate_error_text = {
+    "ja": "そのプレートがわからないね...",
+    "en": "I don't recognize that plate...",
+    "zh": "我不认识那个牌子..."
+}
+
+version_error_text = {
+    "ja": "そのバージョンがわからないね...",
+    "en": "I don't recognize that version...",
+    "zh": "我不认识那个版本..."
+}
+
+store_error_text = {
+    "ja": "🥹 周辺の設置店舗がないね",
+    "en": "🥹 No nearby arcades found",
+    "zh": "🥹 附近没有找到游戏厅"
+}
+
+rate_limit_msg_text = {
+    "ja": "⏳ ちょっと待ってー！今同じリクエスト処理中だから！\n終わるまでちょっと待っててね〜",
+    "en": "⏳ Wait a moment! I'm still processing the same request!\nPlease wait until it's done~",
+    "zh": "⏳ 稍等一下！我正在处理相同的请求！\n等我完成再试试吧~"
+}
+
+maintenance_error_text = {
+    "ja": "🔧 あれ？公式サイトがメンテナンス中みたい！\n夜間とかメンテナンス時間はアクセスできないから、またあとで試してみてね〜",
+    "en": "🔧 Oh? The official site seems to be under maintenance!\nIt's not accessible during maintenance hours, so please try again later~",
+    "zh": "🔧 咦？官方网站好像在维护中！\n维护时间无法访问，请稍后再试~"
+}
+
+# ============================================================
+# フレンド関連 / Friend Messages
+# ============================================================
+
+friend_error_text = {
+    "ja": "お気に入りにフレンド登録してないみたいだよ？",
+    "en": "Looks like you haven't registered any favorite friends?",
+    "zh": "看起来你还没有收藏的好友？"
+}
+
+friend_rcd_error_text = {
+    "ja": "この人フレンドじゃないかも！",
+    "en": "This person might not be your friend!",
+    "zh": "这个人可能不是你的好友！"
+}
+
+mention_error_text = {
+    "ja": "メンションされたユーザーはまだ登録してないみたい！",
+    "en": "The mentioned user hasn't registered yet!",
+    "zh": "被提到的用户好像还没有注册！"
+}
+
+multiple_mention_error_text = {
+    "ja": "ごめん！一度に複数のユーザーをメンションできないよ〜",
+    "en": "Sorry! You can't mention multiple users at once~",
+    "zh": "抱歉！不能一次提到多个用户哦~"
+}
+
+
+# 权限请求通知相关文本
+perm_request_notification_title_text = {
+    "ja": "アクセス権限リクエスト • Permission Requests",
+    "en": "Access Permission Requests",
+    "zh": "访问权限请求"
+}
+
+perm_request_notification_subtitle_text = {
+    "ja": "{count} 件の新しいリクエスト",
+    "en": "{count} new requests",  # 简化处理，统一使用复数
+    "zh": "{count} 个新请求"
+}
+
+perm_request_accept_button_text = {
+    "ja": "承認",
+    "en": "Accept",
+    "zh": "接受"
+}
+
+perm_request_reject_button_text = {
+    "ja": "拒否",
+    "en": "Reject",
+    "zh": "拒绝"
+}
+
+perm_request_notification_alt_text = {
+    "ja": "{count} 件のアクセス権限リクエストがあります",
+    "en": "You have {count} access permission request(s)",
+    "zh": "你有 {count} 个访问权限请求"
+}
+
+perm_request_accept_success_text = {
+    "ja": "✅ アクセス権限リクエストを承認しました！\n\nToken ID: {token_id}\n申請者: {requester_name}\n\nこのトークンはあなたのアカウント情報にアクセスできるようになりました。",
+    "en": "✅ Access permission request accepted!\n\nToken ID: {token_id}\nRequester: {requester_name}\n\nThis token can now access your account information.",
+    "zh": "✅ 已接受访问权限请求！\n\nToken ID: {token_id}\n申请者: {requester_name}\n\n该 token 现在可以访问你的账户信息了。"
+}
+
+perm_request_reject_success_text = {
+    "ja": "✅ アクセス権限リクエストを拒否しました。\n\nToken ID: {token_id}\n申請者: {requester_name}",
+    "en": "✅ Access permission request rejected.\n\nToken ID: {token_id}\nRequester: {requester_name}",
+    "zh": "✅ 已拒绝访问权限请求。\n\nToken ID: {token_id}\n申请者: {requester_name}"
+}
+
+
+# ============================================================
+# 管理者通知 / Admin Notifications
+# ============================================================
+
+notice_upload_text = {
+    "ja": "✅ Notice uploaded",
+    "en": "✅ Notice uploaded",
+    "zh": "✅ 公告已上传"
+}
+
+dxdata_update_text = {
+    "ja": "✅ Dxdata Updated!",
+    "en": "✅ Dxdata Updated!",
+    "zh": "✅ Dxdata 已更新！"
+}
+
+# ============================================================
+# その他 / Others
+# ============================================================
+
+# 临时使用好友账号
+friend_use_once_text = {
+    "ja": "これからは一回だけ「{name}」さんとしてレコードをチェックしていきますよ！\n色んなコマンドを使ってみてね！",
+    "en": "Checking records as '{name}' just once!\nTry various commands!",
+    "zh": "这次将作为「{name}」查看记录！\n试试各种命令吧！"
+}
+
+# 指定レベルのレコードなし
+level_record_not_found_text = {
+    "ja": "指定されたレベル「{level}」の{page}ページ目の譜面記録は存在しないかも...",
+    "en": "No records found for level '{level}' page {page}...",
+    "zh": "指定等级「{level}」的第 {page} 页记录可能不存在..."
+}
+
+# レベルレコード追加ページの説明
+level_record_page_hint_text = {
+    "ja": "これは{page}ページ目のデータだよ！",
+    "en": "This is page {page} data!",
+    "zh": "这是第 {page} 页的数据！"
+}
+
+# Dxdata 更新通知（管理员）
+dxdata_update_notification_text = {
+    "ja": "📢 Dxdata 更新通知\n\n{message}",
+    "en": "📢 Dxdata Update Notification\n\n{message}",
+    "zh": "📢 Dxdata 更新通知\n\n{message}"
+}
+
+# Dxdata 更新成功消息组件
+dxdata_update_success_text = {
+    "ja": "✅ Dxdata Updated!",
+    "en": "✅ Dxdata Updated!",
+    "zh": "✅ Dxdata 更新成功！"
+}
+
+dxdata_new_songs_text = {
+    "ja": "🎵 新曲: +{count}首",
+    "en": "🎵 New Songs: +{count}",
+    "zh": "🎵 新增歌曲: +{count}首"
+}
+
+dxdata_songs_decreased_text = {
+    "ja": "🎵 楽曲: {count}首",
+    "en": "🎵 Songs: {count}",
+    "zh": "🎵 歌曲: {count}首"
+}
+
+dxdata_no_new_songs_text = {
+    "ja": "🎵 新曲: なし",
+    "en": "🎵 New Songs: None",
+    "zh": "🎵 新增歌曲: 无"
+}
+
+dxdata_new_sheets_text = {
+    "ja": "📊 新譜面: +{count}個",
+    "en": "📊 New Charts: +{count}",
+    "zh": "📊 新增谱面: +{count}个"
+}
+
+dxdata_sheets_decreased_text = {
+    "ja": "📊 譜面: {count}個",
+    "en": "📊 Charts: {count}",
+    "zh": "📊 谱面: {count}个"
+}
+
+dxdata_no_new_sheets_text = {
+    "ja": "📊 新譜面: なし",
+    "en": "📊 New Charts: None",
+    "zh": "📊 新增谱面: 无"
+}
+
+dxdata_last_update_text = {
+    "ja": "📅 前回更新: {timestamp}",
+    "en": "📅 Last Update: {timestamp}",
+    "zh": "📅 上次更新: {timestamp}"
+}
+
+dxdata_current_stats_text = {
+    "ja": "📈 現在: 楽曲{songs}首 / 譜面{sheets}個",
+    "en": "📈 Current: {songs} Songs / {sheets} Charts",
+    "zh": "📈 当前: {songs}首歌曲 / {sheets}个谱面"
+}
+
+dxdata_first_update_text = {
+    "ja": "(初回更新完了！)",
+    "en": "(Initial update complete!)",
+    "zh": "(首次更新完成！)"
+}
+
+dxdata_fetch_failed_text = {
+    "ja": "❌ データ取得失敗！",
+    "en": "❌ Failed to fetch data!",
+    "zh": "❌ 数据获取失败！"
+}
+
+dxdata_parse_failed_text = {
+    "ja": "❌ データ解析失敗！",
+    "en": "❌ Failed to parse data!",
+    "zh": "❌ 数据解析失败！"
+}
+
+dxdata_initial_stats_songs_text = {
+    "ja": "📈 楽曲: {count}首",
+    "en": "📈 Songs: {count}",
+    "zh": "📈 歌曲: {count}首"
+}
+
+dxdata_initial_stats_sheets_text = {
+    "ja": "📊 譜面: {count}個",
+    "en": "📊 Charts: {count}",
+    "zh": "📊 谱面: {count}个"
+}
+
+# SEGA 账号绑定消息
+sega_bind_title_text = {
+    "ja": "SEGA アカウント連携",
+    "en": "SEGA Account Link",
+    "zh": "SEGA 账号绑定"
+}
+
+sega_bind_description_text = {
+    "ja": "SEGA アカウントと連携されます\n有効期限は発行から2分間です",
+    "en": "Link your SEGA account\nValid for 2 minutes from issuance",
+    "zh": "将绑定你的 SEGA 账号\n有效期为发行后2分钟"
+}
+
+sega_bind_button_text = {
+    "ja": "押しで連携",
+    "en": "Tap to Link",
+    "zh": "点击绑定"
+}
+
+sega_bind_alt_text = {
+    "ja": "SEGA アカウント連携",
+    "en": "SEGA Account Link",
+    "zh": "SEGA 账号绑定"
+}
+
+# 语言选择消息（用于首次绑定时）
+# 这些文本在用户未选择语言时显示，所以直接显示三语
+language_select_title = "言語選択"
+
+language_select_description = """Language Selection・语言选择"""
+
+language_button_ja = "日本語"
+language_button_en = "English"
+language_button_zh = "简体中文"
+
+language_select_alt = "Language Selection / 言語選択 / 语言选择"
+
+language_set_success_text = {
+    "ja": "✅ 言語を日本語に設定しました！",
+    "en": "✅ Language set to English!",
+    "zh": "✅ 语言已设置为中文！"
+}
+
+# 已绑定账号的提示
+already_bound_text = {
+    "ja": "⚠️ すでに SEGA アカウントが連携されています。\n再度連携する場合は、先に unbind コマンドで連携を解除してください。\n\n💡 パスワード、バージョン、タイムゾーン、言語のみを変更したい場合は、settings コマンドまたは rebind コマンドを使用してください。",
+    "en": "⚠️ A SEGA account is already linked.\nTo rebind, please use the unbind command first to unlink your account.\n\n💡 If you only want to change password, version, timezone, or language, please use the settings or rebind command.",
+    "zh": "⚠️ 已绑定 SEGA 账号。\n如需重新绑定，请先使用 unbind 命令解除绑定。\n\n💡 如果只想修改密码、版本、时区或语言，请使用 settings 或 rebind 命令。"
+}
+
+# Unbind 确认消息
+unbind_confirm_text = {
+    "ja": "⚠️ アカウント連携を解除しようとしています。\n\nこの操作により、連携されている SEGA ID、パスワード、その他すべての設定が削除されます。\n\n🔴 この操作は取り消せません。\n\n続行するには、以下のコマンドを送信してください：\nunbind confirm",
+    "en": "⚠️ You are about to unbind your account.\n\nThis will delete your linked SEGA ID, password, and all other settings.\n\n🔴 This action cannot be undone.\n\nTo proceed, please send the following command:\nunbind confirm",
+    "zh": "⚠️ 您即将解除账号绑定。\n\n此操作将删除您绑定的 SEGA ID、密码以及所有其他设置。\n\n🔴 此操作无法撤销。\n\n若要继续，请发送以下命令：\nunbind confirm"
+}
+
+# Bind 命令群聊警告
+bind_group_warning_text = {
+    "ja": "⚠️ セキュリティのため、bind コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
+    "en": "⚠️ For security reasons, the bind command can only be used in private chat. Please message the bot directly.",
+    "zh": "⚠️ 出于安全考虑，bind 命令只能在私聊中使用。请直接向机器人发送消息。"
+}
+
+# Rebind/Settings 命令群聊警告
+rebind_group_warning_text = {
+    "ja": "⚠️ セキュリティのため、rebind / settings コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
+    "en": "⚠️ For security reasons, the rebind / settings command can only be used in private chat. Please message the bot directly.",
+    "zh": "⚠️ 出于安全考虑，rebind / settings 命令只能在私聊中使用。请直接向机器人发送消息。"
+}
+
+# Rebind 未绑定提示
+rebind_not_bound_text = {
+    "ja": "まだ SEGA アカウントが連携されていません。bind コマンドで連携してください。",
+    "en": "No SEGA account linked yet. Please use the bind command to link your account.",
+    "zh": "尚未绑定 SEGA 账号。请使用 bind 命令进行绑定。"
+}
+
+# Rebind 按钮模板 - 标题 / Alt
+rebind_title_alt_text = {
+    "ja": "アカウント設定の編集",
+    "en": "Edit Account Settings",
+    "zh": "编辑账号设置"
+}
+
+# Rebind 按钮模板 - 描述
+rebind_description_text = {
+    "ja": "パスワード、バージョン、タイムゾーン、言語を変更できます。",
+    "en": "You can change password, version, timezone, and language.",
+    "zh": "您可以更改密码、版本、时区和语言。"
+}
+
+# Rebind 按钮模板 - 按钮标签
+rebind_button_text = {
+    "ja": "設定を編集",
+    "en": "Edit Settings",
+    "zh": "编辑设置"
+}
+
+# 公告标题
+notice_header_text = {
+    "ja": "📢 お知らせ",
+    "en": "📢 Notice",
+    "zh": "📢 公告"
+}
+
+# 开发者 Token 相关消息
+devtoken_create_success_text = {
+    "ja": "✅ 開発者トークンを作成しました！\n\nToken ID: {token_id}\nToken: {token}\n備考: {note}\n作成日時: {created_at}\n\n⚠️ このトークンは一度しか表示されません。安全な場所に保管してください。",
+    "en": "✅ Developer token created successfully!\n\nToken ID: {token_id}\nToken: {token}\nNote: {note}\nCreated: {created_at}\n\n⚠️ This token will only be shown once. Please store it securely.",
+    "zh": "✅ 开发者 Token 创建成功！\n\nToken ID: {token_id}\nToken: {token}\n备注: {note}\n创建时间: {created_at}\n\n⚠️ 此 Token 仅显示一次，请妥善保管。"
+}
+
+devtoken_create_failed_text = {
+    "ja": "❌ トークンの作成に失敗しました。",
+    "en": "❌ Failed to create token.",
+    "zh": "❌ Token 创建失败。"
+}
+
+devtoken_list_header_text = {
+    "ja": "📋 開発者トークン一覧",
+    "en": "📋 Developer Tokens List",
+    "zh": "📋 开发者 Token 列表"
+}
+
+devtoken_list_empty_text = {
+    "ja": "トークンはまだ作成されていません。",
+    "en": "No tokens created yet.",
+    "zh": "还没有创建任何 Token。"
+}
+
+devtoken_revoke_success_text = {
+    "ja": "✅ トークン {token_id} を無効化しました。",
+    "en": "✅ Token {token_id} has been revoked.",
+    "zh": "✅ 已撤销 Token {token_id}。"
+}
+
+devtoken_revoke_failed_text = {
+    "ja": "❌ トークン {token_id} が見つかりません。",
+    "en": "❌ Token {token_id} not found.",
+    "zh": "❌ 找不到 Token {token_id}。"
+}
+
+devtoken_info_text = {
+    "ja": "📝 トークン詳細情報\n\nToken ID: {token_id}\nToken: {token}\n備考: {note}\n作成者: {created_by}\n作成日時: {created_at}\n最終使用: {last_used}\nステータス: {status}",
+    "en": "📝 Token Details\n\nToken ID: {token_id}\nToken: {token}\nNote: {note}\nCreated by: {created_by}\nCreated: {created_at}\nLast used: {last_used}\nStatus: {status}",
+    "zh": "📝 Token 详细信息\n\nToken ID: {token_id}\nToken: {token}\n备注: {note}\n创建者: {created_by}\n创建时间: {created_at}\n最后使用: {last_used}\n状态: {status}"
+}
+
+devtoken_info_not_found_text = {
+    "ja": "❌ トークンが見つかりません。",
+    "en": "❌ Token not found.",
+    "zh": "❌ 找不到 Token。"
+}
+
+devtoken_usage_text = {
+    "ja": "📚 開発者トークン管理\n\ndevtoken create <備考> - 新しいトークンを作成\ndevtoken list - トークン一覧を表示\ndevtoken revoke <token_id> - トークンを無効化\ndevtoken info <token_id> - トークンの詳細を表示",
+    "en": "📚 Developer Token Management\n\ndevtoken create <note> - Create a new token\ndevtoken list - List all tokens\ndevtoken revoke <token_id> - Revoke a token\ndevtoken info <token_id> - Show token details",
+    "zh": "📚 开发者 Token 管理\n\ndevtoken create <备注> - 创建新 Token\ndevtoken list - 显示所有 Token\ndevtoken revoke <token_id> - 撤销 Token\ndevtoken info <token_id> - 显示 Token 详情"
+}
+
+# 好友列表 alt_text
+friend_list_alt_text = {
+    "ja": "お気に入りフレンド",
+    "en": "Favorite Friends",
+    "zh": "收藏的好友"
+}
+
+# 查看好友 B50 按钮显示文本
+view_friend_b50_text = {
+    "ja": "{name} の B50 を表示",
+    "en": "View {name}'s B50",
+    "zh": "查看 {name} 的 B50"
+}
+
+# Note 分数计算按钮文本
+calc_button_text = {
+    "ja": "ノーツ計算",
+    "en": "Note Calc",
+    "zh": "Note 计算"
+}
+
+# Note 分数计算 alt_text
+calc_button_alt_text = {
+    "ja": "ノーツ計算",
+    "en": "Note Calculation",
+    "zh": "Note 分数计算"
+}
+
+# 附近机厅列表 alt_text
+nearby_stores_alt_text = {
+    "ja": "最寄りの maimai 設置店舗",
+    "en": "Nearby maimai Arcade Stores",
+    "zh": "附近的 maimai 机厅"
+}
+
+donate_message = FlexMessage(
+    alt_text="JiETNGを支援 · Support JiETNG",
+    contents=FlexBubble(
+        body=FlexBox(
+            layout="vertical",
+            spacing="md",
+            paddingAll="16px",
+            backgroundColor="#FFFFFF",
+            contents=[
+                # 标题
+                FlexText(
+                    text="カヰテーを支援 · Support JiETNG",
+                    weight="bold",
+                    size="md",
+                    wrap=True,
+                    align="center",
+                    color="#000000"
+                ),
+                # 多语言说明文本
+                FlexText(
+                    text=(
+                        "一起为 JiETNG 的开发与未来加油！\n"
+                        "JiETNG の開発と未来を応援しよう！\n"
+                        "Support JiETNG's journey ahead!"
+                    ),
+                    size="sm",
+                    wrap=True,
+                    margin="md",
+                    align="center",
+                    color="#555555"
+                ),
+                # 按钮容器
+                FlexBox(
+                    layout="horizontal",
+                    spacing="md",
+                    margin="lg",
+                    justifyContent="center",
+                    contents=[
+                        # Liberapay
+                        FlexBox(
+                            layout="vertical",
+                            flex=0,
+                            width="100px",
+                            height="40px",
+                            cornerRadius="6px",
+                            borderColor="#000000",
+                            borderWidth="1px",
+                            backgroundColor="#FFFFFF",
+                            justifyContent="center",
+                            alignItems="center",
+                            contents=[
+                                FlexText(
+                                    text="Liberapay",
+                                    weight="bold",
+                                    color="#000000",
+                                    size="sm",
+                                    align="center",
+                                    action=URIAction(
+                                        label="Liberapay",
+                                        uri="https://ja.liberapay.com/_matsuk1/donate?currency=JPY"
+                                    )
+                                )
+                            ]
+                        ),
+                        # 爱发电
+                        FlexBox(
+                            layout="vertical",
+                            flex=0,
+                            width="100px",
+                            height="40px",
+                            cornerRadius="6px",
+                            borderColor="#000000",
+                            borderWidth="1px",
+                            backgroundColor="#FFFFFF",
+                            justifyContent="center",
+                            alignItems="center",
+                            contents=[
+                                FlexText(
+                                    text="爱发电",
+                                    weight="bold",
+                                    color="#000000",
+                                    size="sm",
+                                    align="center",
+                                    action=URIAction(
+                                        label="爱发电",
+                                        uri="https://afdian.com/a/matsuki"
+                                    )
+                                )
+                            ]
+                        ),
+                    ],
+                ),
+                # 底部灰分割线
+                FlexSeparator(
+                    margin="lg",
+                    color="#DDDDDD"
+                ),
+                # 底部说明
+                FlexText(
+                    text="Thank you for supporting JiETNG",
+                    size="xs",
+                    color="#666666",
+                    align="center",
+                    margin="md"
+                ),
+            ],
+        )
+    ),
+)
+
+# ============================================================
+# QuickReply 按钮标签多语言
+# ============================================================
+
+quick_reply_labels = {
+    "maimai_update": {"ja": "maimai update", "en": "maimai update", "zh": "更新数据"},
+    "support": {"ja": "サポート", "en": "Support", "zh": "帮助"},
+    "account_bind": {"ja": "アカウント連携", "en": "Link Account", "zh": "绑定账号"},
+    "retry": {"ja": "もう一回", "en": "Try Again", "zh": "再试一次"},
+    "recent_50": {"ja": "Recent 50", "en": "Recent 50", "zh": "Recent 50"},
+    "all_best_50": {"ja": "All Best 50", "en": "All Best 50", "zh": "All Best 50"},
+}
+
+
+# ============================================================
+# 用户信息 Flex Message / User Info Flex Message
+# ============================================================
+
+user_info_flex_text = {
+    'title': {
+        'ja': '👤 ユーザー情報',
+        'en': '👤 User Information',
+        'zh': '👤 用户信息'
+    },
+    'user_id_label': {
+        'ja': 'LINE ID',
+        'en': 'LINE ID',
+        'zh': 'LINE ID'
+    },
+    'name_label': {
+        'ja': 'プレイヤー名',
+        'en': 'Player Name',
+        'zh': '玩家名称'
+    },
+    'rating_label': {
+        'ja': 'レーティング',
+        'en': 'Rating',
+        'zh': 'Rating'
+    },
+    'sega_id_label': {
+        'ja': 'SEGA ID',
+        'en': 'SEGA ID',
+        'zh': 'SEGA ID'
+    },
+    'password_label': {
+        'ja': 'パスワード',
+        'en': 'Password',
+        'zh': '密码'
+    },
+    'server_label': {
+        'ja': 'サーバー',
+        'en': 'Server',
+        'zh': '服务器'
+    },
+    'language_label': {
+        'ja': '言語',
+        'en': 'Language',
+        'zh': '语言'
+    },
+    'jp_server': {
+        'ja': '日本版',
+        'en': 'Japanese Server',
+        'zh': '日服'
+    },
+    'intl_server': {
+        'ja': '海外版',
+        'en': 'International Server',
+        'zh': '国际服'
+    },
+    'lang_ja': {
+        'ja': '日本語',
+        'en': 'Japanese',
+        'zh': '日语'
+    },
+    'lang_en': {
+        'ja': '英語',
+        'en': 'English',
+        'zh': '英语'
+    },
+    'lang_zh': {
+        'ja': '中国語',
+        'en': 'Chinese',
+        'zh': '中文'
+    },
+    'copy_id': {
+        'ja': 'IDをコピー',
+        'en': 'Copy ID',
+        'zh': '复制ID'
+    },
+    'alt_text': {
+        'ja': 'ユーザー情報',
+        'en': 'User Information',
+        'zh': '用户信息'
+    },
+    'last_update_label': {
+        'ja': '最終更新',
+        'en': 'Last Update',
+        'zh': '最后更新'
+    },
+    'not_bound': {
+        'ja': '未連携',
+        'en': 'Not Bound',
+        'zh': '未绑定'
+    },
+}
+
+update_result_flex_text = {
+    'title_success': {
+        'ja': '✅ アップデート完了',
+        'en': '✅ Update Completed',
+        'zh': '✅ 更新完成'
+    },
+    'title_error': {
+        'ja': '⚠️ アップデートエラー',
+        'en': '⚠️ Update Error',
+        'zh': '⚠️ 更新错误'
+    },
+    'username_label': {
+        'ja': 'プレイヤー名',
+        'en': 'Player Name',
+        'zh': '玩家名称'
+    },
+    'rating_label': {
+        'ja': 'レーティング',
+        'en': 'Rating',
+        'zh': 'Rating'
+    },
+    'update_time_label': {
+        'ja': '更新日時',
+        'en': 'Update Time',
+        'zh': '更新时间'
+    },
+    'elapsed_time_label': {
+        'ja': '処理時間',
+        'en': 'Elapsed Time',
+        'zh': '耗时'
+    },
+    'status_label': {
+        'ja': 'ステータス',
+        'en': 'Status',
+        'zh': '状态'
+    },
+    'success': {
+        'ja': '成功',
+        'en': 'Success',
+        'zh': '成功'
+    },
+    'failed': {
+        'ja': '失敗',
+        'en': 'Failed',
+        'zh': '失败'
+    },
+    'alt_text_success': {
+        'ja': 'アップデート完了',
+        'en': 'Update Completed',
+        'zh': '更新完成'
+    },
+    'alt_text_error': {
+        'ja': 'アップデートエラー',
+        'en': 'Update Error',
+        'zh': '更新错误'
+    }
+}
