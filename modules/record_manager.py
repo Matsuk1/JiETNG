@@ -107,7 +107,7 @@ def get_single_ra_recent(level: float, score: float) -> int:
     Returns:
         计算得到的Rating整数值
     """
-    # Rating系数映射表
+    # Rating 系数映射表
     if score >= 100.5000:
         ra_kake = 0.14
     elif score >= 100.0000:
@@ -145,7 +145,6 @@ def get_single_ra_recent(level: float, score: float) -> int:
     else:
         ra_kake = 0
 
-    # 计算基础Rating
     if score <= 100.5:
         ra = int(level * score * ra_kake)
     else:
