@@ -2142,7 +2142,7 @@ def generate_records(user_id, id_use, type="best50", command="", ver="jp"):
 
     up_songs, down_songs = select_records(song_record, type, command, ver)
     if not up_songs and not down_songs:
-        return picture_error(user_id)
+        return song_error(user_id)
 
     record_img = generate_records_picture(up_songs, down_songs, type.upper(), ver)
 

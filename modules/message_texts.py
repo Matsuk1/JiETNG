@@ -89,12 +89,6 @@ input_error_text = {
     "zh": "我完全不明白你的意思..."
 }
 
-picture_error_text = {
-    "ja": "画像処理しっぱい〜〜",
-    "en": "Image processing failed~~",
-    "zh": "图片处理失败~~"
-}
-
 song_error_text = {
     "ja": "条件に合う楽曲がないかも...",
     "en": "No songs match the criteria...",

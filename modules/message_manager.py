@@ -239,10 +239,6 @@ def input_error(user_id=None):
     """生成输入错误消息"""
     return create_text_message(input_error_text, user_id, get_support_quick_reply(user_id))
 
-def picture_error(user_id=None):
-    """生成图片错误消息"""
-    return create_text_message(picture_error_text, user_id, get_support_quick_reply(user_id))
-
 def song_error(user_id=None):
     """生成歌曲错误消息"""
     return create_text_message(song_error_text, user_id, get_support_quick_reply(user_id))
