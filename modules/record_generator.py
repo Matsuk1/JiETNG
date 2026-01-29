@@ -259,7 +259,7 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     final_img = img.convert("RGB")
     return final_img
 
-def generate_records_picture(up_songs=[], down_songs=[], title="RECORD"):
+def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp"):
     uploaded_data = up_songs + down_songs
     up_num = len(up_songs)
     down_num = len(down_songs)
@@ -299,12 +299,21 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD"):
     combined = Image.new("RGB", (img_width, img_height), (255, 255, 255))
     draw = ImageDraw.Draw(combined)
 
-    header_text = [
-        f"でらっくす RATING: {all_ra} = {up_ra} + {down_ra}" if up_ra and down_ra else f"でらっくす RATING: {all_ra}",
-        f"AVG RATING: {round(float(all_ra)/num, 2):.2f}",
-        f"AVG LEVEL: {round(float(all_level)/num, 2):.2f}",
-        f"AVG ACHIEVEMENT: {round(all_score/num, 4):.4f}%"
-    ]
+    if ver == "jp":
+        header_text = [
+            f"でらっくす RATING: {all_ra} = {up_ra} + {down_ra}" if up_ra and down_ra else f"でらっくす RATING: {all_ra}",
+            f"平均レベル: {round(float(all_level)/num, 2):.2f}",
+            f"平均達成率: {round(all_score/num, 4):.4f}%",
+            f"平均レーティング: {round(float(all_ra)/num, 2):.2f}"
+        ]
+        
+    else:
+        header_text = [
+            f"でらっくす RATING: {all_ra} = {up_ra} + {down_ra}" if up_ra and down_ra else f"でらっくす RATING: {all_ra}",
+            f"AVG LEVEL: {round(float(all_level)/num, 2):.2f}",
+            f"AVG ACHIEVEMENT: {round(all_score/num, 4):.4f}%",
+            f"AVG RATING: {round(float(all_ra)/num, 2):.2f}"
+        ]
 
     # 绘制统计信息背景卡片
     card_padding = 20
@@ -331,7 +340,7 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD"):
     # 实际文本总宽度
     max_text_width = max_left_width + max_right_width
 
-    line_height = draw.textbbox((0, 0), "TEST", font=font_large)[3]
+    line_height = draw.textbbox((0, 0), "JiETNG", font=font_large)[3]
     text_total_height = len(header_text) * (line_height + 7)
 
     # 根据实际文本宽度设置卡片宽度

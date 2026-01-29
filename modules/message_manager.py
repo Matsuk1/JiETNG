@@ -7,7 +7,6 @@ from linebot.v3.messaging import (
     QuickReply,
     QuickReplyItem,
     MessageAction,
-    PostbackAction,
     URIAction,
     FlexMessage,
     FlexContainer

@@ -55,7 +55,6 @@ from linebot.v3.messaging import (
     TemplateMessage,
     ButtonsTemplate,
     MessageAction,
-    PostbackAction,
     URIAction,
     FlexMessage,
     FlexContainer
@@ -1075,7 +1074,7 @@ def maimai_update(user_id, ver="jp"):
         ))
 
     if func_status["Best Records"]:
-        messages.append(generate_records(user_id, user_id))
+        messages.append(generate_records(user_id, user_id, ver=ver))
 
     return messages
 
@@ -1176,7 +1175,7 @@ def random_song(user_id, key="", ver="jp"):
     song_id = song.get('id')
 
     user_tz = get_user_timezone(user_id)
-    original_url, preview_url = smart_upload(song_info_generate(song, timezone_offset=user_tz))
+    original_url, preview_url = smart_upload(song_info_generate(song, timezone_offset=user_tz, ver=ver))
     result.append(ImageMessage(original_content_url=original_url, preview_image_url=preview_url))
     result.append(generate_calc_button(song_id, user_id))
     return result
@@ -1210,7 +1209,7 @@ def search_song(user_id, acronym, ver="jp"):
     result = []
     user_tz = get_user_timezone(user_id)
     for song in matching_songs:
-        original_url, preview_url = smart_upload(song_info_generate(song, timezone_offset=user_tz))
+        original_url, preview_url = smart_upload(song_info_generate(song, timezone_offset=user_tz, ver=ver))
         message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
         result.append(message)
         song_id = song.get('id')
@@ -1245,7 +1244,7 @@ def search_song_by_id(user_id, song_id, ver="jp"):
 
     # 返回图片 + 按钮
     user_tz = get_user_timezone(user_id)
-    original_url, preview_url = smart_upload(song_info_generate(matching_song, timezone_offset=user_tz))
+    original_url, preview_url = smart_upload(song_info_generate(matching_song, timezone_offset=user_tz, ver=ver))
     image_message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
     return [image_message, generate_calc_button(song_id, user_id)]
 
@@ -1432,7 +1431,7 @@ def get_song_record(user_id, id_use, acronym, ver="jp"):
             if is_exact_song_match(rcd['cover_name'], song['cover_name']) and rcd['type'] == song['type']:
                 played_data.append(rcd)
 
-        original_url, preview_url = smart_upload(song_info_generate(song, played_data, timezone_offset=user_tz))
+        original_url, preview_url = smart_upload(song_info_generate(song, played_data, timezone_offset=user_tz, ver=ver))
         message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
         result.append(message)
 
@@ -1487,7 +1486,7 @@ def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
 
     # 生成歌曲信息图片
     user_tz = get_user_timezone(id_use)
-    original_url, preview_url = smart_upload(song_info_generate(matching_song, played_data, timezone_offset=user_tz))
+    original_url, preview_url = smart_upload(song_info_generate(matching_song, played_data, timezone_offset=user_tz, ver=ver))
     result = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
 
     return result
@@ -2145,7 +2144,7 @@ def generate_records(user_id, id_use, type="best50", command="", ver="jp"):
     if not up_songs and not down_songs:
         return picture_error(user_id)
 
-    record_img = generate_records_picture(up_songs, down_songs, type.upper())
+    record_img = generate_records_picture(up_songs, down_songs, type.upper(), ver)
 
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
@@ -2211,7 +2210,7 @@ def generate_friend_b50(user_id, friend_code, ver="jp"):
     up_songs, down_songs = select_records(friend_records, "best50", "", ver)
 
     user_info_img = generate_profile(friend_info)
-    rcd_img = generate_records_picture(up_songs, down_songs, "BEST50")
+    rcd_img = generate_records_picture(up_songs, down_songs, "BEST50", ver)
     user_tz = get_user_timezone(user_id)
     img = compose_images([user_info_img, rcd_img], timezone_offset=user_tz)
 
@@ -2271,7 +2270,7 @@ def generate_level_records(user_id, id_use, level, ver="jp", page=1):
 
     title = f"Lv {level}"
 
-    record_img = generate_records_picture(up_level_list, down_level_list, title.replace("+", "⁺"))
+    record_img = generate_records_picture(up_level_list, down_level_list, title.replace("+", "⁺"), ver)
 
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
@@ -3125,7 +3124,7 @@ def handle_sync_text_command(event):
             return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
 
         # 设置用户语言
-            edit_user_value(user_id, 'language', lang_code)
+        edit_user_value(user_id, 'language', lang_code)
 
         # 检查用户是否已绑定
         user_data = USERS.get(user_id, {})
@@ -3365,7 +3364,7 @@ def handle_location_message(event):
 @handler.add(PostbackEvent)
 def handle_postback(event):
     """
-    处理 Postback 事件（来自 PostbackAction 的按钮点击）
+    处理 Postback 事件
 
     支持：
     - 公告投票 (action=vote_notice)

@@ -4,7 +4,7 @@ from modules.image_manager import *
 from modules.image_cache import paste_icon_optimized, get_cover_image
 from modules.config_loader import ICON_TYPE_DIR
 
-def song_info_generate(song_json, played_data = [], timezone_offset=9):
+def song_info_generate(song_json, played_data = [], timezone_offset=9, ver="jp"):
     cover_url = song_json.get("cover_url")
     cover_name = song_json.get("cover_name")
 
@@ -16,19 +16,19 @@ def song_info_generate(song_json, played_data = [], timezone_offset=9):
     else:
         cover_img = cover_img.convert("RGBA")
 
-    img1 = resize_by_width(_render_basic_info_image(song_json, round_corner(cover_img)), 850)
+    img1 = resize_by_width(_render_basic_info_image(song_json, round_corner(cover_img), ver), 900)
 
     if played_data:
         img2 = resize_by_width(_makeup_played_data(played_data), 780)
 
     else:
-        img2 = resize_by_width(_generate_song_table_image(song_json), 930)
+        img2 = resize_by_width(_generate_song_table_image(song_json, ver=ver), 1200)
 
     song_img = compose_images([img1, img2], timezone_offset=timezone_offset)
 
     return song_img
 
-def _render_basic_info_image(song_json, cover_img):
+def _render_basic_info_image(song_json, cover_img, ver="jp"):
     # 参数设定
     canvas_width = 1000
     canvas_height = 265
@@ -65,12 +65,21 @@ def _render_basic_info_image(song_json, cover_img):
     version = song_json.get("version", "UNKNOWN")
     id = song_json.get("id", "N/A")
 
-    info_text = [
-        truncate_text(draw, f"ARTIST: {artist}", font_song_info, canvas_width - text_x - margin),
-        f"CATEGORY: {category}",
-        f"BPM: {bpm}",
-        f"VERSION: {version}"
-    ]
+    if ver == "jp":
+        info_text = [
+            truncate_text(draw, f"アーティスト: {artist}", font_song_info, canvas_width - text_x - margin),
+            f"カテゴリ: {category}",
+            f"BPM: {bpm}",
+            f"バージョン: {version}"
+        ]
+
+    else:
+        info_text = [
+            truncate_text(draw, f"ARTIST: {artist}", font_song_info, canvas_width - text_x - margin),
+            f"CATEGORY: {category}",
+            f"BPM: {bpm}",
+            f"VERSION: {version}"
+        ]
 
     # 标题
     title = truncate_text(draw, title, font_song_title, canvas_width - text_x - margin)
@@ -88,9 +97,13 @@ def _render_basic_info_image(song_json, cover_img):
 
     return img
 
-def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0):
-    headers = ["Difficulty", "Level", "Total", "TAP", "HOLD", "SLIDE", "TOUCH", "BREAK", "JP", "INTL", "USA"]
-    base_col_widths = [160, 90, 80, 80, 80, 90, 90, 90, 60, 70, 60]
+def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0, ver="jp"):
+    if ver == "jp":
+        headers = ["譜面種類", "レベル", "ノーツデザイナー", "合計", "TAP", "HOLD", "SLIDE", "TOUCH", "BREAK", "国内", "海外", "USA"]
+    else:
+        headers = ["Difficulty", "Level", "Notes Designer", "Total", "TAP", "HOLD", "SLIDE", "TOUCH", "BREAK", "JP", "INTL", "USA"]
+
+    base_col_widths = [160, 90, 300, 90, 80, 80, 90, 90, 95, 70, 70, 70]
     col_widths = [int(w * scale_width) for w in base_col_widths]
     row_height = int(48 * scale_height)
     col_offsets = [sum(col_widths[:i]) for i in range(len(col_widths))]  # 缓存列起始坐标
@@ -108,9 +121,9 @@ def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0):
     }
 
     block_ranges = {
-        "info": range(0, 2),
-        "notes": range(2, 8),
-        "regions": range(8, 11)
+        "info": range(0, 3),
+        "notes": range(3, 9),
+        "regions": range(9, 12)
     }
 
     # 绘制表头
@@ -128,12 +141,13 @@ def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0):
     # 绘制每一行
     for row_idx, sheet in enumerate(song_json["sheets"]):
         y = (row_idx + 1) * row_height
-        notes = sheet["noteCounts"]
+        notes = sheet.get("noteCounts", {})
         regions = sheet.get("regions", {})
 
         data = [
             sheet["difficulty"].capitalize(),
             f"{sheet['internalLevelValue']:.1f}",
+            truncate_text(draw, sheet.get("noteDesigner", "-"), font_large, 400),
             notes["total"] if notes["total"] else "-",
             notes["tap"] if notes["tap"] else "-",
             notes["hold"] if notes["hold"] else "-",
