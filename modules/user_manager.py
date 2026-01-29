@@ -31,10 +31,7 @@ def add_user(user_id: str) -> None:
     if user_id in USERS:
         return
 
-    USERS[user_id] = {
-        "notice_interactions": {},
-        "timezone": 9  # 默认 UTC+9（日本标准时间）
-    }
+    USERS[user_id] = {}
     mark_user_dirty()
     write_user()
 

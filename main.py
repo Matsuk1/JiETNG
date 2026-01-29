@@ -723,7 +723,7 @@ def website_segaid_bind():
         ver: 服务器版本 (jp/intl)
         aime: Aime卡选择 (仅jp有，intl默认1)
         timezone: 时区
-        language: 语言 (rebind 模式下)
+        language: 语言
     """
     token = request.args.get("token")
     mode = request.args.get("mode", "bind")
@@ -732,19 +732,18 @@ def website_segaid_bind():
         token_missing_message = """トークンが提供されていません。<br />
 Token not provided. <br />
 未提供令牌。"""
-        return render_template("error.html", message=token_missing_message, language="ja"), 400
+        return render_template("error.html", message=token_missing_message, language="ja", account_id=LINE_ACCOUNT_ID), 400
 
     try:
         user_id = get_user_id_from_token(token)
-        if user_id not in USERS or "language" not in USERS[user_id]:
+        if user_id not in USERS:
             token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
-            return render_template("error.html", message=token_invalid_message, language="ja"), 400
+            return render_template("error.html", message=token_invalid_message, language="ja", account_id=LINE_ACCOUNT_ID), 400
         
     except Exception as e:
         logger.error(f"[Auth] ✗ Token verification failed: error={e}")
-        # Token 无效的错误消息（此时还没有 user_id，三语同时显示）
         token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
-        return render_template("error.html", message=token_invalid_message, language="ja"), 400
+        return render_template("error.html", message=token_invalid_message, language="ja", account_id=LINE_ACCOUNT_ID), 400
 
     if request.method == "POST":
         segaid = request.form.get("segaid")
@@ -771,7 +770,7 @@ Token not provided. <br />
                 "en": "A SEGA account is already linked. To rebind, please use the unbind command first to unlink your account.",
                 "zh": "已绑定 SEGA 账号。如需重新绑定，请先使用 unbind 命令解除绑定。"
             }
-            return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
+            return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language, account_id=LINE_ACCOUNT_ID), 400
 
         # 在 rebind 模式下，验证 segaid 必须与现有的一致
         if mode == "rebind":
@@ -781,7 +780,7 @@ Token not provided. <br />
                     "en": "No account is linked.",
                     "zh": "未绑定账号。"
                 }
-                return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
+                return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language, account_id=LINE_ACCOUNT_ID), 400
 
             if segaid != user_data.get('sega_id'):
                 error_messages = {
@@ -789,7 +788,7 @@ Token not provided. <br />
                     "en": "You cannot change the SEGA ID.",
                     "zh": "无法更改 SEGA ID。"
                 }
-                return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
+                return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language, account_id=LINE_ACCOUNT_ID), 400
 
         if not segaid or not password:
             missing_fields_messages = {
@@ -797,7 +796,7 @@ Token not provided. <br />
                 "en": "Please fill in all fields.",
                 "zh": "请填写所有字段。"
             }
-            return render_template("error.html", message=missing_fields_messages.get(user_language, missing_fields_messages["ja"]), language=user_language), 400
+            return render_template("error.html", message=missing_fields_messages.get(user_language, missing_fields_messages["ja"]), language=user_language, account_id=LINE_ACCOUNT_ID), 400
 
         # 转换时区为整数
         try:
@@ -811,14 +810,14 @@ Token not provided. <br />
         except (ValueError, TypeError):
             aime_int = 0  # 默认 0
 
-        result = asyncio.run(process_sega_credentials(user_id, segaid, password, user_version, user_language, timezone_int, aime_int))
+        result = asyncio.run(process_sega_credentials(user_id, segaid, password, user_version, user_language, timezone_int, aime_int, (mode == "rebind")))
         if result == "MAINTENANCE":
             maintenance_messages = {
                 "ja": "公式サイトがメンテナンス中です。しばらくしてからもう一度お試しください。",
                 "en": "The official website is under maintenance. Please try again later.",
                 "zh": "官方网站正在维护中。请稍后再试。"
             }
-            return render_template("error.html", message=maintenance_messages.get(user_language, maintenance_messages["ja"]), language=user_language), 503
+            return render_template("error.html", message=maintenance_messages.get(user_language, maintenance_messages["ja"]), language=user_language, account_id=LINE_ACCOUNT_ID), 503
         elif result:
             return render_template("success.html", language=user_language, mode=mode)
         else:
@@ -827,7 +826,7 @@ Token not provided. <br />
                 "en": "Invalid SEGA ID or password. Please check and try again.",
                 "zh": "SEGA ID 或密码不正确。请检查后重试。"
             }
-            return render_template("error.html", message=invalid_credentials_messages.get(user_language, invalid_credentials_messages["ja"]), language=user_language), 500
+            return render_template("error.html", message=invalid_credentials_messages.get(user_language, invalid_credentials_messages["ja"]), language=user_language, account_id=LINE_ACCOUNT_ID), 500
 
     # GET 请求时，从用户数据中获取语言设置和其他信息
     user_data = USERS.get(user_id, {})
@@ -849,7 +848,7 @@ Token not provided. <br />
         return render_template("bind_form.html", user_language=user_language, mode="bind")
 
 
-async def process_sega_credentials(user_id, segaid, password, ver="jp", language="ja", timezone=9, aime=0):
+async def process_sega_credentials(user_id, segaid, password, ver="jp", language="ja", timezone=9, aime=0, rebind=False):
     base = (
         "https://maimaidx-eng.com/maimai-mobile"
         if ver == "intl"
@@ -881,12 +880,22 @@ async def process_sega_credentials(user_id, segaid, password, ver="jp", language
     edit_user_value(user_id, 'timezone', timezone)
 
     if "registered_via_token" not in USERS[user_id]:
+        # 尝试更新数据
+        if not rebind:
+            try:
+                messages = await maimai_update(user_id, ver)
+            except Exception as e:
+                logger.error(f"[Bind Task] ⚠ Failed to update: {e}")
+                messages = bind_msg(user_id)
+        else:
+            messages = bind_msg(user_id)
+
+        # 尝试推送消息
         try:
-            smart_push(user_id, bind_msg(user_id), configuration)
+            smart_push(user_id, messages, configuration)
         except Exception as e:
             logger.error(f"[Bind Task] ⚠ Cancelled: smart push to {user_id}")
     return True
-
 
 
 # ==================== 用户管理函数 ====================
@@ -908,7 +917,7 @@ def async_maimai_update_task(event):
     if user_id in USERS and 'version' in USERS[user_id]:
         ver = USERS[user_id]['version']
 
-    reply_msg = maimai_update(user_id, ver)
+    reply_msg = asyncio.run(maimai_update(user_id, ver))
     if reply_token:
         smart_reply(user_id, reply_token, reply_msg, configuration)
 
@@ -943,7 +952,7 @@ def async_admin_maimai_update_task(event):
         ver = USERS[user_id]['version']
 
     # 执行更新
-    messages = maimai_update(user_id, ver)
+    messages = asyncio.run(maimai_update(user_id, ver))
 
     # 推送通知给管理员
     for admin_user_id in ADMIN_ID:
@@ -956,7 +965,7 @@ def async_admin_maimai_update_task(event):
 
 # ==================== 主程序入口 ====================
 
-def maimai_update(user_id, ver="jp"):
+async def maimai_update(user_id, ver="jp"):
     # 记录开始时间
     start_time = time.time()
 
@@ -989,7 +998,7 @@ def maimai_update(user_id, ver="jp"):
 
     user_info = maimai_records = recent_records = friends_list = None
 
-    cookies = asyncio.run(login_to_maimai(sega_id, sega_pwd, ver, aime=aime))
+    cookies = await login_to_maimai(sega_id, sega_pwd, ver, aime=aime)
     if cookies is None:
         logger.warning(f"[User] ⚠ Login failed: user_id={user_id}")
         return segaid_error(user_id)
@@ -997,7 +1006,7 @@ def maimai_update(user_id, ver="jp"):
         return maintenance_error(user_id)
 
     # 使用异步函数并发获取所有数据
-    user_info, maimai_records, recent_records, friends_list = asyncio.run(fetch_all_data(cookies))
+    user_info, maimai_records, recent_records, friends_list = await fetch_all_data(cookies)
 
     if (user_info == "MAINTENANCE" or
         maimai_records == "MAINTENANCE" or
@@ -3023,29 +3032,9 @@ def handle_sync_text_command(event):
             reply_message = TextMessage(text=get_multilingual_text(bind_group_warning_text, user_id))
             return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
 
-        # 检查用户是否已设置语言
+        # 检查是否已经绑定账号
+        add_user(user_id)
         user_data = USERS.get(user_id, {})
-        has_language = 'language' in user_data
-
-        # 如果用户还没有设置语言，先让用户选择语言
-        if not has_language:
-            buttons_template = ButtonsTemplate(
-                title=language_select_title,
-                text=language_select_description,
-                actions=[
-                    MessageAction(label=language_button_ja, text="language ja"),
-                    MessageAction(label=language_button_en, text="language en"),
-                    MessageAction(label=language_button_zh, text="language zh")
-                ]
-            )
-            reply_message = TemplateMessage(
-                alt_text=language_select_alt,
-                template=buttons_template
-            )
-
-            return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
-
-        # 用户已设置语言，检查是否已经绑定账号
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
 
         if has_account:
@@ -3056,24 +3045,24 @@ def handle_sync_text_command(event):
         # 用户已设置语言且未绑定账号，显示绑定按钮
         bind_url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(user_id)}"
 
-        # 使用多语言文本
+        # 返回绑定链接
         buttons_template = ButtonsTemplate(
-            title=get_multilingual_text(sega_bind_title_text, user_id),
-            text=get_multilingual_text(sega_bind_description_text, user_id),
+            title=sega_bind_title_text,
+            text=sega_bind_description_text,
             actions=[URIAction(
-                label=get_multilingual_text(sega_bind_button_text, user_id),
+                label=sega_bind_button_text,
                 uri=bind_url
             )]
         )
         reply_message = TemplateMessage(
-            alt_text=get_multilingual_text(sega_bind_alt_text, user_id),
+            alt_text=sega_bind_alt_text,
             template=buttons_template
         )
 
         return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
 
     # ========================================
-    # 4.5 账号重新绑定 (rebind)
+    # 5 账号重新绑定 (rebind)
     # ========================================
     REBIND_COMMANDS = ["settings", "rebind"]
     if user_message.lower() in REBIND_COMMANDS:
@@ -3109,47 +3098,6 @@ def handle_sync_text_command(event):
             alt_text=get_multilingual_text(rebind_title_alt_text, user_id),
             template=buttons_template
         )
-
-        return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
-
-    # ========================================
-    # 5. 语言设置
-    # ========================================
-    if user_message.startswith("language "):
-        lang_code = user_message[9:].strip().lower()
-
-        # 验证语言代码
-        if lang_code not in ["ja", "en", "zh"]:
-            reply_message = TextMessage(text="Invalid language code. Please use: ja, en, or zh")
-            return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
-
-        # 设置用户语言
-        edit_user_value(user_id, 'language', lang_code)
-
-        # 检查用户是否已绑定
-        user_data = USERS.get(user_id, {})
-        has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
-
-        if has_account:
-            # 已绑定，只显示成功消息
-            success_text = get_multilingual_text(language_set_success_text, user_id)
-            reply_message = TextMessage(text=success_text)
-
-        else:
-            # 未绑定，直接显示绑定按钮
-            bind_url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(user_id)}"
-            buttons_template = ButtonsTemplate(
-                title=get_multilingual_text(sega_bind_title_text, user_id),
-                text=get_multilingual_text(sega_bind_description_text, user_id),
-                actions=[URIAction(
-                    label=get_multilingual_text(sega_bind_button_text, user_id),
-                    uri=bind_url
-                )]
-            )
-            reply_message = TemplateMessage(
-                alt_text=get_multilingual_text(sega_bind_alt_text, user_id),
-                template=buttons_template
-            )
 
         return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
 
@@ -3465,20 +3413,21 @@ def handle_follow(event):
     user_id = event.source.user_id
     reply_token = event.reply_token
 
+    add_user(user_id)
+
     buttons_template = ButtonsTemplate(
-        title=language_select_title,
-        text=language_select_description,
-        actions=[
-            MessageAction(label=language_button_ja, text="language ja"),
-            MessageAction(label=language_button_en, text="language en"),
-            MessageAction(label=language_button_zh, text="language zh")
-        ]
+        title=sega_bind_title_text,
+        text=sega_bind_description_text,
+        actions=[URIAction(
+            label=sega_bind_button_text,
+            uri=bind_url
+        )]
     )
 
     reply_message = [
         TextMessage(text=welcome_msg_text),
         TemplateMessage(
-            alt_text=language_select_alt,
+            alt_text=sega_bind_alt_text,
             template=buttons_template
         )
     ]

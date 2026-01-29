@@ -22,9 +22,9 @@ welcome_msg_text = "『JiETNG・カヰテー』で有りんす。\nお願ひ申�
 group_welcome_msg_text = "『JiETNG・カヰテー』で有りんす。\nお出迎え有りんす。"
 
 bind_msg_text = {
-    "ja": "✅ SEGA IDの連携できたよ！",
-    "en": "✅ SEGA ID linked successfully!",
-    "zh": "✅ SEGA ID 绑定成功！"
+    "ja": "✅ SEGA IDの更新できたよ！",
+    "en": "✅ SEGA ID updated successfully!",
+    "zh": "✅ SEGA ID 更新成功！"
 }
 
 unbind_msg_text = {
@@ -339,29 +339,10 @@ dxdata_initial_stats_sheets_text = {
 }
 
 # SEGA 账号绑定消息
-sega_bind_title_text = {
-    "ja": "SEGA アカウント連携",
-    "en": "SEGA Account Link",
-    "zh": "SEGA 账号绑定"
-}
-
-sega_bind_description_text = {
-    "ja": "SEGA アカウントと連携されます\n有効期限は発行から2分間です",
-    "en": "Link your SEGA account\nValid for 2 minutes from issuance",
-    "zh": "将绑定你的 SEGA 账号\n有效期为发行后2分钟"
-}
-
-sega_bind_button_text = {
-    "ja": "押しで連携",
-    "en": "Tap to Link",
-    "zh": "点击绑定"
-}
-
-sega_bind_alt_text = {
-    "ja": "SEGA アカウント連携",
-    "en": "SEGA Account Link",
-    "zh": "SEGA 账号绑定"
-}
+sega_bind_title_text = "SEGA アカウントと連携"
+sega_bind_description_text = "Link your SEGA account\n绑定你的 SEGA 账号"
+sega_bind_button_text = "Tap Here"
+sega_bind_alt_text = "SEGA Account Link"
 
 # 语言选择消息（用于首次绑定时）
 # 这些文本在用户未选择语言时显示，所以直接显示三语

@@ -223,6 +223,45 @@ mysql -u jietng -p maimai_records < records_db.sql
 4. 设置 Webhook URL：`https://your-domain.com/linebot/webhook`
 5. 启用 **Use webhook**
 
+#### 6.5. 配置 LIFF（LINE Front-end Framework）
+
+LIFF 用于提供账户绑定和设置页面的原生体验：
+
+1. 在 [LINE Developers Console](https://developers.line.biz/) 中，进入你的 Channel
+2. 选择 **LIFF** 标签
+3. 点击 **Add** 创建两个 LIFF 应用：
+
+**LIFF 应用 1（绑定页面）**：
+- **LIFF app name**: JiETNG Bind
+- **Size**: Full
+- **Endpoint URL**: `https://your-domain.com/linebot/liff/bind`
+- **Scope**: `profile`
+- **Bot link feature**: On (推荐)
+
+**LIFF 应用 2（设置页面）**：
+- **LIFF app name**: JiETNG Settings
+- **Size**: Full
+- **Endpoint URL**: `https://your-domain.com/linebot/liff/settings`
+- **Scope**: `profile`
+- **Bot link feature**: On (推荐)
+
+4. 创建后，复制两个 LIFF ID（格式：`1234567890-abcdefgh`）
+5. 更新 `config.json` 中的 LIFF 配置：
+
+```json
+{
+    "line_channel": {
+        "account_id": "@yourlineid",
+        "access_token": "YOUR_CHANNEL_ACCESS_TOKEN",
+        "secret": "YOUR_CHANNEL_SECRET",
+        "liff": {
+            "bind": "1234567890-abcdefgh",
+            "settings": "9876543210-hgfedcba"
+        }
+    }
+}
+```
+
 #### 7. 启动服务
 
 ```bash
@@ -535,7 +574,11 @@ POST     /admin/trigger_cleanup    # 手动触发内存清理
     "line_channel": {
         "account_id": "@yourlineid",
         "access_token": "YOUR_TOKEN",
-        "secret": "YOUR_SECRET"
+        "secret": "YOUR_SECRET",
+        "liff": {
+            "bind": "1234567890-abcdefgh",      // LIFF ID for bind page
+            "settings": "9876543210-hgfedcba"   // LIFF ID for settings page
+        }
     },
     "keys": {
         "user_data": "AUTO_GENERATED_KEY",     // 自动生成的 Fernet 密钥
