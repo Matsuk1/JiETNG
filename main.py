@@ -3042,10 +3042,8 @@ def handle_sync_text_command(event):
             reply_message = TextMessage(text=get_multilingual_text(already_bound_text, user_id))
             return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
 
-        # 用户已设置语言且未绑定账号，显示绑定按钮
-        bind_url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(user_id)}"
-
         # 返回绑定链接
+        bind_url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(user_id)}"
         buttons_template = ButtonsTemplate(
             title=sega_bind_title_text,
             text=sega_bind_description_text,
@@ -3414,7 +3412,8 @@ def handle_follow(event):
     reply_token = event.reply_token
 
     add_user(user_id)
-
+        
+    bind_url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(user_id)}"
     buttons_template = ButtonsTemplate(
         title=sega_bind_title_text,
         text=sega_bind_description_text,
