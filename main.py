@@ -1666,11 +1666,17 @@ def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     gc.collect(0)
 
     original_url, preview_url = smart_upload(img)
-    message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
 
     # 清理最终图片对象
     del img
     gc.collect(0)
+
+    # 检查上传是否成功
+    if not original_url or not preview_url:
+        logger.error(f"[Image] ✗ Upload failed")
+        return system_error(user_id)
+
+    message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
 
     return message
 
@@ -2166,11 +2172,17 @@ def generate_records(user_id, id_use, type="best50", command="", ver="jp"):
     gc.collect(0)
 
     original_url, preview_url = smart_upload(img)
-    message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
 
     # 清理最终图片对象
     del img
     gc.collect(0)
+
+    # 检查上传是否成功
+    if not original_url or not preview_url:
+        logger.error(f"[Image] ✗ Upload failed")
+        return system_error(user_id)
+
+    message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
 
     return message
 
@@ -2344,11 +2356,17 @@ def generate_version_songs(user_id, version_title, ver="jp"):
     gc.collect(0)
 
     original_url, preview_url = smart_upload(img)
-    message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
 
     # 清理最终图片对象
     del img
     gc.collect(0)
+
+    # 检查上传是否成功
+    if not original_url or not preview_url:
+        logger.error(f"[Image] ✗ Upload failed")
+        return system_error(user_id)
+
+    message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
 
     return message
 
