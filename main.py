@@ -1037,7 +1037,7 @@ async def maimai_update(user_id, ver="jp"):
         func_status["Recent Records"] = False
         error = True
 
-    if friends_list:
+    if not error:
         edit_user_value(user_id, "mai_friends", friends_list)
         func_status["Favorite Friends"] = len(friends_list)
 
