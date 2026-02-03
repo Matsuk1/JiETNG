@@ -144,8 +144,9 @@ def create_tip_ad(tip_type, text_zh, text_en, text_ja, button_type=None, button_
     Returns:
         dict: 创建的tip/ad数据
     """
+    load_tip_ad_data()
     tip_ad = {
-        'id': str(len(TIP_AD_DATA) + 1),
+        'id': datetime.now().timestamp(),
         'type': tip_type,
         'text': {
             'zh': text_zh,
