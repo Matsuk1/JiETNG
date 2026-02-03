@@ -332,7 +332,7 @@ async def get_maimai_info(cookies: dict, ver="jp"):
         rating_block_url = player_dom.xpath('//img[contains(@class, "h_30") and contains(@class, "f_r")]/@src')
         rating = player_dom.xpath('//div[@class="rating_block"]/text()')
         cource_rank_url = player_dom.xpath('//img[contains(@class, "h_35") and contains(@class, "f_l")]/@src')
-        class_rank_url = player_dom.xpath('//img[contains(@class, "p_l_10") and contains(@class, "h_35") and contains(@class, "f_l")]/@src')
+        class_rank_url = player_dom.xpath('//img[contains(@class, "w_160") and contains(@class, "p_15") and contains(@class, "m_r_10")]/@src')
 
         # 头像
         icon_url = collection_dom.xpath('//img[contains(@class, "w_80") and contains(@class, "m_r_10") and contains(@class, "f_l")]/@src')

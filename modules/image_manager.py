@@ -10,6 +10,9 @@ font_large  = ImageFont.truetype(FONT_PATH, 28)
 font_stadium = ImageFont.truetype(FONT_PATH, 19)
 font_small = ImageFont.truetype(FONT_PATH, 14)
 
+font_profile = ImageFont.truetype(FONT_PATH, 32)
+font_trophy = ImageFont.truetype(FONT_PATH, 24)
+
 font_song_title = ImageFont.truetype(FONT_PATH, 34)
 font_song_info = ImageFont.truetype(FONT_PATH, 24)
 font_level_badge = ImageFont.truetype(FONT_PATH, 40)

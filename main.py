@@ -28,7 +28,7 @@ import gc
 from functools import wraps
 from datetime import datetime
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 from io import BytesIO
 
 from flask import (
@@ -1868,7 +1868,7 @@ def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="jp"):
 
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
-    profile_img = generate_profile(user_info, scale=2.55)
+    profile_img = generate_profile(user_info, scale=1.5)
     user_tz = get_user_timezone(id_use)
     img = compose_images([profile_img, record_img], timezone_offset=user_tz)
 
@@ -1884,7 +1884,7 @@ def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="jp"):
     return message
 
 
-def generate_profile(user_info, scale=1.7):
+def generate_profile(user_info, scale=1):
     """
     创建用户信息图片
 
@@ -1896,8 +1896,8 @@ def generate_profile(user_info, scale=1.7):
         PIL.Image: 用户信息图片
     """
 
-    img_width = 802
-    img_height = 128
+    img_width = 1363
+    img_height = 218
     info_img = Image.new("RGBA", (img_width, img_height), (255, 255, 255))
     draw = ImageDraw.Draw(info_img)
 
@@ -1927,7 +1927,7 @@ def generate_profile(user_info, scale=1.7):
                 img = Image.open(BytesIO(response.content))
                 if img.mode != "RGBA":
                     img = img.convert("RGBA")
-                img_resized = img.resize(size)
+                img_resized = img.resize(size, Image.LANCZOS)
                 info_img.paste(img_resized, position, img_resized)
                 return True
 
@@ -1936,38 +1936,38 @@ def generate_profile(user_info, scale=1.7):
                 return None
         return None
 
-    paste_image("nameplate_url", (0, 0), (802, 128))
+    paste_image("nameplate_url", (0, 0), (1363, 218))
 
-    paste_image("icon_url", (15, 13), (100, 100))
+    paste_image("icon_url", (26, 22), (170, 170))
 
-    paste_image("rating_block_url", (129, 13), (131, 34))
+    paste_image("rating_block_url", (219, 22), (223, 58))
 
-    # 使用等宽方式绘制 rating 数字，每个数字在自己的位置内居中
+    # 使用等宽方式绘制 rating 数字
     rating_text = user_info['rating'].rjust(5)
-    char_width = 13  # 每个字符的固定宽度
-    start_x = 186
+    char_width = 23  # 每个字符的固定宽度
+    start_x = 314
     for i, char in enumerate(rating_text):
         # 计算字符的实际宽度
-        char_bbox = draw.textbbox((0, 0), char, font=font_stadium)
+        char_bbox = draw.textbbox((0, 0), char, font=font_profile)
         actual_char_width = char_bbox[2] - char_bbox[0]
         # 在固定宽度区域内居中
         offset = (char_width - actual_char_width) / 2
-        draw.text((start_x + i * char_width + offset, 15), char, fill=(255, 255, 255), font=font_stadium)
+        draw.text((start_x + i * char_width + offset, 26), char, fill=(255, 255, 255), font=font_profile)
 
     # 绘制昵称
-    draw.rounded_rectangle([129, 51, 129 + 266, 51 + 33], radius=10, fill=(255, 255, 255), outline=(180, 180, 180), width=2)
-    draw.text((138, 54), user_info['name'], fill=(0, 0, 0), font=font_stadium)
+    draw.rounded_rectangle([219, 87, 671, 143], radius=10, fill=(255, 255, 255), outline=(180, 180, 180), width=2)
+    draw.text((235, 92), user_info['name'], fill=(0, 0, 0), font=font_profile)
 
-    paste_image("class_rank_url", (296, 9), (70, 40))
-    paste_image("cource_rank_url", (322, 54), (69, 28))
-    paste_image("trophy_url", (129, 92), (266, 21))
+    paste_image("class_rank_url", (503, 15), (119, 68))
+    paste_image("cource_rank_url", (547, 92), (117, 48))
+    paste_image("trophy_url", (219, 156), (452, 36))
 
-    trophy_content = truncate_text(draw, user_info['trophy_content'], font_small, 253)
-    bbox = draw.textbbox((0, 0), trophy_content, font=font_small)
+    trophy_content = truncate_text(draw, user_info['trophy_content'], font_trophy, 430)
+    bbox = draw.textbbox((0, 0), trophy_content, font=font_trophy)
     text_width = bbox[2] - bbox[0]
-    rect_width = 266
-    center_x = 129 + (rect_width - text_width) // 2
-    draw.text((center_x, 90), trophy_content, fill=(0, 0, 0), font=font_small)
+    rect_width = 452
+    center_x = 219 + (rect_width - text_width) // 2
+    draw.text((center_x, 153), trophy_content, fill=(0, 0, 0), font=font_trophy)
 
     info_img = info_img.resize((int(img_width * scale), int(img_height * scale)), Image.Resampling.LANCZOS)
     return info_img
