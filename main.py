@@ -1959,7 +1959,7 @@ def generate_profile(user_info, scale=1):
     draw.text((235, 92), user_info['name'], fill=(0, 0, 0), font=font_profile)
 
     paste_image("class_rank_url", (503, 15), (119, 68))
-    paste_image("cource_rank_url", (547, 92), (117, 48))
+    paste_image("cource_rank_url", (550, 91), (117, 48))
     paste_image("trophy_url", (219, 156), (452, 36))
 
     trophy_content = truncate_text(draw, user_info['trophy_content'], font_trophy, 430)
