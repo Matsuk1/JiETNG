@@ -732,18 +732,18 @@ def website_segaid_bind():
         token_missing_message = """トークンが提供されていません。<br />
 Token not provided. <br />
 未提供令牌。"""
-        return render_template("error.html", message=token_missing_message, language="ja", account_id=LINE_ACCOUNT_ID), 400
+        return render_template("error.html", message=token_missing_message, language="ja"), 400
 
     try:
         user_id = get_user_id_from_token(token)
         if user_id not in USERS:
             token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
-            return render_template("error.html", message=token_invalid_message, language="ja", account_id=LINE_ACCOUNT_ID), 400
+            return render_template("error.html", message=token_invalid_message, language="ja"), 400
         
     except Exception as e:
         logger.error(f"[Auth] ✗ Token verification failed: error={e}")
         token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
-        return render_template("error.html", message=token_invalid_message, language="ja", account_id=LINE_ACCOUNT_ID), 400
+        return render_template("error.html", message=token_invalid_message, language="ja"), 400
 
     if request.method == "POST":
         segaid = request.form.get("segaid")
@@ -770,7 +770,7 @@ Token not provided. <br />
                 "en": "A SEGA account is already linked. To rebind, please use the unbind command first to unlink your account.",
                 "zh": "已绑定 SEGA 账号。如需重新绑定，请先使用 unbind 命令解除绑定。"
             }
-            return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language, account_id=LINE_ACCOUNT_ID), 400
+            return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
 
         # 在 rebind 模式下，验证 segaid 必须与现有的一致
         if mode == "rebind":
@@ -780,7 +780,7 @@ Token not provided. <br />
                     "en": "No account is linked.",
                     "zh": "未绑定账号。"
                 }
-                return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language, account_id=LINE_ACCOUNT_ID), 400
+                return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
 
             if segaid != user_data.get('sega_id'):
                 error_messages = {
@@ -788,7 +788,7 @@ Token not provided. <br />
                     "en": "You cannot change the SEGA ID.",
                     "zh": "无法更改 SEGA ID。"
                 }
-                return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language, account_id=LINE_ACCOUNT_ID), 400
+                return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
 
         if not segaid or not password:
             missing_fields_messages = {
@@ -796,7 +796,7 @@ Token not provided. <br />
                 "en": "Please fill in all fields.",
                 "zh": "请填写所有字段。"
             }
-            return render_template("error.html", message=missing_fields_messages.get(user_language, missing_fields_messages["ja"]), language=user_language, account_id=LINE_ACCOUNT_ID), 400
+            return render_template("error.html", message=missing_fields_messages.get(user_language, missing_fields_messages["ja"]), language=user_language), 400
 
         # 转换时区为整数
         try:
@@ -817,7 +817,7 @@ Token not provided. <br />
                 "en": "The official website is under maintenance. Please try again later.",
                 "zh": "官方网站正在维护中。请稍后再试。"
             }
-            return render_template("error.html", message=maintenance_messages.get(user_language, maintenance_messages["ja"]), language=user_language, account_id=LINE_ACCOUNT_ID), 503
+            return render_template("error.html", message=maintenance_messages.get(user_language, maintenance_messages["ja"]), language=user_language), 503
         elif result:
             return render_template("success.html", language=user_language, mode=mode)
         else:
@@ -826,7 +826,7 @@ Token not provided. <br />
                 "en": "Invalid SEGA ID or password. Please check and try again.",
                 "zh": "SEGA ID 或密码不正确。请检查后重试。"
             }
-            return render_template("error.html", message=invalid_credentials_messages.get(user_language, invalid_credentials_messages["ja"]), language=user_language, account_id=LINE_ACCOUNT_ID), 500
+            return render_template("error.html", message=invalid_credentials_messages.get(user_language, invalid_credentials_messages["ja"]), language=user_language), 500
 
     # GET 请求时，从用户数据中获取语言设置和其他信息
     user_data = USERS.get(user_id, {})
@@ -4651,30 +4651,38 @@ def api_list_users():
         }), 500
 
 
-@app.route("/api/v1/register/<user_id>", methods=["POST"])
+@app.route("/api/v1/users", methods=["POST"])
 @csrf.exempt
 @require_dev_token
-def api_register_user(user_id):
+def api_create_user():
     """
-    用户注册 API - 生成绑定链接
+    创建用户 API (RESTful) - 生成绑定链接
 
     需要 Bearer Token 认证
 
     请求体 (JSON):
-    - nickname: 必需，用户昵称（如果是LINE用户会自动从LINE API获取，非LINE用户则使用此参数）
+    - user_id: 必需，用户ID
+    - nickname: 必需，用户昵称
     - language: 可选，语言设置 (ja/en/zh)，默认为 en
 
     返回:
     - bind_url: 绑定页面链接
     - token: 绑定 token（2分钟有效）
     - expires_in: token 过期时间（秒）
-    - nickname: 实际使用的昵称
     """
     try:
         # 获取 JSON 数据
         data = request.get_json() or {}
+        user_id = data.get('user_id', '')
         nickname = data.get('nickname', '')
         language = data.get('language', 'en')
+
+        # user_id 是必需参数
+        if not user_id:
+            return jsonify({
+                "error": "Missing parameter",
+                "message": "Parameter 'user_id' is required"
+            }), 400
 
         # nickname 是必需参数
         if not nickname:
@@ -4692,14 +4700,14 @@ def api_register_user(user_id):
 
         # 记录 API 访问日志
         token_info = request.token_info
-        logger.info(f"[API] Register user: user_id={user_id}, nickname={nickname}, language={language}, token_id={token_info['token_id']}, note={token_info['note']}")
+        logger.info(f"[API] Create user: user_id={user_id}, nickname={nickname}, language={language}, token_id={token_info['token_id']}, note={token_info['note']}")
 
         # 读取用户数据
         if user_id in USERS:
             return jsonify({
                 "error": "User already exists",
                 "message": f"User {user_id} was created already."
-            }), 409  # 409 Conflict 更合适
+            }), 409
 
         # 生成绑定 token
         bind_token = generate_bind_token(user_id)
@@ -4723,17 +4731,17 @@ def api_register_user(user_id):
             "token": bind_token,
             "expires_in": 120,
             "message": "Bind URL generated successfully. Token expires in 2 minutes."
-        })
+        }), 201
 
     except Exception as e:
-        logger.error(f"[API] ✗ Register user error: user_id={user_id}, error={e}", exc_info=True)
+        logger.error(f"[API] ✗ Create user error: user_id={user_id}, error={e}", exc_info=True)
         return jsonify({
             "error": "Internal server error",
             "message": str(e)
         }), 500
 
 
-@app.route("/api/v1/user/<user_id>", methods=["GET"])
+@app.route("/api/v1/users/<user_id>", methods=["GET"])
 @csrf.exempt
 @require_dev_token
 @require_user_permission
@@ -4766,7 +4774,7 @@ def api_get_user(user_id):
         }), 500
 
 
-@app.route("/api/v1/user/<user_id>", methods=["DELETE"])
+@app.route("/api/v1/users/<user_id>", methods=["DELETE"])
 @csrf.exempt
 @require_dev_token
 @require_owner_permission
@@ -4801,12 +4809,194 @@ def api_delete_user(user_id):
         }), 500
 
 
-@app.route("/api/v1/perm/<user_id>", methods=["POST"])
+@app.route("/api/v1/users/<user_id>/sync", methods=["POST"])
 @csrf.exempt
 @require_dev_token
-def api_request_permission(user_id):
+@require_user_permission
+def api_sync_user_data(user_id):
     """
-    请求访问用户的权限 API
+    触发用户数据同步 API (RESTful)
+
+    需要 Bearer Token 认证并拥有该用户的访问权限
+
+    将用户加入更新队列，异步执行数据同步
+    """
+    try:
+        # 检查用户是否已绑定账号
+        if 'sega_id' not in USERS[user_id] or 'sega_pwd' not in USERS[user_id]:
+            return jsonify({
+                "error": "Account not bound",
+                "message": f"User {user_id} has not bound a SEGA account"
+            }), 400
+
+        # 创建模拟事件对象用于更新任务
+        class MockEvent:
+            def __init__(self, user_id):
+                self.source = type('obj', (object,), {'user_id': user_id})()
+                self.reply_token = None  # API 调用不需要回复
+
+        mock_event = MockEvent(user_id)
+
+        # 生成任务ID
+        task_id = f"api_sync_{secrets.token_hex(8)}"
+
+        # 将更新任务加入队列
+        try:
+            webtask_queue.put_nowait((async_maimai_update_task, (mock_event,), task_id))
+
+            # 记录 API 访问日志
+            token_info = request.token_info
+            logger.info(f"[API] ✓ Sync triggered: user_id={user_id}, task_id={task_id}, token_id={token_info['token_id']}, note={token_info['note']}")
+
+            return jsonify({
+                "success": True,
+                "message": "Sync task queued successfully",
+                "user_id": user_id,
+                "task_id": task_id,
+                "queue_size": webtask_queue.qsize()
+            }), 202  # 202 Accepted 更适合异步操作
+
+        except queue.Full:
+            return jsonify({
+                "error": "Queue full",
+                "message": "Sync queue is full, please try again later",
+                "queue_size": webtask_queue.qsize()
+            }), 503
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Sync user error: user_id={user_id}, error={e}", exc_info=True)
+        return jsonify({
+            "error": "Internal server error",
+            "message": str(e)
+        }), 500
+
+@app.route("/api/v1/users/<user_id>/records", methods=["GET"])
+@csrf.exempt
+@require_dev_token
+@require_user_permission
+def api_get_user_records(user_id):
+    """
+    获取用户成绩记录 API (RESTful)
+
+    需要 Bearer Token 认证并拥有该用户的访问权限
+
+    参数:
+    - type: 可选，记录类型，默认为 best50
+      可选值: best50, best100, best35, best15, allb50, allb100, allb200, allb35, apb50, rct50, idlb50, UNKNOWN
+    - level: 可选，定数范围，如 "14,15" 或 "14.0-15.0"
+    - rating: 可选，rating范围，如 "100-200"
+    - version: 可选，版本过滤
+    - difficulty: 可选，难度过滤
+    """
+    try:
+        # 获取查询参数
+        record_type = request.args.get('type', 'best50')
+
+        # 支持新的查询参数格式，但向后兼容command参数
+        command = request.args.get('command', '')
+        if not command:
+            # 构建command from new parameters
+            level = request.args.get('level', '')
+            rating = request.args.get('rating', '')
+            version = request.args.get('version', '')
+            difficulty = request.args.get('difficulty', '')
+
+            command_parts = []
+            if level:
+                if '-' in level:
+                    min_lv, max_lv = level.split('-')
+                    command_parts.append(f"-lv {min_lv} {max_lv}")
+                elif ',' in level:
+                    levels = level.replace(',', ' ')
+                    command_parts.append(f"-lv {levels}")
+                else:
+                    command_parts.append(f"-lv {level}")
+
+            if rating:
+                if '-' in rating:
+                    min_ra, max_ra = rating.split('-')
+                    command_parts.append(f"-ra {min_ra} {max_ra}")
+                else:
+                    command_parts.append(f"-ra {rating}")
+
+            if version:
+                command_parts.append(f"-ver {version}")
+
+            if difficulty:
+                command_parts.append(f"-diff {difficulty}")
+
+            command = ' '.join(command_parts)
+
+        # 记录 API 访问日志
+        token_info = request.token_info
+        logger.info(f"[API] Get user records: user_id={user_id}, type={record_type}, token_id={token_info['token_id']}, note={token_info['note']}")
+
+        # 验证 record_type
+        valid_types = ["best50", "best40", "best100", "best35", "best15", "allb50", "allb100", "allb200", "allb35", "apb50", "rct50", "idlb50", "UNKNOWN"]
+        if record_type not in valid_types:
+            return jsonify({
+                "error": "Invalid type",
+                "message": f"Invalid record type: {record_type}. Valid types: {', '.join(valid_types)}"
+            }), 400
+
+        # 检查是否有个人信息
+        if "personal_info" not in USERS[user_id]:
+            return jsonify({
+                "error": "User info not found",
+                "message": f"User {user_id} has no personal info, please update first"
+            }), 400
+
+        # 获取用户版本
+        ver = USERS[user_id].get('version', 'jp')
+
+        # 读取用户记录
+        recent = (record_type == "rct50")
+        recent_type = (record_type == "best40")
+        song_record = read_record(user_id, recent, recent_type)
+        if not len(song_record):
+            return jsonify({
+                "error": "No records found",
+                "message": f"User {user_id} has no score records"
+            }), 404
+
+        # 调用 select_records 函数获取筛选后的记录
+        up_songs, down_songs = select_records(song_record, record_type, command, ver)
+
+        if not up_songs and not down_songs:
+            return jsonify({
+                "success": True,
+                "count": 0,
+                "old_songs": [],
+                "new_songs": [],
+                "message": "No records match the criteria"
+            })
+
+        return jsonify({
+            "success": True,
+            "user_id": user_id,
+            "type": record_type,
+            "count": len(up_songs) + len(down_songs),
+            "old_songs": up_songs,
+            "new_songs": down_songs
+        })
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Get user records error: user_id={user_id}, error={e}", exc_info=True)
+        return jsonify({
+            "error": "Internal server error",
+            "message": str(e)
+        }), 500
+
+
+
+# ==================== Permission Management APIs (RESTful) ====================
+
+@app.route("/api/v1/users/<user_id>/permissions", methods=["POST"])
+@csrf.exempt
+@require_dev_token
+def api_request_user_permission(user_id):
+    """
+    请求访问用户的权限 API (RESTful)
 
     需要 Bearer Token 认证
 
@@ -4845,7 +5035,8 @@ def api_request_permission(user_id):
                 "request_id": result['request_id'],
                 "user_id": user_id,
                 "message": result['message']
-            })
+            }), 201  # 201 Created for new permission request
+
         else:
             # 根据错误类型返回不同的 HTTP 状态码
             status_code = 404 if result['error'] == "User not found" else 400
@@ -4862,13 +5053,13 @@ def api_request_permission(user_id):
         }), 500
 
 
-@app.route("/api/v1/perm/<user_id>/requests", methods=["GET"])
+@app.route("/api/v1/users/<user_id>/permissions/requests", methods=["GET"])
 @csrf.exempt
 @require_dev_token
 @require_owner_permission
-def api_get_perm_requests(user_id):
+def api_get_user_permission_requests(user_id):
     """
-    获取用户的待处理权限请求列表 API
+    获取用户的待处理权限请求列表 API (RESTful)
 
     需要 Bearer Token 认证（该 token 必须是用户的所有者）
 
@@ -4898,206 +5089,152 @@ def api_get_perm_requests(user_id):
         }), 500
 
 
-@app.route("/api/v1/perm/<user_id>/accept", methods=["POST"])
+@app.route("/api/v1/users/<user_id>/permissions", methods=["PATCH"])
 @csrf.exempt
 @require_dev_token
 @require_owner_permission
-def api_accept_perm_request(user_id):
+def api_manage_user_permission(user_id):
     """
-    接受权限请求 API
+    管理用户权限请求 API (RESTful)
 
     需要 Bearer Token 认证（该 token 必须是用户的所有者 token）
 
     请求体 (JSON):
-    - request_id: 必需，要接受的权限请求ID
+    - request_id: 必需，要处理的权限请求ID
+    - action: 必需，操作类型 ("accept" 或 "reject")
 
     返回:
-    - success: 是否成功接受
-    - token_id: 被授权的 token ID
+    - success: 是否成功处理
+    - token_id: 被授权的 token ID (仅在接受时返回)
     - message: 状态信息
     """
     try:
         # 获取 JSON 数据
         data = request.get_json() or {}
         request_id = data.get('request_id', '')
+        action = data.get('action', '')
 
-        # request_id 是必需参数
+        # 验证必需参数
         if not request_id:
             return jsonify({
                 "error": "Missing parameter",
                 "message": "Parameter 'request_id' is required"
             }), 400
 
-        # 记录 API 访问日志
-        token_info = request.token_info
-        logger.info(f"[API] Accept permission request: request_id={request_id}, user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
-
-        # 接受权限请求
-        result = accept_perm_request(user_id, request_id)
-
-        if result['success']:
+        if action not in ['accept', 'reject']:
             return jsonify({
-                "success": True,
-                "user_id": user_id,
-                "token_id": result['token_id'],
-                "token_note": result['token_note'],
-                "message": result['message']
-            })
-        else:
-            # 根据错误类型返回不同的 HTTP 状态码
-            status_code = 404 if result['error'] in ["User not found", "Request not found", "Invalid token"] else 400
-            return jsonify({
-                "error": result['error'],
-                "message": result['message']
-            }), status_code
-
-    except Exception as e:
-        logger.error(f"[API] ✗ Accept permission request error: user_id={user_id}, request_id={request_id}, error={e}", exc_info=True)
-        return jsonify({
-            "error": "Internal server error",
-            "message": str(e)
-        }), 500
-
-
-@app.route("/api/v1/perm/<user_id>/reject", methods=["POST"])
-@csrf.exempt
-@require_dev_token
-@require_owner_permission
-def api_reject_perm_request(user_id):
-    """
-    拒绝权限请求 API
-
-    需要 Bearer Token 认证（该 token 必须是用户的所有者 token）
-
-    请求体 (JSON):
-    - request_id: 必需，要拒绝的权限请求ID
-
-    返回:
-    - success: 是否成功拒绝
-    - message: 状态信息
-    """
-    try:
-        # 获取 JSON 数据
-        data = request.get_json() or {}
-        request_id = data.get('request_id', '')
-
-        # request_id 是必需参数
-        if not request_id:
-            return jsonify({
-                "error": "Missing parameter",
-                "message": "Parameter 'request_id' is required"
+                "error": "Invalid parameter",
+                "message": "Parameter 'action' must be 'accept' or 'reject'"
             }), 400
 
         # 记录 API 访问日志
         token_info = request.token_info
-        logger.info(f"[API] Reject permission request: request_id={request_id}, user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
+        logger.info(f"[API] Manage permission: action={action}, request_id={request_id}, user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
 
-        # 拒绝权限请求
-        result = reject_perm_request(user_id, request_id)
+        # 根据action执行相应操作
+        if action == 'accept':
+            result = accept_perm_request(user_id, request_id)
+            if result['success']:
+                return jsonify({
+                    "success": True,
+                    "user_id": user_id,
+                    "token_id": result['token_id'],
+                    "token_note": result['token_note'],
+                    "message": result['message']
+                })
+        else:  # reject
+            result = reject_perm_request(user_id, request_id)
+            if result['success']:
+                return jsonify({
+                    "success": True,
+                    "user_id": user_id,
+                    "token_id": result['token_id'],
+                    "token_note": result['token_note'],
+                    "message": result['message']
+                })
 
-        if result['success']:
-            return jsonify({
-                "success": True,
-                "user_id": user_id,
-                "token_id": result['token_id'],
-                "token_note": result['token_note'],
-                "message": result['message']
-            })
-        else:
-            # 根据错误类型返回不同的 HTTP 状态码
-            status_code = 404 if result['error'] in ["User not found", "Request not found"] else 400
-            return jsonify({
-                "error": result['error'],
-                "message": result['message']
-            }), status_code
+        # 处理错误
+        status_code = 404 if result['error'] in ["User not found", "Request not found", "Invalid token"] else 400
+        return jsonify({
+            "error": result['error'],
+            "message": result['message']
+        }), status_code
 
     except Exception as e:
-        logger.error(f"[API] ✗ Reject permission request error: user_id={user_id}, request_id={request_id}, error={e}", exc_info=True)
+        logger.error(f"[API] ✗ Manage permission error: user_id={user_id}, request_id={request_id}, action={action}, error={e}", exc_info=True)
         return jsonify({
             "error": "Internal server error",
             "message": str(e)
         }), 500
 
 
-@app.route("/api/v1/perm/<user_id>/revoke", methods=["POST"])
+@app.route("/api/v1/users/<user_id>/permissions/<token_id>", methods=["DELETE"])
 @csrf.exempt
 @require_dev_token
 @require_owner_permission
-def api_revoke_perm(user_id):
+def api_revoke_user_permission(user_id, token_id):
     """
-    撤销已授予的权限 API
+    撤销已授予的权限 API (RESTful)
 
     需要 Bearer Token 认证（该 token 必须是用户的所有者）
-
-    请求体 (JSON):
-    - token_id: 必需，要撤销权限的 token ID
 
     返回:
     - success: 是否成功撤销
     - message: 状态信息
     """
     try:
-        # 获取 JSON 数据
-        data = request.get_json() or {}
-        target_token_id = data.get('token_id', '')
-
-        # token_id 是必需参数
-        if not target_token_id:
-            return jsonify({
-                "error": "Missing parameter",
-                "message": "Parameter 'token_id' is required"
-            }), 400
-
         # 记录 API 访问日志
         token_info = request.token_info
-        logger.info(f"[API] Revoke permission: target_token_id={target_token_id}, user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
+        logger.info(f"[API] Revoke permission: target_token_id={token_id}, user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
 
         # 加载 dev tokens
         dev_tokens = load_dev_tokens()
 
-        if target_token_id not in dev_tokens:
+        if token_id not in dev_tokens:
             return jsonify({
                 "error": "Token not found",
-                "message": f"Token {target_token_id} does not exist"
+                "message": f"Token {token_id} does not exist"
             }), 404
 
         # 从 allowed_users 列表中移除该用户
-        allowed_users = dev_tokens[target_token_id].get('allowed_users', [])
+        allowed_users = dev_tokens[token_id].get('allowed_users', [])
         if user_id in allowed_users:
             allowed_users.remove(user_id)
-            dev_tokens[target_token_id]['allowed_users'] = allowed_users
+            dev_tokens[token_id]['allowed_users'] = allowed_users
             save_dev_tokens(dev_tokens)
 
             return jsonify({
                 "success": True,
                 "user_id": user_id,
-                "token_id": target_token_id,
-                "message": f"Permission revoked for token {target_token_id}"
+                "token_id": token_id,
+                "message": f"Permission revoked for token {token_id}"
             })
         else:
             return jsonify({
                 "error": "Permission not found",
-                "message": f"Token {target_token_id} does not have permission to access user {user_id}"
+                "message": f"Token {token_id} does not have permission to access user {user_id}"
             }), 404
 
     except Exception as e:
-        logger.error(f"[API] ✗ Revoke permission error: user_id={user_id}, target_token_id={target_token_id}, error={e}", exc_info=True)
+        logger.error(f"[API] ✗ Revoke permission error: user_id={user_id}, target_token_id={token_id}, error={e}", exc_info=True)
         return jsonify({
             "error": "Internal server error",
             "message": str(e)
         }), 500
 
 
-@app.route("/api/v1/task/<task_id>", methods=["GET"])
+# ==================== Task Status API (RESTful) ====================
+
+@app.route("/api/v1/tasks/<task_id>", methods=["GET"])
 @csrf.exempt
 @require_dev_token
-def api_get_task_status(task_id):
+def api_get_task(task_id):
     """
-    查询任务状态 API
+    查询任务状态 API (RESTful)
 
     需要 Bearer Token 认证
 
-    返回指定任务的状态信息（running, queued, completed, 或 not_found）
+    返回指定任务的状态信息（running, queued, completed, cancelled 或 not_found）
     """
     try:
         with task_tracking_lock:
@@ -5161,154 +5298,15 @@ def api_get_task_status(task_id):
             "message": str(e)
         }), 500
 
-@app.route("/api/v1/update/<user_id>", methods=["POST"])
+
+# ==================== Song Search API (RESTful) ====================
+
+@app.route("/api/v1/songs/search", methods=["GET"])
 @csrf.exempt
 @require_dev_token
-@require_user_permission
-def api_update_user(user_id):
+def api_search_songs_restful():
     """
-    触发用户数据更新 API
-
-    需要 Bearer Token 认证并拥有该用户的访问权限
-
-    将用户加入更新队列，异步执行数据更新
-    """
-    try:
-        # 检查用户是否已绑定账号
-        if 'sega_id' not in USERS[user_id] or 'sega_pwd' not in USERS[user_id]:
-            return jsonify({
-                "error": "Account not bound",
-                "message": f"User {user_id} has not bound a SEGA account"
-            }), 400
-
-        # 创建模拟事件对象用于更新任务
-        class MockEvent:
-            def __init__(self, user_id):
-                self.source = type('obj', (object,), {'user_id': user_id})()
-                self.reply_token = None  # API 调用不需要回复
-
-        mock_event = MockEvent(user_id)
-
-        # 生成任务ID
-        task_id = f"api_update_{secrets.token_hex(8)}"
-
-        # 将更新任务加入队列
-        try:
-            webtask_queue.put_nowait((async_maimai_update_task, (mock_event,), task_id))
-
-            # 记录 API 访问日志
-            token_info = request.token_info
-            logger.info(f"[API] ✓ Update triggered: user_id={user_id}, task_id={task_id}, token_id={token_info['token_id']}, note={token_info['note']}")
-
-            return jsonify({
-                "success": True,
-                "message": "Update task queued successfully",
-                "user_id": user_id,
-                "task_id": task_id,
-                "queue_size": webtask_queue.qsize()
-            })
-
-        except queue.Full:
-            return jsonify({
-                "error": "Queue full",
-                "message": "Update queue is full, please try again later",
-                "queue_size": webtask_queue.qsize()
-            }), 503
-
-    except Exception as e:
-        logger.error(f"[API] ✗ Update user error: user_id={user_id}, error={e}", exc_info=True)
-        return jsonify({
-            "error": "Internal server error",
-            "message": str(e)
-        }), 500
-
-@app.route("/api/v1/records/<user_id>", methods=["GET"])
-@csrf.exempt
-@require_dev_token
-@require_user_permission
-def api_get_records(user_id):
-    """
-    获取用户成绩记录 API
-
-    需要 Bearer Token 认证并拥有该用户的访问权限
-
-    参数:
-    - type: 可选，记录类型，默认为 best50
-      可选值: best50, best100, best35, best15, allb50, allb100, allb200, allb35, apb50, rct50, idlb50, UNKNOWN
-    - command: 可选，过滤命令，如 "-lv 14 15 -ra 100 200"
-    """
-    try:
-        # 获取查询参数
-        record_type = request.args.get('type', 'best50')
-        command = request.args.get('command', '')
-
-        # 记录 API 访问日志
-        token_info = request.token_info
-        logger.info(f"[API] Get records: user_id={user_id}, type={record_type}, token_id={token_info['token_id']}, note={token_info['note']}")
-
-        # 验证 record_type
-        valid_types = ["best50", "best40", "best100", "best35", "best15", "allb50", "allb100", "allb200", "allb35", "apb50", "rct50", "idlb50", "UNKNOWN"]
-        if record_type not in valid_types:
-            return jsonify({
-                "error": "Invalid type",
-                "message": f"Invalid record type: {record_type}. Valid types: {', '.join(valid_types)}"
-            }), 400
-
-        # 检查是否有个人信息
-        if "personal_info" not in USERS[user_id]:
-            return jsonify({
-                "error": "User info not found",
-                "message": f"User {user_id} has no personal info, please update first"
-            }), 400
-
-        # 获取用户版本
-        ver = USERS[user_id].get('version', 'jp')
-
-        # 读取用户记录
-        recent = (record_type == "rct50")
-        recent_type = (record_type == "best40")
-        song_record = read_record(user_id, recent, recent_type)
-        if not len(song_record):
-            return jsonify({
-                "error": "No records found",
-                "message": f"User {user_id} has no score records"
-            }), 404
-
-        # 调用 select_records 函数获取筛选后的记录
-        up_songs, down_songs = select_records(song_record, record_type, command, ver)
-
-        if not up_songs and not down_songs:
-            return jsonify({
-                "success": True,
-                "count": 0,
-                "old_songs": [],
-                "new_songs": [],
-                "message": "No records match the criteria"
-            })
-
-        return jsonify({
-            "success": True,
-            "user_id": user_id,
-            "type": record_type,
-            "count": len(up_songs) + len(down_songs),
-            "old_songs": up_songs,
-            "new_songs": down_songs
-        })
-
-    except Exception as e:
-        logger.error(f"[API] ✗ Get records error: user_id={user_id}, error={e}", exc_info=True)
-        return jsonify({
-            "error": "Internal server error",
-            "message": str(e)
-        }), 500
-
-
-@app.route("/api/v1/search", methods=["GET"])
-@csrf.exempt
-@require_dev_token
-def api_search_songs():
-    """
-    搜索歌曲 API
+    搜索歌曲 API (RESTful)
 
     需要 Bearer Token 认证
 
@@ -5316,6 +5314,7 @@ def api_search_songs():
     - q: 可选，搜索关键词，如果不提供或使用 __empty__ 则搜索空字符串
     - ver: 可选，服务器版本 (jp/intl)，默认为 jp
     - max_results: 可选，最大结果数，默认为 6
+    - user_id: 可选，用户ID，提供时返回用户对应歌曲的游玩记录
     """
     try:
         # 获取查询参数，允许空字符串
@@ -5423,7 +5422,6 @@ def api_search_songs():
             "ver": ver,
             "records": result
         })
-
 
     except Exception as e:
         logger.error(f"[API] ✗ Search songs error: query='{query}', error={e}", exc_info=True)

@@ -38,7 +38,7 @@ Supports Japanese and International servers
 - **Performance Optimization**: Dual-queue architecture (image/network queues) with rate limiting
 - **Multi-language Support**: Japanese/English/Chinese interface with multilingual documentation
 
-### 📖 Complete Command List
+### Complete Command List
 
 Detailed commands list is here **[Online Command Docs](https://jietng.matsuki.work/en/commands/)**
 

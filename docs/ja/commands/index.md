@@ -69,7 +69,7 @@
 | `ab35` | `allb35`, `all best 35`, `オールベスト35` | 全バージョン混合のBest 35 |
 | `ab50` | `allb50`, `all best 50`, `オールベスト50` | 全バージョン混合のBest 50 |
 | `ab100` | `allb100`, `all best 100`, `オールベスト100` | 全バージョン混合のBest 100 |
-| `nxtb50` | `nextb50`, `next best 100`, `ネクストベスト100` | 次のバージョン混合のBest 50 |
+| `nxtb50` | `nextb50`, `next best 50`, `ネクストベスト50` | 次のバージョン混合のBest 50 |
 | `nxtb35` | `nextb35`, `next best 35`, `ネクストベスト35` | 次のバージョン混合のBest 35 |
 | `nxtb15` | `nextb15`, `next best 15`, `ネクストベスト15` | 次のバージョン混合のBest 15 |
 | `apb50` | `ap50`, `all perfect 50`, `オールパーフェクト50` | AP/AP+のみのBest 50 |

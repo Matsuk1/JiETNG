@@ -28,7 +28,7 @@ If you want to use the JiETNG API, follow these steps to get an access token:
 
 ### API Base Information
 
-- **Base URL**: `https://jietng.matsuki.top/api/v1/`
+- **Base URL**: `https://jietng-endpoint.matsuki.work/api/v1/`
 - **Authentication**: Bearer Token
 - **Response Format**: JSON
 
@@ -37,7 +37,7 @@ If you want to use the JiETNG API, follow these steps to get an access token:
 ```bash
 # Use your token to access the API
 curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-     "https://jietng.matsuki.top/api/v1/users"
+     "https://jietng-endpoint.matsuki.work/api/v1/users"
 ```
 
 
@@ -108,7 +108,7 @@ devtoken info <token_id>
 ### Base URL
 
 ```
-https://jietng.matsuki.top/api/v1/
+https://jietng-endpoint.matsuki.work/api/v1/
 ```
 
 ### Authentication
@@ -116,12 +116,12 @@ https://jietng.matsuki.top/api/v1/
 All API endpoints require Bearer Token authentication:
 
 ```bash
-curl -H "Authorization: Bearer <your_token>" https://jietng.matsuki.top/api/v1/...
+curl -H "Authorization: Bearer <your_token>" https://jietng-endpoint.matsuki.work/api/v1/...
 ```
 
 ### Available Endpoints
 
-All endpoints below should be prefixed with `https://jietng.matsuki.top/api/v1/`.
+All endpoints below should be prefixed with `https://jietng-endpoint.matsuki.work/api/v1/`.
 
 #### 1. Get User List
 
@@ -131,7 +131,7 @@ GET /api/v1/users
 
 **Example:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/users
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users
 ```
 
 **Response:**
@@ -152,10 +152,11 @@ curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/user
 #### 2. Register User
 
 ```http
-POST /api/v1/register/<user_id>
+POST /api/v1/users
 ```
 
 **Request Body (JSON):**
+- `user_id`: **Required**, user ID
 - `nickname`: **Required**, user nickname (automatically fetched from LINE API for LINE users, otherwise use this parameter)
 - `language`: Language setting (ja/en/zh, optional, defaults to en)
 
@@ -166,7 +167,7 @@ POST /api/v1/register/<user_id>
 
 **Example:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/json" -d '{"nickname":"TestUser","language":"en"}' https://jietng.matsuki.top/api/v1/register/U123456
+curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/json" -d '{"user_id":"U123456","nickname":"TestUser","language":"en"}' https://jietng-endpoint.matsuki.work/api/v1/users
 ```
 
 **Response:**
@@ -175,7 +176,7 @@ curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/
   "success": true,
   "user_id": "U123456",
   "nickname": "TestUser",
-  "bind_url": "https://jietng.matsuki.top/linebot/sega_bind?token=xxx&nickname=TestUser&language=en",
+  "bind_url": "https://jietng-endpoint.matsuki.work/linebot/sega_bind?token=xxx&nickname=TestUser&language=en",
   "token": "xxx",
   "expires_in": 120,
   "message": "Bind URL generated successfully. Token expires in 2 minutes."
@@ -191,12 +192,12 @@ New users registered via API will automatically track:
 #### 3. Get User Info
 
 ```http
-GET /api/v1/user/<user_id>
+GET /api/v1/users/<user_id>
 ```
 
 **Example:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/user/U123456
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456
 ```
 
 **Response:**
@@ -216,12 +217,12 @@ curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/user
 #### 4. Delete User
 
 ```http
-DELETE /api/v1/user/<user_id>
+DELETE /api/v1/users/<user_id>
 ```
 
 **Example:**
 ```bash
-curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/user/U123456
+curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456
 ```
 
 **Response:**
@@ -233,18 +234,20 @@ curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/a
 }
 ```
 
-#### 5. Queue User Update
+#### 5. Sync User Data
 
 ```http
-POST /api/v1/update/<user_id>
+POST /api/v1/users/<user_id>/sync
 ```
+
+**Description:** Asynchronously sync user data, returns 202 Accepted status code.
 
 **Example:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/update/U123456
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/sync
 ```
 
-**Response:**
+**Response (202 Accepted):**
 ```json
 {
   "success": true,
@@ -258,15 +261,15 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api
 #### 6. Query Task Status
 
 ```http
-GET /api/v1/task/<task_id>
+GET /api/v1/tasks/<task_id>
 ```
 
 **Description:**
-Query the status of an update task created via `/update/<user_id>`.
+Query the status of an update task created via `/users/<user_id>/sync`.
 
 **Example:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/task/task_xxx
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/tasks/task_xxx
 ```
 
 **Response:**
@@ -306,12 +309,16 @@ curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/task
 #### 7. Get User Records
 
 ```http
-GET /api/v1/records/<user_id>?type=<record_type>&command=<filter>
+GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rating>&version=<version>&difficulty=<difficulty>
 ```
 
 **Parameters:**
 - `type`: Record type (best50/best100/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idlb50, optional, defaults to best50)
-- `command`: Filter command (optional), supports the following parameters:
+- `level`: Filter by chart constant (single value or "min,max" range, optional)
+- `rating`: Filter by single song rating (single value or "min,max" range, optional)
+- `version`: Filter by game version (supports multiple versions, comma-separated, e.g., "buddies,prism", optional)
+- `difficulty`: Filter by chart difficulty (bas/adv/exp/mas/rem, supports multiple difficulties, comma-separated, optional)
+- `command`: **Deprecated, maintained for backward compatibility**, filter command (optional), supports the following parameters:
   - `-lv <constant>` or `-lv <min> <max>` - Filter by chart constant
   - `-ra <rating>` or `-ra <min> <max>` - Filter by single song rating
   - `-scr <achievement>` or `-scr <min> <max>` - Filter by achievement rate
@@ -322,19 +329,25 @@ GET /api/v1/records/<user_id>?type=<record_type>&command=<filter>
 **Example:**
 ```bash
 # Get best50
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50"
 
-# Filter specific version
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-ver%20buddies"
+# Filter specific version (new parameter)
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&version=buddies"
 
-# Filter MASTER difficulty
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-diff%20mas"
+# Filter MASTER difficulty (new parameter)
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&difficulty=mas"
 
-# Filter constant 14.0 and above
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-lv%2014.0"
+# Filter constant 14.0 and above (new parameter)
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&level=14.0"
 
-# Combined filter: MASTER difficulty and constant 14.0-15.0
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-diff%20mas%20-lv%2014.0%2015.0"
+# Filter constant range 14.0-15.0 (new parameter)
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&level=14.0,15.0"
+
+# Combined filter: MASTER difficulty and constant 14.0-15.0 (new parameter)
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&difficulty=mas&level=14.0,15.0"
+
+# Using old command parameter (backward compatible)
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&command=-diff%20mas%20-lv%2014.0%2015.0"
 ```
 
 **Response:**
@@ -349,7 +362,7 @@ curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/rec
 #### 8. Search Songs
 
 ```http
-GET /api/v1/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<limit>
+GET /api/v1/songs/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<limit>
 ```
 
 **Parameters:**
@@ -361,13 +374,13 @@ GET /api/v1/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<limit>
 **Example:**
 ```bash
 # Search Japanese songs
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/search?q=%E3%83%92%E3%83%90%E3%83%8A&ver=jp"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&ver=jp"
 
 # Search empty string song names
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/search?q=__empty__&ver=jp"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/songs/search?q=__empty__&ver=jp"
 
 # Match within the user's score database
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/search?q=%E3%83%92%E3%83%90%E3%83%8A&user_id=U123456"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&user_id=U123456"
 ```
 
 **Response:**
@@ -412,7 +425,7 @@ GET /api/v1/versions
 
 **Example:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/versions
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/versions
 ```
 
 **Response:**
@@ -454,7 +467,7 @@ The API uses two decorators to control access permissions:
 #### 10. Request Access Permission
 
 ```http
-POST /api/v1/perm/<user_id>
+POST /api/v1/users/<user_id>/permissions
 ```
 
 **Description:** Send a permission request to access the specified user's data.
@@ -469,7 +482,7 @@ POST /api/v1/perm/<user_id>
 curl -X POST -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"requester_name":"MyApp"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
 ```
 
 **Response:**
@@ -500,7 +513,7 @@ curl -X POST -H "Authorization: Bearer abc123..." \
 #### 11. View Permission Requests
 
 ```http
-GET /api/v1/perm/<user_id>/requests
+GET /api/v1/users/<user_id>/permissions/requests
 ```
 
 **Description:** Get the list of pending permission requests for a user.
@@ -510,7 +523,7 @@ GET /api/v1/perm/<user_id>/requests
 **Example:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     https://jietng.matsuki.top/api/v1/perm/U123456/requests
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/requests
 ```
 
 **Response:**
@@ -531,28 +544,29 @@ curl -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 12. Approve Permission Request
+#### 12. Approve or Reject Permission Request
 
 ```http
-POST /api/v1/perm/<user_id>/accept
+PATCH /api/v1/users/<user_id>/permissions
 ```
 
-**Description:** Approve the specified permission request, adding the requesting token to the authorized list.
+**Description:** Approve or reject the specified permission request.
 
 **Permission Required:** Owner token only (`@require_owner_permission`)
 
 **Request Body (JSON):**
-- `request_id`: **Required**, the permission request ID to approve
+- `request_id`: **Required**, the permission request ID to process
+- `action`: **Required**, action type ("accept" or "reject")
 
-**Example:**
+**Approve request example:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." \
+curl -X PATCH -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
-     -d '{"request_id":"20250203120000_jt_abc123"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456/accept
+     -d '{"request_id":"20250203120000_jt_abc123","action":"accept"}' \
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
 ```
 
-**Response:**
+**Approve response:**
 ```json
 {
   "success": true,
@@ -560,6 +574,25 @@ curl -X POST -H "Authorization: Bearer abc123..." \
   "token_id": "jt_abc123",
   "token_note": "MyApp",
   "message": "Permission granted to token jt_abc123"
+}
+```
+
+**Reject request example:**
+```bash
+curl -X PATCH -H "Authorization: Bearer abc123..." \
+     -H "Content-Type: application/json" \
+     -d '{"request_id":"20250203120000_jt_abc123","action":"reject"}' \
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
+```
+
+**Reject response:**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "token_id": "jt_abc123",
+  "token_note": "MyApp",
+  "message": "Permission request from token jt_abc123 rejected"
 }
 ```
 
@@ -571,57 +604,20 @@ curl -X POST -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 13. Reject Permission Request
+#### 13. Revoke Granted Permission
 
 ```http
-POST /api/v1/perm/<user_id>/reject
-```
-
-**Description:** Reject the specified permission request.
-
-**Permission Required:** Owner token only (`@require_owner_permission`)
-
-**Request Body (JSON):**
-- `request_id`: **Required**, the permission request ID to reject
-
-**Example:**
-```bash
-curl -X POST -H "Authorization: Bearer abc123..." \
-     -H "Content-Type: application/json" \
-     -d '{"request_id":"20250203120000_jt_abc123"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456/reject
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "user_id": "U123456",
-  "token_id": "jt_abc123",
-  "token_note": "MyApp",
-  "message": "Permission request from token jt_abc123 rejected"
-}
-```
-
-#### 14. Revoke Granted Permission
-
-```http
-POST /api/v1/perm/<user_id>/revoke
+DELETE /api/v1/users/<user_id>/permissions/<token_id>
 ```
 
 **Description:** Revoke access permission previously granted to a specific token.
 
 **Permission Required:** Owner token only (`@require_owner_permission`)
 
-**Request Body (JSON):**
-- `token_id`: **Required**, the token ID whose permission to revoke
-
 **Example:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." \
-     -H "Content-Type: application/json" \
-     -d '{"token_id":"jt_abc123"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456/revoke
+curl -X DELETE -H "Authorization: Bearer abc123..." \
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/jt_abc123
 ```
 
 **Response:**
@@ -641,27 +637,25 @@ curl -X POST -H "Authorization: Bearer abc123..." \
 curl -X POST -H "Authorization: Bearer TOKEN_B" \
      -H "Content-Type: application/json" \
      -d '{"requester_name":"MyApp"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
 
 # 2. Token A (owner) views pending requests
 curl -H "Authorization: Bearer TOKEN_A" \
-     https://jietng.matsuki.top/api/v1/perm/U123456/requests
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/requests
 
 # 3. Token A approves the request
-curl -X POST -H "Authorization: Bearer TOKEN_A" \
+curl -X PATCH -H "Authorization: Bearer TOKEN_A" \
      -H "Content-Type: application/json" \
-     -d '{"request_id":"20250203120000_jt_tokenb"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456/accept
+     -d '{"request_id":"20250203120000_jt_tokenb","action":"accept"}' \
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
 
 # 4. Now Token B can access User1's data
 curl -H "Authorization: Bearer TOKEN_B" \
-     https://jietng.matsuki.top/api/v1/user/U123456
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456
 
 # 5. (Optional) Token A revokes Token B's access
-curl -X POST -H "Authorization: Bearer TOKEN_A" \
-     -H "Content-Type: application/json" \
-     -d '{"token_id":"jt_tokenb"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456/revoke
+curl -X DELETE -H "Authorization: Bearer TOKEN_A" \
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/jt_tokenb
 ```
 
 ### LINE User Permission Management
@@ -759,24 +753,23 @@ LINE users receive FlexMessage notifications for permission requests and can app
 | Endpoint | Method | Description | Permission Required |
 |----------------|--------------|-------------------|----------|
 | `/users` | GET | Get all users | Any Token |
-| `/register/<user_id>` | POST | Register user and generate bind URL | Any Token |
-| `/user/<user_id>` | GET | Get user info | Owner or Granted |
-| `/user/<user_id>` | DELETE | Delete user | **Owner Only** |
-| `/update/<user_id>` | POST | Queue user update | Owner or Granted |
-| `/task/<task_id>` | GET | Query task status | Any Token |
-| `/records/<user_id>` | GET | Get user records | Owner or Granted |
-| `/search` | GET | Search songs | Any Token |
+| `/users` | POST | Register user and generate bind URL | Any Token |
+| `/users/<user_id>` | GET | Get user info | Owner or Granted |
+| `/users/<user_id>` | DELETE | Delete user | **Owner Only** |
+| `/users/<user_id>/sync` | POST | Async sync user data (202 Accepted) | Owner or Granted |
+| `/tasks/<task_id>` | GET | Query task status | Any Token |
+| `/users/<user_id>/records` | GET | Get user records | Owner or Granted |
+| `/songs/search` | GET | Search songs | Any Token |
 | `/versions` | GET | Get version list | Any Token |
 
 ### Permission Management Endpoints
 
 | Endpoint | Method | Description | Permission Required |
 |----------------|--------------|-------------------|----------|
-| `/perm/<user_id>` | POST | Request access permission | Any Token |
-| `/perm/<user_id>/requests` | GET | View permission requests | **Owner Only** |
-| `/perm/<user_id>/accept` | POST | Approve permission request | **Owner Only** |
-| `/perm/<user_id>/reject` | POST | Reject permission request | **Owner Only** |
-| `/perm/<user_id>/revoke` | POST | Revoke granted permission | **Owner Only** |
+| `/users/<user_id>/permissions` | POST | Request access permission | Any Token |
+| `/users/<user_id>/permissions/requests` | GET | View permission requests | **Owner Only** |
+| `/users/<user_id>/permissions` | PATCH | Approve or reject permission request | **Owner Only** |
+| `/users/<user_id>/permissions/<token_id>` | DELETE | Revoke granted permission | **Owner Only** |
 
 ## Security Recommendations
 
@@ -847,7 +840,7 @@ def my_api_endpoint():
 import requests
 
 TOKEN = "your_token_here"
-BASE_URL = "https://jietng.matsuki.top/api/v1"
+BASE_URL = "https://jietng-endpoint.matsuki.work/api/v1"
 
 headers = {
     "Authorization": f"Bearer {TOKEN}"
@@ -866,7 +859,7 @@ for user in users['users']:
 
 ```javascript
 const TOKEN = 'your_token_here';
-const BASE_URL = 'https://jietng.matsuki.top/api/v1';
+const BASE_URL = 'https://jietng-endpoint.matsuki.work/api/v1';
 
 async function getUsers() {
   const response = await fetch(`${BASE_URL}/users`, {
@@ -892,17 +885,17 @@ getUsers();
 #!/bin/bash
 
 TOKEN="your_token_here"
-BASE_URL="https://jietng.matsuki.top/api/v1"
+BASE_URL="https://jietng-endpoint.matsuki.work/api/v1"
 
 # Get user list
 curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/users"
 
 # Get specific user info
 USER_ID="U123456"
-curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/user/$USER_ID"
+curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/users/$USER_ID"
 
 # Search songs
-curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/search?q=ヒバナ&ver=jp"
+curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/songs/search?q=ヒバナ&ver=jp"
 ```
 
 
@@ -925,6 +918,8 @@ curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/search?q=ヒバナ&ver=jp"
 
 ## Version History
 
+- **v1.2** (2026-02-03): Updated to comply with RESTful API standards  
+  - Revised all fields to better align with RESTful API conventions
 - **v1.1** (2025-12-04): Added permission request system
   - Added 5 permission management API endpoints
   - Implemented two-tier permission model (owner vs granted)

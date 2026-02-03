@@ -27,7 +27,7 @@
 
 ### API 基础信息
 
-- **Base URL**: `https://jietng.matsuki.top/api/v1/`
+- **Base URL**: `https://jietng-endpoint.matsuki.work/api/v1/`
 - **认证方式**: Bearer Token
 - **响应格式**: JSON
 
@@ -36,7 +36,7 @@
 ```bash
 # 使用您的 Token 访问 API
 curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-     "https://jietng.matsuki.top/api/v1/users"
+     "https://jietng-endpoint.matsuki.work/api/v1/users"
 ```
 
 ## 命令使用
@@ -105,7 +105,7 @@ devtoken info <token_id>
 ### Base URL
 
 ```
-https://jietng.matsuki.top/api/v1/
+https://jietng-endpoint.matsuki.work/api/v1/
 ```
 
 ### 认证
@@ -113,12 +113,12 @@ https://jietng.matsuki.top/api/v1/
 所有 API 端点都需要 Bearer Token 认证：
 
 ```bash
-curl -H "Authorization: Bearer <your_token>" https://jietng.matsuki.top/api/v1/...
+curl -H "Authorization: Bearer <your_token>" https://jietng-endpoint.matsuki.work/api/v1/...
 ```
 
 ### 可用端点
 
-以下所有端点的完整 URL 为 `https://jietng.matsuki.top/api/v1/` + 端点路径。
+以下所有端点的完整 URL 为 `https://jietng-endpoint.matsuki.work/api/v1/` + 端点路径。
 
 #### 1. 获取用户列表
 
@@ -128,7 +128,7 @@ GET /api/v1/users
 
 **示例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/users
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users
 ```
 
 **响应:**
@@ -149,10 +149,11 @@ curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/user
 #### 2. 注册用户
 
 ```http
-POST /api/v1/register/<user_id>
+POST /api/v1/users
 ```
 
 **请求体 (JSON):**
+- `user_id`: **必需**，用户ID
 - `nickname`: **必需**，用户昵称（如果是LINE用户会自动从LINE API获取，非LINE用户则使用此参数）
 - `language`: 语言设置 (ja/en/zh，可选，默认 en)
 
@@ -163,7 +164,7 @@ POST /api/v1/register/<user_id>
 
 **示例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/json" -d '{"nickname":"TestUser","language":"en"}' https://jietng.matsuki.top/api/v1/register/U123456
+curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/json" -d '{"user_id":"U123456","nickname":"TestUser","language":"en"}' https://jietng-endpoint.matsuki.work/api/v1/users
 ```
 
 **响应:**
@@ -172,7 +173,7 @@ curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/
   "success": true,
   "user_id": "U123456",
   "nickname": "TestUser",
-  "bind_url": "https://jietng.matsuki.top/linebot/sega_bind?token=xxx&nickname=TestUser&language=en",
+  "bind_url": "https://jietng-endpoint.matsuki.work/linebot/sega_bind?token=xxx&nickname=TestUser&language=en",
   "token": "xxx",
   "expires_in": 120,
   "message": "Bind URL generated successfully. Token expires in 2 minutes."
@@ -188,12 +189,12 @@ curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/
 #### 3. 获取用户信息
 
 ```http
-GET /api/v1/user/<user_id>
+GET /api/v1/users/<user_id>
 ```
 
 **示例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/user/U123456
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456
 ```
 
 **响应:**
@@ -213,12 +214,12 @@ curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/user
 #### 4. 删除用户
 
 ```http
-DELETE /api/v1/user/<user_id>
+DELETE /api/v1/users/<user_id>
 ```
 
 **示例:**
 ```bash
-curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/user/U123456
+curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456
 ```
 
 **响应:**
@@ -230,18 +231,20 @@ curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/a
 }
 ```
 
-#### 5. 队列用户更新
+#### 5. 同步用户数据
 
 ```http
-POST /api/v1/update/<user_id>
+POST /api/v1/users/<user_id>/sync
 ```
+
+**说明:** 异步同步用户数据,返回 202 Accepted 状态码。
 
 **示例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/update/U123456
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/sync
 ```
 
-**响应:**
+**响应 (202 Accepted):**
 ```json
 {
   "success": true,
@@ -255,15 +258,15 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api
 #### 6. 查询任务状态
 
 ```http
-GET /api/v1/task/<task_id>
+GET /api/v1/tasks/<task_id>
 ```
 
 **说明:**
-查询通过 `/update/<user_id>` 创建的更新任务的执行状态。
+查询通过 `/users/<user_id>/sync` 创建的更新任务的执行状态。
 
 **示例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/task/task_xxx
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/tasks/task_xxx
 ```
 
 **响应:**
@@ -303,12 +306,16 @@ curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/task
 #### 7. 获取用户记录
 
 ```http
-GET /api/v1/records/<user_id>?type=<record_type>&command=<filter>
+GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rating>&version=<version>&difficulty=<difficulty>
 ```
 
 **参数:**
 - `type`: 记录类型 (best50/best100/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idlb50，可选，默认 best50)
-- `command`: 筛选命令（可选），支持以下参数：
+- `level`: 按谱面定数筛选 (单个值或 "min,max" 范围，可选)
+- `rating`: 按单曲 Rating 筛选 (单个值或 "min,max" 范围，可选)
+- `version`: 按游戏版本筛选 (支持多个版本，逗号分隔，如 "buddies,prism"，可选)
+- `difficulty`: 按谱面难度筛选 (bas/adv/exp/mas/rem，支持多个难度，逗号分隔，可选)
+- `command`: **已弃用，保持向后兼容**，筛选命令（可选），支持以下参数：
   - `-lv <定数>` 或 `-lv <最小定数> <最大定数>` - 按谱面定数筛选
   - `-ra <rating>` 或 `-ra <最小rating> <最大rating>` - 按单曲 Rating 筛选
   - `-scr <达成率>` 或 `-scr <最小达成率> <最大达成率>` - 按达成率筛选
@@ -319,19 +326,25 @@ GET /api/v1/records/<user_id>?type=<record_type>&command=<filter>
 **示例:**
 ```bash
 # 获取 best50
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50"
 
-# 筛选特定版本
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-ver%20buddies"
+# 筛选特定版本（新参数）
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&version=buddies"
 
-# 筛选 MASTER 难度
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-diff%20mas"
+# 筛选 MASTER 难度（新参数）
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&difficulty=mas"
 
-# 筛选定数 14.0 以上
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-lv%2014.0"
+# 筛选定数 14.0 以上（新参数）
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&level=14.0"
 
-# 组合筛选：MASTER 难度且定数 14.0-15.0
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/records/U123456?type=best50&command=-diff%20mas%20-lv%2014.0%2015.0"
+# 筛选定数范围 14.0-15.0（新参数）
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&level=14.0,15.0"
+
+# 组合筛选：MASTER 难度且定数 14.0-15.0（新参数）
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&difficulty=mas&level=14.0,15.0"
+
+# 使用旧的 command 参数（向后兼容）
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&command=-diff%20mas%20-lv%2014.0%2015.0"
 ```
 
 **响应:**
@@ -346,7 +359,7 @@ curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/rec
 #### 8. 搜索歌曲
 
 ```http
-GET /api/v1/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<limit>
+GET /api/v1/songs/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<limit>
 ```
 
 **参数:**
@@ -358,13 +371,13 @@ GET /api/v1/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<limit>
 **示例:**
 ```bash
 # 搜索日文歌曲
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/search?q=%E3%83%92%E3%83%90%E3%83%8A&ver=jp"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&ver=jp"
 
 # 搜索空字符串歌名
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/search?q=__empty__&ver=jp"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/songs/search?q=__empty__&ver=jp"
 
 # 在用户的成绩数据库内匹配
-curl -H "Authorization: Bearer abc123..." "https://jietng.matsuki.top/api/v1/search?q=%E3%83%92%E3%83%90%E3%83%8A&user_id=U123456"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&user_id=U123456"
 ```
 
 **响应:**
@@ -409,7 +422,7 @@ GET /api/v1/versions
 
 **示例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng.matsuki.top/api/v1/versions
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/versions
 ```
 
 **响应:**
@@ -451,7 +464,7 @@ API 使用两种装饰器来控制访问权限：
 #### 10. 请求访问权限
 
 ```http
-POST /api/v1/perm/<user_id>
+POST /api/v1/users/<user_id>/permissions
 ```
 
 **说明：** 向指定用户发送权限请求，请求访问该用户的数据。
@@ -466,7 +479,7 @@ POST /api/v1/perm/<user_id>
 curl -X POST -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"requester_name":"MyApp"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
 ```
 
 **响应:**
@@ -497,7 +510,7 @@ curl -X POST -H "Authorization: Bearer abc123..." \
 #### 11. 查看权限请求列表
 
 ```http
-GET /api/v1/perm/<user_id>/requests
+GET /api/v1/users/<user_id>/permissions/requests
 ```
 
 **说明：** 获取用户的待处理权限请求列表。
@@ -507,7 +520,7 @@ GET /api/v1/perm/<user_id>/requests
 **示例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     https://jietng.matsuki.top/api/v1/perm/U123456/requests
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/requests
 ```
 
 **响应:**
@@ -535,28 +548,29 @@ curl -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 12. 批准权限请求
+#### 12. 批准或拒绝权限请求
 
 ```http
-POST /api/v1/perm/<user_id>/accept
+PATCH /api/v1/users/<user_id>/permissions
 ```
 
-**说明：** 批准指定的权限请求，将请求的 Token 添加到授权列表。
+**说明：** 批准或拒绝指定的权限请求。
 
 **权限要求：** 只有所有者 Token（`@require_owner_permission`）
 
 **请求体 (JSON):**
-- `request_id`: **必需**，要批准的权限请求ID
+- `request_id`: **必需**，要处理的权限请求ID
+- `action`: **必需**，操作类型 ("accept" 或 "reject")
 
-**示例:**
+**批准请求示例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." \
+curl -X PATCH -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
-     -d '{"request_id":"20250203120000_jt_abc123"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456/accept
+     -d '{"request_id":"20250203120000_jt_abc123","action":"accept"}' \
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
 ```
 
-**响应:**
+**批准响应:**
 ```json
 {
   "success": true,
@@ -564,6 +578,25 @@ curl -X POST -H "Authorization: Bearer abc123..." \
   "token_id": "jt_abc123",
   "token_note": "MyApp",
   "message": "Permission granted to token jt_abc123"
+}
+```
+
+**拒绝请求示例:**
+```bash
+curl -X PATCH -H "Authorization: Bearer abc123..." \
+     -H "Content-Type: application/json" \
+     -d '{"request_id":"20250203120000_jt_abc123","action":"reject"}' \
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
+```
+
+**拒绝响应:**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "token_id": "jt_abc123",
+  "token_note": "MyApp",
+  "message": "Permission request from token jt_abc123 rejected"
 }
 ```
 
@@ -575,57 +608,20 @@ curl -X POST -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 13. 拒绝权限请求
+#### 13. 撤销已授予的权限
 
 ```http
-POST /api/v1/perm/<user_id>/reject
-```
-
-**说明：** 拒绝指定的权限请求。
-
-**权限要求：** 只有所有者 Token（`@require_owner_permission`）
-
-**请求体 (JSON):**
-- `request_id`: **必需**，要拒绝的权限请求ID
-
-**示例:**
-```bash
-curl -X POST -H "Authorization: Bearer abc123..." \
-     -H "Content-Type: application/json" \
-     -d '{"request_id":"20250203120000_jt_abc123"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456/reject
-```
-
-**响应:**
-```json
-{
-  "success": true,
-  "user_id": "U123456",
-  "token_id": "jt_abc123",
-  "token_note": "MyApp",
-  "message": "Permission request from token jt_abc123 rejected"
-}
-```
-
-#### 14. 撤销已授予的权限
-
-```http
-POST /api/v1/perm/<user_id>/revoke
+DELETE /api/v1/users/<user_id>/permissions/<token_id>
 ```
 
 **说明：** 撤销已授予给指定 Token 的访问权限。
 
 **权限要求：** 只有所有者 Token（`@require_owner_permission`）
 
-**请求体 (JSON):**
-- `token_id`: **必需**，要撤销权限的 Token ID
-
 **示例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." \
-     -H "Content-Type: application/json" \
-     -d '{"token_id":"jt_abc123"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456/revoke
+curl -X DELETE -H "Authorization: Bearer abc123..." \
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/jt_abc123
 ```
 
 **响应:**
@@ -653,27 +649,25 @@ curl -X POST -H "Authorization: Bearer abc123..." \
 curl -X POST -H "Authorization: Bearer TOKEN_B" \
      -H "Content-Type: application/json" \
      -d '{"requester_name":"MyApp"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
 
 # 2. Token A（所有者）查看待处理的权限请求
 curl -H "Authorization: Bearer TOKEN_A" \
-     https://jietng.matsuki.top/api/v1/perm/U123456/requests
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/requests
 
 # 3. Token A 批准请求
-curl -X POST -H "Authorization: Bearer TOKEN_A" \
+curl -X PATCH -H "Authorization: Bearer TOKEN_A" \
      -H "Content-Type: application/json" \
-     -d '{"request_id":"20250203120000_jt_tokenb"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456/accept
+     -d '{"request_id":"20250203120000_jt_tokenb","action":"accept"}' \
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
 
 # 4. 现在 Token B 可以访问 User1 的数据
 curl -H "Authorization: Bearer TOKEN_B" \
-     https://jietng.matsuki.top/api/v1/user/U123456
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456
 
 # 5. （可选）Token A 撤销 Token B 的访问权限
-curl -X POST -H "Authorization: Bearer TOKEN_A" \
-     -H "Content-Type: application/json" \
-     -d '{"token_id":"jt_tokenb"}' \
-     https://jietng.matsuki.top/api/v1/perm/U123456/revoke
+curl -X DELETE -H "Authorization: Bearer TOKEN_A" \
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/jt_tokenb
 ```
 
 ### LINE 用户的权限管理
@@ -770,24 +764,23 @@ LINE 用户会收到权限请求的 FlexMessage 通知，可以直接在 LINE �
 | 端点 | 方法 | 说明 | 权限要求 |
 |----------------|--------------|-------------------|----------|
 | `/users` | GET | 获取所有用户列表 | 任何 Token |
-| `/register/<user_id>` | POST | 注册用户并生成绑定链接 | 任何 Token |
-| `/user/<user_id>` | GET | 获取用户信息 | 所有者或被授权 |
-| `/user/<user_id>` | DELETE | 删除用户 | **仅所有者** |
-| `/update/<user_id>` | POST | 队列用户数据更新 | 所有者或被授权 |
-| `/task/<task_id>` | GET | 查询任务状态 | 任何 Token |
-| `/records/<user_id>` | GET | 获取用户成绩记录 | 所有者或被授权 |
-| `/search` | GET | 搜索歌曲 | 任何 Token |
+| `/users` | POST | 注册用户并生成绑定链接 | 任何 Token |
+| `/users/<user_id>` | GET | 获取用户信息 | 所有者或被授权 |
+| `/users/<user_id>` | DELETE | 删除用户 | **仅所有者** |
+| `/users/<user_id>/sync` | POST | 异步同步用户数据 (202 Accepted) | 所有者或被授权 |
+| `/tasks/<task_id>` | GET | 查询任务状态 | 任何 Token |
+| `/users/<user_id>/records` | GET | 获取用户成绩记录 | 所有者或被授权 |
+| `/songs/search` | GET | 搜索歌曲 | 任何 Token |
 | `/versions` | GET | 获取版本列表 | 任何 Token |
 
 ### 权限管理端点
 
 | 端点 | 方法 | 说明 | 权限要求 |
 |----------------|--------------|-------------------|----------|
-| `/perm/<user_id>` | POST | 请求访问权限 | 任何 Token |
-| `/perm/<user_id>/requests` | GET | 查看权限请求列表 | **仅所有者** |
-| `/perm/<user_id>/accept` | POST | 批准权限请求 | **仅所有者** |
-| `/perm/<user_id>/reject` | POST | 拒绝权限请求 | **仅所有者** |
-| `/perm/<user_id>/revoke` | POST | 撤销已授予的权限 | **仅所有者** |
+| `/users/<user_id>/permissions` | POST | 请求访问权限 | 任何 Token |
+| `/users/<user_id>/permissions/requests` | GET | 查看权限请求列表 | **仅所有者** |
+| `/users/<user_id>/permissions` | PATCH | 批准或拒绝权限请求 | **仅所有者** |
+| `/users/<user_id>/permissions/<token_id>` | DELETE | 撤销已授予的权限 | **仅所有者** |
 
 ## 安全建议
 
@@ -855,7 +848,7 @@ def my_api_endpoint():
 import requests
 
 TOKEN = "your_token_here"
-BASE_URL = "https://jietng.matsuki.top/api/v1"
+BASE_URL = "https://jietng-endpoint.matsuki.work/api/v1"
 
 headers = {
     "Authorization": f"Bearer {TOKEN}"
@@ -874,7 +867,7 @@ for user in users['users']:
 
 ```javascript
 const TOKEN = 'your_token_here';
-const BASE_URL = 'https://jietng.matsuki.top/api/v1';
+const BASE_URL = 'https://jietng-endpoint.matsuki.work/api/v1';
 
 async function getUsers() {
   const response = await fetch(`${BASE_URL}/users`, {
@@ -900,17 +893,17 @@ getUsers();
 #!/bin/bash
 
 TOKEN="your_token_here"
-BASE_URL="https://jietng.matsuki.top/api/v1"
+BASE_URL="https://jietng-endpoint.matsuki.work/api/v1"
 
 # 获取用户列表
 curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/users"
 
 # 获取特定用户信息
 USER_ID="U123456"
-curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/user/$USER_ID"
+curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/users/$USER_ID"
 
 # 搜索歌曲
-curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/search?q=ヒバナ&ver=jp"
+curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/songs/search?q=ヒバナ&ver=jp"
 ```
 
 ## 常见问题
@@ -931,6 +924,8 @@ curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/search?q=ヒバナ&ver=jp"
 
 ## 版本历史
 
+- **v1.2** (2026-02-03): 修改以符合 RESTful API 标准
+  - 修改所有字段以更好地贴合 RESTful API 标准
 - **v1.1** (2025-12-04): 添加权限请求系统
   - 新增 5 个权限管理 API 端点
   - 实现两层权限模型（所有者 vs 被授权者）
