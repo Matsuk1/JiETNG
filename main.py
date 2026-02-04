@@ -938,6 +938,63 @@ def async_generate_friend_b50_task(event):
 
     smart_reply(user_id, reply_token, reply_msg, configuration)
 
+def async_get_song_record_task(event):
+    """异步歌曲成绩查询任务 - 在webtask_queue中执行"""
+    user_message = event.message.text.strip()
+    user_id = event.source.user_id
+    reply_token = event.reply_token
+
+    # 获取用户版本
+    ver = "jp"
+    id_use = user_id
+
+    if user_id in USERS:
+        if 'version' in USERS[user_id]:
+            ver = USERS[user_id]['version']
+
+    # 提取歌曲名称（移除命令后缀）
+    acronym = re.sub(r"\s*(のレコード|song-record|record)$", "", user_message).strip()
+
+    # 调用实际的查询函数
+    reply_msg = asyncio.run(get_song_record(user_id, id_use, acronym, ver))
+
+    smart_reply(user_id, reply_token, reply_msg, configuration)
+
+def async_get_song_record_by_id_task(event):
+    """异步歌曲成绩查询任务（通过ID）- 在webtask_queue中执行"""
+    user_message = event.message.text.strip()
+    user_id = event.source.user_id
+    reply_token = event.reply_token
+
+    # 验证命令格式
+    parts = user_message.split()
+    if len(parts) < 2:
+        smart_reply(user_id, reply_token, song_error(user_id), configuration)
+        return
+
+    # 提取歌曲ID并验证长度
+    song_id = parts[1].split("&", 1)[0]
+    if len(song_id) != 6:
+        smart_reply(user_id, reply_token, song_error(user_id), configuration)
+        return
+
+    # 获取用户版本
+    ver = "jp"
+    id_use = user_id
+
+    if user_id in USERS:
+        if 'version' in USERS[user_id]:
+            ver = USERS[user_id]['version']
+
+    # 提取id_use参数
+    if "id_use=" in user_message:
+        id_use = user_message.split("id_use=", 1)[1]
+
+    # 调用实际的查询函数
+    reply_msg = asyncio.run(get_song_record_by_id(user_id, id_use, song_id, ver))
+
+    smart_reply(user_id, reply_token, reply_msg, configuration)
+
 def async_generate_image_task(event):
     """异步图片生成任务 - 在image_queue中执行"""
     handle_sync_text_command(event)
@@ -998,7 +1055,7 @@ async def maimai_update(user_id, ver="jp"):
 
     user_info = maimai_records = recent_records = friends_list = None
 
-    cookies = await login_to_maimai(sega_id, sega_pwd, ver, aime=aime)
+    cookies = await login_to_maimai(sega_id, sega_pwd, ver=ver, aime=aime)
     if cookies is None:
         logger.warning(f"[User] ⚠ Login failed: user_id={user_id}")
         return segaid_error(user_id)
@@ -1378,7 +1435,7 @@ def get_bot_status(user_id):
         user_id=user_id
     )
 
-def get_song_record(user_id, id_use, acronym, ver="jp"):
+async def get_song_record(user_id, id_use, acronym, ver="jp"):
     """
     查询用户在特定歌曲上的游玩记录
 
@@ -1429,6 +1486,20 @@ def get_song_record(user_id, id_use, acronym, ver="jp"):
     if len(songs_with_records) > 1:
         return generate_search_record_results_flex(user_id, id_use, songs_with_records)
 
+    # 只登录一次，在循环外（学习 maimai_update 的模式）
+    cookies = None
+    if 'sega_id' in USERS[id_use] and 'sega_pwd' in USERS[id_use]:
+        try:
+            sega_id = USERS[id_use]['sega_id']
+            sega_pwd = USERS[id_use]['sega_pwd']
+            aime = USERS[id_use].get('aime', 0)
+            cookies = await login_to_maimai(sega_id, sega_pwd, ver=ver, aime=aime)
+            if cookies is None:
+                logger.warning(f"[Song Record] ⚠ Login failed: user_id={user_id}")
+        except Exception as e:
+            logger.exception(f"[Song Record] Failed to login for detailed record: {e}")
+            cookies = None
+
     # 生成图片消息列表
     result = []
     user_tz = get_user_timezone(id_use)
@@ -1439,6 +1510,32 @@ def get_song_record(user_id, id_use, acronym, ver="jp"):
         for rcd in song_record:
             if is_exact_song_match(rcd['cover_name'], song['cover_name']) and rcd['type'] == song['type']:
                 played_data.append(rcd)
+                song_name = rcd['name']
+
+        # 尝试使用新函数获取更详细的成绩（包含游玩次数和最后游玩时间）
+        if cookies:
+            try:
+                detailed_records = await get_single_record(song_name, song['type'], cookies, ver=ver)
+
+                if detailed_records and detailed_records != "MAINTENANCE":
+                    # 用详细成绩更新 played_data
+                    for rcd in played_data:
+                        # 找到对应难度的详细成绩
+                        for detail in detailed_records:
+                            if detail['difficulty'] == rcd['difficulty']:
+                                # 更新现有字段
+                                rcd['score'] = detail['score']
+                                rcd['dx_score'] = detail['dx_score']
+                                rcd['score_icon'] = detail['score_icon']
+                                rcd['combo_icon'] = detail['combo_icon']
+                                rcd['sync_icon'] = detail['sync_icon']
+                                # 添加新字段
+                                rcd['play_count'] = detail['play_count']
+                                rcd['last_play_time'] = detail['last_play_time']
+                                break
+            except Exception as e:
+                # 如果获取详细成绩失败，继续使用原成绩
+                logger.exception(f"[Song Record] Failed to get detailed record for {song.get('title', 'unknown')}: {e}")
 
         original_url, preview_url = smart_upload(song_info_generate(song, played_data, timezone_offset=user_tz, ver=ver))
         message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
@@ -1446,7 +1543,7 @@ def get_song_record(user_id, id_use, acronym, ver="jp"):
 
     return result
 
-def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
+async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
     """
     通过歌曲ID查询用户在特定歌曲上的游玩记录
 
@@ -1488,10 +1585,44 @@ def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
     for rcd in song_record:
         if is_exact_song_match(rcd['cover_name'], matching_song['cover_name']) and rcd['type'] == matching_song['type']:
             played_data.append(rcd)
+            song_name = rcd['name']
 
     # 如果该歌曲没有游玩记录
     if not played_data:
         return song_error(user_id)
+
+    # 尝试使用新函数获取更详细的成绩（包含游玩次数和最后游玩时间）
+    try:
+        if 'sega_id' in USERS[id_use] and 'sega_pwd' in USERS[id_use]:
+            sega_id = USERS[id_use]['sega_id']
+            sega_pwd = USERS[id_use]['sega_pwd']
+            aime = USERS[id_use].get('aime', 0)
+            cookies = await login_to_maimai(sega_id, sega_pwd, ver=ver, aime=aime)
+            if cookies is None:
+                logger.warning(f"[Song Record] ⚠ Login failed: user_id={user_id}")
+
+            if cookies:
+                detailed_records = await get_single_record(song_name, matching_song['type'], cookies, ver=ver)
+
+                if detailed_records and detailed_records != "MAINTENANCE":
+                    # 用详细成绩更新 played_data
+                    for rcd in played_data:
+                        # 找到对应难度的详细成绩
+                        for detail in detailed_records:
+                            if detail['difficulty'] == rcd['difficulty']:
+                                # 更新现有字段
+                                rcd['score'] = detail['score']
+                                rcd['dx_score'] = detail['dx_score']
+                                rcd['score_icon'] = detail['score_icon']
+                                rcd['combo_icon'] = detail['combo_icon']
+                                rcd['sync_icon'] = detail['sync_icon']
+                                # 添加新字段
+                                rcd['play_count'] = detail['play_count']
+                                rcd['last_play_time'] = detail['last_play_time']
+                                break
+    except Exception as e:
+        # 如果获取详细成绩失败，继续使用原成绩
+        logger.exception(f"[Song Record] Failed to get detailed record for {matching_song.get('title', 'unknown')}: {e}")
 
     # 生成歌曲信息图片
     user_tz = get_user_timezone(id_use)
@@ -2388,6 +2519,13 @@ WEB_TASK_ROUTES = {
         "friend-b50 ": async_generate_friend_b50_task,
         "friend b50 ": async_generate_friend_b50_task,
         "フレンドb50 ": async_generate_friend_b50_task,
+        "search-record ": async_get_song_record_by_id_task,
+    },
+    # 后缀匹配规则
+    'suffix': {
+        "のレコード": async_get_song_record_task,
+        "song-record": async_get_song_record_task,
+        "record": async_get_song_record_task,
     }
 }
 
@@ -2439,6 +2577,37 @@ def route_to_web_queue(event):
     # 检查前缀匹配的web任务
     for prefix, task_func in WEB_TASK_ROUTES['prefix'].items():
         if user_message.startswith(prefix):
+            # 频率限制检查
+            if check_rate_limit(user_id, task_func.__name__):
+                smart_reply(user_id, event.reply_token, rate_limit_msg(user_id), configuration)
+                return True
+
+            try:
+                # 生成任务ID
+                task_id = f"user_{user_id}_{datetime.now().timestamp()}"
+
+                # 获取用户昵称
+                nickname = get_user_nickname_wrapper(user_id, use_cache=True)
+
+                # 添加到任务追踪
+                with task_tracking_lock:
+                    task_tracking['queued'].append({
+                        'id': task_id,
+                        'function': task_func.__name__,
+                        'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        'user_id': user_id,
+                        'nickname': nickname
+                    })
+
+                webtask_queue.put_nowait((task_func, (event,), task_id))
+                return True
+            except queue.Full:
+                smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
+                return True
+
+    # 检查后缀匹配的web任务
+    for suffix, task_func in WEB_TASK_ROUTES['suffix'].items():
+        if user_message.endswith(suffix):
             # 频率限制检查
             if check_rate_limit(user_id, task_func.__name__):
                 smart_reply(user_id, event.reply_token, rate_limit_msg(user_id), configuration)
@@ -2928,18 +3097,6 @@ def handle_sync_text_command(event):
         (lambda msg: msg.startswith("calc-song ") and len(msg.split()) == 2 and len(msg.split()[1]) == 6,
          lambda msg: calc_by_id(user_id, msg.split()[1], mai_ver)),
 
-        # 成绩搜索（通过ID）
-        (lambda msg: (
-            msg.startswith("search-record ")
-            and len(msg.split()[1].split("&")[0]) == 6
-        ),
-         lambda msg: get_song_record_by_id(
-            user_id,
-            msg.split("id_use=", 1)[1] if "id_use=" in msg else id_use,
-            msg.split()[1].split("&", 1)[0],
-            mai_ver_use
-        )),
-
         # 歌曲信息查询
         (lambda msg: msg.endswith(("ってどんな曲", "info", "song-info")),
          lambda msg: search_song(user_id, re.sub(r"\s*(ってどんな曲|info|song-info)$", "", msg).strip(), mai_ver)),
@@ -2955,10 +3112,6 @@ def handle_sync_text_command(event):
         # 版本达成情况
         (lambda msg: msg.endswith(("の達成状況", "の達成情報", "の達成表", "achievement-list", "achievement")),
          lambda msg: generate_plate_rcd(user_id, id_use, re.sub(r"\s*(の達成状況|の達成情報|の達成表|achievement-list|achievement)$", "", msg).strip(), mai_ver_use)),
-
-        # 歌曲成绩记录
-        (lambda msg: msg.endswith(("のレコード", "song-record", "record")),
-         lambda msg: get_song_record(user_id, id_use, re.sub(r"\s*(のレコード|song-record|record)$", "", msg).strip(), mai_ver_use)),
 
         # 等级成绩列表
         (lambda msg: re.match(r".+(のレコードリスト|record-list|records)[ 　]*\d*$", msg),

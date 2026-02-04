@@ -3,6 +3,9 @@ import random
 import logging
 import asyncio
 import aiohttp
+import unicodedata
+import re
+from urllib.parse import quote
 from lxml import etree
 from modules.record_manager import get_detailed_info
 from modules.rate_limiter import maimai_limiter
@@ -16,6 +19,14 @@ USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
 ]
+
+def normalize(s):
+    if not s:
+        return ""
+    s = unicodedata.normalize("NFKC", s)
+    s = s.replace("\u3000", " ").replace("\xa0", " ")
+    s = re.sub(r"\s+", " ", s)
+    return s.strip()
 
 def _get_random_user_agent():
     """返回随机 User-Agent"""
@@ -545,6 +556,204 @@ async def get_recent_records(cookies: dict, ver="jp"):
                 })
 
         return recent_record
+
+
+async def get_single_record(title: str, type: str, cookies: dict, ver="jp"):
+    """获取单首歌曲的成绩记录
+
+    Args:
+        title: 歌曲名称（精确匹配）
+        type: 谱面类型 ("dx" 或 "std")
+        cookies: 登录后的 cookies 字典
+        ver: 版本 (jp/intl)
+
+    Returns:
+        list: 该歌曲所有难度的成绩记录，每条记录包含：
+            - name: 歌曲名称
+            - difficulty: 难度 (basic/advanced/expert/master/remaster)
+            - type: 谱面类型 (dx/std)
+            - score: 达成率
+            - dx_score: DX分数
+            - score_icon: 评级图标
+            - combo_icon: Combo图标
+            - sync_icon: Sync图标
+            - last_play_time: 最终游玩时间
+            - play_count: 游玩次数
+        如果未找到返回空列表
+    """
+    base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
+    difficulty = ['basic', 'advanced', 'expert', 'master', 'remaster']
+    session_id = id(cookies)
+
+    connector = aiohttp.TCPConnector(ssl=False, limit=10, ttl_dns_cache=300)
+    async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
+        search_url = f"{base}/record/musicGenre/search/?genre=99&diff=0"
+        dom = await fetch_dom(session, search_url, session_id, ver)
+
+        if dom is None:
+            return []
+        if dom == "MAINTENANCE":
+            return "MAINTENANCE"
+
+        # 查找匹配的歌曲并提取 idx
+        idx = None
+        forms = dom.xpath('//div[contains(@class, "w_450")]')
+
+        for form in forms:
+            # 检查歌曲名称是否匹配
+            name_div = form.xpath('.//div[contains(@class, "music_name_block")]/text()')
+            if not name_div:
+                continue
+
+            song_name = name_div[0]
+            if normalize(song_name) != normalize(title):
+                continue
+
+            # 检查谱面类型是否匹配
+            type_icon = form.xpath('.//img[contains(@class, "music_kind_icon")]/@src')
+            if not type_icon:
+                continue
+
+            song_type = None
+            if 'standard.png' in type_icon[0]:
+                song_type = 'std'
+            elif 'dx.png' in type_icon[0]:
+                song_type = 'dx'
+
+            # 同时匹配 title 和 type
+            if song_type == type:
+                # 找到匹配的歌曲，提取 idx
+                idx_input = form.xpath('.//input[@type="hidden" and @name="idx"]/@value')
+                if idx_input:
+                    idx = idx_input[0]
+                    break
+
+        if not idx:
+            # 未找到该歌曲
+            return []
+
+        # 第二步：使用 idx 访问歌曲详情页面
+        detail_url = f"{base}/record/musicDetail/?idx={quote(idx, safe='')}"
+        detail_dom = await fetch_dom(session, detail_url, session_id, ver)
+
+        if detail_dom is None:
+            return []
+        if detail_dom == "MAINTENANCE":
+            return "MAINTENANCE"
+
+        # 第三步：解析详情页面，提取所有难度的成绩
+        single_record = []
+
+        # 查找所有难度的成绩块
+        # 格式：<div id="basic" class="music_basic_score_back w_450 m_15 p_3 f_0">
+        #       <div id="expert" class="music_expert_score_back w_450 m_15 p_3 f_0">
+        # 匹配所有包含 "score_back" 的 div
+        score_blocks = detail_dom.xpath('//div[contains(@class, "_score_back")]')
+
+        for block in score_blocks:
+            # 获取难度
+            block_id = block.get("id")
+            if block_id:
+                diff = block_id.lower()
+            else:
+                diff = 'unknown'
+
+            # 获取谱面类型
+            type_img = block.xpath('.//img[contains(@class, "music_kind_icon")]/@src')
+            if type_img:
+                if 'standard.png' in type_img[0]:
+                    chart_type = 'std'
+                elif 'dx.png' in type_img[0]:
+                    chart_type = 'dx'
+                else:
+                    chart_type = 'N/A'
+            else:
+                chart_type = 'N/A'
+
+            # 获取达成率
+            # 格式：<div class="music_score_block w_120 d_ib t_r f_12">100.9277%</div>
+            score_div = block.xpath('.//div[contains(@class, "music_score_block") and contains(@class, "w_120")]/text()')
+            score = score_div[0].strip() if score_div else 'N/A'
+
+            # 获取 DX Score
+            # 格式：<div class="music_score_block w_310 m_r_0 d_ib t_r f_12">... 613 / 666</div>
+            dx_score_div = block.xpath('.//div[contains(@class, "music_score_block") and contains(@class, "w_310")]')
+            dx_score = 'N/A'
+            if dx_score_div:
+                # 提取所有文本节点
+                text_nodes = dx_score_div[0].xpath('.//text()')
+                # 找到包含 " / " 的文本（格式：613 / 666）
+                for text in text_nodes:
+                    text = text.strip()
+                    if '/' in text:
+                        dx_score = text.replace(',', '')
+                        break
+
+            # 获取成绩图标
+            # 格式：<img src=".../music_icon_sssp.png?ver=1.60">
+            score_icon_img = block.xpath('.//img[contains(@class, "p_t_5") and contains(@class, "v_t")]/@src')
+            score_icon = ''
+            if score_icon_img:
+                icon_name = score_icon_img[0].split('/')[-1].split('?')[0].replace('.png', '').replace('music_icon_', '')
+                score_icon = icon_name
+
+            # 获取 Combo 图标
+            # 格式：<img src=".../music_icon_fcp.png?ver=1.60" class="h_45 v_t">
+            combo_icon_img = block.xpath('.//img[contains(@class, "h_45 v_t")]/@src')
+            combo_icon = 'back'
+            if combo_icon_img:
+                icon_name = combo_icon_img[0].split('/')[-1].split('?')[0].replace('.png', '').replace('music_icon_', '')
+                combo_icon = icon_name
+
+            # 获取 Sync 图标
+            # 格式：<img src=".../music_icon_sync.png?ver=1.60" class="h_45 m_r_10 v_t">
+            sync_icon_img = block.xpath('.//img[contains(@class, "h_45") and contains(@class, "m_r_10") and contains(@class, "v_t")]/@src')
+            sync_icon = 'back'
+            if sync_icon_img:
+                icon_name = sync_icon_img[0].split('/')[-1].split('?')[0].replace('.png', '').replace('music_icon_', '')
+                sync_icon = icon_name
+
+            # 获取最终游玩时间和游玩次数
+            # JP格式：<tr><td>最終プレイ日時：</td><td>2024/11/29 15:22</td></tr>
+            #         <tr><td>プレイ回数：</td><td>4回</td></tr>
+            # EN格式：<tr><td>Last played date：</td><td>2025/01/25 21:07</td></tr>
+            #         <tr><td>PLAY COUNT：</td><td>1</td></tr>
+            last_play_time = 'N/A'
+            play_count = 'N/A'
+
+            table_rows = block.xpath('.//table[contains(@class, "collapse")]//tr')
+            for row in table_rows:
+                # 获取所有td元素
+                tds = row.xpath('.//td')
+                if len(tds) >= 2:
+                    # 提取每个td的文本内容
+                    label_text = ''.join(tds[0].xpath('.//text()')).strip()
+                    value_text = ''.join(tds[1].xpath('.//text()')).strip()
+
+                    label_lower = label_text.lower()
+
+                    # 匹配最终游玩时间（日文：最終プレイ日時，英文：Last played date）
+                    if 'プレイ日時' in label_text or 'played date' in label_lower or 'last played' in label_lower:
+                        last_play_time = value_text
+                    # 匹配游玩次数（日文：プレイ回数，英文：PLAY COUNT/Play Count）
+                    elif 'プレイ回数' in label_text or 'play count' in label_lower or 'count' in label_lower:
+                        # 去掉可能的后缀
+                        play_count = value_text.replace('回', '').replace('times', '').strip()
+
+            single_record.append({
+                'name': title,
+                'difficulty': diff,
+                'type': chart_type,
+                'score': score,
+                'dx_score': dx_score,
+                'score_icon': score_icon,
+                'combo_icon': combo_icon,
+                'sync_icon': sync_icon,
+                'last_play_time': last_play_time,
+                'play_count': play_count
+            })
+
+        return single_record
 
 
 async def get_friends_list(cookies: dict, ver="jp"):

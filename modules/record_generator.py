@@ -31,7 +31,8 @@ def _get_difficulty_color(difficulty):
     }
     return colors.get(difficulty.lower(), (200, 200, 200))
 
-def create_thumbnail_in_line(song, thumb_size=(400, 100), scale=1.5):
+def create_thumbnail_in_line(song):
+    thumb_size=(600, 225)
     bg_color = (255, 255, 255)
     img = Image.new("RGB", thumb_size, bg_color)
     draw = ImageDraw.Draw(img)
@@ -39,17 +40,22 @@ def create_thumbnail_in_line(song, thumb_size=(400, 100), scale=1.5):
     text_color = (0, 0, 0)
 
     # --- 基础分数 ---
-    draw.text((15, 10), song['score'], fill=text_color, font=font_large)
-    draw.text((187, 21), song['dx_score'], fill=text_color, font=font_stadium)
+    draw.text((20, 10), song['score'], fill=text_color, font=font_record_name)
+    draw.text((25, 80), song['dx_score'], fill=text_color, font=font_record_info)
+
+    # --- 游玩信息 ---
+    if 'last_play_time' in song and 'play_count' in song:
+        draw.text((25, 115), f"PC: {song['play_count']}", fill=text_color, font=font_record_info)
+        draw.text((180, 115), f"Recent: {song['last_play_time']}", fill=text_color, font=font_record_info)
 
     # --- score_icon 图标 ---
     # 根据缩略图尺寸动态计算图标大小
     paste_icon_optimized(
         img, song, key='score_icon',
-        size=(90, 40),
-        position=(305, 12),
+        size=(203, 90),
+        position=(380, 20),
         save_dir=ICON_SCORE_DIR,
-        url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_{value}.png"
+        url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/playlog/{value.replace('p', 'plus')}.png"
     )
 
     # --- 最下面的横线 ---
@@ -58,8 +64,8 @@ def create_thumbnail_in_line(song, thumb_size=(400, 100), scale=1.5):
     # --- combo_icon 图标 ---
     paste_icon_optimized(
         img, song, key='combo_icon',
-        size=(40, 44),
-        position=(19, 50),
+        size=(60, 66),
+        position=(29, 150),
         save_dir=ICON_COMBO_DIR,
         url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_{value}.png"
     )
@@ -67,8 +73,8 @@ def create_thumbnail_in_line(song, thumb_size=(400, 100), scale=1.5):
     # --- sync_icon 图标 ---
     paste_icon_optimized(
         img, song, key='sync_icon',
-        size=(40, 44),
-        position=(65, 50),
+        size=(60, 66),
+        position=(99, 150),
         save_dir=ICON_SYNC_DIR,
         url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_{value}.png"
     )
@@ -93,8 +99,8 @@ def create_thumbnail_in_line(song, thumb_size=(400, 100), scale=1.5):
 
             paste_icon_optimized(
                 img, {'star': str(star_num)}, key='star',
-                size=(109, 22),
-                position=(129, 63),
+                size=(164, 33),
+                position=(194, 170),
                 save_dir=ICON_DX_STAR_DIR,
                 url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_dxstar_detail_{value}.png"
             )
@@ -103,16 +109,13 @@ def create_thumbnail_in_line(song, thumb_size=(400, 100), scale=1.5):
             logger.error(f"[RecordGenerator] ✗ Failed to calculate dx_star: error={e}")
 
     # --- 数值 ---
-    draw.text((375, 61), f"{song['internalLevelValue']:.1f} → {song['ra']}", fill=(0, 0, 0), font=font_stadium, anchor="ra")
+    draw.text((563, 165), f"{song['internalLevelValue']:.1f} → {song['ra']}", fill=(0, 0, 0), font=font_record_info, anchor="ra")
 
     # --- 边框 ---
     border_color = _get_difficulty_color(song['difficulty'])
-    draw.rectangle([(0, 0), (thumb_size[0] - 1, thumb_size[1] - 1)], outline=border_color, width=5)
+    draw.rectangle([(0, 0), (thumb_size[0] - 1, thumb_size[1] - 1)], outline=border_color, width=7)
 
     final_img = img.convert("RGB")
-
-    new_size = (int(final_img.width * scale), int(final_img.height * scale))
-    final_img = final_img.resize(new_size, Image.Resampling.LANCZOS)
 
     return final_img
 
@@ -179,7 +182,7 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
         size=(score_icon_width, score_icon_height),
         position=(score_x_offset - score_icon_width + 5, padding + line_spacing),
         save_dir=ICON_SCORE_DIR,
-        url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_{value}.png"
+        url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/playlog/{value.replace('p', 'plus')}.png"
     )
 
     # --- 版本标题 + dx_score ---

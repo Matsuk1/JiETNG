@@ -178,7 +178,7 @@ def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0, ver
 def _makeup_played_data(played_data, gap=10):
     rcd_imgs = []
     for rcd in played_data:
-        rcd_imgs.append(create_thumbnail_in_line(rcd, scale=1))
+        rcd_imgs.append(create_thumbnail_in_line(rcd))
 
     widths = [img.width for img in rcd_imgs]
     heights = [img.height for img in rcd_imgs]
