@@ -12,6 +12,8 @@ from modules.config_loader import (
     ICON_DX_STAR_DIR,
     ICON_COMBO_DIR,
     ICON_SYNC_DIR,
+    ICON_COMBO_RCD_DIR,
+    ICON_SYNC_RCD_DIR,
     ICON_BASE_DIR
 )
 from modules.image_cache import *
@@ -40,13 +42,13 @@ def create_thumbnail_in_line(song):
     text_color = (0, 0, 0)
 
     # --- 基础分数 ---
-    draw.text((20, 10), song['score'], fill=text_color, font=font_record_name)
-    draw.text((25, 80), song['dx_score'], fill=text_color, font=font_record_info)
+    draw.text((20, 0), song['score'], fill=text_color, font=font_record_name)
+    draw.text((25, 70), song['dx_score'], fill=text_color, font=font_record_info)
 
     # --- 游玩信息 ---
     if 'last_play_time' in song and 'play_count' in song:
-        draw.text((25, 115), f"PC: {song['play_count']}", fill=text_color, font=font_record_info)
-        draw.text((180, 115), f"Recent: {song['last_play_time']}", fill=text_color, font=font_record_info)
+        draw.text((25, 110), f"PC: {song['play_count']}", fill=text_color, font=font_record_info)
+        draw.text((180, 110), f"Recent: {song['last_play_time']}", fill=text_color, font=font_record_info)
 
     # --- score_icon 图标 ---
     # 根据缩略图尺寸动态计算图标大小
@@ -64,19 +66,19 @@ def create_thumbnail_in_line(song):
     # --- combo_icon 图标 ---
     paste_icon_optimized(
         img, song, key='combo_icon',
-        size=(60, 66),
-        position=(29, 150),
-        save_dir=ICON_COMBO_DIR,
-        url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_{value}.png"
+        size=(108, 56),
+        position=(15, 156),
+        save_dir=ICON_COMBO_RCD_DIR,
+        url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/playlog/{value.replace('back', 'fc_dummy').replace('fcp', 'fcplus').replace('app', 'applus')}.png"
     )
 
     # --- sync_icon 图标 ---
     paste_icon_optimized(
         img, song, key='sync_icon',
-        size=(60, 66),
-        position=(99, 150),
-        save_dir=ICON_SYNC_DIR,
-        url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_{value}.png"
+        size=(108, 56),
+        position=(115, 156),
+        save_dir=ICON_SYNC_RCD_DIR,
+        url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/playlog/{value.replace('back', 'sync_dummy').replace('fdx', 'fsd').replace('p', 'plus')}.png"
     )
 
     # --- dx_star 星星图标 ---
@@ -100,7 +102,7 @@ def create_thumbnail_in_line(song):
             paste_icon_optimized(
                 img, {'star': str(star_num)}, key='star',
                 size=(164, 33),
-                position=(194, 170),
+                position=(227, 170),
                 save_dir=ICON_DX_STAR_DIR,
                 url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_dxstar_detail_{value}.png"
             )
@@ -109,7 +111,7 @@ def create_thumbnail_in_line(song):
             logger.error(f"[RecordGenerator] ✗ Failed to calculate dx_star: error={e}")
 
     # --- 数值 ---
-    draw.text((563, 165), f"{song['internalLevelValue']:.1f} → {song['ra']}", fill=(0, 0, 0), font=font_record_info, anchor="ra")
+    draw.text((575, 165), f"{song['internalLevelValue']:.1f} → {song['ra']}", fill=(0, 0, 0), font=font_record_info, anchor="ra")
 
     # --- 边框 ---
     border_color = _get_difficulty_color(song['difficulty'])

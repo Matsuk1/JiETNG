@@ -39,7 +39,8 @@ from flask import (
     redirect,
     session,
     jsonify,
-    send_file
+    send_file,
+    send_from_directory
 )
 from flask_wtf.csrf import CSRFProtect
 
@@ -705,6 +706,34 @@ def line_add_page():
     return redirect(LINE_ADDING_URL)
 
 
+@app.route("/linebot/img/<image_id>", methods=["GET"])
+def serve_image(image_id):
+    """提供本地图床的图片访问
+
+    Args:
+        image_id: 图片ID
+
+    Returns:
+        图片文件或404错误
+    """
+    # 验证image_id格式（防止路径穿越攻击）
+    if not image_id.replace('-', '').replace('_', '').isalnum():
+        logger.warning(f"[ImageHost] ⚠ Invalid image_id format: id={image_id}")
+        abort(404)
+
+    # 添加.png扩展名
+    filename = f"{image_id}.png"
+    image_path = os.path.join(IMG_DIR, filename)
+
+    # 检查文件是否存在
+    if not os.path.exists(image_path):
+        logger.warning(f"[ImageHost] ⚠ Image not found: id={image_id}")
+        abort(404)
+
+    logger.info(f"[ImageHost] → Serving image: id={image_id}")
+    return send_from_directory(IMG_DIR, filename, mimetype='image/png')
+
+
 @app.route("/linebot/sega_bind", methods=["GET", "POST"])
 def website_segaid_bind():
     """
@@ -944,19 +973,39 @@ def async_get_song_record_task(event):
     user_id = event.source.user_id
     reply_token = event.reply_token
 
-    # 获取用户版本
-    ver = "jp"
-    id_use = user_id
+    # 检查 @ mention（提取被提到的用户 ID）
+    # 注意：多个 mention 和 @ALL 的情况已在 handle_text_message 中过滤
+    mentioned_user_id = None
+    if hasattr(event.message, 'mention') and event.message.mention:
+        mentionees = event.message.mention.mentionees
+        if mentionees and len(mentionees) > 0:
+            # 此时只会有单个用户 mention
+            mentionee = mentionees[0]
+            mentioned_user_id = getattr(mentionee, 'user_id', None)
 
+            if mentioned_user_id:
+                if mentioned_user_id in USERS:
+                    logger.info(f"[Mention] User mentioned: user_id={user_id}, mentioned_user_id={mentioned_user_id}")
+                else:
+                    logger.debug(f"[Mention] Mentioned user not registered: mentioned_user_id={mentioned_user_id}")
+
+    # 初始化用户版本和目标用户
     if user_id in USERS:
-        if 'version' in USERS[user_id]:
-            ver = USERS[user_id]['version']
+        mai_ver = USERS[user_id].get("version", "jp")
+        # 只有当 mentioned_user_id 存在且已注册时才使用
+        id_use = mentioned_user_id if mentioned_user_id else user_id
+        mai_ver_use = USERS[id_use].get("version", "jp") if id_use in USERS else mai_ver
+
+    else:
+        id_use = user_id
+        mai_ver = "jp"
+        mai_ver_use = "jp"
 
     # 提取歌曲名称（移除命令后缀）
     acronym = re.sub(r"\s*(のレコード|song-record|record)$", "", user_message).strip()
 
     # 调用实际的查询函数
-    reply_msg = asyncio.run(get_song_record(user_id, id_use, acronym, ver))
+    reply_msg = asyncio.run(get_song_record(user_id, id_use, acronym, mai_ver_use))
 
     smart_reply(user_id, reply_token, reply_msg, configuration)
 
@@ -1488,7 +1537,7 @@ async def get_song_record(user_id, id_use, acronym, ver="jp"):
 
     # 只登录一次，在循环外（学习 maimai_update 的模式）
     cookies = None
-    if 'sega_id' in USERS[id_use] and 'sega_pwd' in USERS[id_use]:
+    if 'sega_id' in USERS[id_use] and 'sega_pwd' in USERS[id_use] and user_id == id_use:
         try:
             sega_id = USERS[id_use]['sega_id']
             sega_pwd = USERS[id_use]['sega_pwd']
@@ -1593,7 +1642,7 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
 
     # 尝试使用新函数获取更详细的成绩（包含游玩次数和最后游玩时间）
     try:
-        if 'sega_id' in USERS[id_use] and 'sega_pwd' in USERS[id_use]:
+        if 'sega_id' in USERS[id_use] and 'sega_pwd' in USERS[id_use] and user_id == id_use:
             sega_id = USERS[id_use]['sega_id']
             sega_pwd = USERS[id_use]['sega_pwd']
             aime = USERS[id_use].get('aime', 0)
@@ -2957,8 +3006,28 @@ def handle_text_message(event):
     # 清理消息文本中的 mention 特殊字符（LINE 的 mention 格式是 \ufffd@显示名\ufffd）
     # 移除所有不可见的 Unicode 字符和 @ 后的用户名
     original_text = event.message.text
-    cleaned_text = re.sub(r'[\ufffd]', '', original_text)  # 移除替换字符
-    cleaned_text = re.sub(r'@\S+\s*', '', cleaned_text)     # 移除 @用户名
+    cleaned_text = original_text
+
+    # 如果有 mention 信息，使用官方 API 提供的索引精确删除
+    # 参考: https://developers.line.biz/en/docs/messaging-api/receiving-messages/
+    if hasattr(event.message, 'mention') and event.message.mention and event.message.mention.mentionees:
+        # 从后往前删除，避免索引偏移问题
+        # mentionees 数组包含 index（起始位置）和 length（长度）属性
+        for mentionee in reversed(event.message.mention.mentionees):
+            if hasattr(mentionee, 'index') and hasattr(mentionee, 'length'):
+                start = mentionee.index
+                end = start + mentionee.length
+                # 精确删除 mention 文本（支持包含空格的用户名）
+                cleaned_text = cleaned_text[:start] + cleaned_text[end:]
+    else:
+        # 没有 mention 信息时，使用正则删除 @用户名（支持包含空格的用户名）
+        # 匹配 @后跟任意非换行字符，直到遇到两个或以上空格、或换行、或字符串结尾
+        cleaned_text = re.sub(r'@[^\n]+?(?=\s{2,}|\n|$)', '', cleaned_text)
+        # 如果上面没匹配到，尝试简单的 @非空白字符
+        cleaned_text = re.sub(r'@\S+', '', cleaned_text)
+
+    # 删除不可见字符（在删除 mention 之后，避免影响索引）
+    cleaned_text = re.sub(r'[\ufffd]', '', cleaned_text)
     cleaned_text = cleaned_text.strip()
 
     # 替换 event.message.text 用于命令匹配
@@ -5655,6 +5724,14 @@ if __name__ == "__main__":
 
     logger.info(f"[System] ✓ Workers started: image={MAX_CONCURRENT_IMAGE_TASKS}, web={WEB_MAX_CONCURRENT_TASKS}")
 
+    # 清理过期的图片（启动时执行一次）
+    logger.info("[System] → Cleaning up expired images...")
+    from modules.image_uploader import cleanup_expired_images, _start_periodic_cleanup
+    cleanup_expired_images()
+
+    # 启动定期清理线程
+    _start_periodic_cleanup()
+
     # 启动内存管理器
     memory_manager.start()
     logger.info("[System] ✓ Memory manager started")
@@ -5672,6 +5749,9 @@ if __name__ == "__main__":
             # 清理未绑定的用户（没有 sega_id 或 sega_pwd）
             cleanup_result = clean_unbound_users()
             cleaned_unbound_users = cleanup_result.get('deleted_count', 0)
+
+            # 清理过期的图片
+            cleanup_expired_images()
 
             logger.info(f"[System] ✓ Custom cleanup completed: nicknames={cleaned_nicknames}, rate_limits={cleaned_rate_limits}, unbound_users={cleaned_unbound_users}")
         except Exception as e:

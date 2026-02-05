@@ -49,7 +49,10 @@ default_config = {
         "icon_dx_star": "./assets/icon/dx_star",
         "icon_combo": "./assets/icon/combo",
         "icon_sync": "./assets/icon/sync",
-        "icon_base": "./assets/icon"
+        "icon_combo_rcd": "./assets/icon/combo_rcd",
+        "icon_sync_rcd": "./assets/icon/sync_rcd",
+        "icon_base": "./assets/icon",
+        "img_dir": "./data/images"
     },
     "record_database": {
         "host": "localhost",
@@ -157,7 +160,10 @@ ICON_SCORE_DIR = FILE_PATH["icon_score"]
 ICON_DX_STAR_DIR = FILE_PATH["icon_dx_star"]
 ICON_COMBO_DIR = FILE_PATH["icon_combo"]
 ICON_SYNC_DIR = FILE_PATH["icon_sync"]
+ICON_COMBO_RCD_DIR = FILE_PATH["icon_combo_rcd"]
+ICON_SYNC_RCD_DIR = FILE_PATH["icon_sync_rcd"]
 ICON_BASE_DIR = FILE_PATH["icon_base"]
+IMG_DIR = FILE_PATH["img_dir"]
 
 # 数据库配置字段
 RECORD_DATABASE = _config["record_database"]
@@ -258,3 +264,6 @@ def mark_user_dirty():
     """标记用户数据已修改"""
     global _user_data_dirty
     _user_data_dirty = True
+
+# 确保图片目录存在
+os.makedirs(IMG_DIR, exist_ok=True)
