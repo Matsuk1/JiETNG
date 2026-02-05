@@ -974,20 +974,7 @@ def async_get_song_record_task(event):
     reply_token = event.reply_token
 
     # 检查 @ mention（提取被提到的用户 ID）
-    # 注意：多个 mention 和 @ALL 的情况已在 handle_text_message 中过滤
-    mentioned_user_id = None
-    if hasattr(event.message, 'mention') and event.message.mention:
-        mentionees = event.message.mention.mentionees
-        if mentionees and len(mentionees) > 0:
-            # 此时只会有单个用户 mention
-            mentionee = mentionees[0]
-            mentioned_user_id = getattr(mentionee, 'user_id', None)
-
-            if mentioned_user_id:
-                if mentioned_user_id in USERS:
-                    logger.info(f"[Mention] User mentioned: user_id={user_id}, mentioned_user_id={mentioned_user_id}")
-                else:
-                    logger.debug(f"[Mention] Mentioned user not registered: mentioned_user_id={mentioned_user_id}")
+    mentioned_user_id = extract_single_mention(event, user_id)
 
     # 初始化用户版本和目标用户
     if user_id in USERS:
@@ -995,7 +982,6 @@ def async_get_song_record_task(event):
         # 只有当 mentioned_user_id 存在且已注册时才使用
         id_use = mentioned_user_id if mentioned_user_id else user_id
         mai_ver_use = USERS[id_use].get("version", "jp") if id_use in USERS else mai_ver
-
     else:
         id_use = user_id
         mai_ver = "jp"
@@ -2958,6 +2944,96 @@ def mark_message_as_read(mark_as_read_token: str, user_id: str = None):
         logger.error(f"[MarkAsRead] ✗ Failed to mark as read: user_id={user_id}, error={e}")
 
 
+# ==================== Mention 处理函数 ====================
+
+def check_mention_filter(event):
+    """检查是否应该过滤消息（@ALL 或多个 mention）
+
+    逻辑：
+    - @ALL → 过滤
+    - 总 mention 数 >= 3 → 过滤（假设其中一个是 bot）
+    - 总 mention 数 <= 2 → 允许（可能是 @bot + @user）
+
+    Args:
+        event: LINE 消息事件
+
+    Returns:
+        bool: True 表示应该忽略此消息，False 表示可以处理
+    """
+    if not hasattr(event.message, 'mention') or not event.message.mention:
+        return False
+
+    mentionees = event.message.mention.mentionees
+    if not mentionees:
+        return False
+
+    user_id = event.source.user_id
+
+    # 检查 @ALL
+    for mentionee in mentionees:
+        mention_type = getattr(mentionee, 'type', None)
+        if mention_type == 'all':
+            logger.info(f"[Mention] @ALL detected, ignoring message: user_id={user_id}, text='{event.message.text}'")
+            return True
+
+    # 统计非 bot 的用户 mention 数量
+    user_mention_count = 0
+    for mentionee in mentionees:
+        is_self = getattr(mentionee, 'is_self', False)
+        if not is_self:
+            user_mention_count += 1
+
+    # 如果有 2 个或以上的用户 mention（不包括 bot），则过滤
+    # 允许的情况:
+    # - @user → 1 个用户 mention → 允许
+    # - @bot @user → 1 个用户 mention（跳过 bot）→ 允许
+    # 过滤的情况:
+    # - @user1 @user2 → 2 个用户 mentions → 过滤
+    # - @bot @user1 @user2 → 2 个用户 mentions → 过滤
+    if user_mention_count >= 2:
+        logger.info(f"[Mention] Multiple user mentions ({user_mention_count}) detected, ignoring message: user_id={user_id}, text='{event.message.text}'")
+        return True
+
+    return False
+
+
+def extract_single_mention(event, user_id):
+    """提取单个 mention 的用户 ID
+
+    注意：@bot 会被自动跳过
+
+    Args:
+        event: LINE 消息事件
+        user_id: 发送消息的用户 ID
+
+    Returns:
+        str or None: 被提及的用户 ID，如果没有 mention 或用户未注册则返回 None
+    """
+    if not hasattr(event.message, 'mention') or not event.message.mention:
+        return None
+
+    mentionees = event.message.mention.mentionees
+    if not mentionees or len(mentionees) == 0:
+        return None
+
+    # 跳过 @bot，查找第一个非 bot 的 mention
+    for mentionee in mentionees:
+        # 跳过 bot 自己
+        is_self = getattr(mentionee, 'is_self', False)
+        if is_self:
+            continue
+
+        mentioned_user_id = getattr(mentionee, 'user_id', None)
+        if mentioned_user_id:
+            if mentioned_user_id in USERS:
+                logger.info(f"[Mention] User mentioned: user_id={user_id}, mentioned_user_id={mentioned_user_id}")
+                return mentioned_user_id
+            else:
+                logger.debug(f"[Mention] Mentioned user not registered: mentioned_user_id={mentioned_user_id}")
+
+    return None
+
+
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_text_message(event):
     """
@@ -2973,35 +3049,8 @@ def handle_text_message(event):
     mark_message_as_read(mark_as_read_token, event.source.user_id)
 
     # 检查 mention 情况 - @ALL 或多个 @ 时直接忽略不回复
-    if hasattr(event.message, 'mention') and event.message.mention:
-        mentionees = event.message.mention.mentionees
-        if mentionees:
-            user_id = event.source.user_id
-
-            # 统计有效的用户 mention 数量
-            user_mention_count = 0
-            has_all_mention = False
-
-            for mentionee in mentionees:
-                mention_type = getattr(mentionee, 'type', None)
-                if mention_type == 'all':
-                    has_all_mention = True
-                    break
-
-                # 统计用户 mention
-                mentionee_user_id = getattr(mentionee, 'user_id', None)
-                if mentionee_user_id:
-                    user_mention_count += 1
-
-            # @ALL 时忽略
-            if has_all_mention:
-                logger.info(f"[Mention] @ALL detected, ignoring message: user_id={user_id}, text='{event.message.text}'")
-                return
-
-            # 多个 @ 时忽略
-            if user_mention_count >= 2:
-                logger.info(f"[Mention] Multiple mentions ({user_mention_count}) detected, ignoring message: user_id={user_id}, text='{event.message.text}'")
-                return
+    if check_mention_filter(event):
+        return
 
     # 清理消息文本中的 mention 特殊字符（LINE 的 mention 格式是 \ufffd@显示名\ufffd）
     # 移除所有不可见的 Unicode 字符和 @ 后的用户名
@@ -3010,6 +3059,7 @@ def handle_text_message(event):
 
     # 如果有 mention 信息，使用官方 API 提供的索引精确删除
     # 参考: https://developers.line.biz/en/docs/messaging-api/receiving-messages/
+    # 注意：会删除所有 mention 文本（包括 @bot 和 @user）
     if hasattr(event.message, 'mention') and event.message.mention and event.message.mention.mentionees:
         # 从后往前删除，避免索引偏移问题
         # mentionees 数组包含 index（起始位置）和 length（长度）属性
@@ -3017,7 +3067,7 @@ def handle_text_message(event):
             if hasattr(mentionee, 'index') and hasattr(mentionee, 'length'):
                 start = mentionee.index
                 end = start + mentionee.length
-                # 精确删除 mention 文本（支持包含空格的用户名）
+                # 精确删除 mention 文本（包括 @bot，支持包含空格的用户名）
                 cleaned_text = cleaned_text[:start] + cleaned_text[end:]
     else:
         # 没有 mention 信息时，使用正则删除 @用户名（支持包含空格的用户名）
@@ -3085,20 +3135,7 @@ def handle_sync_text_command(event):
     # ========================================
 
     # 检查 @ mention（提取被提到的用户 ID）
-    # 注意：多个 mention 和 @ALL 的情况已在 handle_text_message 中过滤
-    mentioned_user_id = None
-    if hasattr(event.message, 'mention') and event.message.mention:
-        mentionees = event.message.mention.mentionees
-        if mentionees and len(mentionees) > 0:
-            # 此时只会有单个用户 mention
-            mentionee = mentionees[0]
-            mentioned_user_id = getattr(mentionee, 'user_id', None)
-
-            if mentioned_user_id:
-                if mentioned_user_id in USERS:
-                    logger.info(f"[Mention] User mentioned: user_id={user_id}, mentioned_user_id={mentioned_user_id}")
-                else:
-                    logger.debug(f"[Mention] Mentioned user not registered: mentioned_user_id={mentioned_user_id}")
+    mentioned_user_id = extract_single_mention(event, user_id)
 
     # 初始化用户版本和目标用户
     if user_id in USERS:
@@ -3106,7 +3143,6 @@ def handle_sync_text_command(event):
         # 只有当 mentioned_user_id 存在且已注册时才使用
         id_use = mentioned_user_id if mentioned_user_id else user_id
         mai_ver_use = USERS[id_use].get("version", "jp") if id_use in USERS else mai_ver
-
     else:
         id_use = user_id
         mai_ver = "jp"
