@@ -9,7 +9,6 @@ import requests
 import json
 import re
 import traceback
-import numpy as np
 import threading
 import queue
 import logging
@@ -784,11 +783,8 @@ Token not provided. <br />
         # 获取用户数据
         user_data = USERS.get(user_id, {})
 
-        # 在 rebind 模式下，从表单获取语言；否则从用户数据获取
-        if mode == "rebind":
-            user_language = request.form.get("language", user_data.get("language", "ja"))
-        else:
-            user_language = user_data.get("language", "ja")
+        # 从表单获取语言
+        user_language = request.form.get("language", user_data.get("language", "ja"))
 
         # 检查用户是否已经绑定账号（仅在 bind 模式下检查）
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
@@ -1242,7 +1238,8 @@ def get_rc(level: float, user_id=None):
     rc_data = []
     last_ra = 0
 
-    for score in np.arange(97, 100.5001, 0.0001):
+    for i in range(970000, 1005001):
+        score = i / 10000
         ra = get_single_ra(level, score)
         if ra != last_ra:
             rc_data.append((score, ra))

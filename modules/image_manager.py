@@ -1,6 +1,5 @@
 import qrcode
 import logging
-import numpy as np
 from datetime import datetime, timezone, timedelta, date
 from PIL import Image, ImageDraw, ImageFont
 from modules.config_loader import FONT_PATH, LOGO_PATH
