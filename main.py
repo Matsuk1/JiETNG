@@ -911,9 +911,9 @@ async def process_sega_credentials(user_id, segaid, password, ver="jp", language
                 messages = await maimai_update(user_id, ver)
             except Exception as e:
                 logger.error(f"[Bind Task] ⚠ Failed to update: {e}")
-                messages = bind_msg(user_id)
+                messages = rebind_msg(user_id)
         else:
-            messages = bind_msg(user_id)
+            messages = rebind_msg(user_id)
 
         # 尝试推送消息
         try:

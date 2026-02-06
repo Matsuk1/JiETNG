@@ -21,7 +21,7 @@ from linebot.v3.messaging.models import (
 welcome_msg_text = "『JiETNG・カヰテー』で有りんす。\nお願ひ申し候。"
 group_welcome_msg_text = "『JiETNG・カヰテー』で有りんす。\nお出迎え有りんす。"
 
-bind_msg_text = {
+rebind_msg_text = {
     "ja": "✅ SEGA IDの更新できたよ！",
     "en": "✅ SEGA ID updated successfully!",
     "zh": "✅ SEGA ID 更新成功！"

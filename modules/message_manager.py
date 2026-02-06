@@ -199,9 +199,9 @@ def get_record_error_quick_reply(user_id=None):
 # 向后兼容的消息生成函数 / Backward Compatible Message Functions
 # ============================================================
 
-def bind_msg(user_id=None):
-    """生成 SEGA ID 绑定成功消息"""
-    return create_text_message(bind_msg_text, user_id, get_update_quick_reply(user_id))
+def rebind_msg(user_id=None):
+    """生成 SEGA ID 更新成功消息"""
+    return create_text_message(rebind_msg_text, user_id, get_update_quick_reply(user_id))
 
 def unbind_msg(user_id=None):
     """生成 SEGA ID 解绑成功消息"""
