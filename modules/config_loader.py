@@ -31,13 +31,14 @@ default_config = {
     "host": "0.0.0.0",
     "port": 5000,
     "file_path": {
-        "dxdata_list": "./data/dxdata.json",
-        "dxdata_version": "./data/dxdata_version.json",
-        "override_list": "./data/intl_override.json",
+        "dxdata_list": "./data/dxdata/dxdata.json",
+        "dxdata_version": "./data/dxdata/dxdata_version.json",
+        "override_list": "./data/dxdata/intl_override.json",
         "user_list": "./data/user.json.enc",
         "notice_file": "./data/notice.json",
         "tip_ad_file": "./data/tip_ad.json",
         "backup": "./data/backup",
+        "img_dir": "./data/images",
         "dev_tokens": "./data/dev_tokens.json",
         "font": "./assets/fonts/line_seed_jietng.ttf",
         "logo": "./assets/pics/logo.png",
@@ -51,8 +52,7 @@ default_config = {
         "icon_sync": "./assets/icon/sync",
         "icon_combo_rcd": "./assets/icon/combo_rcd",
         "icon_sync_rcd": "./assets/icon/sync_rcd",
-        "icon_base": "./assets/icon",
-        "img_dir": "./data/images"
+        "icon_base": "./assets/icon"
     },
     "record_database": {
         "host": "localhost",

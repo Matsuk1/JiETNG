@@ -1521,62 +1521,10 @@ async def get_song_record(user_id, id_use, acronym, ver="jp"):
     if len(songs_with_records) > 1:
         return generate_search_record_results_flex(user_id, id_use, songs_with_records)
 
-    # 只登录一次，在循环外（学习 maimai_update 的模式）
-    cookies = None
-    if 'sega_id' in USERS[id_use] and 'sega_pwd' in USERS[id_use] and user_id == id_use:
-        try:
-            sega_id = USERS[id_use]['sega_id']
-            sega_pwd = USERS[id_use]['sega_pwd']
-            aime = USERS[id_use].get('aime', 0)
-            cookies = await login_to_maimai(sega_id, sega_pwd, ver=ver, aime=aime)
-            if cookies is None:
-                logger.warning(f"[Song Record] ⚠ Login failed: user_id={user_id}")
-        except Exception as e:
-            logger.exception(f"[Song Record] Failed to login for detailed record: {e}")
-            cookies = None
-
-    # 生成图片消息列表
-    result = []
-    user_tz = get_user_timezone(id_use)
-    for song in songs_with_records:
-        played_data = []
-
-        # 使用优化的精确匹配函数
-        for rcd in song_record:
-            if is_exact_song_match(rcd['cover_name'], song['cover_name']) and rcd['type'] == song['type']:
-                played_data.append(rcd)
-                song_name = rcd['name']
-
-        # 尝试使用新函数获取更详细的成绩（包含游玩次数和最后游玩时间）
-        if cookies:
-            try:
-                detailed_records = await get_single_record(song_name, song['type'], cookies, ver=ver)
-
-                if detailed_records and detailed_records != "MAINTENANCE":
-                    # 用详细成绩更新 played_data
-                    for rcd in played_data:
-                        # 找到对应难度的详细成绩
-                        for detail in detailed_records:
-                            if detail['difficulty'] == rcd['difficulty']:
-                                # 更新现有字段
-                                rcd['score'] = detail['score']
-                                rcd['dx_score'] = detail['dx_score']
-                                rcd['score_icon'] = detail['score_icon']
-                                rcd['combo_icon'] = detail['combo_icon']
-                                rcd['sync_icon'] = detail['sync_icon']
-                                # 添加新字段
-                                rcd['play_count'] = detail['play_count']
-                                rcd['last_play_time'] = detail['last_play_time']
-                                break
-            except Exception as e:
-                # 如果获取详细成绩失败，继续使用原成绩
-                logger.exception(f"[Song Record] Failed to get detailed record for {song.get('title', 'unknown')}: {e}")
-
-        original_url, preview_url = smart_upload(song_info_generate(song, played_data, timezone_offset=user_tz, ver=ver))
-        message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
-        result.append(message)
-
-    return result
+    # 只有一个结果，直接调用 get_song_record_by_id
+    song = songs_with_records[0]
+    song_id = song.get('id')
+    return await get_song_record_by_id(user_id, id_use, song_id, ver)
 
 async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
     """
