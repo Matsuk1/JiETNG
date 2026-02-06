@@ -55,6 +55,10 @@ def truncate_text(draw, text, font, max_width):
     """
     如果文本超出最大宽度，自动截断并加省略号
     """
+    # 处理 None 或空值
+    if text is None:
+        text = "-"
+
     ellipsis = "..."
     text_width = draw.textlength(text, font=font)
     ellipsis_width = draw.textlength(ellipsis, font=font)
