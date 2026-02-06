@@ -138,7 +138,6 @@ def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0, ver
         w = draw.textlength(header, font=font_large)
         draw.text((x + (col_widths[i] - w) // 2, row_height // 4), header, font=font_large, fill=(0, 0, 0))
 
-    # 绘制每一行
     for row_idx, sheet in enumerate(song_json["sheets"]):
         y = (row_idx + 1) * row_height
         notes = sheet.get("noteCounts", {})
@@ -186,10 +185,8 @@ def _makeup_played_data(played_data, gap=10):
     max_width = max(widths)
     total_height = sum(heights) + gap * (len(rcd_imgs) - 1)
 
-    # 创建新图片
     new_img = Image.new("RGB", (max_width, total_height), color=(255, 255, 255))
 
-    # 逐张粘贴
     current_y = 0
     for img in rcd_imgs:
         new_img.paste(img, (0, current_y))
@@ -261,7 +258,6 @@ def generate_version_list(songs_json):
         cover_url = song.get("cover_url")
         cover_name = song.get("cover_name")
 
-        # 优先使用本地缓存
         cover_img = get_cover_image(cover_url, cover_name)
 
         if not cover_img:
@@ -292,7 +288,7 @@ def _concat_images_grid(image_list, cols=4, margin=20, inner_gap=10, bg_color=(2
     # 计算总行数
     rows = (len(image_list) + cols - 1) // cols
 
-    # 获取单个格子大小（按每行最大宽高对齐）
+    # 获取单个格子大小
     widths = []
     heights = []
     for r in range(rows):
@@ -309,7 +305,6 @@ def _concat_images_grid(image_list, cols=4, margin=20, inner_gap=10, bg_color=(2
         bg_color
     )
 
-    # 拼接
     y_offset = margin
     for r in range(rows):
         group = image_list[r*cols:(r+1)*cols]

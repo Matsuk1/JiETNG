@@ -263,7 +263,7 @@ def filter_highest_achievement(data: list) -> list:
 def get_detailed_info(song_record, ver="jp", recent_type=False):
     read_dxdata(ver)
 
-    # 构建哈希表加速查找 O(1) 而不是 O(n)
+    # 构建哈希表加速查找 O(1)
     song_map = {}
     for song in SONGS:
         key = (song['title'], song['type'])

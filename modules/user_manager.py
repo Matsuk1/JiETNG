@@ -14,7 +14,7 @@ from modules.notice_manager import get_latest_published_notice
 
 logger = logging.getLogger(__name__)
 
-# 用户昵称缓存 (避免频繁调用LINE API)
+# 用户昵称缓存
 nickname_cache = {}
 nickname_cache_lock = threading.Lock()
 NICKNAME_CACHE_TIMEOUT = 43200  # 12小时缓存
@@ -137,7 +137,7 @@ def get_user_nickname(user_id: str, line_bot_api, use_cache: bool = True) -> str
                 if (datetime.now() - cached_data['time']).seconds < NICKNAME_CACHE_TIMEOUT:
                     return cached_data['nickname']
 
-    # 缓存未命中或已过期,从API获取
+    # 缓存未命中或已过期
     try:
         profile = line_bot_api.get_profile(user_id)
         nickname = profile.display_name
@@ -159,7 +159,7 @@ def get_user_nickname(user_id: str, line_bot_api, use_cache: bool = True) -> str
             logger.error(f"[User] ✗ Failed to get nickname: user_id={user_id}, error={e}")
             nickname = "Unknown (API Error)"
 
-        # 缓存错误结果(避免重复失败的API调用)
+        # 缓存错误结果
         with nickname_cache_lock:
             nickname_cache[user_id] = {
                 'nickname': nickname,

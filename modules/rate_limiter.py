@@ -51,7 +51,6 @@ class RateLimiter:
 
 
 # 全局限速器实例
-# 注意：限速功能已通过 RATE_LIMIT_ENABLED = False 禁用
 maimai_limiter = RateLimiter(min_interval_seconds=0.5)
 
 # 通用 API 限速

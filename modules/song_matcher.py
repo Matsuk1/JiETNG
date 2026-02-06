@@ -98,7 +98,7 @@ def is_song_match(query: str, song: dict, threshold: float = 0.85, min_query_len
         return True
 
     # 策略3: 歌名相似度匹配
-    # 使用原始文本的小写版本进行相似度计算 (保留空格,提高准确度)
+    # 使用原始文本的小写版本进行相似度计算
     similarity = difflib.SequenceMatcher(
         None,
         query.lower(),
@@ -108,7 +108,7 @@ def is_song_match(query: str, song: dict, threshold: float = 0.85, min_query_len
     if similarity >= threshold:
         return True
 
-    # 额外策略: 标准化后的相似度匹配 (更宽松)
+    # 额外策略: 标准化后的相似度匹配
     normalized_similarity = difflib.SequenceMatcher(
         None,
         normalized_query,
@@ -140,7 +140,6 @@ def find_matching_songs(query: str, SONGS: list, max_results: int = 6, threshold
         if is_song_match(query, song, threshold):
             matching_songs.append(song)
 
-            # 达到最大数量就停止
             if len(matching_songs) >= max_results:
                 break
 

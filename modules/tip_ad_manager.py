@@ -49,7 +49,6 @@ def load_tip_ad_data():
                 TIP_AD_DATA = json.load(f)
                 logger.info(f"[TipAd] Loaded {len(TIP_AD_DATA)} tip/ad items from {TIP_AD_FILE}")
         else:
-            # 创建默认数据文件
             TIP_AD_DATA = []
             save_tip_ad_data()
             logger.info(f"[TipAd] Created new tip/ad data file at {TIP_AD_FILE}")
@@ -57,7 +56,6 @@ def load_tip_ad_data():
         logger.error(f"[TipAd] Failed to load tip/ad data: {e}", exc_info=True)
         TIP_AD_DATA = []
 
-    # 重建缓存
     _rebuild_cache()
 
     return TIP_AD_DATA
@@ -71,7 +69,6 @@ def save_tip_ad_data():
         bool: 是否保存成功
     """
     try:
-        # 确保目录存在
         os.makedirs(os.path.dirname(TIP_AD_FILE), exist_ok=True)
 
         with open(TIP_AD_FILE, 'w', encoding='utf-8') as f:
@@ -158,7 +155,6 @@ def create_tip_ad(tip_type, text_zh, text_en, text_ja, button_type=None, button_
         'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
-    # 如果有按钮
     if button_type and button_value:
         tip_ad['button'] = {
             'type': button_type,

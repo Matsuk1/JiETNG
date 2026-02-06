@@ -40,7 +40,7 @@ def generate_store_buttons(user_id, alt_text, store_list):
     if not store_list:
         return store_error(user_id)
 
-    # ✅ 过滤：只保留 ≤30 km 的机厅
+    # 只保留 ≤30 km 的机厅
     filtered_stores = []
     for store in store_list:
         distance_str = store.get("distance", "")
@@ -51,7 +51,7 @@ def generate_store_buttons(user_id, alt_text, store_list):
     if not filtered_stores:
         return store_error(user_id)
 
-    # ✅ 分页：每页 5 个
+    # 每页 5 个
     group_size = 5
     total_pages = (len(filtered_stores) + group_size - 1) // group_size
     bubbles = []
@@ -86,12 +86,12 @@ def generate_store_buttons(user_id, alt_text, store_list):
                     "color": "#999999", "margin": "xs"
                 })
 
-            # 📍 按钮（固定高度 + 增宽）
+            # 按钮
             black_white_button = {
                 "type": "box",
                 "layout": "vertical",
                 "flex": 0,
-                "width": "40px",               # ← 按钮宽度，可自行调节
+                "width": "40px",
                 "height": "40px",
                 "cornerRadius": "6px",
                 "borderColor": "#000000",
@@ -107,7 +107,7 @@ def generate_store_buttons(user_id, alt_text, store_list):
                         "color": "#000000",
                         "align": "center",
                         "gravity": "center",
-                        "size": "md",             # 字体略大
+                        "size": "md",
                         "action": {
                             "type": "uri",
                             "label": "MAP",
@@ -133,7 +133,6 @@ def generate_store_buttons(user_id, alt_text, store_list):
             if idx < len(group) - 1:
                 store_rows.append({"type": "separator", "margin": "sm"})
 
-        # Header（简洁黑白风）
         header_box = {
             "type": "box",
             "layout": "vertical",
@@ -161,7 +160,7 @@ def generate_store_buttons(user_id, alt_text, store_list):
             ]
         }
 
-        # Bubble
+        # 基础 Bubble
         bubble = {
             "type": "bubble",
             "size": "mega",

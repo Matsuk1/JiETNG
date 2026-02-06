@@ -450,7 +450,7 @@ def generate_notice_flex(notice_json, user_id=None):
         interaction = get_notice_interaction(user_id, notice_id)
         current_vote = interaction.get('vote') if interaction else None
 
-        # 投票按钮文本（多语言）
+        # 投票按钮文本
         vote_labels = {
             'support': {'ja': '支持', 'en': 'Support', 'zh': '支持'},
             'oppose': {'ja': '反対', 'en': 'Oppose', 'zh': '反对'}

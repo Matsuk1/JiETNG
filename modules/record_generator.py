@@ -19,12 +19,11 @@ from modules.config_loader import (
 from modules.image_cache import *
 from modules.image_manager import *
 
-# 获取logger
 logger = logging.getLogger(__name__)
 
 def _get_difficulty_color(difficulty):
     colors = {
-        "basic": (117, 181, 32),      # 绿色
+        "basic": (117, 181, 32),     # 绿色
         "advanced": (239, 165, 8),   # 黄色
         "expert": (204, 77, 89),     # 红色
         "master": (159, 81, 220),    # 紫色
@@ -60,9 +59,6 @@ def create_thumbnail_in_line(song):
         url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/playlog/{value.replace('p', 'plus')}.png"
     )
 
-    # --- 最下面的横线 ---
-    # draw.line([(0, 100),(400, 100)], fill=, width=90)
-
     # --- combo_icon 图标 ---
     paste_icon_optimized(
         img, song, key='combo_icon',
@@ -81,7 +77,7 @@ def create_thumbnail_in_line(song):
         url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/playlog/{value.replace('back', 'sync_dummy').replace('fdx', 'fsd').replace('p', 'plus')}.png"
     )
 
-    # --- dx_star 星星图标 ---
+    # --- dx_star 图标 ---
     if 'dx_score' in song and song['dx_score']:
         try:
             dx_score = eval(song['dx_score'])
@@ -129,17 +125,15 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     text_color = (114, 20, 141) if song['difficulty'] == "remaster" else (255, 255, 255)
 
     # --- 封面 ---
-    # 根据缩略图尺寸动态计算封面大小 (保持比例: 80/300 ≈ 0.267)
+    # 根据缩略图尺寸动态计算封面大小
     cover_size = int(thumb_size[0] * 0.267)
     if 'cover_name' in song and song['cover_name']:
         try:
-            # 使用新的 get_cover_image 函数（优先本地，不存在则下载）
             cover_img = get_cover_image(
                 cover_url=song.get('cover_url'),
                 cover_name=song['cover_name']
             )
             if cover_img:
-                # 使用 LANCZOS 高质量重采样
                 cover_img = round_corner(cover_img)
                 cover_img = cover_img.resize((cover_size, cover_size), Image.Resampling.LANCZOS)
                 img.paste(cover_img, (padding, padding), cover_img)
@@ -147,9 +141,8 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
             logger.error(f"[RecordGenerator] ✗ Failed to load cover image: error={e}")
 
     # --- type 图标 ---
-    # 根据封面尺寸动态计算图标大小
-    type_width = int(cover_size * 0.5)  # 40/80 = 0.5
-    type_height = int(cover_size * 0.15)  # 12/80 = 0.15
+    type_width = int(cover_size * 0.5)
+    type_height = int(cover_size * 0.15)
     paste_icon_optimized(
         img, song, key='type',
         size=(type_width, type_height),
@@ -159,7 +152,7 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     )
 
     # 根据缩略图尺寸动态计算布局
-    line_spacing = int(thumb_size[1] * 0.187)  # 28/150 ≈ 0.187
+    line_spacing = int(thumb_size[1] * 0.187)
     text_x_offset = padding + cover_size + 10
     score_x_offset = thumb_size[0] - 15
 
@@ -177,8 +170,8 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
 
     # --- score_icon 图标 ---
     # 根据缩略图尺寸动态计算图标大小
-    score_icon_width = int(thumb_size[0] * 0.217)  # 65/300 ≈ 0.217
-    score_icon_height = int(thumb_size[1] * 0.2)  # 30/150 = 0.2
+    score_icon_width = int(thumb_size[0] * 0.217)
+    score_icon_height = int(thumb_size[1] * 0.2)
     paste_icon_optimized(
         img, song, key='score_icon',
         size=(score_icon_width, score_icon_height),
@@ -198,7 +191,7 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     # --- 最下面的横线 ---
     draw.line([(0, thumb_size[1]), (thumb_size[0], thumb_size[1])], fill=(255, 255, 255), width=90)
 
-    # --- dx_star 星星图标 ---
+    # --- dx_star 图标 ---
     if 'dx_score' in song and song['dx_score']:
         try:
             dx_score = eval(song['dx_score'])
@@ -217,8 +210,8 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
                 star_num = 5
 
             # 根据缩略图尺寸动态计算星星图标大小
-            star_width = int(thumb_size[0] * 0.267)  # 80/300 ≈ 0.267
-            star_height = int(thumb_size[1] * 0.107)  # 16/150 ≈ 0.107
+            star_width = int(thumb_size[0] * 0.267)
+            star_height = int(thumb_size[1] * 0.107)
             paste_icon_optimized(
                 img, {'star': str(star_num)}, key='star',
                 size=(star_width, star_height),
@@ -232,8 +225,8 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
 
     # --- combo_icon 图标 ---
     # 根据缩略图尺寸动态计算图标大小
-    combo_icon_width = int(thumb_size[0] * 0.133)  # 40/300 ≈ 0.133
-    combo_icon_height = int(thumb_size[1] * 0.3)  # 45/150 = 0.3
+    combo_icon_width = int(thumb_size[0] * 0.133)
+    combo_icon_height = int(thumb_size[1] * 0.3)
     paste_icon_optimized(
         img, song, key='combo_icon',
         size=(combo_icon_width, combo_icon_height),
@@ -295,7 +288,7 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
     thumb_size = (300, 150)
     side_width = 20
     spacing = 10
-    header_height = 245  # 增加header高度，拉开标题和上半部分的距离
+    header_height = 245
 
     version_padding = 0 if not (up_songs and down_songs) else 40
 
@@ -323,9 +316,8 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
     # 绘制统计信息背景卡片
     card_padding = 20
     card_x = side_width + 10
-    card_y = side_width + 10  # 向下移动10px (从 side_width - 5 改为 side_width + 5)
+    card_y = side_width + 10
 
-    # 计算实际文本宽度和高度（与 draw_aligned_colon_text 的对齐方式一致）
     left_texts = []
     right_texts = []
     for line in header_text:
@@ -337,7 +329,7 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
             left_texts.append(line)
             right_texts.append("")
 
-    # 计算左侧最大宽度（+10px 间距，与 draw_aligned_colon_text 一致）
+    # 计算左侧最大宽度
     max_left_width = max(draw.textbbox((0, 0), text, font=font_large)[2] for text in left_texts) + 10
     # 计算右侧最大宽度
     max_right_width = max(draw.textbbox((0, 0), text, font=font_large)[2] for text in right_texts) if right_texts else 0
@@ -367,10 +359,10 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
         top_left=(card_x + card_padding, card_y + card_padding - 5),
         font=font_large,
         spacing=7,
-        fill=(40, 40, 40)  # 深灰色文字，更柔和
+        fill=(40, 40, 40)  # 深灰色文字
     )
 
-    # 绘制标题（非斜体）
+    # 绘制标题
     bbox = draw.textbbox((0, 0), title, font=font_record_title)
     title_width = bbox[2] - bbox[0]
     title_x = img_width - side_width - title_width - 30
@@ -392,25 +384,24 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
 
     # 在上下部分中间绘制分隔线 (----·----) - 仅当同时有上下部分时显示
     if up_songs and down_songs:
-        # 分隔线靠近上部，距离下部更远
         divider_y = total_up_y_offset + version_padding // 3 + 2
-        divider_color = (140, 140, 140)  # 再加深颜色
+        divider_color = (140, 140, 140)
 
-        # 计算中心点和线条长度（适中长度）
+        # 计算中心点和线条长度
         center_x = img_width // 2
-        line_half_length = (img_width - side_width * 2) // 2  # 线条长度为画布宽度的1/2
+        line_half_length = (img_width - side_width * 2) // 2
 
-        # 绘制左侧横线（更粗）
+        # 绘制左侧横线
         left_line_start = center_x - line_half_length // 2
         left_line_end = center_x - 10
         draw.line([(left_line_start, divider_y), (left_line_end, divider_y)], fill=divider_color, width=2)
 
-        # 绘制中心点（稍大）
+        # 绘制中心点
         dot_radius = 3
         draw.ellipse([center_x - dot_radius, divider_y - dot_radius,
                      center_x + dot_radius, divider_y + dot_radius], fill=divider_color)
 
-        # 绘制右侧横线（更粗）
+        # 绘制右侧横线
         right_line_start = center_x + 10
         right_line_end = center_x + line_half_length // 2
         draw.line([(right_line_start, divider_y), (right_line_end, divider_y)], fill=divider_color, width=2)
@@ -472,7 +463,7 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
         # 有圆点信息时，type 放在右上角
         type_position = (img_width - type_width - border_width, border_width)
     else:
-        # 无圆点信息时，type 放在右下角（原位置）
+        # 无圆点信息时，type 放在右下角
         type_position = (img_width - type_width - border_width, img_height - type_height - border_width)
 
     paste_icon_optimized(
@@ -512,7 +503,7 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
 
                 # 计算缩放 - 按比例缩放图标（考虑边框）
                 base_size = inner_size if difficulty else size
-                icon_width = int(base_size * 0.75)  # 原来 0.867，缩小到 0.75
+                icon_width = int(base_size * 0.75)
                 aspect_ratio = icon_img.height / icon_img.width
                 new_height = int(icon_width * aspect_ratio)
                 resized_img = icon_img.resize((icon_width, new_height), Image.Resampling.LANCZOS)
@@ -521,12 +512,12 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
                 shadow = Image.new("RGBA", record_img.size, (0, 0, 0, 150))
                 record_img = Image.alpha_composite(record_img, shadow)
 
-                # 粘贴图标（只有底部有内容时才往上移，考虑边框）
+                # 粘贴图标
                 x_offset = (record_img.width - icon_width) // 2
                 if has_bottom_content:
-                    y_offset = (record_img.height - new_height) // 2 - int(base_size * 0.08)  # 往上移动 8%
+                    y_offset = (record_img.height - new_height) // 2 - int(base_size * 0.08)
                 else:
-                    y_offset = (record_img.height - new_height) // 2  # 垂直居中
+                    y_offset = (record_img.height - new_height) // 2
                 record_img.paste(resized_img, (x_offset, y_offset), resized_img.convert("RGBA"))
 
         except Exception as e:
@@ -534,7 +525,7 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
 
     # 绘制难度完成情况小圆点
     if complete_info:
-        # 所有难度列表（按顺序）
+        # 所有难度列表
         difficulties = ["basic", "advanced", "expert", "master"]
 
         # 检查是否有任何难度为 True
@@ -545,20 +536,20 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
             record_img = record_img.convert("RGBA")
             draw = ImageDraw.Draw(record_img)
 
-            # 圆点参数（放大为原来的 1.5 倍，考虑边框）
+            # 圆点参数
             base_size = inner_size if difficulty else size
-            dot_radius = int(base_size * 0.04 * 1.5)  # 圆点半径：size 的 6%
-            dot_y = img_height - dot_radius - int(base_size * 0.05) - border_width  # 距离底部 5%
+            dot_radius = int(base_size * 0.04 * 1.5)
+            dot_y = img_height - dot_radius - int(base_size * 0.05) - border_width
 
-            # 计算圆点间距和起始位置（固定为4个位置，居中）
+            # 计算圆点间距和起始位置
             num_positions = len(difficulties)
             total_dots_width = (num_positions - 1) * (dot_radius * 4)  # 圆点之间的总宽度
             start_x = (img_width - total_dots_width) // 2  # 居中起始位置
             spacing_between = dot_radius * 4  # 圆点之间的间距
 
             # 绘制半透明灰白色背景容器
-            container_padding_horizontal = int(dot_radius * 2.0)  # 左右内边距更大
-            container_padding_vertical = int(dot_radius * 0.8) - 5    # 上下内边距更小
+            container_padding_horizontal = int(dot_radius * 2.0)
+            container_padding_vertical = int(dot_radius * 0.8) - 5
             container_x1 = start_x - container_padding_horizontal
             container_y1 = dot_y - dot_radius - container_padding_vertical
             container_x2 = start_x + total_dots_width + container_padding_horizontal
@@ -570,14 +561,14 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
             container_draw.rounded_rectangle(
                 [container_x1, container_y1, container_x2, container_y2],
                 radius=int(dot_radius * 0.8),
-                fill=(240, 240, 240, 160)  # 灰白色，透明度约 63%
+                fill=(240, 240, 240, 160)
             )
 
             # 将容器层合成到图像上
             record_img = Image.alpha_composite(record_img, container_layer)
             draw = ImageDraw.Draw(record_img)
 
-            # 从左往右绘制小圆点（遍历所有难度）
+            # 从左往右绘制小圆点
             for i, diff in enumerate(difficulties):
                 if complete_info.get(diff, False):
                     # 如果该难度为 True，绘制对应颜色的圆点
@@ -590,7 +581,7 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
                          dot_x + dot_radius, dot_y + dot_radius],
                         fill=color
                     )
-                # 如果为 False，留空（不绘制）
+                # 如果为 False，留空
 
     return record_img.convert("RGB")
 
@@ -628,9 +619,9 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
     final_img = final_img.convert("RGBA")
 
     for idx, (key, value) in enumerate(headers.items()):
-        # 计算卡片位置（2列布局，先上下后左右）
-        row = idx % 2  # 行索引（0 或 1）
-        col = idx // 2  # 列索引
+        # 计算卡片位置
+        row = idx % 2
+        col = idx // 2
         card_x = card_start_x + col * (card_width + card_gap_x)
         current_y = card_y + row * (card_height + card_gap_y)
 
@@ -650,7 +641,7 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
             fill=(0, 0, 0, 30)
         )
 
-        # 绘制卡片主体背景（使用浅色版本的难度颜色）
+        # 绘制卡片主体背景
         r, g, b = difficulty_color[:3]
         light_r = int(r + (255 - r) * 0.85)
         light_g = int(g + (255 - g) * 0.85)
@@ -674,7 +665,7 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
         final_img = Image.alpha_composite(final_img, card_layer)
         draw = ImageDraw.Draw(final_img)
 
-        # 绘制难度名称（左侧，边框后）
+        # 绘制难度名称
         text_x = card_x + border_width + 15
         text_y = current_y + (card_height - 30) // 2 - 5
         difficulty_text = f"{key.upper()}"
@@ -683,16 +674,15 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
         # 判断是否全部完成
         is_completed = value['clear'] == value['all'] and value['all'] > 0
 
-        # 绘制数据（右侧对齐）
+        # 绘制数据
         if is_completed:
-            # 全部完成时显示 "✓"
             data_text = "✓"
         else:
             # 未完成时显示进度
             data_text = f"{value['clear']} / {value['all']}"
 
         data_text_width = draw.textlength(data_text, font=font_large)
-        data_x = card_x + card_width - data_text_width - 15  # 右侧对齐
+        data_x = card_x + card_width - data_text_width - 15
         draw.text((data_x, text_y), data_text, fill=(40, 40, 40), font=font_large)
 
     final_img = final_img.convert("RGB")
@@ -704,7 +694,6 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
         if os.path.exists(plate_path):
             plate_img = Image.open(plate_path).convert("RGBA")
 
-            # 原图尺寸 390x60，缩放到合适大小
             target_height = 160
             aspect_ratio = plate_img.width / plate_img.height
             target_width = int(target_height * aspect_ratio)
@@ -765,8 +754,8 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
         margin: 边距
     """
     level_width = 100
-    img_size = 150  # 与牌子达成率保持一致
-    row_height = img_size + margin  # 与牌子达成率保持一致
+    img_size = 150
+    row_height = img_size + margin
 
     # 统计卡片区域高度（2x2布局）
     card_area_height = 180
@@ -891,7 +880,6 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
     draw.text((title_x, title_y), title_text, fill=(206, 206, 206), font=font_record_title)
 
     # 渲染主体图像内容
-    # 2x2卡片布局：2行，每行高度 card_height，加上中间间距 card_gap_y
     cards_total_height = 2 * card_height + card_gap_y
     y_offset = card_y + cards_total_height + 40
 
@@ -905,7 +893,6 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
                 y_offset += row_height
                 x_offset = level_width + margin
 
-            # 获取封面图片
             cover_img = entry["img"]
             final_img.paste(cover_img, (x_offset, y_offset))
             x_offset += img_size + margin
