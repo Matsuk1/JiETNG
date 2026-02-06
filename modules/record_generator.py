@@ -134,8 +134,8 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
                 cover_name=song['cover_name']
             )
             if cover_img:
-                cover_img = round_corner(cover_img)
                 cover_img = cover_img.resize((cover_size, cover_size), Image.Resampling.LANCZOS)
+                cover_img = round_corner(cover_img, radius=8)
                 img.paste(cover_img, (padding, padding), cover_img)
         except Exception as e:
             logger.error(f"[RecordGenerator] ✗ Failed to load cover image: error={e}")

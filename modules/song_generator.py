@@ -16,7 +16,7 @@ def song_info_generate(song_json, played_data = [], timezone_offset=9, ver="jp")
     else:
         cover_img = cover_img.convert("RGBA")
 
-    img1 = resize_by_width(_render_basic_info_image(song_json, round_corner(cover_img), ver), 900)
+    img1 = resize_by_width(_render_basic_info_image(song_json, cover_img, ver), 900)
 
     if played_data:
         img2 = resize_by_width(_makeup_played_data(played_data), 780)
@@ -42,7 +42,8 @@ def _render_basic_info_image(song_json, cover_img, ver="jp"):
 
     # 封面图处理
     cover_size = 200
-    large_cover = cover_img.resize((cover_size, cover_size))
+    large_cover = cover_img.resize((cover_size, cover_size), Image.Resampling.LANCZOS)
+    large_cover = round_corner(large_cover)
     cover_x = margin
     cover_y = margin
     img.paste(large_cover, (cover_x, cover_y), large_cover)
@@ -208,7 +209,7 @@ def _render_song_info_small_img(song_json, cover_img):
 
     # 封面图处理
     cover_size = 200
-    large_cover = cover_img.resize((cover_size, cover_size))
+    large_cover = cover_img.resize((cover_size, cover_size), Image.Resampling.LANCZOS)
     large_cover = round_corner(large_cover)
     cover_x = margin
     cover_y = margin
