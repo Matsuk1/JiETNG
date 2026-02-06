@@ -35,7 +35,7 @@ def cleanup_expired_images():
                 file_mtime = os.path.getmtime(file_path)
                 age = current_time - file_mtime
 
-                # 如果文件超过30分钟，删除它
+                # 如果文件超过30分钟，删除
                 if age > expiry_seconds:
                     os.remove(file_path)
                     deleted_count += 1
@@ -207,7 +207,7 @@ def _upload_to_imgur(img):
     finally:
         img_io.close()
 
-# 智能图床上传（上传原图和预览图）
+# 智能图床上传
 def smart_upload(img):
     """上传图片到图床，返回原图和预览图链接
 
@@ -253,7 +253,7 @@ def smart_upload(img):
             except Exception as e:
                 logger.error(f"[ImageUploader] ✗ Imgur upload exception: error={e}")
 
-            original_io.seek(0)  # 重置指针以供后续使用
+            original_io.seek(0)
 
         if not original_url:
             logger.info("[ImageUploader] → Using uguu to upload original")

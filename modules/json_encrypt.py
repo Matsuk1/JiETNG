@@ -23,7 +23,6 @@ def write_encrypted_json(data: Dict[str, Any], filename: str, key: bytes) -> Non
     json_str = json.dumps(data)
     encrypted = fernet.encrypt(json_str.encode())
 
-    # 确保目录存在
     os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
 
     with open(filename, 'wb') as f:

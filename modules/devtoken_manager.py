@@ -66,7 +66,7 @@ def create_dev_token(note, created_by):
         "created_by": created_by,
         "last_used": None,
         "revoked": False,
-        "allowed_users": []  # 初始化授权用户列表
+        "allowed_users": []
     }
 
     if save_dev_tokens(tokens):

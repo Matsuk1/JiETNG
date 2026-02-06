@@ -29,7 +29,7 @@ def draw_aligned_colon_text(draw, lines, top_left, font, spacing=10, fill=(0, 0,
     """
     x, y = top_left
 
-    # 预处理：分离左边（冒号前）和右边（冒号后）
+    # 预处理
     left_texts = []
     right_texts = []
     for line in lines:
@@ -241,7 +241,7 @@ def compose_images(images, spacing=40, outer_margin=30,
     final_img = Image.new("RGBA", (final_width, final_height), bg_color_rgba)
     final_img.paste(combined, (outer_margin, outer_margin), combined)
 
-    # 8. 自动降级为 RGB（如果不需要透明）
+    # 8. 自动降级为 RGB
     if not output_rgba:
         final_img = final_img.convert("RGB")
 
@@ -260,22 +260,18 @@ def _generate_qrcode(data: str, box_size: int = 10, border: int = 4) -> Image.Im
     return img
 
 def round_corner(img, radius=20):
-    # 打开原图，并确保有 alpha 通道（RGBA）
     img = img.convert("RGBA")
     w, h = img.size
 
-    # 创建同尺寸蒙版，初始全透明（0）
     mask = Image.new("L", (w, h), 0)
     draw = ImageDraw.Draw(mask)
 
-    # 在蒙版上画白色圆角矩形（255 不透明）
     draw.rounded_rectangle(
         [(0, 0), (w, h)],
         radius=radius,
         fill=255
     )
 
-    # 应用蒙版到原图
     img.putalpha(mask)
 
     return img

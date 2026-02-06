@@ -15,10 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from modules.config_loader import COVERS_DIR
 
 
-# 获取logger
 logger = logging.getLogger(__name__)
-
-# 线程本地存储（每个线程独立的 session）
 _thread_local = threading.local()
 
 
@@ -50,14 +47,11 @@ def download_and_cache_icon(url, save_path):
         PIL.Image 或 None
     """
     try:
-        # 确保目录存在
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
-        # 如果文件已存在，直接加载
         if os.path.exists(save_path):
             return Image.open(save_path).convert("RGBA")
 
-        # 使用当前线程的 session 下载
         session = _get_session()
         response = session.get(url, timeout=10)
         response.raise_for_status()
@@ -114,11 +108,9 @@ def get_cover_image(cover_url, cover_name, covers_dir=None):
         PIL.Image 或 None
     """
     try:
-        # 使用配置中的路径（如果未指定）
         if covers_dir is None:
             covers_dir = COVERS_DIR
 
-        # 确保缓存目录存在
         os.makedirs(covers_dir, exist_ok=True)
 
         local_path = os.path.join(covers_dir, cover_name)
@@ -158,7 +150,7 @@ def get_cover_image(cover_url, cover_name, covers_dir=None):
             except requests.exceptions.Timeout:
                 if attempt < max_retries - 1:
                     logger.warning(f"[ImageCache] ⚠ Download timeout, retrying: cover_name={cover_name}, attempt={attempt + 1}/{max_retries}")
-                    continue  # 重试
+                    continue
                 else:
                     logger.error(f"[ImageCache] ✗ Download timeout after retries: cover_name={cover_name}, attempts={max_retries}")
                     return None

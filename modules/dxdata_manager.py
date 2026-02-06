@@ -16,14 +16,11 @@ def merge_json(source, target):
             else:
                 src_val, tgt_val = value, target[key]
 
-                # 字符串互补逻辑
                 if isinstance(src_val, str) and isinstance(tgt_val, str):
                     if src_val and not tgt_val:
                         target[key] = src_val
-                    # 若 target 非空则保留，不动
                     continue
 
-                # 列表逻辑
                 elif isinstance(src_val, list) and isinstance(tgt_val, list):
                     if not tgt_val and src_val:
                         target[key] = copy.deepcopy(src_val)
@@ -32,7 +29,6 @@ def merge_json(source, target):
                     else:
                         for i in range(min(len(src_val), len(tgt_val))):
                             merge_json(src_val[i], tgt_val[i])
-                        # 如果 source 比 target 长，追加剩余部分
                         if len(src_val) > len(tgt_val):
                             target[key].extend(copy.deepcopy(src_val[len(tgt_val):]))
 
@@ -45,7 +41,7 @@ def merge_json(source, target):
                     if tgt_val in ('', [], {}):
                         target[key] = copy.deepcopy(src_val)
 
-    # list 合并逻辑（顶层）
+    # list 合并逻辑
     elif isinstance(source, list) and isinstance(target, list):
         if not target and source:
             target.extend(copy.deepcopy(source))
@@ -57,7 +53,6 @@ def merge_json(source, target):
             if len(source) > len(target):
                 target.extend(copy.deepcopy(source[len(target):]))
 
-    # 其他类型互补
     else:
         if target in (None, '', [], {}):
             target = copy.deepcopy(source)
@@ -83,10 +78,8 @@ def merge_songs_list(source_songs, target_songs, key_field="title"):
     for item in source_songs:
         key_val = item.get(key_field)
         if key_val in target_index:
-            # 如果已存在,合并数据
             merge_json(item, target_index[key_val])
         else:
-            # 如果不存在,添加新项
             result.append(copy.deepcopy(item))
 
     return result
@@ -153,11 +146,10 @@ def _split_song_sheets_by_type(song_list):
                 entry["type"] = sheet_type
                 entry["version"] = version_by_type.get(sheet_type, base_info["version"])
                 entry["sheets"] = sheets
-                # 所有类型都使用 title 生成唯一 ID
                 entry["id"] = generate_song_unique_id(base_info["cover_name"], sheet_type, base_info["title"])
                 result.append(entry)
 
-    # 根据 id 去重（如果存在重复 ID，保留第一个）
+    # 根据 id 去重
     seen_ids = set()
     deduplicated_result = []
     for entry in result:
@@ -211,7 +203,6 @@ def load_dxdata_version_history():
 def save_dxdata_version_history(stats):
     """保存 dxdata 版本历史"""
     try:
-        # 确保 data 目录存在
         os.makedirs(os.path.dirname(DXDATA_VERSION_FILE), exist_ok=True)
 
         with open(DXDATA_VERSION_FILE, 'w', encoding='utf-8') as f:
@@ -245,7 +236,6 @@ def _filter_song_fields(song):
         "sheets": []
     }
 
-    # 过滤 sheets 字段
     for sheet in song.get("sheets", []):
         filtered_sheet = {
             "difficulty": sheet.get("difficulty", ""),
@@ -283,15 +273,13 @@ def update_dxdata_with_comparison(urls, save_to: str = None):
                 'message': str
             }
     """
-    # 加载旧版本信息
     old_version = load_dxdata_version_history()
 
-    # 加载新数据
     new_datas = []
     for url in urls:
         new_datas.append(load_dxdata(url))
 
-    # 只合并 songs 字段（使用 id 去重，避免 std/dx 版本混淆）
+    # 只合并 songs 字段（使用 id 去重）
     for i in range(1, len(new_datas)):
         new_datas[0]['songs'] = merge_songs_list(new_datas[i]['songs'], new_datas[0]['songs'], "id")
 
@@ -304,7 +292,6 @@ def update_dxdata_with_comparison(urls, save_to: str = None):
 
 
     if save_to:
-        # 过滤数据，只保留指定字段
         filtered_data = {
             "songs": [_filter_song_fields(song) for song in new_data.get("songs", [])],
             "versions": new_data.get("versions", [])
@@ -313,7 +300,6 @@ def update_dxdata_with_comparison(urls, save_to: str = None):
         with open(save_to, "w", encoding="utf-8") as file:
             json.dump(filtered_data, file, ensure_ascii=False, indent=2)
 
-    # 获取新数据统计
     new_stats = get_dxdata_stats(new_data)
 
     if not new_stats:
@@ -321,7 +307,6 @@ def update_dxdata_with_comparison(urls, save_to: str = None):
             'success': False
         }
 
-    # 保存新版本信息
     save_dxdata_version_history(new_stats)
 
     # 计算差异
@@ -339,7 +324,6 @@ def update_dxdata_with_comparison(urls, save_to: str = None):
             }
         }
     else:
-        # 第一次更新
         return {
             'success': True,
             'new_stats': new_stats,
@@ -368,7 +352,6 @@ def generate_song_unique_id(image_name, chart_type, title):
         >>> generate_song_unique_id("c22d52b387e3f829", "utage", "utage: [好]歌曲名")
         'f1a2b3'
     """
-    # 去掉文件扩展名
     if image_name.endswith('.png'):
         image_name = image_name[:-4]
 

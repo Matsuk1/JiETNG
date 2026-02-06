@@ -156,19 +156,13 @@ def notify_admins_error(
     try:
         # 构建错误消息
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        # 生成 Flex Message
         flex_message = generate_error_alert_flex(error_title, error_details, context, timestamp)
 
         # 如果错误信息过长，需要分段发送额外的详细信息
         if len(error_details) > 800:
-            # 发送给所有管理员
             for admin_user_id in admin_id:
                 try:
-                    # 先发送 Flex Message（包含截断的详情）
                     smart_push(admin_user_id, flex_message, configuration)
-
-                    # 分段发送完整详细信息
                     detail_chunks = [error_details[i:i+900] for i in range(0, len(error_details), 900)]
                     for i, chunk in enumerate(detail_chunks):
                         chunk_msg = f"Details ({i+1}/{len(detail_chunks)}):\n{chunk}"
@@ -176,7 +170,6 @@ def notify_admins_error(
                 except Exception as e:
                     logger.error(f"[LineMessenger] ✗ Failed to notify admin: admin_id={admin_user_id}, error={e}")
         else:
-            # 错误信息不长，直接发送 Flex Message
             for admin_user_id in admin_id:
                 try:
                     smart_push(admin_user_id, flex_message, configuration)
@@ -184,5 +177,4 @@ def notify_admins_error(
                     logger.error(f"[LineMessenger] ✗ Failed to notify admin: admin_id={admin_user_id}, error={e}")
 
     except Exception as e:
-        # 通知系统本身出错，记录到日志
         logger.error(f"[LineMessenger] ✗ Error notification system failed: error={e}", exc_info=True)

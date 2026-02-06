@@ -37,7 +37,6 @@ def create_backup(
         (成功标志, 消息, 备份文件路径)
     """
     try:
-        # 创建临时目录
         with tempfile.TemporaryDirectory() as temp_dir:
             logger.info("[Backup] → Creating backup files...")
 
@@ -46,8 +45,6 @@ def create_backup(
             success, msg = _export_mysql_database(db_config, sql_file)
             if not success:
                 logger.warning(f"[Backup] ⚠ Database export warning: {msg}")
-                # 继续执行，即使数据库导出失败
-                # 创建一个空的SQL文件标记
                 with open(sql_file, 'w') as f:
                     f.write(f"-- Database export failed: {msg}\n")
 
@@ -71,7 +68,7 @@ def create_backup(
             # 确保输出目录存在
             os.makedirs(output_dir, exist_ok=True)
 
-            # 使用pyzipper创建加密压缩包
+            # 创建加密压缩包
             with pyzipper.AESZipFile(backup_path, 'w', compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES) as zf:
                 zf.setpassword(backup_password.encode('utf-8'))
                 zf.write(sql_file, arcname="maimai_records.sql")
@@ -120,14 +117,12 @@ def _export_mysql_database(db_config: dict, output_file: str) -> Tuple[bool, str
         password = db_config.get('password', '')
         database = db_config.get('database', 'maimai_records')
 
-        # 构建mysqldump命令
         cmd = [
             'mysqldump',
             f'--host={host}',
             f'--user={user}',
         ]
 
-        # 只在密码非空时添加密码参数
         if password:
             cmd.append(f'--password={password}')
 
@@ -145,7 +140,7 @@ def _export_mysql_database(db_config: dict, output_file: str) -> Tuple[bool, str
                 stdout=f,
                 stderr=subprocess.PIPE,
                 text=True,
-                timeout=300  # 5分钟超时
+                timeout=300
             )
 
         if result.returncode != 0:
