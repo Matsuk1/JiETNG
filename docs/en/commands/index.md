@@ -76,7 +76,7 @@ This document lists all available commands for the JiETNG LINE Bot.
 | `fdxb50` | `fdx50`, `full dx 50`, `フールでらっくす50` | FDX/FDX+ only Best 50 |
 | `rct50` | `r50`, `recent50`, `recent 50` | Recent 50 plays |
 | `idealb50` | `idlb50`, `ideal best 50`, `理想的ベスト50` | Ideal Best 50 (auto-upgrade to next rank) |
-| `unknown` | `unknown songs`, `unknown data`, `未発見` | Unrecognized songs |
+| `unknown` | `unknown songs`, `unknown data` | Unrecognized songs |
 
 ### Advanced Filters
 

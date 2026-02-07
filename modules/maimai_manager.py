@@ -9,6 +9,7 @@ from urllib.parse import quote
 from lxml import etree
 from modules.record_manager import get_detailed_info
 from modules.rate_limiter import maimai_limiter
+from modules.config_loader import DOMAIN
 
 logger = logging.getLogger(__name__)
 
@@ -864,18 +865,20 @@ async def get_friend_info(cookies: dict, friend_id: str, ver="jp"):
         icon_url = dom.xpath('//img[contains(@class, "w_112") and contains(@class, "f_l")]/@src')
 
         # 姓名框
-        nameplate_list = [
-            "41ef54f2f141e1fd",
-            "f2b6b6808777400c",
-            "a42d03bf82bb3eea",
-            "85b6d4655374b56c",
-            "427ce8b2e50e01c9",
-            "331811d4769c6c1a",
-            "af79c8fed1d26394",
-            "809c981f807b3596"
-        ]
-        nameplate_name = random.choice(nameplate_list)
-        nameplate_url = f"https://maimaidx.jp/maimai-mobile/img/NamePlate/{nameplate_name}.png"
+        # nameplate_list = [
+        #    "41ef54f2f141e1fd",
+        #    "f2b6b6808777400c",
+        #    "a42d03bf82bb3eea",
+        #    "85b6d4655374b56c",
+        #    "427ce8b2e50e01c9",
+        #    "331811d4769c6c1a",
+        #    "af79c8fed1d26394",
+        #    "809c981f807b3596"
+        # ]
+        # nameplate_name = random.choice(nameplate_list)
+        # nameplate_url = f"https://maimaidx.jp/maimai-mobile/img/NamePlate/{nameplate_name}.png"
+
+        nameplate_url = f"https://{DOMAIN}/linebot/img/keep_nameplate"
 
         # 称号
         trophy_classes = dom.xpath('//div[contains(@class, "trophy_block")]/@class')[0]

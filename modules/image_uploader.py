@@ -10,6 +10,9 @@ from modules.config_loader import IMGUR_CLIENT_ID, IMG_DIR, DOMAIN
 
 logger = logging.getLogger(__name__)
 
+# 永久保留的文件名前缀
+PERMANENT_PREFIX = "keep_"
+
 # 图片清理任务列表 {image_id: cleanup_time}
 _image_cleanup_tasks = {}
 _cleanup_lock = threading.Lock()
@@ -25,8 +28,14 @@ def cleanup_expired_images():
         expiry_seconds = 1800  # 30分钟
 
         deleted_count = 0
+        skipped_count = 0
         for filename in os.listdir(IMG_DIR):
             if not filename.endswith('.png'):
+                continue
+
+            # 跳过永久保留的文件
+            if filename.startswith(PERMANENT_PREFIX):
+                skipped_count += 1
                 continue
 
             file_path = os.path.join(IMG_DIR, filename)

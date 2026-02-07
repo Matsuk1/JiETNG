@@ -76,7 +76,7 @@
 | `fdxb50` | `fdx50`, `full dx 50`, `フールでらっくす50` | FDX/FDX+のみのBest 50 |
 | `rct50` | `r50`, `recent50`, `recent 50` | 最近50回のプレイ記録 |
 | `idealb50` | `idlb50`, `ideal best 50`, `理想的ベスト50` | 理想スコアBest 50（自動的に次のランクに昇格） |
-| `unknown` | `unknown songs`, `unknown data`, `未発見` | 認識されていない楽曲のスコア |
+| `unknown` | `unknown songs`, `unknown data` | 認識されていない楽曲のスコア |
 
 ### 高度なフィルター
 

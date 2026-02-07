@@ -1770,7 +1770,7 @@ def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info)
     user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, plate_img], timezone_offset=user_tz)
+    img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz)
 
     # 清理中间图片对象
     del profile_img, plate_img
@@ -1981,7 +1981,7 @@ def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="jp"):
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, scale=1.5)
     user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, record_img], timezone_offset=user_tz)
+    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz)
 
     del profile_img, record_img
     gc.collect(0)
@@ -2049,9 +2049,9 @@ def generate_profile(user_info, scale=1):
 
     paste_image("nameplate_url", (0, 0), (1363, 218))
 
-    paste_image("icon_url", (26, 22), (170, 170))
+    paste_image("icon_url", (26, 24), (170, 170))
 
-    paste_image("rating_block_url", (219, 22), (223, 58))
+    paste_image("rating_block_url", (219, 24), (223, 58))
 
     # 使用等宽方式绘制 rating 数字
     rating_text = user_info['rating'].rjust(5)
@@ -2063,22 +2063,22 @@ def generate_profile(user_info, scale=1):
         actual_char_width = char_bbox[2] - char_bbox[0]
         # 在固定宽度区域内居中
         offset = (char_width - actual_char_width) / 2
-        draw.text((start_x + i * char_width + offset, 26), char, fill=(234, 189, 22), font=font_profile)
+        draw.text((start_x + i * char_width + offset, 28), char, fill=(234, 189, 22), font=font_profile)
 
     # 绘制昵称
-    draw.rounded_rectangle([219, 87, 671, 143], radius=10, fill=(255, 255, 255), outline=(180, 180, 180), width=2)
-    draw.text((235, 92), user_info['name'], fill=(0, 0, 0), font=font_profile)
+    draw.rounded_rectangle([219, 89, 671, 145], radius=10, fill=(255, 255, 255), outline=(180, 180, 180), width=2)
+    draw.text((235, 94), user_info['name'], fill=(0, 0, 0), font=font_profile)
 
-    paste_image("class_rank_url", (490, 5), (149, 85))
-    paste_image("cource_rank_url", (550, 91), (117, 48))
-    paste_image("trophy_url", (219, 156), (452, 36))
+    paste_image("class_rank_url", (490, 6), (148, 85))
+    paste_image("cource_rank_url", (550, 93), (117, 48))
+    paste_image("trophy_url", (219, 158), (452, 36))
 
     trophy_content = truncate_text(draw, user_info['trophy_content'], font_trophy, 430)
     bbox = draw.textbbox((0, 0), trophy_content, font=font_trophy)
     text_width = bbox[2] - bbox[0]
     rect_width = 452
     center_x = 219 + (rect_width - text_width) // 2
-    draw.text((center_x, 153), trophy_content, fill=(0, 0, 0), font=font_trophy)
+    draw.text((center_x, 155), trophy_content, fill=(0, 0, 0), font=font_trophy)
 
     info_img = info_img.resize((int(img_width * scale), int(img_height * scale)), Image.Resampling.LANCZOS)
     return info_img
@@ -2223,7 +2223,7 @@ def select_records(song_record, type="best50", command="", ver="jp"):
         down_songs_data = [x for x in down_songs_data if x.get("sync_icon") in ("fdx", "fdxp")]
         down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
 
-    elif type == "UNKNOWN":
+    elif type == "unknown":
         up_songs = list(filter(lambda x: x['version'] == "UNKNOWN", song_record))
 
     elif type == "rct50":
@@ -2270,13 +2270,16 @@ def generate_records(user_id, id_use, type="best50", command="", ver="jp"):
     if not up_songs and not down_songs:
         return song_error(user_id)
 
+    if type == "unknown":
+        type = "未だ知らず"
+
     record_img = generate_records_picture(up_songs, down_songs, type.upper(), ver)
 
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info)
     user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, record_img], timezone_offset=user_tz)
+    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz)
 
     # 清理中间图片对象
     del profile_img, record_img
@@ -2344,7 +2347,7 @@ def generate_friend_b50(user_id, friend_code, ver="jp"):
     user_info_img = generate_profile(friend_info)
     rcd_img = generate_records_picture(up_songs, down_songs, "BEST50", ver)
     user_tz = get_user_timezone(user_id)
-    img = compose_images([user_info_img, rcd_img], timezone_offset=user_tz)
+    img = compose_images([user_info_img, rcd_img], spacing=0, border_width=0, timezone_offset=user_tz)
 
     # 清理中间图片对象
     del user_info_img, rcd_img
@@ -2408,7 +2411,7 @@ def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info)
     user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, record_img], timezone_offset=user_tz)
+    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz)
 
     # 清理中间图片对象
     del profile_img, record_img
@@ -2456,7 +2459,7 @@ def generate_version_songs(user_id, version_title, ver="jp"):
 
     user_tz = get_user_timezone(user_id)
     if version_img is None:
-        img = compose_images([version_list_img], timezone_offset=user_tz)
+        img = compose_images([version_list_img], border_width=0, timezone_offset=user_tz)
     else:
         img = compose_images([version_img, version_list_img], border_width=0, timezone_offset=user_tz)
 
@@ -2650,7 +2653,7 @@ IMAGE_TASK_ROUTES = {
         "fdxb50", "fdx50", "Full DX 50", "フールでらっくす50",
         "rct50", "r50", "recent50", "recent 50",
         "idealb50", "idlb50", "ideal best 50", "理想的ベスト50",
-        "unknown", "unknown songs", "unknown data", "未発見"
+        "unknown", "unknown songs", "unknown data"
     }
 }
 
@@ -3233,7 +3236,7 @@ def handle_sync_text_command(event):
         ("fdxb50", "fdx50", "Full DX 50", "フールでらっくす50"): "fdxb50",
         ("rct50", "r50", "recent50", "recent 50"): "rct50",
         ("idealb50", "idlb50", "ideal best 50", "理想的ベスト50"): "idlb50",
-        ("unknown", "unknown songs", "unknown data", "未発見"): "UNKNOWN",
+        ("unknown", "unknown songs", "unknown data"): "unknown",
     }
 
     for aliases, mode in RANK_COMMANDS.items():
@@ -5085,7 +5088,7 @@ def api_get_user_records(user_id):
 
     参数:
     - type: 可选，记录类型，默认为 best50
-      可选值: best50, best100, best35, best15, allb50, allb100, allb200, allb35, apb50, rct50, idlb50, UNKNOWN
+      可选值: best50, best100, best35, best15, allb50, allb100, allb200, allb35, apb50, rct50, idlb50, unknown
     - level: 可选，定数范围，如 "14,15" 或 "14.0-15.0"
     - rating: 可选，rating范围，如 "100-200"
     - version: 可选，版本过滤
@@ -5135,7 +5138,7 @@ def api_get_user_records(user_id):
         logger.info(f"[API] Get user records: user_id={user_id}, type={record_type}, token_id={token_info['token_id']}, note={token_info['note']}")
 
         # 验证 record_type
-        valid_types = ["best50", "best40", "best100", "best35", "best15", "allb50", "allb100", "allb200", "allb35", "apb50", "rct50", "idlb50", "UNKNOWN"]
+        valid_types = ["best50", "best40", "best100", "best35", "best15", "allb50", "allb100", "allb200", "allb35", "apb50", "rct50", "idlb50", "unknown"]
         if record_type not in valid_types:
             return jsonify({
                 "error": "Invalid type",

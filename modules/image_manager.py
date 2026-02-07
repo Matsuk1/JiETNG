@@ -115,8 +115,7 @@ def wrap_in_rounded_background(content_img, padding=20, radius=30,
 
     return bg
 
-def compose_images(images, spacing=40, outer_margin=30,
-                   footer_height=150, bg_color=(255, 255, 255, 255), inner_bg=(255, 255, 255, 255), border_width=5, timezone_offset=9):
+def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_color=(255, 255, 255, 255), inner_bg=(255, 255, 255, 255), border_width=5, timezone_offset=9):
     """
     将多张图片垂直拼接，并添加页脚（RGB / RGBA 自适应）。
 

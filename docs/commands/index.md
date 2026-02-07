@@ -76,7 +76,7 @@
 | `fdxb50` | `fdx50`, `full dx 50`, `フールでらっくす50` | 仅显示 FDX/FDX+ 的 Best 50 |
 | `rct50` | `r50`, `recent50`, `recent 50` | 最近 50 条游玩记录 |
 | `idealb50` | `idlb50`, `ideal best 50`, `理想的ベスト50` | 理想分数 Best 50（自动提升至下一等级） |
-| `unknown` | `unknown songs`, `unknown data`, `未発見` | 未识别的歌曲成绩 |
+| `unknown` | `unknown songs`, `unknown data` | 未识别的歌曲成绩 |
 
 ### 高级筛选参数
 
