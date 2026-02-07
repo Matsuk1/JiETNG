@@ -167,7 +167,7 @@ QUERY_FORM_HTML = """
                 return;
             }
 
-            let url = '/dvfsh?';
+            let url = '/?';
             if (username) {
                 url += 'username=' + encodeURIComponent(username);
             } else if (qq) {
@@ -311,7 +311,7 @@ def query_player():
         profile_img = generate_profile(user_data)
         up_songs, down_songs = select_records(charts)
         record_img = generate_records_picture(up_songs, down_songs, "BEST50")
-        img = compose_images([profile_img, record_img], timezone_offset=8)
+        img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=8)
 
         del profile_img, record_img
         gc.collect(0)

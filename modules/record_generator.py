@@ -385,15 +385,15 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
     # 在上下部分中间绘制分隔线 (----·----) - 仅当同时有上下部分时显示
     if up_songs and down_songs:
         divider_y = total_up_y_offset + version_padding // 3 + 2
-        divider_color = (140, 140, 140)
+        divider_color = (100, 100, 100)
 
         # 计算中心点和线条长度
         center_x = img_width // 2
         line_half_length = (img_width - side_width * 2) // 2
 
         # 绘制左侧横线
-        left_line_start = center_x - line_half_length // 2
-        left_line_end = center_x - 10
+        left_line_start = center_x - line_half_length // 2 - 40
+        left_line_end = center_x - 30
         draw.line([(left_line_start, divider_y), (left_line_end, divider_y)], fill=divider_color, width=2)
 
         # 绘制中心点
@@ -402,8 +402,8 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
                      center_x + dot_radius, divider_y + dot_radius], fill=divider_color)
 
         # 绘制右侧横线
-        right_line_start = center_x + 10
-        right_line_end = center_x + line_half_length // 2
+        right_line_start = center_x + 30
+        right_line_end = center_x + line_half_length // 2 + 40
         draw.line([(right_line_start, divider_y), (right_line_end, divider_y)], fill=divider_color, width=2)
 
     for i, thumb in enumerate(down_thumbnails):
