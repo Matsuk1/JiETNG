@@ -2063,13 +2063,13 @@ def generate_profile(user_info, scale=1):
         actual_char_width = char_bbox[2] - char_bbox[0]
         # 在固定宽度区域内居中
         offset = (char_width - actual_char_width) / 2
-        draw.text((start_x + i * char_width + offset, 26), char, fill=(255, 255, 255), font=font_profile)
+        draw.text((start_x + i * char_width + offset, 26), char, fill=(234, 189, 22), font=font_profile)
 
     # 绘制昵称
     draw.rounded_rectangle([219, 87, 671, 143], radius=10, fill=(255, 255, 255), outline=(180, 180, 180), width=2)
     draw.text((235, 92), user_info['name'], fill=(0, 0, 0), font=font_profile)
 
-    paste_image("class_rank_url", (503, 15), (119, 68))
+    paste_image("class_rank_url", (490, 5), (149, 85))
     paste_image("cource_rank_url", (550, 91), (117, 48))
     paste_image("trophy_url", (219, 156), (452, 36))
 

@@ -41,8 +41,9 @@ def create_thumbnail_in_line(song):
     text_color = (0, 0, 0)
 
     # --- 基础分数 ---
+    dx_score = eval(song['dx_score'])
     draw.text((20, 0), song['score'], fill=text_color, font=font_record_name)
-    draw.text((25, 70), song['dx_score'], fill=text_color, font=font_record_info)
+    draw.text((25, 72), f"{song['dx_score']} → {dx_score * 100:.1f}%", fill=text_color, font=font_record_info)
 
     # --- 游玩信息 ---
     if 'last_play_time' in song and 'play_count' in song:
@@ -80,7 +81,6 @@ def create_thumbnail_in_line(song):
     # --- dx_star 图标 ---
     if 'dx_score' in song and song['dx_score']:
         try:
-            dx_score = eval(song['dx_score'])
             star_num = 0
             if 0 <= dx_score < 0.85:
                 star_num = 0
