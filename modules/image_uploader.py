@@ -1,12 +1,18 @@
-import requests
 import logging
 import os
 import time
 import secrets
 import threading
+import asyncio
+from datetime import datetime
 from io import BytesIO
 from PIL import Image
-from modules.config_loader import IMGUR_CLIENT_ID, IMG_DIR, DOMAIN
+import aioboto3
+from modules.config_loader import (
+    IMG_DIR, DOMAIN,
+    R2_ENABLED, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID,
+    R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL
+)
 
 logger = logging.getLogger(__name__)
 
@@ -135,165 +141,96 @@ def _save_to_local(img):
         logger.error(f"[LocalImageHost] ✗ Failed to save image: error={e}")
         return None
 
-def _upload_to_uguu(img):
-    url = "https://uguu.se/upload.php"
-
-    img_io = BytesIO()
-    try:
-        img.save(img_io, format='PNG')
-        img_io.seek(0)
-        files = {'files[]': ('image.png', img_io, 'image/png')}
-        resp = requests.post(url, files=files)
-
-        try:
-            if resp.status_code == 200:
-                data = resp.json()
-                if data.get("success") and data.get("files"):
-                    return data["files"][0]["url"]
-                else:
-                    logger.error(f"[ImageUploader] ✗ Uguu upload failed: data={data}")
-            else:
-                logger.error(f"[ImageUploader] ✗ Uguu request failed: status={resp.status_code}")
-        except Exception as e:
-            logger.error(f"[ImageUploader] ✗ Uguu response parsing error: error={e}")
-
-        return None
-    finally:
-        img_io.close()
-
-def _upload_to_0x0(img):
-    url = "https://0x0.st"
-
-    img_io = BytesIO()
-    try:
-        img.save(img_io, format='PNG')
-        img_io.seek(0)
-        files = {'file': ('image.png', img_io, 'image/png')}
-        response = requests.post(url, files=files)
-
-        try:
-            if response.status_code == 200 and response.text.startswith("https://0x0.st/"):
-                return response.text.strip()
-            else:
-                logger.error(f"[ImageUploader] ✗ 0x0 upload failed: response={response.text}")
-        except Exception as e:
-            logger.error(f"[ImageUploader] ✗ 0x0 exception: error={e}")
-
-        return None
-    finally:
-        img_io.close()
-
-def _upload_to_imgur(img):
-    """上传图片到 Imgur"""
-    if not IMGUR_CLIENT_ID:
-        logger.error("[ImageUploader] ✗ Imgur client ID not configured")
-        return None
-
-    url = "https://api.imgur.com/3/image"
-    headers = {"Authorization": f"Client-ID {IMGUR_CLIENT_ID}"}
-
-    img_io = BytesIO()
-    try:
-        img.save(img_io, format='PNG')
-        img_io.seek(0)
-
-        files = {'image': img_io}
-
-        try:
-            response = requests.post(url, headers=headers, files=files)
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("success") and data.get("data"):
-                    return data["data"]["link"]
-                else:
-                    logger.error(f"[ImageUploader] ✗ Imgur upload failed: data={data}")
-            else:
-                logger.error(f"[ImageUploader] ✗ Imgur request failed: status={response.status_code}, response={response.text}")
-        except Exception as e:
-            logger.error(f"[ImageUploader] ✗ Imgur exception: error={e}")
-
-        return None
-    finally:
-        img_io.close()
-
-# 智能图床上传
-def smart_upload(img):
-    """上传图片到图床，返回原图和预览图链接
+async def _upload_to_r2(img, user_id=None):
+    """异步上传图片到 Cloudflare R2
 
     Args:
         img: PIL Image 对象
+        user_id: 用户ID（可选）
+
+    Returns:
+        str: 图片URL，如果失败返回None
+    """
+    if not R2_ENABLED:
+        return None
+
+    img_io = BytesIO()
+    try:
+        # 生成唯一文件名，添加 gen/ 前缀
+        image_id = secrets.token_urlsafe(16)
+        file_name = f"gen/{image_id}.png"
+
+        # 转换图片为字节流（在线程池中执行，避免阻塞）
+        await asyncio.to_thread(img.save, img_io, format='PNG')
+        img_io.seek(0)
+        img_bytes = img_io.getvalue()
+
+        # 准备元数据
+        metadata = {
+            'upload-time': datetime.now().isoformat()
+        }
+        if user_id:
+            metadata['user-id'] = str(user_id)
+
+        # 异步上传到 R2
+        session = aioboto3.Session()
+        async with session.client(
+            's3',
+            endpoint_url=f'https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com',
+            aws_access_key_id=R2_ACCESS_KEY_ID,
+            aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+            region_name='auto'
+        ) as s3_client:
+            await s3_client.put_object(
+                Bucket=R2_BUCKET_NAME,
+                Key=file_name,
+                Body=img_bytes,
+                ContentType='image/png',
+                CacheControl='public, max-age=259200',  # 缓存3天
+                Metadata=metadata
+            )
+
+        # 生成公开URL
+        if R2_PUBLIC_URL:
+            image_url = f"{R2_PUBLIC_URL.rstrip('/')}/{file_name}"
+        else:
+            image_url = f"https://pub-{R2_ACCOUNT_ID}.r2.dev/{file_name}"
+
+        logger.info(f"[R2] ✓ Image uploaded: id={image_id}, path={file_name}, url={image_url}")
+        return image_url
+
+    except Exception as e:
+        logger.error(f"[R2] ✗ Upload failed: error={e}")
+        return None
+    finally:
+        img_io.close()
+
+# 智能图床上传（异步）
+async def smart_upload(img, user_id=None):
+    """异步上传图片到图床，返回原图和预览图链接
+
+    Args:
+        img: PIL Image 对象
+        user_id: 用户ID（可选，用于R2元数据）
 
     Returns:
         tuple: (original_url, preview_url) 如果上传失败返回 (None, None)
     """
-    # 优先使用本地图床
+    # 优先使用 Cloudflare R2（异步，永久存储，全球CDN加速）
+    if R2_ENABLED:
+        logger.info("[ImageUploader] → Using Cloudflare R2")
+        r2_url = await _upload_to_r2(img, user_id)
+        if r2_url:
+            logger.info(f"[ImageUploader] ✓ R2 upload complete: url={r2_url}")
+            return r2_url, r2_url
+
+    # R2 失败或未启用时，使用本地图床（在线程池中执行）
     logger.info("[ImageUploader] → Using local image host")
-    local_url = _save_to_local(img)
+    local_url = await asyncio.to_thread(_save_to_local, img)
     if local_url:
         logger.info(f"[ImageUploader] ✓ Local upload complete: url={local_url}")
         return local_url, local_url
 
-    # 本地图床失败时，回退到外部图床
-    logger.warning("[ImageUploader] ⚠ Local image host failed, falling back to external hosts")
-
-    # 一次性转换为 BytesIO，避免重复序列化
-    original_io = BytesIO()
-    try:
-        img.save(original_io, format='PNG')
-        original_io.seek(0)
-
-        # 上传原图
-        logger.info("[ImageUploader] → Uploading original image")
-        original_url = None
-
-        # 优先尝试 imgur
-        if IMGUR_CLIENT_ID:
-            logger.info("[ImageUploader] → Using imgur to upload original")
-            url = "https://api.imgur.com/3/image"
-            headers = {"Authorization": f"Client-ID {IMGUR_CLIENT_ID}"}
-            files = {'image': original_io}
-
-            try:
-                response = requests.post(url, headers=headers, files=files)
-                if response.status_code == 200:
-                    data = response.json()
-                    if data.get("success") and data.get("data"):
-                        original_url = data["data"]["link"]
-            except Exception as e:
-                logger.error(f"[ImageUploader] ✗ Imgur upload exception: error={e}")
-
-            original_io.seek(0)
-
-        if not original_url:
-            logger.info("[ImageUploader] → Using uguu to upload original")
-            files = {'files[]': ('image.png', original_io, 'image/png')}
-            try:
-                resp = requests.post("https://uguu.se/upload.php", files=files)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    if data.get("success") and data.get("files"):
-                        original_url = data["files"][0]["url"]
-            except Exception as e:
-                logger.error(f"[ImageUploader] ✗ Uguu upload exception: error={e}")
-
-            original_io.seek(0)
-
-        if not original_url:
-            logger.info("[ImageUploader] → Using 0x0 to upload original")
-            files = {'file': ('image.png', original_io, 'image/png')}
-            try:
-                response = requests.post("https://0x0.st", files=files)
-                if response.status_code == 200 and response.text.startswith("https://0x0.st/"):
-                    original_url = response.text.strip()
-            except Exception as e:
-                logger.error(f"[ImageUploader] ✗ 0x0 upload exception: error={e}")
-
-        if not original_url:
-            logger.error("[ImageUploader] ✗ All upload methods failed")
-            return None, None
-
-        # 不再上传预览图，直接使用原图
-        logger.info(f"[ImageUploader] ✓ Upload complete: url={original_url}")
-        return original_url, original_url
-    finally:
-        original_io.close()
+    # 所有上传方法都失败
+    logger.error("[ImageUploader] ✗ All upload methods failed (R2 and Local)")
+    return None, None

@@ -75,8 +75,15 @@ default_config = {
     },
     "keys": {
         "user_data": "",
-        "bind_token": "",
-        "imgur_client_id": ""
+        "bind_token": ""
+    },
+    "cloudflare_r2": {
+        "enabled": False,
+        "account_id": "",
+        "access_key_id": "",
+        "secret_access_key": "",
+        "bucket_name": "",
+        "public_url": ""
     }
 }
 
@@ -188,7 +195,15 @@ LINE_CHANNEL_SECRET = LINE_CHANNEL["secret"]
 KEYS = _config["keys"]
 USER_DATA_KEY = KEYS["user_data"].encode()
 BIND_TOKEN_KEY = KEYS["bind_token"].encode()
-IMGUR_CLIENT_ID = KEYS.get("imgur_client_id", "")
+
+# Cloudflare R2 配置字段
+R2_CONFIG = _config.get("cloudflare_r2", {})
+R2_ENABLED = R2_CONFIG.get("enabled", False)
+R2_ACCOUNT_ID = R2_CONFIG.get("account_id", "")
+R2_ACCESS_KEY_ID = R2_CONFIG.get("access_key_id", "")
+R2_SECRET_ACCESS_KEY = R2_CONFIG.get("secret_access_key", "")
+R2_BUCKET_NAME = R2_CONFIG.get("bucket_name", "")
+R2_PUBLIC_URL = R2_CONFIG.get("public_url", "")
 
 # 全局缓存数据
 SONGS = []

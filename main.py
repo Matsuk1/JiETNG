@@ -959,7 +959,7 @@ def async_generate_friend_b50_task(event):
         ver = USERS[user_id]['version']
 
     # 直接通过网页爬取获取好友信息
-    reply_msg = generate_friend_b50(user_id, friend_code, ver)
+    reply_msg = asyncio.run(generate_friend_b50(user_id, friend_code, ver))
 
     smart_reply(user_id, reply_token, reply_msg, configuration)
 
@@ -1171,7 +1171,7 @@ async def maimai_update(user_id, ver="jp"):
         ))
 
     if func_status["Best Records"]:
-        messages.append(generate_records(user_id, user_id, ver=ver))
+        messages.append(await generate_records(user_id, user_id, ver=ver))
 
     return messages
 
@@ -1247,7 +1247,7 @@ def get_rc(level: float, user_id=None):
 
     return generate_rc_flex(level, rc_data, user_id)
 
-def random_song(user_id, key="", ver="jp"):
+async def random_song(user_id, key="", ver="jp"):
     read_dxdata(ver)
     length = len(SONGS)
     is_exit = False
@@ -1273,12 +1273,12 @@ def random_song(user_id, key="", ver="jp"):
     song_id = song.get('id')
 
     user_tz = get_user_timezone(user_id)
-    original_url, preview_url = smart_upload(song_info_generate(song, timezone_offset=user_tz, ver=ver))
+    original_url, preview_url = await smart_upload(song_info_generate(song, timezone_offset=user_tz, ver=ver), user_id)
     result.append(ImageMessage(original_content_url=original_url, preview_image_url=preview_url))
     result.append(generate_calc_button(song_id, user_id))
     return result
 
-def search_song(user_id, acronym, ver="jp"):
+async def search_song(user_id, acronym, ver="jp"):
     """
     搜索歌曲并返回歌曲信息图片
 
@@ -1307,7 +1307,7 @@ def search_song(user_id, acronym, ver="jp"):
     result = []
     user_tz = get_user_timezone(user_id)
     for song in matching_songs:
-        original_url, preview_url = smart_upload(song_info_generate(song, timezone_offset=user_tz, ver=ver))
+        original_url, preview_url = await smart_upload(song_info_generate(song, timezone_offset=user_tz, ver=ver), user_id)
         message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
         result.append(message)
         song_id = song.get('id')
@@ -1315,7 +1315,7 @@ def search_song(user_id, acronym, ver="jp"):
 
     return result
 
-def search_song_by_id(user_id, song_id, ver="jp"):
+async def search_song_by_id(user_id, song_id, ver="jp"):
     """
     通过歌曲ID搜索歌曲并返回歌曲信息图片
 
@@ -1342,7 +1342,7 @@ def search_song_by_id(user_id, song_id, ver="jp"):
 
     # 返回图片 + 按钮
     user_tz = get_user_timezone(user_id)
-    original_url, preview_url = smart_upload(song_info_generate(matching_song, timezone_offset=user_tz, ver=ver))
+    original_url, preview_url = await smart_upload(song_info_generate(matching_song, timezone_offset=user_tz, ver=ver), user_id)
     image_message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
     return [image_message, generate_calc_button(song_id, user_id)]
 
@@ -1606,12 +1606,12 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
 
     # 生成歌曲信息图片
     user_tz = get_user_timezone(id_use)
-    original_url, preview_url = smart_upload(song_info_generate(matching_song, played_data, timezone_offset=user_tz, ver=ver))
+    original_url, preview_url = await smart_upload(song_info_generate(matching_song, played_data, timezone_offset=user_tz, ver=ver), user_id)
     result = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
 
     return result
 
-def generate_plate_rcd(user_id, id_use, title, ver="jp"):
+async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     if id_use not in USERS:
         return mention_error(user_id) if id_use != user_id else segaid_error(user_id)
 
@@ -1776,7 +1776,7 @@ def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     del profile_img, plate_img
     gc.collect(0)
 
-    original_url, preview_url = smart_upload(img)
+    original_url, preview_url = await smart_upload(img, user_id)
 
     # 清理最终图片对象
     del img
@@ -1792,7 +1792,7 @@ def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     return message
 
 
-def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="jp"):
+async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="jp"):
     """
     生成指定难度和评级的达成情况图片（定数列表+统计卡片）
 
@@ -1986,7 +1986,7 @@ def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="jp"):
     del profile_img, record_img
     gc.collect(0)
 
-    original_url, preview_url = smart_upload(img)
+    original_url, preview_url = await smart_upload(img, user_id)
     message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
 
     del img
@@ -2253,7 +2253,7 @@ def select_records(song_record, type="best50", command="", ver="jp"):
 
     return up_songs, down_songs;
 
-def generate_records(user_id, id_use, type="best50", command="", ver="jp"):
+async def generate_records(user_id, id_use, type="best50", command="", ver="jp"):
     if id_use not in USERS:
         return mention_error(user_id) if id_use != user_id else segaid_error(user_id)
 
@@ -2285,7 +2285,7 @@ def generate_records(user_id, id_use, type="best50", command="", ver="jp"):
     del profile_img, record_img
     gc.collect(0)
 
-    original_url, preview_url = smart_upload(img)
+    original_url, preview_url = await smart_upload(img, user_id)
 
     # 清理最终图片对象
     del img
@@ -2300,7 +2300,7 @@ def generate_records(user_id, id_use, type="best50", command="", ver="jp"):
 
     return message
 
-def generate_friend_b50(user_id, friend_code, ver="jp"):
+async def generate_friend_b50(user_id, friend_code, ver="jp"):
     if user_id not in USERS:
         return segaid_error(user_id)
 
@@ -2322,7 +2322,7 @@ def generate_friend_b50(user_id, friend_code, ver="jp"):
         friend_info, friend_records = await asyncio.gather(*tasks)
         return None, friend_info, friend_records
 
-    error, friend_info, friend_records = asyncio.run(fetch_friend_data())
+    error, friend_info, friend_records = await fetch_friend_data()
 
     if error == "MAINTENANCE":
         return maintenance_error(user_id)
@@ -2353,7 +2353,7 @@ def generate_friend_b50(user_id, friend_code, ver="jp"):
     del user_info_img, rcd_img
     gc.collect(0)
 
-    original_url, preview_url = smart_upload(img)
+    original_url, preview_url = await smart_upload(img, user_id)
 
     message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
 
@@ -2363,7 +2363,7 @@ def generate_friend_b50(user_id, friend_code, ver="jp"):
 
     return message
 
-def generate_level_records(user_id, id_use, level, ver="jp", page=1):
+async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     if id_use not in USERS:
         return mention_error(user_id) if id_use != user_id else segaid_error(user_id)
 
@@ -2417,7 +2417,7 @@ def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     del profile_img, record_img
     gc.collect(0)
 
-    original_url, preview_url = smart_upload(img)
+    original_url, preview_url = await smart_upload(img, user_id)
 
     # 清理最终图片对象
     del img
@@ -2430,7 +2430,7 @@ def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     message = [m for m in message if m]
     return message
 
-def generate_version_songs(user_id, version_title, ver="jp"):
+async def generate_version_songs(user_id, version_title, ver="jp"):
     read_dxdata(ver)
 
     target_version = []
@@ -2469,7 +2469,7 @@ def generate_version_songs(user_id, version_title, ver="jp"):
     del version_list_img
     gc.collect(0)
 
-    original_url, preview_url = smart_upload(img)
+    original_url, preview_url = await smart_upload(img, user_id)
 
     # 清理最终图片对象
     del img
@@ -3017,12 +3017,6 @@ def handle_text_message(event):
                 end = start + mentionee.length
                 # 精确删除 mention 文本（包括 @bot，支持包含空格的用户名）
                 cleaned_text = cleaned_text[:start] + cleaned_text[end:]
-    else:
-        # 没有 mention 信息时，使用正则删除 @用户名（支持包含空格的用户名）
-        # 匹配 @后跟任意非换行字符，直到遇到两个或以上空格、或换行、或字符串结尾
-        cleaned_text = re.sub(r'@[^\n]+?(?=\s{2,}|\n|$)', '', cleaned_text)
-        # 如果上面没匹配到，尝试简单的 @非空白字符
-        cleaned_text = re.sub(r'@\S+', '', cleaned_text)
 
     # 删除不可见字符（在删除 mention 之后，避免影响索引）
     cleaned_text = re.sub(r'[\ufffd]', '', cleaned_text)
@@ -3144,7 +3138,7 @@ def handle_sync_text_command(event):
     SPECIAL_RULES = [
         # 歌曲搜索（通过ID）
         (lambda msg: msg.startswith("search ") and len(msg.split()) == 2 and len(msg.split()[1]) == 6,
-         lambda msg: search_song_by_id(user_id, msg.split()[1], mai_ver)),
+         lambda msg: asyncio.run(search_song_by_id(user_id, msg.split()[1], mai_ver))),
 
         # Calc （通过ID）
         (lambda msg: msg.startswith("calc-song ") and len(msg.split()) == 2 and len(msg.split()[1]) == 6,
@@ -3152,11 +3146,11 @@ def handle_sync_text_command(event):
 
         # 歌曲信息查询
         (lambda msg: msg.endswith(("ってどんな曲", "info", "song-info")),
-         lambda msg: search_song(user_id, re.sub(r"\s*(ってどんな曲|info|song-info)$", "", msg).strip(), mai_ver)),
+         lambda msg: asyncio.run(search_song(user_id, re.sub(r"\s*(ってどんな曲|info|song-info)$", "", msg).strip(), mai_ver))),
 
         # 随机歌曲
         (lambda msg: msg.startswith(("ランダム曲", "ランダム", "random-song", "random")),
-         lambda msg: random_song(user_id, re.sub(r"^(ランダム曲|ランダム|random-song|random)", "", msg).strip(), mai_ver)),
+         lambda msg: asyncio.run(random_song(user_id, re.sub(r"^(ランダム曲|ランダム|random-song|random)", "", msg).strip(), mai_ver))),
 
         # Rating 对照表
         (lambda msg: msg.startswith(("rc ", "RC ", "Rc ")),
@@ -3164,35 +3158,35 @@ def handle_sync_text_command(event):
 
         # 版本达成情况
         (lambda msg: msg.endswith(("の達成状況", "の達成情報", "の達成表", "achievement-list", "achievement")),
-         lambda msg: generate_plate_rcd(user_id, id_use, re.sub(r"\s*(の達成状況|の達成情報|の達成表|achievement-list|achievement)$", "", msg).strip(), mai_ver_use)),
+         lambda msg: asyncio.run(generate_plate_rcd(user_id, id_use, re.sub(r"\s*(の達成状況|の達成情報|の達成表|achievement-list|achievement)$", "", msg).strip(), mai_ver_use))),
 
         # 等级成绩列表
         (lambda msg: re.match(r".+(のレコードリスト|record-list|records)[ 　]*\d*$", msg),
-         lambda msg: generate_level_records(
+         lambda msg: asyncio.run(generate_level_records(
              user_id,
              id_use,
              re.sub(r"\s*(のレコードリスト|record-list|records)[ 　]*\d*$", "", msg).strip(),
              mai_ver_use,
-             int(re.search(r"(\d+)$", msg).group(1)) if re.search(r"(\d+)$", msg) else 1)),
+             int(re.search(r"(\d+)$", msg).group(1)) if re.search(r"(\d+)$", msg) else 1))),
 
         # 版本歌曲列表
         (lambda msg: msg.endswith(("のバージョンリスト", "version-list", "version")),
-         lambda msg: generate_version_songs(user_id, re.sub(r"\s*\+\s*", " PLUS", re.sub(r"(のバージョンリスト|version-list|version)$", "", msg)).strip(), mai_ver)),
+         lambda msg: asyncio.run(generate_version_songs(user_id, re.sub(r"\s*\+\s*", " PLUS", re.sub(r"(のバージョンリスト|version-list|version)$", "", msg)).strip(), mai_ver))),
 
         # 定数查询
         (lambda msg: msg.endswith(("の定数リスト", "のレベルリスト", "level-list")),
-         lambda msg: generate_level_rank_progress(user_id, user_id, re.sub(r"\s*(の定数リスト|のレベルリスト|level-list)$", "", msg), ver=mai_ver)),
+         lambda msg: asyncio.run(generate_level_rank_progress(user_id, user_id, re.sub(r"\s*(の定数リスト|のレベルリスト|level-list)$", "", msg), ver=mai_ver))),
 
         # 难度+评级达成情况（如 "13sss+進捗", "14ap progress"）
         # 难度+评级达成情况（如 "13sss+進捗", "14AP progress", "15SSS進捗"）
         # 支持大小写，长的评级放在前面避免被短的提前匹配
         (lambda msg: re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)$", msg.lower()),
-         lambda msg: generate_level_rank_progress(
+         lambda msg: asyncio.run(generate_level_rank_progress(
              user_id,
              id_use,
              re.match(r"^(\d+\+?)", msg.lower()).group(1),
              re.search(r"(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)", msg.lower()).group(1),
-             mai_ver_use)),
+             mai_ver_use))),
 
         # 权限请求管理
         (lambda msg: msg.startswith("accept-perm-request "),
@@ -3241,7 +3235,7 @@ def handle_sync_text_command(event):
 
     for aliases, mode in RANK_COMMANDS.items():
         if first_word in aliases:
-            reply_message = generate_records(user_id, id_use, mode, rest_text, mai_ver_use)
+            reply_message = asyncio.run(generate_records(user_id, id_use, mode, rest_text, mai_ver_use))
             return tracked_reply(user_id, event.reply_token, reply_message)
 
     # ========================================
