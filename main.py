@@ -1302,18 +1302,12 @@ async def search_song(user_id, acronym, ver="jp"):
     # 返回搜索结果列表
     if len(matching_songs) > 1:
         return generate_search_results_flex(user_id, matching_songs)
+    
+    # 单个结果，调用 search_song_by_id
+    song = matching_songs[0]
+    song_id = song.get('id')
+    return await search_song_by_id(user_id, song_id, ver)
 
-    # 单个结果：返回图片 + 按钮
-    result = []
-    user_tz = get_user_timezone(user_id)
-    for song in matching_songs:
-        original_url, preview_url = await smart_upload(song_info_generate(song, timezone_offset=user_tz, ver=ver), user_id)
-        message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
-        result.append(message)
-        song_id = song.get('id')
-        result.append(generate_calc_button(song_id, user_id))
-
-    return result
 
 async def search_song_by_id(user_id, song_id, ver="jp"):
     """
@@ -1518,7 +1512,7 @@ async def get_song_record(user_id, id_use, acronym, ver="jp"):
     if len(songs_with_records) > 1:
         return generate_search_record_results_flex(user_id, id_use, songs_with_records)
 
-    # 只有一个结果，直接调用 get_song_record_by_id
+    # 单个结果，调用 get_song_record_by_id
     song = songs_with_records[0]
     song_id = song.get('id')
     return await get_song_record_by_id(user_id, id_use, song_id, ver)
