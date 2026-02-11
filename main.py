@@ -200,6 +200,33 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__, static_folder='assets', static_url_path='/static')
 app.secret_key = secrets.token_hex(32)  # 用于session加密
 
+# 配置成绩命令列表
+RANK_COMMANDS = {
+    # Best 系列
+    ("b50", "best50", "best 50", "ベスト50"): "best50",
+    ("b40", "best40", "best 40", "ベスト40"): "best40",
+    ("b100", "best100", "best 100", "ベスト100"): "best100",
+    ("b35", "best35", "best 35", "ベスト35"): "best35",
+    ("b15", "best15", "best 15", "ベスト15"): "best15",
+
+    # All Best 系列
+    ("ab35", "allb35", "all best 35", "オールベスト35"): "allb35",
+    ("ab50", "allb50", "all best 50", "オールベスト50"): "allb50",
+    ("ab100", "allb100", "all best 100", "オールベスト100"): "allb100",
+
+    # Next Best
+    ("nxtb50", "nextb50", "next best 50", "ネクストベスト50"): "nxtb50",
+    ("nxtb35", "nextb35", "next best 35", "ネクストベスト35"): "nxtb35",
+    ("nxtb15", "nextb15", "next best 15", "ネクストベスト15"): "nxtb15",
+
+    # 特殊系列
+    ("apb50", "ap50", "all perfect 50", "オールパーフェクト50"): "apb50",
+    ("fdxb50", "fdx50", "Full DX 50", "フールでらっくす50"): "fdxb50",
+    ("rct50", "r50", "recent50", "recent 50"): "rct50",
+    ("idealb50", "idlb50", "ideal best 50", "理想的ベスト50"): "idlb50",
+    ("unknown", "unknown songs", "unknown data"): "unknown",
+}
+
 # 启用 CSRF 保护
 csrf = CSRFProtect(app)
 
@@ -946,12 +973,23 @@ def async_maimai_update_task(event):
     if reply_token:
         smart_reply(user_id, reply_token, reply_msg, configuration)
 
-def async_generate_friend_b50_task(event):
-    """异步生成好友B50任务 - 在webtask_queue中执行"""
+def async_generate_friend_record_task(event):
+    """异步生成好友成绩任务 - 在webtask_queue中执行"""
     user_message = event.message.text.strip()
     user_id = event.source.user_id
     reply_token = event.reply_token
-    friend_code = user_message.replace("friend-b50 ", "").strip()
+
+    # 只拆分前两个空格，剩余内容作为 command
+    parts = user_message.replace("friend-rcd ", "").strip().split(maxsplit=2)
+    friend_code = parts[0] if len(parts) > 0 else ""
+    record_type = parts[1] if len(parts) > 1 else "best50"
+    command = parts[2] if len(parts) > 2 else ""
+
+    # 转换 record_type 为标准格式
+    for aliases, standard_type in RANK_COMMANDS.items():
+        if record_type.lower() in aliases:
+            record_type = standard_type
+            break
 
     # 获取用户版本
     ver = "jp"
@@ -959,7 +997,7 @@ def async_generate_friend_b50_task(event):
         ver = USERS[user_id]['version']
 
     # 直接通过网页爬取获取好友信息
-    reply_msg = asyncio.run(generate_friend_b50(user_id, friend_code, ver))
+    reply_msg = asyncio.run(generate_friend_record(user_id, friend_code, record_type, command, ver))
 
     smart_reply(user_id, reply_token, reply_msg, configuration)
 
@@ -2294,7 +2332,7 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
 
     return message
 
-async def generate_friend_b50(user_id, friend_code, ver="jp"):
+async def generate_friend_record(user_id, friend_code, type="best50", cmd="", ver="jp"):
     if user_id not in USERS:
         return segaid_error(user_id)
 
@@ -2334,12 +2372,16 @@ async def generate_friend_b50(user_id, friend_code, ver="jp"):
     if not friend_records:
         return friend_rcd_error(user_id)
 
-    friend_records = get_detailed_info(friend_records, ver)
+    recent_type = (type == "best40")
+    friend_records = get_detailed_info(friend_records, ver, recent_type)
 
-    up_songs, down_songs = select_records(friend_records, "best50", "", ver)
+    up_songs, down_songs = select_records(friend_records, type, cmd, ver)
+
+    if not (len(up_songs) + len(down_songs)):
+        return friend_rcd_error(user_id)
 
     user_info_img = generate_profile(friend_info)
-    rcd_img = generate_records_picture(up_songs, down_songs, "BEST50", ver)
+    rcd_img = generate_records_picture(up_songs, down_songs, type.upper(), ver)
     user_tz = get_user_timezone(user_id)
     img = compose_images([user_info_img, rcd_img], spacing=0, border_width=0, timezone_offset=user_tz)
 
@@ -2348,8 +2390,10 @@ async def generate_friend_b50(user_id, friend_code, ver="jp"):
     gc.collect(0)
 
     original_url, preview_url = await smart_upload(img, user_id)
-
-    message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
+    message = [
+        TextMessage(text=get_multilingual_text(friend_rcd_text, user_id).format(name=friend_info["name"])),
+        ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
+    ]
 
     # 清理最终图片对象
     del img
@@ -2493,9 +2537,7 @@ WEB_TASK_ROUTES = {
     },
     # 前缀匹配规则
     'prefix': {
-        "friend-b50 ": async_generate_friend_b50_task,
-        "friend b50 ": async_generate_friend_b50_task,
-        "フレンドb50 ": async_generate_friend_b50_task,
+        "friend-rcd ": async_generate_friend_record_task,
         "search-record ": async_get_song_record_by_id_task,
     },
     # 后缀匹配规则
@@ -3200,32 +3242,6 @@ def handle_sync_text_command(event):
     # ========================================
     first_word = re.split(r"[ \n]", user_message.lower(), 1)[0]
     rest_text = re.split(r"[ \n]", user_message.lower(), 1)[1] if re.search(r"[ \n]", user_message) else ""
-
-    RANK_COMMANDS = {
-        # Best 系列
-        ("b50", "best50", "best 50", "ベスト50"): "best50",
-        ("b40", "best40", "best 40", "ベスト40"): "best40",
-        ("b100", "best100", "best 100", "ベスト100"): "best100",
-        ("b35", "best35", "best 35", "ベスト35"): "best35",
-        ("b15", "best15", "best 15", "ベスト15"): "best15",
-
-        # All Best 系列
-        ("ab35", "allb35", "all best 35", "オールベスト35"): "allb35",
-        ("ab50", "allb50", "all best 50", "オールベスト50"): "allb50",
-        ("ab100", "allb100", "all best 100", "オールベスト100"): "allb100",
-
-        # Next Best
-        ("nxtb50", "nextb50", "next best 50", "ネクストベスト50"): "nxtb50",
-        ("nxtb35", "nextb35", "next best 35", "ネクストベスト35"): "nxtb35",
-        ("nxtb15", "nextb15", "next best 15", "ネクストベスト15"): "nxtb15",
-
-        # 特殊系列
-        ("apb50", "ap50", "all perfect 50", "オールパーフェクト50"): "apb50",
-        ("fdxb50", "fdx50", "Full DX 50", "フールでらっくす50"): "fdxb50",
-        ("rct50", "r50", "recent50", "recent 50"): "rct50",
-        ("idealb50", "idlb50", "ideal best 50", "理想的ベスト50"): "idlb50",
-        ("unknown", "unknown songs", "unknown data"): "unknown",
-    }
 
     for aliases, mode in RANK_COMMANDS.items():
         if first_word in aliases:

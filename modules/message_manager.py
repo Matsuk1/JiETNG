@@ -1,3 +1,4 @@
+from urllib.parse import quote
 from modules.config_loader import SUPPORT_PAGE, USERS, LINE_ACCOUNT_ID
 from modules.user_manager import get_notice_interaction, get_user_timezone
 from modules.tip_ad_manager import get_random_tip, get_random_ad
@@ -386,7 +387,7 @@ def generate_notice_flex(notice_json, user_id=None):
             action = {
                 "type": "uri",
                 "label": button_label_with_arrow,
-                "uri": f"https://line.me/R/oaMessage/{LINE_ACCOUNT_ID}/?{button_value}"
+                "uri": f"https://line.me/R/oaMessage/{LINE_ACCOUNT_ID}/?{quote(button_value)}"
             }
 
         # 添加按钮卡片
@@ -1265,7 +1266,7 @@ def generate_tip_ad_box(tip_ad, lang):
             action = {
                 "type": "uri",
                 "label": button_label_with_arrow,
-                "uri": f"https://line.me/R/oaMessage/{LINE_ACCOUNT_ID}/?{button_value}"
+                "uri": f"https://line.me/R/oaMessage/{LINE_ACCOUNT_ID}/?{quote(button_value)}"
             }
 
         # 添加按钮
@@ -1999,10 +2000,9 @@ def generate_friend_buttons(user_id, alt_text, friend_list, group_size):
                         "style": "secondary",
                         "height": "sm",
                         "action": {
-                            "type": "postback",
+                            "type": "uri",
                             "label": "→",
-                            "data": f"friend-b50 {friend_id}",
-                            "displayText": get_multilingual_text(view_friend_b50_text, user_id).format(name=name)
+                            "uri": f"https://line.me/R/oaMessage/{LINE_ACCOUNT_ID}/?friend-rcd%20{friend_id}%0A"
                         }
                     }
                 ]

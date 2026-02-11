@@ -488,10 +488,10 @@ friend_list_alt_text = {
 }
 
 # 查看好友 B50 按钮显示文本
-view_friend_b50_text = {
-    "ja": "{name} の B50 を表示",
-    "en": "View {name}'s B50",
-    "zh": "查看 {name} 的 B50"
+friend_rcd_text = {
+    "ja": "{name} のデータ",
+    "en": "{name}'s record",
+    "zh": "{name} 的数据"
 }
 
 # Note 分数计算按钮文本

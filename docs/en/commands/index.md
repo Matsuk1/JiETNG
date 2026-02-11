@@ -197,12 +197,12 @@ UNiVERSEのバージョンリスト
 | Command | Aliases | Description |
 |---------|---------|-------------|
 | `friend list` | `friendlist`, `フレンドリスト` | View added friends list |
-| `friend-b50 [Code]` | `friend b50 [Code]`, `フレンドb50 [Code]` | View friend's B50 |
+| `friend-rcd [Code]` | None | View friend's B50 |
 
 **Examples**:
 ```
 friend list                   # View friends list
-friend-b50 1234567890123456   # View friend's B50
+friend-rcd 1234567890123456   # View friend's B50
 ```
 
 **Notes**:
