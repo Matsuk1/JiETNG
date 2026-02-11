@@ -2378,7 +2378,7 @@ async def generate_friend_record(user_id, friend_code, type="best50", cmd="", ve
     up_songs, down_songs = select_records(friend_records, type, cmd, ver)
 
     if not (len(up_songs) + len(down_songs)):
-        return friend_rcd_error(user_id)
+        return record_error(user_id)
 
     user_info_img = generate_profile(friend_info)
     rcd_img = generate_records_picture(up_songs, down_songs, type.upper(), ver)
