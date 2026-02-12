@@ -979,6 +979,13 @@ def async_generate_friend_record_task(event):
     user_id = event.source.user_id
     reply_token = event.reply_token
 
+    # 检查是否在群聊中发送
+    source_type = getattr(event.source, 'type', 'user')
+    if source_type != 'user':
+        # 在群聊中，返回警告消息
+        reply_message = TextMessage(text=get_multilingual_text(friend_rcd_group_warning_text, user_id))
+        return smart_reply(user_id, reply_token, reply_msg, configuration, addition=False)
+
     # 只拆分前两个空格，剩余内容作为 command
     parts = user_message.replace("friend-rcd ", "").strip().split(maxsplit=2)
     friend_code = parts[0] if len(parts) > 0 else ""
@@ -1429,12 +1436,23 @@ def calc_by_id(user_id, song_id, ver="jp"):
     calc_carousel = generate_calc_carousel(calc_data)
     return calc_carousel
 
-def get_friend_list(user_id):
+def get_user_info(user_id, source_type):
+    if source_type != 'user':
+        # 在群聊中，返回警告消息
+        return TextMessage(text=get_multilingual_text(private_info_group_warning_text, user_id))
+
+    return generate_user_info_flex(user_id)
+
+def get_friend_list(user_id, source_type):
     if user_id not in USERS:
         return segaid_error(user_id)
 
     elif 'mai_friends' not in USERS[user_id]:
         return friend_error(user_id)
+
+    if source_type != 'user':
+        # 在群聊中，返回警告消息
+        return TextMessage(text=get_multilingual_text(friend_rcd_group_warning_text, user_id))
 
     friend_list = copy.deepcopy(USERS[user_id].get("mai_friends"))
     if not friend_list:
@@ -3107,7 +3125,7 @@ def handle_sync_text_command(event):
 
     user_message = event.message.text.strip()
     user_id = event.source.user_id
-
+    source_type = getattr(event.source, 'type', 'user')
     # ========================================
     # 用户上下文初始化
     # ========================================
@@ -3150,15 +3168,15 @@ def handle_sync_text_command(event):
         "ドネーション": lambda: donate_message,
 
         # 账户管理
-        "profile": lambda: generate_user_info_flex(user_id),
-        "get me": lambda: generate_user_info_flex(user_id),
-        "getme": lambda: generate_user_info_flex(user_id),
-        "ゲットミー": lambda: generate_user_info_flex(user_id),
+        "profile": lambda: get_user_info(user_id, source_type),
+        "get me": lambda: get_user_info(user_id, source_type),
+        "getme": lambda: get_user_info(user_id, source_type),
+        "ゲットミー": lambda: get_user_info(user_id, source_type),
 
         # 好友列表
-        "friend list": lambda: get_friend_list(user_id),
-        "フレンドリスト": lambda: get_friend_list(user_id),
-        "friendlist": lambda: get_friend_list(user_id),
+        "friend list": lambda: get_friend_list(user_id, source_type),
+        "フレンドリスト": lambda: get_friend_list(user_id, source_type),
+        "friendlist": lambda: get_friend_list(user_id, source_type),
 
         # 系统状态
         "status": lambda: get_bot_status(user_id)

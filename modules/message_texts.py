@@ -390,6 +390,18 @@ rebind_group_warning_text = {
     "zh": "⚠️ 出于安全考虑，rebind / settings 命令只能在私聊中使用。请直接向机器人发送消息。"
 }
 
+private_info_group_warning_text = {
+    "ja": "⚠️ セキュリティのため、個人情報コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
+    "en": "⚠️ For security reasons, personal info commands can only be used in private chat. Please message the bot directly.",
+    "zh": "⚠️ 出于安全考虑，个人信息命令只能在私聊中使用。请直接向机器人发送消息。"
+}
+
+friend_rcd_group_warning_text = {
+    "ja": "⚠️ セキュリティのため、フレンドレコードコマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
+    "en": "⚠️ For security reasons, friend record commands can only be used in private chat. Please message the bot directly.",
+    "zh": "⚠️ 出于安全考虑，好友记录命令只能在私聊中使用。请直接向机器人发送消息。"
+}
+
 # Rebind 未绑定提示
 rebind_not_bound_text = {
     "ja": "まだ SEGA アカウントが連携されていません。bind コマンドで連携してください。",
