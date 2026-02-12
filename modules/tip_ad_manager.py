@@ -143,7 +143,7 @@ def create_tip_ad(tip_type, text_zh, text_en, text_ja, button_type=None, button_
     """
     load_tip_ad_data()
     tip_ad = {
-        'id': datetime.now().timestamp(),
+        'id': f"{int(datetime.now().timestamp())}",
         'type': tip_type,
         'text': {
             'zh': text_zh,
@@ -173,14 +173,14 @@ def create_tip_ad(tip_type, text_zh, text_en, text_ja, button_type=None, button_
     return tip_ad
 
 
-def update_tip_ad(tip_id, tip_type=None, text_zh=None, text_en=None, text_ja=None,
+def update_tip_ad(tip_ad_id, tip_type=None, text_zh=None, text_en=None, text_ja=None,
                   button_type=None, button_label_zh=None, button_label_en=None,
                   button_label_ja=None, button_value=None, enabled=None, remove_button=False):
     """
     更新tip/ad
 
     Args:
-        tip_id: tip/ad ID
+        tip_ad_id: tip/ad ID
         tip_type: 类型
         text_zh: 中文文本
         text_en: 英文文本
@@ -197,7 +197,7 @@ def update_tip_ad(tip_id, tip_type=None, text_zh=None, text_en=None, text_ja=Non
         dict: 更新后的tip/ad数据，如果未找到则返回None
     """
     for tip_ad in TIP_AD_DATA:
-        if tip_ad['id'] == tip_id:
+        if tip_ad['id'] == tip_ad_id:
             if tip_type is not None:
                 tip_ad['type'] = tip_type
 
@@ -228,19 +228,19 @@ def update_tip_ad(tip_id, tip_type=None, text_zh=None, text_en=None, text_ja=Non
             tip_ad['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             save_tip_ad_data()
 
-            logger.info(f"[TipAd] Updated tip/ad: id={tip_id}")
+            logger.info(f"[TipAd] Updated tip/ad: id={tip_ad_id}")
             return tip_ad
 
-    logger.warning(f"[TipAd] Tip/ad not found: id={tip_id}")
+    logger.warning(f"[TipAd] Tip/ad not found: id={tip_ad_id}")
     return None
 
 
-def delete_tip_ad(tip_id):
+def delete_tip_ad(tip_ad_id):
     """
     删除tip/ad
 
     Args:
-        tip_id: tip/ad ID
+        tip_ad_id: tip/ad ID
 
     Returns:
         bool: 是否删除成功
@@ -248,29 +248,29 @@ def delete_tip_ad(tip_id):
     global TIP_AD_DATA
 
     original_length = len(TIP_AD_DATA)
-    TIP_AD_DATA = [tip for tip in TIP_AD_DATA if tip['id'] != tip_id]
+    TIP_AD_DATA = [tip for tip in TIP_AD_DATA if tip['id'] != tip_ad_id]
 
     if len(TIP_AD_DATA) < original_length:
         save_tip_ad_data()
-        logger.info(f"[TipAd] Deleted tip/ad: id={tip_id}")
+        logger.info(f"[TipAd] Deleted tip/ad: id={tip_ad_id}")
         return True
 
-    logger.warning(f"[TipAd] Tip/ad not found for deletion: id={tip_id}")
+    logger.warning(f"[TipAd] Tip/ad not found for deletion: id={tip_ad_id}")
     return False
 
 
-def get_tip_ad_by_id(tip_id):
+def get_tip_ad_by_id(tip_ad_id):
     """
     根据ID获取tip/ad
 
     Args:
-        tip_id: tip/ad ID
+        tip_ad_id: tip/ad ID
 
     Returns:
         dict: tip/ad数据，如果未找到则返回None
     """
     for tip_ad in TIP_AD_DATA:
-        if tip_ad['id'] == tip_id:
+        if tip_ad['id'] == tip_ad_id:
             return tip_ad.copy()
 
     return None

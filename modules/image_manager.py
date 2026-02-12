@@ -2,7 +2,7 @@ import qrcode
 import logging
 from datetime import datetime, timezone, timedelta, date
 from PIL import Image, ImageDraw, ImageFont
-from modules.config_loader import FONT_PATH, LOGO_PATH
+from modules.config_loader import FONT_PATH, LOGO_PATH, QR_CODE
 
 # 全局字体对象（一次性加载）
 font_large  = ImageFont.truetype(FONT_PATH, 28)
@@ -218,7 +218,26 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
             font=dynamic_font
         )
 
-    # Logo
+    # QR Code 和 Logo
+    qr_logo_y = footer_y_start + int(10 * scale_factor)
+    qr_logo_spacing = int(20 * scale_factor)  # QR 和 Logo 之间的间距
+
+    # QR Code（左侧）
+    try:
+        qr_img = Image.open(QR_CODE)
+        qr_img = ensure_rgba(
+            qr_img.resize(
+                (dynamic_logo_size, dynamic_logo_size),
+                Image.Resampling.LANCZOS
+            )
+        )
+        # QR Code 放在 logo 左边
+        qr_x = inner_width - dynamic_right_margin - dynamic_logo_size - qr_logo_spacing
+        combined.paste(qr_img, (qr_x, qr_logo_y), qr_img)
+    except Exception as e:
+        logger.error(f"[ImageManager] ✗ Failed to load QR code: error={e}")
+
+    # Logo（右侧）
     try:
         logo_img = Image.open(LOGO_PATH)
         logo_img = ensure_rgba(
@@ -228,8 +247,7 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
             )
         )
         logo_x = inner_width - dynamic_right_margin
-        logo_y = footer_y_start + int(10 * scale_factor)
-        combined.paste(logo_img, (logo_x, logo_y), logo_img)
+        combined.paste(logo_img, (logo_x, qr_logo_y), logo_img)
     except Exception as e:
         logger.error(f"[ImageManager] ✗ Failed to load logo: error={e}")
 

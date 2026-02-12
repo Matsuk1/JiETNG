@@ -4284,7 +4284,7 @@ def notice_vote():
 
 # ==================== Tip/Ad 管理 API ====================
 
-@app.route("/admin/get_tip_ads", methods=["GET"])
+@app.route("/admin/tip_ads", methods=["GET"])
 def admin_get_tip_ads():
     """获取所有 tip/ad"""
     if not check_admin_auth():
@@ -4297,9 +4297,22 @@ def admin_get_tip_ads():
         logger.error(f"[Admin] ✗ Get tip/ads error: error={e}", exc_info=True)
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route("/admin/create_tip_ad", methods=["POST"])
+@app.route("/admin/tip_ads/<tip_ad_id>", methods=["GET"])
+def admin_get_tip_ad(tip_ad_id):
+    """获取单个 tip/ad"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        tip_ad = get_tip_ad_by_id(tip_ad_id)
+        return jsonify({'success': True, 'tip_ad': tip_ad})
+    except Exception as e:
+        logger.error(f"[Admin] ✗ Get tip/ads by id error: error={e}", exc_info=True)
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route("/admin/tip_ads", methods=["POST"])
 @csrf.exempt
-def admin_create_tip_ad():
+def admin_create_tip_ads():
     """创建新的 tip/ad"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
@@ -4341,17 +4354,16 @@ def admin_create_tip_ad():
         logger.error(f"[Admin] ✗ Create tip/ad error: error={e}", exc_info=True)
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route("/admin/update_tip_ad", methods=["POST"])
+@app.route("/admin/tip_ads/<tip_ad_id>", methods=["PUT"])
 @csrf.exempt
-def admin_update_tip_ad():
+def admin_put_tip_ads(tip_ad_id):
     """更新 tip/ad"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
     data = request.get_json()
-    tip_id = data.get('id')
 
-    if not tip_id:
+    if not tip_ad_id:
         return jsonify({'success': False, 'message': 'Missing id'}), 400
 
     tip_type = data.get('type')
@@ -4368,7 +4380,7 @@ def admin_update_tip_ad():
 
     try:
         tip_ad = update_tip_ad(
-            tip_id=tip_id,
+            tip_ad_id=tip_ad_id,
             tip_type=tip_type,
             text_zh=text_zh,
             text_en=text_en,
@@ -4383,7 +4395,7 @@ def admin_update_tip_ad():
         )
 
         if tip_ad:
-            logger.info(f"[Admin] ✓ Updated tip/ad: id={tip_id}")
+            logger.info(f"[Admin] ✓ Updated tip/ad: id={tip_ad_id}")
             return jsonify({'success': True, 'tip_ad': tip_ad})
         else:
             return jsonify({'success': False, 'message': 'Tip/ad not found'}), 404
@@ -4391,23 +4403,20 @@ def admin_update_tip_ad():
         logger.error(f"[Admin] ✗ Update tip/ad error: error={e}", exc_info=True)
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route("/admin/delete_tip_ad", methods=["POST"])
+@app.route("/admin/tip_ads/<tip_ad_id>", methods=["DELETE"])
 @csrf.exempt
-def admin_delete_tip_ad():
+def admin_delete_tip_ads(tip_ad_id):
     """删除 tip/ad"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
-    tip_id = data.get('id')
-
-    if not tip_id:
+    if not tip_ad_id:
         return jsonify({'success': False, 'message': 'Missing id'}), 400
 
     try:
-        success = delete_tip_ad(tip_id)
+        success = delete_tip_ad(tip_ad_id)
         if success:
-            logger.info(f"[Admin] ✓ Deleted tip/ad: id={tip_id}")
+            logger.info(f"[Admin] ✓ Deleted tip/ad: id={tip_ad_id}")
             return jsonify({'success': True})
         else:
             return jsonify({'success': False, 'message': 'Tip/ad not found'}), 404

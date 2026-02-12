@@ -2686,7 +2686,7 @@
     // ==================== Tip/Ad Management Functions ====================
 
     function loadTipAds() {
-      fetch('/admin/get_tip_ads')
+      fetch('/admin/tip_ads')
         .then(response => response.json())
         .then(data => {
           if (data.success) {
@@ -2774,12 +2774,12 @@
       document.getElementById('tipadFormModal').classList.add('show');
     }
 
-    function editTipAd(tipId) {
-      fetch('/admin/get_tip_ads')
+    function editTipAd(tipAdId) {
+      fetch(`/admin/tip_ads/${tipAdId}`)
         .then(response => response.json())
         .then(data => {
           if (data.success) {
-            const tipad = data.tip_ads.find(t => t.id === tipId);
+            const tipad = data.tip_ad;
             if (tipad) {
               document.getElementById('tipadFormTitle').textContent = 'Edit Tip/Ad';
               document.getElementById('tipad_id').value = tipad.id;
@@ -2823,7 +2823,7 @@
     function saveTipAd(event) {
       event.preventDefault();
 
-      const tipId = document.getElementById('tipad_id').value;
+      const tipAdId = document.getElementById('tipad_id').value;
       const hasButton = document.getElementById('tipad_has_button').checked;
 
       const data = {
@@ -2834,8 +2834,8 @@
         enabled: document.getElementById('tipad_enabled').checked
       };
 
-      if (tipId) {
-        data.id = tipId;
+      if (tipAdId) {
+        data.id = tipAdId;
       }
 
       if (hasButton) {
@@ -2844,14 +2844,15 @@
         data.button_label_en = document.getElementById('tipad_button_label_en').value;
         data.button_label_ja = document.getElementById('tipad_button_label_ja').value;
         data.button_value = document.getElementById('tipad_button_value').value;
-      } else if (tipId) {
+      } else if (tipAdId) {
         data.remove_button = true;
       }
 
-      const url = tipId ? '/admin/update_tip_ad' : '/admin/create_tip_ad';
+      const url = tipAdId ? `/admin/tip_ads/${tipAdId}` : '/admin/tip_ads';
+      const load_method = tipAdId ? 'PUT' : 'POST';
 
       fetch(url, {
-        method: 'POST',
+        method: load_method,
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(data)
       })
@@ -2870,15 +2871,15 @@
         });
     }
 
-    function deleteTipAd(tipId) {
+    function deleteTipAd(tipAdId) {
       if (!confirm('Are you sure you want to delete this tip/ad?')) {
         return;
       }
 
-      fetch('/admin/delete_tip_ad', {
-        method: 'POST',
+      fetch(`/admin/tip_ads/${tipAdId}`, {
+        method: 'DELETE',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({id: tipId})
+        body: JSON.stringify({id: tipAdId})
       })
         .then(response => response.json())
         .then(data => {

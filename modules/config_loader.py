@@ -42,6 +42,7 @@ default_config = {
         "dev_tokens": "./data/dev_tokens.json",
         "font": "./assets/fonts/line_seed_jietng.ttf",
         "logo": "./assets/pics/logo.png",
+        "qrcode": "./assets/pics/qrcode.png",
         "versions": "./assets/versions",
         "covers": "./assets/covers",
         "plates": "./assets/plates",
@@ -159,6 +160,7 @@ BACKUP_DIR = FILE_PATH["backup"]
 DEV_TOKENS_FILE = FILE_PATH["dev_tokens"]
 FONT_PATH = FILE_PATH["font"]
 LOGO_PATH = FILE_PATH["logo"]
+QR_CODE = FILE_PATH["qrcode"]
 VERSIONS_DIR = FILE_PATH["versions"]
 COVERS_DIR = FILE_PATH["covers"]
 PLATES_DIR = FILE_PATH["plates"]
