@@ -984,7 +984,7 @@ def async_generate_friend_record_task(event):
     if source_type != 'user':
         # 在群聊中，返回警告消息
         reply_message = TextMessage(text=get_multilingual_text(friend_rcd_group_warning_text, user_id))
-        return smart_reply(user_id, reply_token, reply_msg, configuration, addition=False)
+        return smart_reply(user_id, reply_token, reply_message, configuration, addition=False)
 
     # 只拆分前两个空格，剩余内容作为 command
     parts = user_message.replace("friend-rcd ", "").strip().split(maxsplit=2)

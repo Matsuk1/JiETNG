@@ -248,6 +248,11 @@ async def login_to_maimai(sega_id: str, password: str, ver="jp", aime=0):
             ) as login_resp:
                 redirect_url = login_resp.headers.get("Location")
 
+            # 检查重定向 URL
+            if not redirect_url:
+                logger.error(f"[Maimai] ✗ Login failed: no redirect URL, server=INTL, sega_id={sega_id}")
+                return None
+
             # 跟随重定向
             async with session.get(
                 redirect_url,
@@ -881,9 +886,14 @@ async def get_friend_info(cookies: dict, friend_id: str, ver="jp"):
         nameplate_url = f"https://{DOMAIN}/linebot/img/keep_nameplate"
 
         # 称号
-        trophy_classes = dom.xpath('//div[contains(@class, "trophy_block")]/@class')[0]
-        trophy_type = [c for c in trophy_classes.split() if c.startswith('trophy_') and c != 'trophy_block'][0]
-        trophy_type = trophy_type.replace('trophy_', '').lower()
+        trophy_classes_list = dom.xpath('//div[contains(@class, "trophy_block")]/@class')
+        if trophy_classes_list:
+            trophy_classes = trophy_classes_list[0]
+            trophy_type_list = [c for c in trophy_classes.split() if c.startswith('trophy_') and c != 'trophy_block']
+            trophy_type = trophy_type_list[0].replace('trophy_', '').lower() if trophy_type_list else 'normal'
+        else:
+            trophy_type = 'normal'  # default trophy type
+
         trophy_blocks = dom.xpath('//div[contains(@class, "trophy_inner_block") and contains(@class, "f_13")]')
         if trophy_blocks:
             trophy_block = trophy_blocks[0]

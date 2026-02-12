@@ -162,11 +162,11 @@ def notify_admins_error(
         if len(error_details) > 800:
             for admin_user_id in admin_id:
                 try:
-                    smart_push(admin_user_id, flex_message, configuration)
-                    detail_chunks = [error_details[i:i+900] for i in range(0, len(error_details), 900)]
-                    for i, chunk in enumerate(detail_chunks):
-                        chunk_msg = f"Details ({i+1}/{len(detail_chunks)}):\n{chunk}"
-                        smart_push(admin_user_id, TextMessage(text=chunk_msg), configuration)
+                    chunk_msg = [flex_message]
+                    detail_chunks = [error_details[i:i+1000] for i in range(0, len(error_details), 1000)]
+                    for chunk in detail_chunks:
+                        chunk_msg.append(TextMessage(text=chunk))
+                    smart_push(admin_user_id, chunk_msg, configuration)
                 except Exception as e:
                     logger.error(f"[LineMessenger] ✗ Failed to notify admin: admin_id={admin_user_id}, error={e}")
         else:
