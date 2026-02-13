@@ -3598,7 +3598,7 @@ def handle_postback(event):
                     stats = calculate_notice_stats(notice_id)
 
                     # 获取用户语言
-                    lang = get_user_language(user_id) or 'ja'
+                    lang = get_user_language(user_id)
 
                     # 构建反馈消息（多语言）
                     vote_success_text = {

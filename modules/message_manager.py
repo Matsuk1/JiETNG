@@ -33,11 +33,11 @@ def get_user_language(user_id):
         user_id: 用户ID
 
     Returns:
-        str: 语言代码 ('ja', 'en', 'zh')，默认为 'ja'
+        str: 语言代码 ('ja', 'en', 'zh')，默认为 'en'
     """
     if user_id and user_id in USERS:
-        return USERS[user_id].get('language', 'ja')
-    return 'ja'
+        return USERS[user_id].get('language', 'en')
+    return 'en'
 
 def format_timezone_string(user_id):
     """
@@ -69,9 +69,9 @@ def get_multilingual_text(message_dict, user_id=None, language=None):
         return message_dict
 
     if language is None:
-        language = get_user_language(user_id) if user_id else 'ja'
+        language = get_user_language(user_id)
 
-    return message_dict.get(language, message_dict.get('ja', ''))
+    return message_dict.get(language)
 
 def get_quick_reply_label(key, user_id=None):
     """获取 QuickReply 按钮的多语言标签"""
@@ -328,7 +328,7 @@ def generate_notice_flex(notice_json, user_id=None):
         FlexMessage
     """
     # 获取用户语言
-    lang = get_user_language(user_id) if user_id else 'ja'
+    lang = get_user_language(user_id)
 
     # 标题（多语言）
     title = get_notice_header(user_id)
