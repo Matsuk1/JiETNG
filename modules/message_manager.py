@@ -2002,7 +2002,7 @@ def generate_friend_buttons(user_id, alt_text, friend_list, group_size):
                         "action": {
                             "type": "uri",
                             "label": "→",
-                            "uri": f"https://line.me/R/oaMessage/{LINE_ACCOUNT_ID}/?friend-rcd%20{friend_id}%0A"
+                            "uri": f"https://line.me/R/oaMessage/{LINE_ACCOUNT_ID}/?friend-rcd%20{friend_id}%20"
                         }
                     }
                 ]

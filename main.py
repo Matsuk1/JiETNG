@@ -3707,6 +3707,14 @@ def handle_member_joined(event):
     return smart_reply(None, reply_token, reply_msg, configuration, False)
 
 
+# Default 事件处理 - 未匹配的事件类型，已读并忽略
+@handler.default()
+def handle_default(event):
+    logger.debug(f"[DefaultHandler] Unhandled event: {event.__class__.__name__}")
+    mark_as_read_token = getattr(getattr(event, 'message', None), 'mark_as_read_token', None)
+    mark_message_as_read(mark_as_read_token)
+
+
 # ==================== 管理后台路由 ====================
 
 # 任务队列追踪
