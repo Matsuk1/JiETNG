@@ -402,6 +402,13 @@ friend_rcd_group_warning_text = {
     "zh": "⚠️ 出于安全考虑，好友记录命令只能在私聊中使用。请直接向机器人发送消息。"
 }
 
+# 搜索命令群聊警告
+search_group_warning_text = {
+    "ja": "⚠️ グループチャットでの荒らし防止のため、artist / designer 検索コマンドは個人チャットでのみ使用できます。",
+    "en": "⚠️ To prevent spam, artist / designer search commands can only be used in private chat.",
+    "zh": "⚠️ 为防止刷屏，artist / designer 搜索命令仅限私聊使用。"
+}
+
 # Rebind 未绑定提示
 rebind_not_bound_text = {
     "ja": "まだ SEGA アカウントが連携されていません。bind コマンドで連携してください。",

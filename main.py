@@ -1385,6 +1385,77 @@ async def search_song_by_id(user_id, song_id, ver="jp"):
     image_message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
     return [image_message, generate_calc_button(song_id, user_id)]
 
+def search_by_artist(user_id, artist_query, ver="jp", page=1, source_type="user"):
+    """
+    通过艺术家名搜索歌曲
+
+    Args:
+        user_id: 用户ID
+        artist_query: 艺术家名关键词
+        ver: 服务器版本 (jp/intl)
+        page: 页码
+        source_type: 来源类型 (user/group/room)
+
+    Returns:
+        FlexMessage 歌曲列表 或错误消息
+    """
+    if source_type != 'user':
+        return TextMessage(text=get_multilingual_text(search_group_warning_text, user_id))
+
+    read_dxdata(ver)
+
+    matching_songs = []
+    query_lower = artist_query.lower()
+    for song in SONGS:
+        artist = song.get('artist') or ''
+        if query_lower in artist.lower():
+            matching_songs.append(song)
+
+    if not matching_songs:
+        return song_error(user_id)
+
+    title = f"Artist: {artist_query}"
+    return generate_song_list_flex(user_id, title, matching_songs, page, "artist", artist_query)
+
+def search_by_designer(user_id, designer_query, ver="jp", page=1, source_type="user"):
+    """
+    通过谱面设计师搜索歌曲
+
+    Args:
+        user_id: 用户ID
+        designer_query: 谱面设计师名关键词
+        ver: 服务器版本 (jp/intl)
+        page: 页码
+        source_type: 来源类型 (user/group/room)
+
+    Returns:
+        FlexMessage 歌曲列表 或错误消息
+    """
+    if source_type != 'user':
+        return TextMessage(text=get_multilingual_text(search_group_warning_text, user_id))
+
+    read_dxdata(ver)
+
+    matching_songs = []
+    matched_sheets_map = {}
+    query_lower = designer_query.lower()
+
+    for song in SONGS:
+        matched_sheets = []
+        for sheet in song.get('sheets', []):
+            designer = sheet.get('noteDesigner', '')
+            if designer and query_lower in designer.lower():
+                matched_sheets.append(sheet)
+        if matched_sheets:
+            matching_songs.append(song)
+            matched_sheets_map[song.get('id', '')] = matched_sheets
+
+    if not matching_songs:
+        return song_error(user_id)
+
+    title = f"Designer: {designer_query}"
+    return generate_song_list_flex(user_id, title, matching_songs, page, "designer", designer_query, matched_sheets_map)
+
 def calc_by_id(user_id, song_id, ver="jp"):
     """
     通过歌曲ID搜索歌曲并返回歌曲calc结果
@@ -3197,6 +3268,24 @@ def handle_sync_text_command(event):
         # Calc （通过ID）
         (lambda msg: msg.startswith("calc-song ") and len(msg.split()) == 2 and len(msg.split()[1]) == 6,
          lambda msg: calc_by_id(user_id, msg.split()[1], mai_ver)),
+
+        # 艺术家搜索（artist <keyword> [page]）
+        (lambda msg: msg.startswith("artist ") and len(msg.split()) >= 2,
+         lambda msg: search_by_artist(
+             user_id,
+             ' '.join(msg.split()[1:-1]) if msg.split()[-1].isdigit() and len(msg.split()) >= 3 else ' '.join(msg.split()[1:]),
+             mai_ver,
+             int(msg.split()[-1]) if msg.split()[-1].isdigit() and len(msg.split()) >= 3 else 1,
+             source_type)),
+
+        # 谱面设计师搜索（designer <keyword> [page]）
+        (lambda msg: msg.startswith("designer ") and len(msg.split()) >= 2,
+         lambda msg: search_by_designer(
+             user_id,
+             ' '.join(msg.split()[1:-1]) if msg.split()[-1].isdigit() and len(msg.split()) >= 3 else ' '.join(msg.split()[1:]),
+             mai_ver,
+             int(msg.split()[-1]) if msg.split()[-1].isdigit() and len(msg.split()) >= 3 else 1,
+             source_type)),
 
         # 歌曲信息查询
         (lambda msg: msg.endswith(("ってどんな曲", "info", "song-info")),

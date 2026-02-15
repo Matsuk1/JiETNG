@@ -1933,6 +1933,208 @@ def generate_search_record_results_flex(user_id, id_use, matching_songs):
     return _generate_search_results_flex_internal(user_id, matching_songs, 'record', id_use)
 
 
+def generate_song_list_flex(user_id, title, matching_songs, page, command_prefix, query, matched_sheets_map=None):
+    """
+    生成歌曲列表 Flex Message（黑白简约风，artist/designer 搜索共用）
+
+    Args:
+        user_id: 用户ID
+        title: 列表标题
+        matching_songs: 匹配的歌曲列表
+        page: 当前页码（从1开始）
+        command_prefix: 翻页命令前缀（如 "artist" 或 "designer"）
+        query: 搜索关键词
+        matched_sheets_map: designer 模式下的匹配谱面映射 {song_id: [sheet, ...]}
+
+    Returns:
+        FlexMessage: 歌曲列表
+    """
+    type_map = {
+        'dx': 'DX',
+        'std': 'STD',
+        'utage': 'UTAGE'
+    }
+
+    difficulty_label_map = {
+        'basic': 'BAS',
+        'advanced': 'ADV',
+        'expert': 'EXP',
+        'master': 'MAS',
+        'remaster': 'ReMAS'
+    }
+
+    page_size = 15
+    total = len(matching_songs)
+    total_pages = (total + page_size - 1) // page_size
+    page = max(1, min(page, total_pages))
+
+    start = (page - 1) * page_size
+    end = start + page_size
+    has_next = end < total
+
+    # 超过每页限制时，取前19条 + 翻页按钮
+    if has_next:
+        page_songs = matching_songs[start:start + page_size - 1]
+    else:
+        page_songs = matching_songs[start:end]
+
+    song_rows = []
+    for idx, song in enumerate(page_songs):
+        song_id = song.get('id', '')
+        song_title = song.get('title', 'Unknown')
+        song_type = type_map.get(song.get('type', ''), song.get('type', '').upper())
+
+        # 副信息
+        if matched_sheets_map and song_id in matched_sheets_map:
+            # designer 模式：谱师名 + 匹配的难度标签
+            sheets = matched_sheets_map[song_id]
+            designers = []
+            for s in sheets:
+                diff_label = difficulty_label_map.get(s.get('difficulty', ''), s.get('difficulty', ''))
+                designer_name = s.get('noteDesigner', '')
+                designers.append(f"{designer_name} [{diff_label}]")
+            sub_text = ' / '.join(designers)
+        else:
+            # artist 模式：艺术家名
+            sub_text = song.get('artist') or '-'
+
+        left_contents = [
+            {
+                "type": "text",
+                "text": song_title,
+                "size": "sm",
+                "weight": "bold",
+                "color": "#000000",
+                "wrap": True,
+                "maxLines": 2
+            },
+            {
+                "type": "text",
+                "text": sub_text,
+                "size": "xs",
+                "color": "#666666",
+                "margin": "xs",
+                "wrap": True,
+                "maxLines": 1
+            },
+            {
+                "type": "text",
+                "text": song_type,
+                "size": "xs",
+                "color": "#999999",
+                "margin": "xs"
+            }
+        ]
+
+        row = {
+            "type": "box",
+            "layout": "horizontal",
+            "spacing": "md",
+            "margin": "md" if idx > 0 else "none",
+            "contents": [
+                {
+                    "type": "box",
+                    "layout": "vertical",
+                    "flex": 3,
+                    "contents": left_contents
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "postback",
+                        "label": "→",
+                        "data": f"search {song_id}",
+                        "displayText": f"search {song_id}"
+                    },
+                    "style": "secondary",
+                    "height": "sm",
+                    "flex": 0
+                }
+            ]
+        }
+
+        song_rows.append(row)
+        if idx < len(page_songs) - 1 or has_next:
+            song_rows.append({"type": "separator", "margin": "sm"})
+
+    # 翻页按钮
+    if has_next:
+        next_page = page + 1
+        song_rows.append({
+            "type": "button",
+            "action": {
+                "type": "postback",
+                "label": f"Next Page ({next_page}/{total_pages})",
+                "data": f"{command_prefix} {query} {next_page}",
+                "displayText": f"{command_prefix} {query} {next_page}"
+            },
+            "style": "secondary",
+            "height": "sm",
+            "margin": "md"
+        })
+
+    # 跳转按钮（多页时显示）
+    if total_pages > 1:
+        jump_text = f"{command_prefix} {query} "
+        song_rows.append({
+            "type": "button",
+            "action": {
+                "type": "uri",
+                "label": f"Go to ... (1~{total_pages})",
+                "uri": f"https://line.me/R/oaMessage/{LINE_ACCOUNT_ID}/?{quote(jump_text)}"
+            },
+            "style": "secondary",
+            "height": "sm",
+            "margin": "sm"
+        })
+
+    header_box = {
+        "type": "box",
+        "layout": "vertical",
+        "paddingAll": "16px",
+        "contents": [
+            {
+                "type": "text",
+                "text": title,
+                "weight": "bold",
+                "size": "lg",
+                "color": "#000000"
+            },
+            {
+                "type": "text",
+                "text": f"Page {page}/{total_pages} • {total} songs",
+                "size": "xs",
+                "color": "#666666",
+                "margin": "sm"
+            },
+            {
+                "type": "separator",
+                "color": "#DDDDDD",
+                "margin": "md"
+            }
+        ]
+    }
+
+    bubble = {
+        "type": "bubble",
+        "size": "mega",
+        "header": header_box,
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": song_rows,
+            "paddingAll": "16px",
+            "backgroundColor": "#FFFFFF"
+        },
+        "styles": {"body": {"backgroundColor": "#FFFFFF"}}
+    }
+
+    return FlexMessage(
+        alt_text=title,
+        contents=FlexContainer.from_dict(bubble)
+    )
+
+
 def generate_friend_buttons(user_id, alt_text, friend_list, group_size):
     """
     生成好友列表 Flex Message（极简黑白风格）

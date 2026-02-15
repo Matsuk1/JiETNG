@@ -131,11 +131,71 @@ Splash version-list
 ```
 
 :::tip 提示
-- `FESTiVAL+` 会自动识别为 `FESTiVAL PLUS` 
+- `FESTiVAL+` 会自动识别为 `FESTiVAL PLUS`
 :::
 
 **显示内容：**
-- 歌曲列表  
+- 歌曲列表
+
+---
+
+## 按艺术家搜索
+
+通过艺术家名搜索所有相关歌曲。
+
+**命令格式：**
+
+```
+artist [关键词]
+artist [关键词] [页码]
+```
+
+**示例：**
+
+```
+artist DECO*27
+artist しーけー
+artist Hiro 2
+```
+
+**显示内容：**
+- 歌曲名称
+- 艺术家名
+- 谱面类型（DX / STD / UTAGE）
+
+:::warning 仅限私聊
+为防止群聊刷屏，此命令仅限私聊使用。
+:::
+
+---
+
+## 按谱师搜索
+
+通过谱面设计师名搜索所有相关歌曲。
+
+**命令格式：**
+
+```
+designer [关键词]
+designer [关键词] [页码]
+```
+
+**示例：**
+
+```
+designer Jack
+designer はっぴー
+designer rioN 3
+```
+
+**显示内容：**
+- 歌曲名称
+- 匹配的谱师名及对应难度标签（如 `Jack [EXP]`、`はっぴー [MAS]`）
+- 谱面类型（DX / STD / UTAGE）
+
+:::warning 仅限私聊
+为防止群聊刷屏，此命令仅限私聊使用。
+:::
 
 ---
 
@@ -311,6 +371,11 @@ random 14            # 随机 Lv14
 
 # 版本
 FESTiVAL version     # 查看 FESTiVAL 曲目
+
+# 艺术家 / 谱师搜索
+artist DECO*27       # 搜索艺术家
+designer Jack        # 搜索谱师
+designer Jack 2      # 第 2 页
 
 # 等级成绩
 14 record-list       # Lv14 曲目成绩

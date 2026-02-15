@@ -139,6 +139,66 @@ Splash version-list
 
 ---
 
+## Search by Artist
+
+Search all songs by a specific artist.
+
+**Command Format:**
+
+```
+artist [keyword]
+artist [keyword] [page]
+```
+
+**Examples:**
+
+```
+artist DECO*27
+artist しーけー
+artist Hiro 2
+```
+
+**Display Content:**
+- Song title
+- Artist name
+- Chart type (DX / STD / UTAGE)
+
+:::warning Private Chat Only
+To prevent spam, this command can only be used in private chat.
+:::
+
+---
+
+## Search by Chart Designer
+
+Search all songs by a specific chart designer (noteDesigner).
+
+**Command Format:**
+
+```
+designer [keyword]
+designer [keyword] [page]
+```
+
+**Examples:**
+
+```
+designer Jack
+designer はっぴー
+designer rioN 3
+```
+
+**Display Content:**
+- Song title
+- Matched designer name with difficulty label (e.g. `Jack [EXP]`, `はっぴー [MAS]`)
+- Chart type (DX / STD / UTAGE)
+
+:::warning Private Chat Only
+To prevent spam, this command can only be used in private chat.
+:::
+
+---
+
 ## Score Query
 
 View your play records for a specific song.
@@ -311,6 +371,11 @@ random 14            # Random Lv14
 
 # Version
 FESTiVAL version     # View FESTiVAL songs
+
+# Artist / Designer Search
+artist DECO*27       # Search by artist
+designer Jack        # Search by designer
+designer Jack 2      # Page 2
 
 # Level Scores
 14 record-list       # Lv14 song scores
