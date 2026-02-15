@@ -520,11 +520,18 @@ calc_button_text = {
     "zh": "Note 计算"
 }
 
-# Note 分数计算 alt_text
-calc_button_alt_text = {
-    "ja": "ノーツ計算",
-    "en": "Note Calculation",
-    "zh": "Note 分数计算"
+# 歌曲信息 alt_text
+song_info_alt_text = {
+    "ja": "楽曲情報",
+    "en": "Song Info",
+    "zh": "歌曲信息"
+}
+
+# 歌曲成绩 alt_text
+song_record_alt_text = {
+    "ja": "楽曲成績",
+    "en": "Song Record",
+    "zh": "歌曲成绩"
 }
 
 # 查看成绩按钮文本
@@ -539,6 +546,13 @@ view_info_button_text = {
     "ja": "楽曲情報を見る",
     "en": "View Song Info",
     "zh": "查看歌曲信息"
+}
+
+# 保存图片按钮文本
+save_image_button_text = {
+    "ja": "画像を保存",
+    "en": "Save Image",
+    "zh": "保存图片"
 }
 
 # 附近机厅列表 alt_text

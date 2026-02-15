@@ -527,49 +527,6 @@ def get_nearby_stores_alt_text(user_id=None):
     """获取附近机厅列表 alt_text（多语言）"""
     return get_multilingual_text(nearby_stores_alt_text, user_id)
 
-def get_calc_button_label(user_id=None):
-    """获取定数计算按钮标签（多语言）"""
-    return get_multilingual_text(calc_button_text, user_id)
-
-def get_calc_button_alt_text(user_id=None):
-    """获取定数计算按钮 alt_text（多语言）"""
-    return get_multilingual_text(calc_button_alt_text, user_id)
-
-def generate_calc_button(song_id, user_id=None):
-    """
-    生成 Note 计算按钮（FlexMessage）
-
-    Args:
-        song_id: 歌曲ID
-        user_id: 用户ID（用于多语言）
-
-    Returns:
-        FlexMessage
-    """
-    return FlexMessage(
-        alt_text=get_calc_button_alt_text(user_id),
-        contents=FlexContainer.from_dict({
-            "type": "bubble",
-            "size": "micro",
-            "body": {
-                "type": "box",
-                "layout": "vertical",
-                "contents": [
-                    {
-                        "type": "button",
-                        "style": "secondary",
-                        "height": "sm",
-                        "action": {
-                            "type": "postback",
-                            "label": get_calc_button_label(user_id),
-                            "data": f"calc-song {song_id}"
-                        }
-                    }
-                ],
-                "paddingAll": "8px"
-            }
-        })
-    )
 
 def generate_song_info_flex(song_id, image_url, image_width, image_height, user_id=None, mode='info'):
     """
@@ -600,7 +557,7 @@ def generate_song_info_flex(song_id, image_url, image_width, image_height, user_
             "height": "sm",
             "action": {
                 "type": "postback",
-                "label": get_calc_button_label(user_id),
+                "label": get_multilingual_text(calc_button_text, user_id),
                 "data": f"calc-song {song_id}"
             }
         })
@@ -629,7 +586,20 @@ def generate_song_info_flex(song_id, image_url, image_width, image_height, user_
             }
         })
 
-    alt_text = get_calc_button_alt_text(user_id) if mode == 'info' else get_multilingual_text(view_info_button_text, user_id)
+    # 保存图片按钮（共用）
+    buttons.append({
+        "type": "button",
+        "style": "secondary",
+        "height": "sm",
+        "margin": "sm",
+        "action": {
+            "type": "uri",
+            "label": get_multilingual_text(save_image_button_text, user_id),
+            "uri": image_url
+        }
+    })
+
+    alt_text = get_multilingual_text(song_info_alt_text, user_id) if mode == 'info' else get_multilingual_text(song_record_alt_text, user_id)
 
     bubble = {
         "type": "bubble",
