@@ -1762,7 +1762,7 @@ def _build_calc_bubble(notes, scores, difficulty=None, level=None):
 
 def _generate_search_results_flex_internal(user_id, matching_songs, search_type='song', id_use=None):
     """
-    生成搜索结果列表 Flex Message（内部通用函数）
+    生成搜索结果列表 Flex Message（内部通用函数，黑白简约风）
 
     Args:
         user_id: 用户ID
@@ -1773,33 +1773,26 @@ def _generate_search_results_flex_internal(user_id, matching_songs, search_type=
     Returns:
         FlexMessage: 搜索结果列表
     """
-    # 获取用户语言
     language = get_user_language(user_id)
 
     id_use_text = ""
     if id_use:
         id_use_text = f"&id_use={id_use}"
 
-    # 构建歌曲行
-    song_rows = []
-
-    # 类型映射
     type_map = {
         'dx': 'DX',
         'std': 'STD',
         'utage': 'UTAGE'
     }
 
-    # 搜索类型配置
     search_config = {
         'song': {
             'command': 'search',
             'title': {
-                'ja': f'検索結果 ({len(matching_songs)}件)',
-                'en': f'Search Results ({len(matching_songs)})',
-                'zh': f'搜索结果 ({len(matching_songs)}条)'
-            },
-            'color': '#34C759'
+                'ja': f'楽曲検索結果 ({len(matching_songs)}件)',
+                'en': f'Song Search Results ({len(matching_songs)})',
+                'zh': f'歌曲搜索结果 ({len(matching_songs)}条)'
+            }
         },
         'record': {
             'command': 'search-record',
@@ -1807,33 +1800,48 @@ def _generate_search_results_flex_internal(user_id, matching_songs, search_type=
                 'ja': f'レコード検索結果 ({len(matching_songs)}件)',
                 'en': f'Record Search Results ({len(matching_songs)})',
                 'zh': f'成绩搜索结果 ({len(matching_songs)}条)'
-            },
-            'color': '#FF9500'
+            }
         }
     }
 
     config = search_config[search_type]
+    display_songs = matching_songs[:20]
 
-    for song in matching_songs[:20]:  # 最多显示20首
+    song_rows = []
+    for idx, song in enumerate(display_songs):
         song_id = song.get('id', '')
+        song_title = song.get('title', 'Unknown')
         song_type = type_map.get(song.get('type', ''), song.get('type', '').upper())
+        artist = song.get('artist') or '-'
 
-        song_rows.append({
+        row = {
             "type": "box",
             "layout": "horizontal",
+            "spacing": "md",
+            "margin": "md" if idx > 0 else "none",
             "contents": [
                 {
                     "type": "box",
                     "layout": "vertical",
+                    "flex": 3,
                     "contents": [
                         {
                             "type": "text",
-                            "text": song.get('title', 'Unknown'),
+                            "text": song_title,
                             "size": "sm",
                             "weight": "bold",
+                            "color": "#000000",
                             "wrap": True,
-                            "maxLines": 2,
-                            "flex": 1
+                            "maxLines": 2
+                        },
+                        {
+                            "type": "text",
+                            "text": artist,
+                            "size": "xs",
+                            "color": "#666666",
+                            "margin": "xs",
+                            "wrap": True,
+                            "maxLines": 1
                         },
                         {
                             "type": "text",
@@ -1842,8 +1850,7 @@ def _generate_search_results_flex_internal(user_id, matching_songs, search_type=
                             "color": "#999999",
                             "margin": "xs"
                         }
-                    ],
-                    "flex": 3
+                    ]
                 },
                 {
                     "type": "button",
@@ -1853,50 +1860,51 @@ def _generate_search_results_flex_internal(user_id, matching_songs, search_type=
                         "data": f"{config['command']} {song_id}{id_use_text}",
                         "displayText": f"{config['command']} {song_id}"
                     },
-                    "style": "primary",
+                    "style": "secondary",
                     "height": "sm",
-                    "flex": 1
+                    "flex": 0
                 }
-            ],
-            "margin": "md",
-            "spacing": "sm"
-        })
+            ]
+        }
 
-        # 添加分隔线（最后一首除外）
-        if song != matching_songs[-1] and len(song_rows) < 40:
-            song_rows.append({
-                "type": "separator",
-                "margin": "md"
-            })
+        song_rows.append(row)
+        if idx < len(display_songs) - 1:
+            song_rows.append({"type": "separator", "margin": "sm"})
 
-    # 标题文本
     title_text = config['title'].get(language, config['title']['ja'])
 
-    # 构建bubble
+    header_box = {
+        "type": "box",
+        "layout": "vertical",
+        "paddingAll": "16px",
+        "contents": [
+            {
+                "type": "text",
+                "text": title_text,
+                "weight": "bold",
+                "size": "lg",
+                "color": "#000000"
+            },
+            {
+                "type": "separator",
+                "color": "#DDDDDD",
+                "margin": "md"
+            }
+        ]
+    }
+
     bubble = {
         "type": "bubble",
         "size": "mega",
-        "header": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": title_text,
-                    "weight": "bold",
-                    "size": "lg",
-                    "color": "#FFFFFF"
-                }
-            ],
-            "paddingAll": "16px",
-            "backgroundColor": config['color']
-        },
+        "header": header_box,
         "body": {
             "type": "box",
             "layout": "vertical",
             "contents": song_rows,
-            "paddingAll": "16px"
-        }
+            "paddingAll": "16px",
+            "backgroundColor": "#FFFFFF"
+        },
+        "styles": {"body": {"backgroundColor": "#FFFFFF"}}
     }
 
     return FlexMessage(
