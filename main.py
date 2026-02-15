@@ -1318,10 +1318,10 @@ async def random_song(user_id, key="", ver="jp"):
     song_id = song.get('id')
 
     user_tz = get_user_timezone(user_id)
-    original_url, preview_url = await smart_upload(song_info_generate(song, timezone_offset=user_tz, ver=ver), user_id)
-    result.append(ImageMessage(original_content_url=original_url, preview_image_url=preview_url))
-    result.append(generate_calc_button(song_id, user_id))
-    return result
+    song_img = song_info_generate(song, timezone_offset=user_tz, ver=ver)
+    img_w, img_h = song_img.size
+    original_url, preview_url = await smart_upload(song_img, user_id)
+    return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='info')
 
 async def search_song(user_id, acronym, ver="jp"):
     """
@@ -1379,11 +1379,12 @@ async def search_song_by_id(user_id, song_id, ver="jp"):
     if not matching_song:
         return song_error(user_id)
 
-    # 返回图片 + 按钮
+    # 返回图片 + 按钮（合并为一个 Flex Message）
     user_tz = get_user_timezone(user_id)
-    original_url, preview_url = await smart_upload(song_info_generate(matching_song, timezone_offset=user_tz, ver=ver), user_id)
-    image_message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
-    return [image_message, generate_calc_button(song_id, user_id)]
+    song_img = song_info_generate(matching_song, timezone_offset=user_tz, ver=ver)
+    img_w, img_h = song_img.size
+    original_url, preview_url = await smart_upload(song_img, user_id)
+    return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='info')
 
 def search_by_artist(user_id, artist_query, ver="jp", page=1, source_type="user"):
     """
@@ -1727,10 +1728,10 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
 
     # 生成歌曲信息图片
     user_tz = get_user_timezone(id_use)
-    original_url, preview_url = await smart_upload(song_info_generate(matching_song, played_data, timezone_offset=user_tz, ver=ver), user_id)
-    result = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
-
-    return result
+    song_img = song_info_generate(matching_song, played_data, timezone_offset=user_tz, ver=ver)
+    img_w, img_h = song_img.size
+    original_url, preview_url = await smart_upload(song_img, user_id)
+    return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='record')
 
 async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     if id_use not in USERS:

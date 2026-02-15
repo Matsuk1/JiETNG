@@ -527,6 +527,20 @@ calc_button_alt_text = {
     "zh": "Note 分数计算"
 }
 
+# 查看成绩按钮文本
+view_record_button_text = {
+    "ja": "スコアを見る",
+    "en": "View Record",
+    "zh": "查看成绩"
+}
+
+# 查看歌曲信息按钮文本
+view_info_button_text = {
+    "ja": "楽曲情報を見る",
+    "en": "View Song Info",
+    "zh": "查看歌曲信息"
+}
+
 # 附近机厅列表 alt_text
 nearby_stores_alt_text = {
     "ja": "最寄りの maimai 設置店舗",

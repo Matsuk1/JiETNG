@@ -10,7 +10,8 @@ from linebot.v3.messaging import (
     MessageAction,
     URIAction,
     FlexMessage,
-    FlexContainer
+    FlexContainer,
+    ImageMessage
 )
 
 from linebot.v3.messaging.models import (
@@ -569,6 +570,90 @@ def generate_calc_button(song_id, user_id=None):
             }
         })
     )
+
+def generate_song_info_flex(song_id, image_url, image_width, image_height, user_id=None, mode='info'):
+    """
+    生成歌曲信息 Flex Message（图片 + 按钮合为一个 bubble）
+
+    Args:
+        song_id: 歌曲ID
+        image_url: 歌曲信息图片 URL
+        image_width: 图片宽度（px）
+        image_height: 图片高度（px）
+        user_id: 用户ID（用于多语言）
+        mode: 'info'（歌曲信息模式，显示 calc + record 按钮）
+              'record'（成绩模式，显示 info 按钮）
+
+    Returns:
+        FlexMessage
+    """
+    from math import gcd
+    g = gcd(image_width, image_height)
+    aspect_ratio = f"{image_width // g}:{image_height // g}"
+
+    buttons = []
+
+    if mode == 'info':
+        buttons.append({
+            "type": "button",
+            "style": "secondary",
+            "height": "sm",
+            "action": {
+                "type": "postback",
+                "label": get_calc_button_label(user_id),
+                "data": f"calc-song {song_id}"
+            }
+        })
+        buttons.append({
+            "type": "button",
+            "style": "secondary",
+            "height": "sm",
+            "margin": "sm",
+            "action": {
+                "type": "postback",
+                "label": get_multilingual_text(view_record_button_text, user_id),
+                "data": f"search-record {song_id}",
+                "displayText": f"search-record {song_id}"
+            }
+        })
+    else:
+        buttons.append({
+            "type": "button",
+            "style": "secondary",
+            "height": "sm",
+            "action": {
+                "type": "postback",
+                "label": get_multilingual_text(view_info_button_text, user_id),
+                "data": f"search {song_id}",
+                "displayText": f"search {song_id}"
+            }
+        })
+
+    alt_text = get_calc_button_alt_text(user_id) if mode == 'info' else get_multilingual_text(view_info_button_text, user_id)
+
+    bubble = {
+        "type": "bubble",
+        "size": "giga",
+        "hero": {
+            "type": "image",
+            "url": image_url,
+            "size": "full",
+            "aspectRatio": aspect_ratio,
+            "aspectMode": "fit"
+        },
+        "footer": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": buttons,
+            "paddingAll": "12px"
+        }
+    }
+
+    return FlexMessage(
+        alt_text=alt_text,
+        contents=FlexContainer.from_dict(bubble)
+    )
+
 
 def build_dxdata_update_message(result, user_id=None):
     """
