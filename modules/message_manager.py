@@ -603,7 +603,7 @@ def generate_song_info_flex(song_id, image_url, image_width, image_height, user_
 
     bubble = {
         "type": "bubble",
-        "size": "giga",
+        "size": "mega",
         "hero": {
             "type": "image",
             "url": image_url,
@@ -615,7 +615,10 @@ def generate_song_info_flex(song_id, image_url, image_width, image_height, user_
             "type": "box",
             "layout": "vertical",
             "contents": buttons,
-            "paddingAll": "12px"
+            "paddingStart": "12px",
+            "paddingEnd": "12px",
+            "paddingBottom": "12px",
+            "paddingTop": "0px"
         }
     }
 
