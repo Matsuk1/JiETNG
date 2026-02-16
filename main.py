@@ -1721,6 +1721,7 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
                                 # 添加新字段
                                 rcd['play_count'] = detail['play_count']
                                 rcd['last_play_time'] = detail['last_play_time']
+                                rcd = get_detailed_info([rcd], ver)[0]
                                 break
     except Exception as e:
         # 如果获取详细成绩失败，继续使用原成绩
