@@ -760,9 +760,9 @@ def generate_user_info_flex(user_id):
                     "style": "secondary",
                     "height": "sm",
                     "action": {
-                        "type": "message",
+                        "type": "clipboard",
                         "label": "📋",
-                        "text": user_id
+                        "clipboardText": user_id
                     }
                 }
             ]
@@ -1997,6 +1997,147 @@ def generate_search_record_results_flex(user_id, id_use, matching_songs):
         FlexMessage: 成绩搜索结果列表
     """
     return _generate_search_results_flex_internal(user_id, matching_songs, 'record', id_use)
+
+
+def generate_ranking_flex(user_id, ranking_data, user_rank_entry=None, ver="jp"):
+    """
+    生成 Rating 排行榜 Flex Message
+
+    Args:
+        user_id: 当前用户ID
+        ranking_data: 前10名列表 [{"rank": 1, "name": "xxx", "rating": "15000"}, ...]
+        user_rank_entry: 用户自身排名（如果不在前10则提供）{"rank": 12, "name": "xxx", "rating": "15000"} 或 None
+        ver: 版本 "jp" 或 "intl"
+
+    Returns:
+        FlexMessage
+    """
+    title_text = get_multilingual_text(ranking_title_text, user_id)
+    ver_label = "JP" if ver == "jp" else "INTL"
+
+    # Header
+    header = {
+        "type": "box",
+        "layout": "horizontal",
+        "contents": [
+            {
+                "type": "text",
+                "text": title_text,
+                "weight": "bold",
+                "size": "lg",
+                "color": "#000000",
+                "flex": 1
+            },
+            {
+                "type": "text",
+                "text": ver_label,
+                "size": "sm",
+                "color": "#999999",
+                "align": "end",
+                "gravity": "center",
+                "flex": 0
+            }
+        ],
+        "paddingAll": "16px"
+    }
+
+    body_contents = [
+        {"type": "separator", "color": "#000000"}
+    ]
+
+    def make_row(entry, highlight=False):
+        rank = entry["rank"]
+        name = entry["name"]
+        rating = entry["rating"]
+
+        row_contents = [
+            {
+                "type": "text",
+                "text": f"#{rank}",
+                "size": "sm",
+                "weight": "bold",
+                "color": "#000000",
+                "flex": 0,
+                "contents": []
+            },
+            {
+                "type": "text",
+                "text": name,
+                "size": "sm",
+                "color": "#000000",
+                "flex": 3,
+                "wrap": True,
+                "maxLines": 1
+            },
+            {
+                "type": "text",
+                "text": str(rating),
+                "size": "sm",
+                "color": "#666666",
+                "flex": 0,
+                "align": "end"
+            }
+        ]
+
+        row = {
+            "type": "box",
+            "layout": "horizontal",
+            "spacing": "md",
+            "contents": row_contents,
+            "paddingAll": "8px"
+        }
+
+        if highlight:
+            row["borderWidth"] = "2px"
+            row["borderColor"] = "#000000"
+            row["cornerRadius"] = "4px"
+
+        return row
+
+    for i, entry in enumerate(ranking_data):
+        is_user = (user_rank_entry is None and entry.get("is_user", False))
+        body_contents.append(make_row(entry, highlight=is_user))
+        if i < len(ranking_data) - 1:
+            body_contents.append({"type": "separator", "color": "#DDDDDD"})
+
+    # 用户不在前10，显示虚线分割 + 用户排名
+    if user_rank_entry:
+        # 虚线分割线（用多个短线模拟）
+        body_contents.append({
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "· · · · · · · · · · · · · · · · · · · · · · · · · · · · · ·",
+                    "size": "xxs",
+                    "color": "#999999",
+                    "align": "center"
+                }
+            ],
+            "margin": "sm"
+        })
+        body_contents.append(make_row(user_rank_entry, highlight=True))
+
+    body = {
+        "type": "box",
+        "layout": "vertical",
+        "contents": body_contents,
+        "paddingStart": "12px",
+        "paddingEnd": "12px",
+        "paddingBottom": "12px",
+        "paddingTop": "4px"
+    }
+
+    bubble = {
+        "type": "bubble",
+        "size": "mega",
+        "header": header,
+        "body": body
+    }
+
+    alt_text = get_multilingual_text(ranking_alt_text, user_id)
+    return FlexMessage(alt_text=alt_text, contents=FlexContainer.from_dict(bubble))
 
 
 def generate_song_list_flex(user_id, title, matching_songs, page, command_prefix, query, matched_sheets_map=None):

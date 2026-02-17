@@ -409,6 +409,25 @@ search_group_warning_text = {
     "zh": "⚠️ 为防止刷屏，artist / designer 搜索命令仅限私聊使用。"
 }
 
+# 排行榜
+ranking_title_text = {
+    "ja": "Rating ランキング",
+    "en": "Rating Ranking",
+    "zh": "Rating 排行榜"
+}
+
+ranking_alt_text = {
+    "ja": "Rating ランキング",
+    "en": "Rating Ranking",
+    "zh": "Rating 排行榜"
+}
+
+ranking_no_data_text = {
+    "ja": "ランキングデータがありません。",
+    "en": "No ranking data available.",
+    "zh": "暂无排行榜数据。"
+}
+
 # Rebind 未绑定提示
 rebind_not_bound_text = {
     "ja": "まだ SEGA アカウントが連携されていません。bind コマンドで連携してください。",

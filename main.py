@@ -59,7 +59,7 @@ from linebot.v3.messaging import (
     FlexMessage,
     FlexContainer
 )
-from linebot.v3.messaging.models import MarkMessagesAsReadByTokenRequest
+from linebot.v3.messaging.models import MarkMessagesAsReadByTokenRequest, ShowLoadingAnimationRequest
 from linebot.v3.webhooks import (
     FollowEvent,
     UnfollowEvent,
@@ -882,7 +882,21 @@ Token not provided. <br />
 
     # GET 请求时，从用户数据中获取语言设置和其他信息
     user_data = USERS.get(user_id, {})
-    user_language = user_data.get("language", "ja")
+    user_language = user_data.get("language")
+    if not user_language:
+        # 首次绑定时，尝试从 LINE profile 自动检测语言
+        try:
+            with ApiClient(configuration) as api_client:
+                profile = MessagingApi(api_client).get_profile(user_id)
+                profile_lang = getattr(profile, 'language', None) or ''
+                if profile_lang.startswith('zh'):
+                    user_language = 'zh'
+                elif profile_lang.startswith('ja'):
+                    user_language = 'ja'
+                else:
+                    user_language = 'en'
+        except Exception:
+            user_language = 'en'
 
     # 在 rebind 模式下，传递现有数据到模板
     if mode == "rebind":
@@ -1385,6 +1399,74 @@ async def search_song_by_id(user_id, song_id, ver="jp"):
     img_w, img_h = song_img.size
     original_url, preview_url = await smart_upload(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='info')
+
+def get_ranking(user_id, id_use, ver=None):
+    """
+    生成 Rating 排行榜（按版本 jp/intl 分开）
+
+    Args:
+        user_id: 当前用户ID
+        id_use: 使用的用户ID
+        ver: 指定版本 "jp"/"intl"，None 则使用用户自身版本
+
+    Returns:
+        FlexMessage: 排行榜
+    """
+    user_ver = ver or USERS.get(id_use, {}).get('version', 'jp')
+
+    # 收集同版本且有 rating 的用户
+    ranked_users = []
+    for uid, data in USERS.items():
+        if data.get('version', 'jp') != user_ver:
+            continue
+        info = data.get('personal_info')
+        if info and info.get('rating') and info['rating'] != 'ERROR':
+            try:
+                rating_val = int(info['rating'])
+            except (ValueError, TypeError):
+                continue
+            ranked_users.append({
+                "user_id": uid,
+                "name": info.get('name', 'N/A'),
+                "rating_int": rating_val,
+                "rating": info['rating']
+            })
+
+    if not ranked_users:
+        return TextMessage(text=get_multilingual_text(ranking_no_data_text, user_id))
+
+    # 按 rating 降序排序
+    ranked_users.sort(key=lambda x: x["rating_int"], reverse=True)
+
+    # 分配排名（相同 rating 同排名）
+    for i, u in enumerate(ranked_users):
+        if i == 0:
+            u["rank"] = 1
+        elif u["rating_int"] == ranked_users[i - 1]["rating_int"]:
+            u["rank"] = ranked_users[i - 1]["rank"]
+        else:
+            u["rank"] = i + 1
+
+    # 前10名
+    top10 = []
+    user_in_top10 = False
+    for u in ranked_users[:10]:
+        entry = {"rank": u["rank"], "name": u["name"], "rating": u["rating"]}
+        if u["user_id"] == id_use:
+            entry["is_user"] = True
+            user_in_top10 = True
+        top10.append(entry)
+
+    # 用户不在前10，找到用户的排名
+    user_rank_entry = None
+    if not user_in_top10:
+        for u in ranked_users:
+            if u["user_id"] == id_use:
+                user_rank_entry = {"rank": u["rank"], "name": u["name"], "rating": u["rating"]}
+                break
+
+    return generate_ranking_flex(user_id, top10, user_rank_entry, ver=user_ver)
+
 
 def search_by_artist(user_id, artist_query, ver="jp", page=1, source_type="user"):
     """
@@ -1891,7 +1973,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
 
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
-    profile_img = generate_profile(user_info)
+    profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(id_use)
     img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz)
 
@@ -2102,7 +2184,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
 
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
-    profile_img = generate_profile(user_info, scale=1.5)
+    profile_img = generate_profile(user_info, scale=1.5, user_id=id_use)
     user_tz = get_user_timezone(id_use)
     img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz)
 
@@ -2118,13 +2200,14 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
     return message
 
 
-def generate_profile(user_info, scale=1):
+def generate_profile(user_info, scale=1, user_id=None):
     """
     创建用户信息图片
 
     Args:
         user_info: 用户个人信息字典（包含 name, rating, icon_url 等）
         scale: 图片缩放比例
+        user_id: LINE用户ID（可选，用于获取LINE头像作为默认图标）
 
     Returns:
         PIL.Image: 用户信息图片
@@ -2135,7 +2218,7 @@ def generate_profile(user_info, scale=1):
     info_img = Image.new("RGBA", (img_width, img_height), (255, 255, 255))
     draw = ImageDraw.Draw(info_img)
 
-    def paste_image(key, position, size):
+    def paste_image(key, position, size, round=False):
         nonlocal user_info
         if key in user_info and user_info[key]:
             try:
@@ -2162,6 +2245,8 @@ def generate_profile(user_info, scale=1):
                 if img.mode != "RGBA":
                     img = img.convert("RGBA")
                 img_resized = img.resize(size, Image.LANCZOS)
+                if round:
+                    img_resized = round_corner(img_resized, radius=10)
                 info_img.paste(img_resized, position, img_resized)
                 return True
 
@@ -2172,7 +2257,24 @@ def generate_profile(user_info, scale=1):
 
     paste_image("nameplate_url", (0, 0), (1363, 218))
 
-    paste_image("icon_url", (26, 24), (170, 170))
+    # icon_url 为默认值时，尝试使用 LINE 头像
+    default_icon = [
+        "https://maimaidx.jp/maimai-mobile/img/Icon/",
+        "https://maimaidx.jp/maimai-mobile/img/Icon/c22d52b387e3f829.png"
+    ]
+    icon_url = user_info.get("icon_url", "")
+    round = False
+    if icon_url in default_icon and user_id:
+        try:
+            with ApiClient(configuration) as api_client:
+                profile = MessagingApi(api_client).get_profile(user_id)
+                if profile.picture_url:
+                    user_info = {**user_info, "icon_url": profile.picture_url}
+                    round = True
+        except Exception as e:
+            logger.error(f"[Image] ✗ Failed to load user profile image: {e}")
+
+    paste_image("icon_url", (26, 24), (170, 170), round)
 
     paste_image("rating_block_url", (219, 24), (223, 58))
 
@@ -2400,7 +2502,7 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
 
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
-    profile_img = generate_profile(user_info)
+    profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(id_use)
     img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz)
 
@@ -2538,7 +2640,7 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
 
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
-    profile_img = generate_profile(user_info)
+    profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(id_use)
     img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz)
 
@@ -2639,6 +2741,16 @@ WEB_TASK_ROUTES = {
     }
 }
 
+def show_loading(user_id):
+    """在私聊中显示加载动画"""
+    try:
+        with ApiClient(configuration) as api_client:
+            MessagingApi(api_client).show_loading_animation(
+                ShowLoadingAnimationRequest(chatId=user_id, loadingSeconds=20)
+            )
+    except Exception:
+        pass
+
 def route_to_web_queue(event):
     """
     路由消息到Web任务队列
@@ -2678,6 +2790,7 @@ def route_to_web_queue(event):
                     'nickname': nickname
                 })
 
+            show_loading(user_id)
             webtask_queue.put_nowait((task_func, (event,), task_id))
             return True
         except queue.Full:
@@ -2709,6 +2822,7 @@ def route_to_web_queue(event):
                         'nickname': nickname
                     })
 
+                show_loading(user_id)
                 webtask_queue.put_nowait((task_func, (event,), task_id))
                 return True
             except queue.Full:
@@ -2740,6 +2854,7 @@ def route_to_web_queue(event):
                         'nickname': nickname
                     })
 
+                show_loading(user_id)
                 webtask_queue.put_nowait((task_func, (event,), task_id))
                 return True
             except queue.Full:
@@ -2817,6 +2932,7 @@ def route_to_image_queue(event):
                     'nickname': nickname
                 })
 
+            show_loading(user_id)
             image_queue.put_nowait((async_generate_image_task, (event,), task_id))
             return True
         except queue.Full:
@@ -2840,6 +2956,7 @@ def route_to_image_queue(event):
                             'nickname': nickname
                         })
 
+                    show_loading(user_id)
                     image_queue.put_nowait((async_generate_image_task, (event,), task_id))
                     return True
                 except queue.Full:
@@ -2861,6 +2978,7 @@ def route_to_image_queue(event):
                     'nickname': nickname
                 })
 
+            show_loading(user_id)
             image_queue.put_nowait((async_generate_image_task, (event,), task_id))
             return True
         except queue.Full:
@@ -2888,6 +3006,7 @@ def route_to_image_queue(event):
                     'nickname': nickname
                 })
 
+            show_loading(user_id)
             image_queue.put_nowait((async_generate_image_task, (event,), task_id))
             return True
         except queue.Full:
@@ -2909,6 +3028,7 @@ def route_to_image_queue(event):
                     'nickname': nickname
                 })
 
+            show_loading(user_id)
             image_queue.put_nowait((async_generate_image_task, (event,), task_id))
             return True
         except queue.Full:
@@ -3263,6 +3383,10 @@ def handle_sync_text_command(event):
     # 2. 模糊匹配命令 - 规则匹配
     # ========================================
     SPECIAL_RULES = [
+        # 排行榜（rank/ranking/ランキング [jp/intl]）
+        (lambda msg: re.match(r"^(rank|ranking|ランキング)(\s+(jp|intl))?$", msg),
+         lambda msg: get_ranking(user_id, id_use, re.match(r"^(rank|ranking|ランキング)(\s+(jp|intl))?$", msg).group(3))),
+
         # 歌曲搜索（通过ID）
         (lambda msg: msg.startswith("search ") and len(msg.split()) == 2 and len(msg.split()[1]) == 6,
          lambda msg: asyncio.run(search_song_by_id(user_id, msg.split()[1], mai_ver))),
