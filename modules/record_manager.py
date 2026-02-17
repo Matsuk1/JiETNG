@@ -8,7 +8,6 @@ import logging
 from typing import List, Dict, Any, Optional
 from modules.config_loader import (
     MAIMAI_VERSION,
-    SONGS,
     read_dxdata,
     USERS
 )
@@ -261,11 +260,11 @@ def filter_highest_achievement(data: list) -> list:
     return list(result.values())
 
 def get_detailed_info(song_record, ver="jp", recent_type=False):
-    read_dxdata(ver)
+    songs, _ = read_dxdata(ver)
 
     # 构建哈希表加速查找 O(1)
     song_map = {}
-    for song in SONGS:
+    for song in songs:
         key = (song['title'], song['type'])
         if key not in song_map:
             song_map[key] = song

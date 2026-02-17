@@ -1,36 +1,78 @@
 """
 开发者 Token 管理模块
 Developer Token Management Module
+
+使用内存缓存，避免每次验证都读写磁盘
 """
 
 import json
 import os
 import secrets
+import logging
 from datetime import datetime
 
 # 从配置加载文件路径
 from modules.config_loader import DEV_TOKENS_FILE
 
+logger = logging.getLogger(__name__)
+
+# 内存缓存
+_dev_tokens = None
+_dirty = False
+
+
 def load_dev_tokens():
-    """加载开发者 tokens"""
-    if not os.path.exists(DEV_TOKENS_FILE):
-        return {}
+    """加载开发者 tokens 到内存缓存（仅在未加载时读取）"""
+    global _dev_tokens, _dirty
+    if _dev_tokens is None:
+        if not os.path.exists(DEV_TOKENS_FILE):
+            _dev_tokens = {}
+        else:
+            try:
+                with open(DEV_TOKENS_FILE, 'r', encoding='utf-8') as f:
+                    _dev_tokens = json.load(f)
+            except Exception:
+                _dev_tokens = {}
+        _dirty = False
+    return _dev_tokens
 
-    try:
-        with open(DEV_TOKENS_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception:
-        return {}
 
-def save_dev_tokens(tokens):
-    """保存开发者 tokens"""
+def save_dev_tokens(tokens=None, force=False):
+    """保存开发者 tokens 到磁盘
+
+    Args:
+        tokens: 要保存的 tokens 字典（如果为 None 则保存内存缓存）
+        force: 强制写入，忽略脏标记
+    """
+    global _dev_tokens, _dirty
+
+    if tokens is not None:
+        _dev_tokens = tokens
+        _dirty = True
+
+    if not force and not _dirty:
+        return True
+
     try:
         os.makedirs(os.path.dirname(DEV_TOKENS_FILE), exist_ok=True)
         with open(DEV_TOKENS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(tokens, f, ensure_ascii=False, indent=2)
+            json.dump(_dev_tokens, f, ensure_ascii=False, indent=2)
+        _dirty = False
         return True
     except Exception:
         return False
+
+
+def _mark_dirty():
+    """标记数据已修改"""
+    global _dirty
+    _dirty = True
+
+
+def flush_dev_tokens():
+    """将内存中的修改写入磁盘（供定期任务或关机时调用）"""
+    save_dev_tokens(force=True)
+
 
 def generate_dev_token():
     """生成一个安全的随机 token"""
@@ -69,7 +111,8 @@ def create_dev_token(note, created_by):
         "allowed_users": []
     }
 
-    if save_dev_tokens(tokens):
+    _mark_dirty()
+    if save_dev_tokens(force=True):
         return {
             "token_id": token_id,
             "token": token,
@@ -117,7 +160,8 @@ def revoke_dev_token(token_id):
         return False
 
     tokens[token_id]["revoked"] = True
-    return save_dev_tokens(tokens)
+    _mark_dirty()
+    return save_dev_tokens(force=True)
 
 def verify_dev_token(token):
     """
@@ -133,10 +177,9 @@ def verify_dev_token(token):
 
     for token_id, data in tokens.items():
         if data.get("token") == token and not data.get("revoked", False):
-            # 更新最后使用时间
+            # 更新最后使用时间（仅内存，延迟写入）
             data["last_used"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            tokens[token_id] = data
-            save_dev_tokens(tokens)
+            _mark_dirty()
 
             return {
                 "token_id": token_id,

@@ -134,7 +134,7 @@ def get_user_nickname(user_id: str, line_bot_api, use_cache: bool = True) -> str
             if user_id in nickname_cache:
                 cached_data = nickname_cache[user_id]
                 # 检查缓存是否过期
-                if (datetime.now() - cached_data['time']).seconds < NICKNAME_CACHE_TIMEOUT:
+                if (datetime.now() - cached_data['time']).total_seconds() < NICKNAME_CACHE_TIMEOUT:
                     return cached_data['nickname']
 
     # 缓存未命中或已过期

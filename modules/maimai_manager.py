@@ -8,7 +8,6 @@ import re
 from urllib.parse import quote
 from lxml import etree
 from modules.record_manager import get_detailed_info
-from modules.rate_limiter import maimai_limiter
 from modules.config_loader import DOMAIN
 
 logger = logging.getLogger(__name__)
@@ -115,6 +114,9 @@ def get_note_score(notes):
 
     total_base = tap_base_total + hold_base_total + slide_base_total + touch_base_total + break_base_total
 
+    if total_base == 0 or break_add_total == 0:
+        return {}
+
     note_score = {
         'tap_great': round((tap_base[0] - tap_base[1]) / total_base * 100, 5),
         'tap_good': round((tap_base[0] - tap_base[2]) / total_base * 100, 5),
@@ -162,11 +164,8 @@ def calc_score(notes, judgements):
 
 # ==================== 异步版本函数 ====================
 
-async def fetch_dom(session: aiohttp.ClientSession, url: str, session_id: str, ver="jp") -> etree._Element:
+async def fetch_dom(session: aiohttp.ClientSession, url: str, ver="jp") -> etree._Element:
     """异步版本的 fetch_dom，支持并发请求"""
-    # 限速保护
-    maimai_limiter.wait_if_needed(session_id)
-
     # 随机 User-Agent
     user_agent = _get_random_user_agent()
 
@@ -212,9 +211,6 @@ async def login_to_maimai(sega_id: str, password: str, ver="jp", aime=0):
     Returns:
         dict: cookies 字典，可用于其他异步函数
     """
-    # 限速保护
-    maimai_limiter.wait_if_needed(f"login_{sega_id}")
-
     # 随机 User-Agent
     user_agent = _get_random_user_agent()
 
@@ -319,7 +315,6 @@ async def get_maimai_info(cookies: dict, ver="jp"):
         dict: 用户信息
     """
     base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
-    session_id = id(cookies)
 
     # 优化：增加连接池大小
     connector = aiohttp.TCPConnector(ssl=False, limit=20, ttl_dns_cache=300)
@@ -332,7 +327,7 @@ async def get_maimai_info(cookies: dict, ver="jp"):
             f"{base}/collection/trophy/"
         ]
 
-        tasks = [fetch_dom(session, url, session_id, ver) for url in urls]
+        tasks = [fetch_dom(session, url, ver) for url in urls]
         doms = await asyncio.gather(*tasks)
 
         # 检查维护状态
@@ -396,8 +391,6 @@ async def get_maimai_records(cookies: dict, ver="jp"):
     base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
     difficulty = ['basic', 'advanced', 'expert', 'master', 'remaster']
 
-    session_id = id(cookies)  # 使用 cookies 对象 id 作为限速键
-
     # 优化：增加连接池大小
     connector = aiohttp.TCPConnector(ssl=False, limit=20, ttl_dns_cache=300)
     async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
@@ -405,7 +398,7 @@ async def get_maimai_records(cookies: dict, ver="jp"):
         tasks = []
         for page_num in range(5):
             url = f"{base}/record/musicGenre/search/?genre=99&diff={page_num}"
-            tasks.append(fetch_dom(session, url, session_id, ver))
+            tasks.append(fetch_dom(session, url, ver))
 
         doms = await asyncio.gather(*tasks)
 
@@ -483,13 +476,12 @@ async def get_recent_records(cookies: dict, ver="jp"):
         list: 最近游戏记录
     """
     base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
-    session_id = id(cookies)
 
     # 优化：增加连接池大小
     connector = aiohttp.TCPConnector(ssl=False, limit=10, ttl_dns_cache=300)
     async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
         url = f"{base}/record/"
-        dom = await fetch_dom(session, url, session_id, ver)
+        dom = await fetch_dom(session, url, ver)
 
         if dom is None:
             return []
@@ -589,12 +581,11 @@ async def get_single_record(title: str, type: str, cookies: dict, ver="jp"):
     """
     base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
     difficulty = ['basic', 'advanced', 'expert', 'master', 'remaster']
-    session_id = id(cookies)
 
     connector = aiohttp.TCPConnector(ssl=False, limit=10, ttl_dns_cache=300)
     async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
         search_url = f"{base}/record/musicGenre/search/?genre=99&diff=0"
-        dom = await fetch_dom(session, search_url, session_id, ver)
+        dom = await fetch_dom(session, search_url, ver)
 
         if dom is None:
             return []
@@ -640,7 +631,7 @@ async def get_single_record(title: str, type: str, cookies: dict, ver="jp"):
 
         # 第二步：使用 idx 访问歌曲详情页面
         detail_url = f"{base}/record/musicDetail/?idx={quote(idx, safe='')}"
-        detail_dom = await fetch_dom(session, detail_url, session_id, ver)
+        detail_dom = await fetch_dom(session, detail_url, ver)
 
         if detail_dom is None:
             return []
@@ -773,16 +764,15 @@ async def get_friends_list(cookies: dict, ver="jp"):
         list: 好友列表
     """
     base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
-    session_id = id(cookies)
 
     # 优化：增加连接池大小
     connector = aiohttp.TCPConnector(ssl=False, limit=10, ttl_dns_cache=300)
     async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
         tasks = []
         url = f"{base}/friend/"
-        tasks.append(fetch_dom(session, url, session_id, ver))
+        tasks.append(fetch_dom(session, url, ver))
         url = f"{base}/friend/pages/?idx=2&type=0"
-        tasks.append(fetch_dom(session, url, session_id, ver))
+        tasks.append(fetch_dom(session, url, ver))
         
         doms = await asyncio.gather(*tasks)
 
@@ -845,13 +835,12 @@ async def get_friend_info(cookies: dict, friend_id: str, ver="jp"):
         dict: 好友信息
     """
     base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
-    session_id = id(cookies)
 
     connector = aiohttp.TCPConnector(ssl=False)
     async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
         # 并发请求所有页面
         url = f"{base}/friend/search/searchUser/?friendCode={friend_id}"
-        dom = await fetch_dom(session, url, session_id, ver)
+        dom = await fetch_dom(session, url, ver)
 
         # 检查维护状态
         if dom == "MAINTENANCE":
@@ -929,8 +918,6 @@ async def get_friend_records(cookies: dict, friend_id: str, ver="jp"):
     """
     base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
     difficulty = ['basic', 'advanced', 'expert', 'master', 'remaster']
-    session_id = id(cookies)
-
 
     kaomoji = [
         "(´･ω･)",
@@ -946,7 +933,7 @@ async def get_friend_records(cookies: dict, friend_id: str, ver="jp"):
         tasks = []
         for diff in range(5):
             url = f"{base}/friend/friendGenreVs/battleStart/?scoreType=2&genre=99&diff={diff}&idx={friend_id}"
-            tasks.append(fetch_dom(session, url, session_id, ver))
+            tasks.append(fetch_dom(session, url, ver))
 
         doms = await asyncio.gather(*tasks)
 
@@ -1029,8 +1016,7 @@ async def get_nearby_maimai_stores(lat, lng, ver="jp"):
 
     connector = aiohttp.TCPConnector(ssl=False)
     async with aiohttp.ClientSession(connector=connector) as session:
-        session_id = id(session)
-        dom = await fetch_dom(session, url, session_id, ver)
+        dom = await fetch_dom(session, url, ver)
 
         if dom is None:
             return []

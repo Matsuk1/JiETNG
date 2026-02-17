@@ -208,17 +208,23 @@ R2_BUCKET_NAME = R2_CONFIG.get("bucket_name", "")
 R2_PUBLIC_URL = R2_CONFIG.get("public_url", "")
 
 # 全局缓存数据
-SONGS = []
-VERSIONS = []
 USERS = {}
 
 # 用户数据脏标记（用于延迟写入）
 _user_data_dirty = False
 
 def read_dxdata(ver="jp"):
-    global SONGS, VERSIONS
+    """
+    读取歌曲数据
+
+    Args:
+        ver: 版本 "jp" 或 "intl"
+
+    Returns:
+        tuple: (songs, versions)
+    """
     dxdata_file = json.load(open(DXDATA_LIST, 'r', encoding='utf-8'))
-    SONGS.clear()
+    songs = list(dxdata_file['songs'])
 
     def is_int(s):
         return s.isdigit()
@@ -230,7 +236,7 @@ def read_dxdata(ver="jp"):
                 if row:
                     csv_map[row[0]] = row[1:]
 
-        for song in dxdata_file['songs']:
+        for song in songs:
             if song['title'] not in csv_map:
                 continue
             if song['type'] != csv_map[song['title']][0]:
@@ -255,9 +261,8 @@ def read_dxdata(ver="jp"):
             else:
                 cur[last] = value
 
-    SONGS.extend(dxdata_file['songs'])
-    VERSIONS.clear()
-    VERSIONS.extend(dxdata_file['versions'])
+    versions = list(dxdata_file['versions'])
+    return songs, versions
 
 def load_user():
     global USERS, _user_data_dirty

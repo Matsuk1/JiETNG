@@ -156,7 +156,7 @@ def cleanup_user_caches(user_manager_module=None):
                 expired_keys = []
                 for user_id, cached_data in cache.items():
                     # 检查是否过期
-                    if (current_time - cached_data['time']).seconds >= timeout:
+                    if (current_time - cached_data['time']).total_seconds() >= timeout:
                         expired_keys.append(user_id)
 
                 # 删除过期条目

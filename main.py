@@ -74,6 +74,7 @@ from linebot.v3.webhooks import (
 # Song and record generators
 from modules.song_generator import song_info_generate, generate_version_list
 from modules.record_generator import *
+from modules.record_generator import _safe_parse_dx_score
 
 # User and data managers
 from modules.user_manager import *
@@ -98,7 +99,8 @@ from modules.devtoken_manager import (
     save_dev_tokens,
     list_dev_tokens,
     revoke_dev_token,
-    get_token_info
+    get_token_info,
+    flush_dev_tokens
 )
 
 from modules.perm_request_handler import (
@@ -642,13 +644,13 @@ def check_user_permission(user_id, token_id):
 
     # 检查用户是否存在
     if user_id not in USERS:
-        return False, jsonify({
+        return False, (jsonify({
             "error": "User not found",
             "message": f"User {user_id} does not exist"
-        }), 404
+        }), 404)
 
     # 检查权限：方式1 - 用户是通过该 token 创建的
-    if 'registered_via_token' in USERS[user_id] and USERS[user_id].get('registered_via_token') == token_id:
+    if USERS[user_id].get('registered_via_token') == token_id:
         return True, None
 
     # 检查权限：方式2 - token 的 allowed_users 列表包含该用户
@@ -659,10 +661,10 @@ def check_user_permission(user_id, token_id):
             return True, None
 
     # 没有权限
-    return False, jsonify({
+    return False, (jsonify({
         "error": "Permission denied",
         "message": f"Token does not have permission to access user {user_id}"
-    }), 403
+    }), 403)
 
 # ==================== Flask 路由 ====================
 
@@ -932,8 +934,7 @@ async def process_sega_credentials(user_id, segaid, password, ver="jp", language
     connector = aiohttp.TCPConnector(ssl=False, limit=10)
     timeout = aiohttp.ClientTimeout(total=30, connect=10)
     async with aiohttp.ClientSession(cookies=cookies, connector=connector, timeout=timeout) as session:
-        session_id = id(session)
-        dom = await fetch_dom(session, f"{base}/home/", session_id, ver)
+        dom = await fetch_dom(session, f"{base}/home/", ver)
 
         if dom is None:
             return False
@@ -1307,8 +1308,8 @@ def get_rc(level: float, user_id=None):
     return generate_rc_flex(level, rc_data, user_id)
 
 async def random_song(user_id, key="", ver="jp"):
-    read_dxdata(ver)
-    length = len(SONGS)
+    songs, _ = read_dxdata(ver)
+    length = len(songs)
     is_exit = False
     valid_songs = []
     result = []
@@ -1318,7 +1319,7 @@ async def random_song(user_id, key="", ver="jp"):
         if not level_values:
             return song_error(user_id)
 
-    for song in SONGS:
+    for song in songs:
         for sheet in song['sheets']:
             if sheet['regions'][ver]:
                 if not key or sheet['internalLevelValue'] in level_values:
@@ -1349,10 +1350,10 @@ async def search_song(user_id, acronym, ver="jp"):
     Returns:
         搜索结果消息列表 或搜索结果flex message 或错误消息
     """
-    read_dxdata(ver)
+    songs, _ = read_dxdata(ver)
 
     # 使用优化的歌曲匹配函数
-    matching_songs = find_matching_songs(acronym, SONGS, max_results=MAX_SEARCH_RESULTS, threshold=0.85)
+    matching_songs = find_matching_songs(acronym, songs, max_results=MAX_SEARCH_RESULTS, threshold=0.85)
 
     # 没有匹配结果
     if not matching_songs:
@@ -1380,11 +1381,10 @@ async def search_song_by_id(user_id, song_id, ver="jp"):
     Returns:
         歌曲信息图片消息 或错误消息
     """
-    read_dxdata(ver)
+    songs, _ = read_dxdata(ver)
 
-    # 在SONGS中查找匹配的歌曲
     matching_song = None
-    for song in SONGS:
+    for song in songs:
         if song.get('id') == song_id:
             matching_song = song
             break
@@ -1485,11 +1485,11 @@ def search_by_artist(user_id, artist_query, ver="jp", page=1, source_type="user"
     if source_type != 'user':
         return TextMessage(text=get_multilingual_text(search_group_warning_text, user_id))
 
-    read_dxdata(ver)
+    songs, _ = read_dxdata(ver)
 
     matching_songs = []
     query_lower = artist_query.lower()
-    for song in SONGS:
+    for song in songs:
         artist = song.get('artist') or ''
         if query_lower in artist.lower():
             matching_songs.append(song)
@@ -1517,13 +1517,13 @@ def search_by_designer(user_id, designer_query, ver="jp", page=1, source_type="u
     if source_type != 'user':
         return TextMessage(text=get_multilingual_text(search_group_warning_text, user_id))
 
-    read_dxdata(ver)
+    songs, _ = read_dxdata(ver)
 
     matching_songs = []
     matched_sheets_map = {}
     query_lower = designer_query.lower()
 
-    for song in SONGS:
+    for song in songs:
         matched_sheets = []
         for sheet in song.get('sheets', []):
             designer = sheet.get('noteDesigner', '')
@@ -1551,11 +1551,10 @@ def calc_by_id(user_id, song_id, ver="jp"):
     Returns:
         歌曲信息图片消息和calc结果列表 或错误消息
     """
-    read_dxdata(ver)
+    songs, _ = read_dxdata(ver)
 
-    # 在SONGS中查找匹配的歌曲
     matching_song = None
-    for song in SONGS:
+    for song in songs:
         if song.get('id') == song_id:
             matching_song = song
             break
@@ -1690,15 +1689,14 @@ async def get_song_record(user_id, id_use, acronym, ver="jp"):
     if "personal_info" not in USERS[id_use]:
         return mention_error(user_id) if id_use != user_id else info_error(user_id)
     
-    read_dxdata(ver)
-
     song_record = read_record(id_use)
 
     if not len(song_record):
         return record_error(user_id)
-
+        
     # 使用优化的歌曲匹配函数
-    matching_songs = find_matching_songs(acronym, SONGS, max_results=MAX_SEARCH_RESULTS, threshold=0.85)
+    songs, _ = read_dxdata(ver)
+    matching_songs = find_matching_songs(acronym, songs, max_results=MAX_SEARCH_RESULTS, threshold=0.85)
 
     if not matching_songs:
         return song_error(user_id)
@@ -1746,16 +1744,14 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
     if "personal_info" not in USERS[id_use]:
         return mention_error(user_id) if id_use != user_id else info_error(user_id)
 
-    read_dxdata(ver)
-
     song_record = read_record(id_use)
 
     if not len(song_record):
         return record_error(user_id)
 
-    # 在SONGS中查找匹配的歌曲
     matching_song = None
-    for song in SONGS:
+    songs, _ = read_dxdata(ver)
+    for song in songs:
         if song.get('id') == song_id:
             matching_song = song
             break
@@ -1826,8 +1822,6 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     if not (len(title) == 2 or len(title) == 3):
         return plate_error(user_id)
 
-    read_dxdata(ver)
-
     song_record = read_record(id_use)
 
     if not len(song_record):
@@ -1836,6 +1830,8 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     version_name = title[0]
     plate_type = title[1:].replace("极", "極")
 
+    songs, versions = read_dxdata(ver)
+
     target_version = []
     target_icon = []
     target_type = ""
@@ -1843,7 +1839,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     if version_name in TEMP_VERSION["abbr"]:
         target_version.append(TEMP_VERSION["title"])
 
-    for version in VERSIONS:
+    for version in versions:
         if version_name in version['abbr']:
             target_version.append(version['version'])
 
@@ -1899,7 +1895,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
         key2 = (normalized_name, difficulty, type)
         rcd_map[key2] = rcd
 
-    for song in SONGS:
+    for song in songs:
         if song['version'] not in target_version or song['type'] == 'utage':
             continue
 
@@ -2040,7 +2036,6 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
         return song_error(user_id)
 
     target_type, target_icons = rank_mapping[rank] if rank else (None, None)
-    read_dxdata(ver)
     song_record = read_record(id_use)
 
     if not len(song_record):
@@ -2070,8 +2065,9 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
     achieved_count = 0  # 已达成
     unachieved_count = 0  # 未达成（有记录但未达标）
     unplayed_count = 0  # 未游玩
-
-    for song in SONGS:
+    
+    songs, _ = read_dxdata(ver)
+    for song in songs:
         if song['type'] == 'utage':
             continue
 
@@ -2357,20 +2353,20 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 parts = cmd_num.split()
                 if len(parts) == 1:
                     dx_score = int(re.sub(r"\D", "", parts[0]))
-                    song_record = list(filter(lambda x: eval(x['dx_score']) * 100 >= dx_score, song_record))
+                    song_record = list(filter(lambda x: _safe_parse_dx_score(x['dx_score']) * 100 >= dx_score, song_record))
                 else:
                     dx_start = int(re.sub(r"\D", "", parts[0]))
                     dx_stop = int(re.sub(r"\D", "", parts[1]))
-                    song_record = list(filter(lambda x: dx_start <= eval(x['dx_score']) * 100 <= dx_stop, song_record))
+                    song_record = list(filter(lambda x: dx_start <= _safe_parse_dx_score(x['dx_score']) * 100 <= dx_stop, song_record))
             elif cmd == "scr":
                 parts = cmd_num.split()
                 if len(parts) == 1:
                     score = float(re.sub(r"[^0-9.]", "", parts[0]))
-                    song_record = list(filter(lambda x: eval(x['score'].replace("%", "")) >= score, song_record))
+                    song_record = list(filter(lambda x: float(x['score'].replace("%", "")) >= score, song_record))
                 else:
                     scr_start = float(re.sub(r"[^0-9.]", "", parts[0]))
                     scr_stop = float(re.sub(r"[^0-9.]", "", parts[1]))
-                    song_record = list(filter(lambda x: scr_start <= eval(x['score'].replace("%", "")) <= scr_stop, song_record))
+                    song_record = list(filter(lambda x: scr_start <= float(x['score'].replace("%", "")) <= scr_stop, song_record))
             elif cmd == "ver":
                 # 处理版本筛选：-ver [version1] [version2] ...
                 raw_versions = cmd_num.split()
@@ -2662,7 +2658,7 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     return message
 
 async def generate_version_songs(user_id, version_title, ver="jp"):
-    read_dxdata(ver)
+    songs, versions = read_dxdata(ver)
 
     target_version = []
     target_icon = []
@@ -2670,7 +2666,7 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
 
     version_title = version_title.lower().replace("dx", "maimaiでらっくす").replace("deluxe", "maimaiでらっくす")
 
-    for version in VERSIONS:
+    for version in versions:
         if version_title == version['version'].lower():
             target_version.append(version['version'])
 
@@ -2685,7 +2681,7 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
     except Exception as e:
         logger.error(f"[VersionImage] ✗ Failed to load image: file={version_img_path}, error={e}")
 
-    songs_data = list(filter(lambda x: x['version'] in target_version and x['type'] not in ['utage'], SONGS))
+    songs_data = list(filter(lambda x: x['version'] in target_version and x['type'] not in ['utage'], songs))
     version_list_img = generate_version_list(songs_data)
 
     user_tz = get_user_timezone(user_id)
@@ -3584,7 +3580,6 @@ def handle_sync_text_command(event):
         if user_message == "dxdata update":
             # 使用新的对比更新函数
             result = update_dxdata_with_comparison(DXDATA_URL, DXDATA_LIST)
-            read_dxdata()  # 重新加载到内存
 
             # 使用多语言函数构建消息
             message_text = build_dxdata_update_message(result, user_id)
@@ -5006,19 +5001,19 @@ def admin_dxdata_status():
         return jsonify({'error': 'Unauthorized'}), 401
 
     try:
-        read_dxdata()
+        songs, versions = read_dxdata()
         # 统计歌曲数
-        total_songs = len(SONGS)
-        std_songs = len([s for s in SONGS if s['type'] == 'std'])
-        dx_songs = len([s for s in SONGS if s['type'] == 'dx'])
-        utage_songs = len([s for s in SONGS if s['type'] == 'utage'])
+        total_songs = len(songs)
+        std_songs = len([s for s in songs if s['type'] == 'std'])
+        dx_songs = len([s for s in songs if s['type'] == 'dx'])
+        utage_songs = len([s for s in songs if s['type'] == 'utage'])
 
         # 统计谱面数（不包括宴会曲）
         total_sheets = 0
         jp_sheets = 0
         intl_sheets = 0
 
-        for song in SONGS:
+        for song in songs:
             if song['type'] == 'utage':
                 continue
             for sheet in song['sheets']:
@@ -5028,8 +5023,7 @@ def admin_dxdata_status():
                 if sheet['regions'].get('intl', False):
                     intl_sheets += 1
 
-        # 使用 VERSIONS 全局变量
-        total_versions = len(VERSIONS)
+        total_versions = len(versions)
 
         return jsonify({
             'songs': {
@@ -5219,11 +5213,15 @@ def api_get_user(user_id):
         token_info = request.token_info
         logger.info(f"[API] Get user: user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
 
+        # 过滤敏感字段
+        sensitive_keys = {'sega_id', 'sega_pwd', 'perm_requests', 'registered_via_token'}
+        safe_data = {k: v for k, v in user_data.items() if k not in sensitive_keys}
+
         return jsonify({
             "success": True,
             "user_id": user_id,
             "nickname": nickname,
-            "data": user_data
+            "data": safe_data
         })
 
     except Exception as e:
@@ -5815,10 +5813,10 @@ def api_search_songs_restful():
         logger.info(f"[API] Search songs: query='{query}', token_id={token_info['token_id']}, note={token_info['note']}")
 
         # 读取歌曲数据
-        read_dxdata(ver)
+        songs, _ = read_dxdata(ver)
 
         # 使用优化的歌曲匹配函数
-        matching_songs = find_matching_songs(query, SONGS, max_results=max_results, threshold=0.85)
+        matching_songs = find_matching_songs(query, songs, max_results=max_results, threshold=0.85)
 
         # 检查结果
         if not matching_songs:
@@ -5910,11 +5908,11 @@ def api_get_versions():
         token_info = request.token_info
         logger.info(f"[API] Get versions: token_id={token_info['token_id']}, note={token_info['note']}")
 
-        read_dxdata()
+        _, versions = read_dxdata()
 
         return jsonify({
             "success": True,
-            "versions": VERSIONS
+            "versions": versions
         })
 
     except Exception as e:
@@ -5990,6 +5988,9 @@ if __name__ == "__main__":
 
             # 清理过期的图片
             cleanup_expired_images()
+
+            # 刷新 dev tokens 缓存到磁盘
+            flush_dev_tokens()
 
             logger.info(f"[System] ✓ Custom cleanup completed: nicknames={cleaned_nicknames}, rate_limits={cleaned_rate_limits}, unbound_users={cleaned_unbound_users}")
         except Exception as e:

@@ -1,60 +1,12 @@
 """
-请求限速器
-避免同一session短时间内过多请求触发风控
-
-注意：限速功能已禁用，wait_if_needed() 不会进行任何等待
-如需启用限速，修改 RATE_LIMIT_ENABLED = True
+请求频率限制模块
+用于限制用户短时间内重复发送相同请求
 """
 import time
 import threading
 import logging
-from collections import defaultdict
 
 logger = logging.getLogger(__name__)
-
-# 全局开关：是否启用限速
-RATE_LIMIT_ENABLED = False
-
-class RateLimiter:
-    """
-    Per-session 限速器
-    每个 session 独立限速，互不影响
-    """
-    def __init__(self, min_interval_seconds=0.5):
-        """
-        Args:
-            min_interval_seconds: 同一session两次请求的最小间隔（秒）
-        """
-        self.min_interval = min_interval_seconds
-        self.last_call = defaultdict(float)
-        self.lock = threading.Lock()
-
-    def wait_if_needed(self, session_id):
-        """
-        如果请求过快，等待到允许时间
-
-        Args:
-            session_id: session 标识符（如 user_id 或 session 对象 id）
-        """
-        if not RATE_LIMIT_ENABLED:
-            return  # 限速已禁用，直接返回
-
-        with self.lock:
-            now = time.time()
-            elapsed = now - self.last_call[session_id]
-
-            if elapsed < self.min_interval:
-                sleep_time = self.min_interval - elapsed
-                time.sleep(sleep_time)
-
-            self.last_call[session_id] = time.time()
-
-
-# 全局限速器实例
-maimai_limiter = RateLimiter(min_interval_seconds=0.5)
-
-# 通用 API 限速
-api_limiter = RateLimiter(min_interval_seconds=0.3)
 
 
 # ==================== 用户请求频率限制 ====================

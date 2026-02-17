@@ -277,19 +277,20 @@ def update_dxdata_with_comparison(urls, save_to: str = None):
 
     new_datas = []
     for url in urls:
-        new_datas.append(load_dxdata(url))
+        data = load_dxdata(url)
+        if data is not None:
+            new_datas.append(data)
+
+    if not new_datas:
+        return {
+            'success': False
+        }
 
     # 只合并 songs 字段（使用 id 去重）
     for i in range(1, len(new_datas)):
         new_datas[0]['songs'] = merge_songs_list(new_datas[i]['songs'], new_datas[0]['songs'], "id")
 
     new_data = new_datas[0]
-
-    if not new_data:
-        return {
-            'success': False
-        }
-
 
     if save_to:
         filtered_data = {

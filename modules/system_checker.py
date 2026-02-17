@@ -19,15 +19,17 @@ def clean_unbound_users() -> Dict[str, Any]:
     删除没有 sega_id 或 sega_pwd 字段的账户
     """
 
-    deleted_users = []
+    # 先收集需要删除的用户，避免在迭代中修改字典
+    users_to_delete = [
+        user_id for user_id, value in USERS.items()
+        if "sega_id" not in value or "sega_pwd" not in value
+    ]
 
-    # 遍历所有用户
-    for user_id, value in USERS.items():
-        # 检查是否缺少 sega_id 或 sega_pwd
-        if "sega_id" not in value or "sega_pwd" not in value:
-            logger.info(f"[SystemCheck] → Deleting unbound user: user_id={user_id}, reason=missing_credentials")
-            delete_user(user_id)
-            deleted_users.append(user_id)
+    for user_id in users_to_delete:
+        logger.info(f"[SystemCheck] → Deleting unbound user: user_id={user_id}, reason=missing_credentials")
+        delete_user(user_id)
+
+    deleted_users = users_to_delete
 
     result = {
         "deleted_count": len(deleted_users),

@@ -1,6 +1,7 @@
 import math
 import logging
 import os
+import re
 
 from PIL import Image, ImageDraw
 
@@ -20,6 +21,20 @@ from modules.image_cache import *
 from modules.image_manager import *
 
 logger = logging.getLogger(__name__)
+
+def _safe_parse_dx_score(dx_score_str):
+    """安全解析 dx_score 字符串 (如 '613 / 666') 为浮点数"""
+    try:
+        match = re.match(r'^\s*(\d+)\s*/\s*(\d+)\s*$', str(dx_score_str))
+        if match:
+            numerator = int(match.group(1))
+            denominator = int(match.group(2))
+            if denominator == 0:
+                return 0.0
+            return numerator / denominator
+        return float(dx_score_str)
+    except (ValueError, TypeError):
+        return 0.0
 
 def _get_difficulty_color(difficulty):
     colors = {
@@ -41,7 +56,7 @@ def create_thumbnail_in_line(song):
     text_color = (0, 0, 0)
 
     # --- 基础分数 ---
-    dx_score = eval(song['dx_score'])
+    dx_score = _safe_parse_dx_score(song['dx_score'])
     draw.text((20, 0), song['score'], fill=text_color, font=font_record_name)
     draw.text((25, 72), f"{song['dx_score']} → {dx_score * 100:.1f}%", fill=text_color, font=font_record_info)
 
@@ -194,7 +209,7 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     # --- dx_star 图标 ---
     if 'dx_score' in song and song['dx_score']:
         try:
-            dx_score = eval(song['dx_score'])
+            dx_score = _safe_parse_dx_score(song['dx_score'])
             star_num = 0
             if 0 <= dx_score < 0.85:
                 star_num = 0
