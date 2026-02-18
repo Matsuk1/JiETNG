@@ -135,6 +135,20 @@ b50 -diff bas adv exp              # BASIC, ADVANCED, and EXPERT difficulties
 - Multiple difficulties can be specified, separated by spaces
 :::
 
+#### Filter by Chart Type
+
+```
+b50 -type dx                       # DX charts only
+b50 -type std                      # STD charts only
+```
+
+#### Pagination
+
+```
+b50 -page 2                        # Old songs #36-70, new songs #16-30
+b100 -page 2                       # Old songs #71-140, new songs #31-60
+```
+
 ### Combining Filters
 
 You can combine multiple filters:
@@ -146,7 +160,9 @@ b50 -ver buddies -lv 14                  # Buddies version with level ≥14
 b50 -ver splash splash+ -scr 100         # Splash/Splash+ with achievement ≥100%
 b50 -diff mas -lv 14                     # MASTER difficulty with level ≥14
 b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER with achievement 100.5%+
+b50 -type dx -diff mas                   # MASTER difficulty in DX charts
 b50 -lv 14 15 -scr 99.5 -dx 90           # Complex filtering
+b50 -diff mas -lv 14 -page 2             # Go to page 2
 ```
 
 ## Chart Type Explanations

@@ -2327,6 +2327,7 @@ def generate_profile(user_info, scale=1, user_id=None):
     return info_img
 
 def select_records(song_record, type="best50", command="", ver="jp"):
+    page = 1
     if not command == "":
         cmds = re.findall(r"-(\w+)\s+([^ -][^-]*)", command)
         for cmd, cmd_num in cmds:
@@ -2400,6 +2401,20 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                         versions.append(processed)
                 # 筛选歌曲版本在指定列表中的记录（忽略大小写）
                 song_record = list(filter(lambda x: (x.get('version') or '').lower() in versions, song_record))
+            elif cmd == "type":
+                # 处理谱面类型筛选：-type dx / -type std
+                raw_types = [t.strip().lower() for t in cmd_num.split() if t.strip()]
+                valid_types = []
+                for t in raw_types:
+                    if t in ('dx', 'std'):
+                        valid_types.append(t)
+                if valid_types:
+                    song_record = list(filter(lambda x: x.get('type', '').lower() in valid_types, song_record))
+            elif cmd == "page":
+                try:
+                    page = max(1, int(cmd_num.strip()))
+                except ValueError:
+                    pass
 
     up_songs = down_songs = []
 
@@ -2407,64 +2422,64 @@ def select_records(song_record, type="best50", command="", ver="jp"):
     down_songs_data = list(filter(lambda x: x['new_song'] == True, song_record))
 
     if type == "best50":
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
 
     elif type == "best40":
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:25]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*25 : page*25]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
 
     elif type == "best100":
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:70]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:30]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*70 : page*70]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*30 : page*30]
 
     elif type == "best35":
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
 
     elif type == "best15":
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
 
     elif type == "allb35":
-        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
+        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
 
     elif type == "allb50":
-        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:50]
+        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*50 : page*50]
 
     elif type == "allb100":
-        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:100]
+        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*100 : page*100]
 
     elif type == "allb200":
-        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:200]
+        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*200 : page*200]
 
     elif type == "nxtb50":
         up_addition_songs = list(filter(lambda x: x['version'] != MAIMAI_VERSION[ver][-1], down_songs_data))
         down_songs_data = list(filter(lambda x: x['version'] == MAIMAI_VERSION[ver][-1], down_songs_data))
         up_songs_data += up_addition_songs
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
 
     elif type == "nxtb35":
         up_addition_songs = list(filter(lambda x: x['version'] != MAIMAI_VERSION[ver][-1], down_songs_data))
         up_songs_data += up_addition_songs
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
 
     elif type == "nxtb15":
         down_songs_data = list(filter(lambda x: x['version'] == MAIMAI_VERSION[ver][-1], down_songs_data))
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
 
     elif type == "apb50":
         up_songs_data = [x for x in up_songs_data if x.get("combo_icon") in ("ap", "app")]
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
 
         down_songs_data = [x for x in down_songs_data if x.get("combo_icon") in ("ap", "app")]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
 
     elif type == "fdxb50":
         up_songs_data = [x for x in up_songs_data if x.get("sync_icon") in ("fdx", "fdxp")]
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
 
         down_songs_data = [x for x in down_songs_data if x.get("sync_icon") in ("fdx", "fdxp")]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
 
     elif type == "unknown":
         up_songs = list(filter(lambda x: x['version'] == "UNKNOWN", song_record))
@@ -2491,8 +2506,8 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 rcd['combo_icon'] = "app"
             rcd['ra'] = get_single_ra(rcd['internalLevelValue'], ideal_score, ideal_score == 101)
 
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:35]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[:15]
+        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
+        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
 
     return up_songs, down_songs;
 
@@ -2624,30 +2639,15 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     if not len(song_record):
         return record_error(user_id)
 
-    level_value = parse_level_value(level)
-    if not level_value:
+    level_values = parse_level_value(level)
+    if not level_values:
         return song_error(user_id)
 
-    up_songs_data = list(filter(lambda x: x['new_song'] == False, song_record))
-    down_songs_data = list(filter(lambda x: x['new_song'] == True, song_record))
+    lv_min = min(level_values)
+    lv_max = max(level_values)
+    command = f"-lv {lv_min} {lv_max} -page {page}"
 
-    up_level_list_data = list(filter(lambda x: x['internalLevelValue'] in level_value, up_songs_data))
-    down_level_list_data = list(filter(lambda x: x['internalLevelValue'] in level_value, down_songs_data))
-
-    up_level_list = sorted(up_level_list_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)
-    down_level_list = sorted(down_level_list_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)
-
-    page_size_up = 35
-    page_size_down = 15
-
-    start_up = (page - 1) * page_size_up
-    end_up = start_up + page_size_up
-
-    start_down = (page - 1) * page_size_down
-    end_down = start_down + page_size_down
-
-    up_level_list = up_level_list[start_up:end_up]
-    down_level_list = down_level_list[start_down:end_down]
+    up_level_list, down_level_list = select_records(song_record, "best50", command, ver)
 
     if not up_level_list and not down_level_list:
         return level_record_not_found(level, page, user_id)
@@ -3390,7 +3390,12 @@ def handle_sync_text_command(event):
         "friendlist": lambda: get_friend_list(user_id, source_type),
 
         # 系统状态
-        "status": lambda: get_bot_status(user_id)
+        "status": lambda: get_bot_status(user_id),
+
+        # 命令列表
+        "command": lambda: generate_command_list_flex(user_id),
+        "cmd": lambda: generate_command_list_flex(user_id),
+        "コマンド": lambda: generate_command_list_flex(user_id)
     }
 
     if user_message in COMMAND_MAP:

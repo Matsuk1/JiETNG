@@ -135,6 +135,20 @@ b50 -diff bas adv exp              # BASIC、ADVANCED、EXPERT 難易度
 - 複数の難易度をスペースで区切って指定できます
 :::
 
+#### 譜面タイプでフィルター
+
+```
+b50 -type dx                       # DX 譜面のみ
+b50 -type std                      # STD 譜面のみ
+```
+
+#### ページ送り
+
+```
+b50 -page 2                        # 旧曲 36～70 位、新曲 16～30 位
+b100 -page 2                       # 旧曲 71～140 位、新曲 31～60 位
+```
+
 ### フィルターの組み合わせ
 
 複数のフィルターを組み合わせることができます：
@@ -146,7 +160,9 @@ b50 -ver buddies -lv 14                  # Buddies バージョンかつレベ�
 b50 -ver splash splash+ -scr 100         # Splash/Splash+ かつ達成率 ≥100% の楽曲
 b50 -diff mas -lv 14                     # MASTER 難易度かつレベル ≥14 の楽曲
 b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER 難易度かつ達成率 100.5%+
+b50 -type dx -diff mas                   # DX 譜面の MASTER 難易度
 b50 -lv 14 15 -scr 99.5 -dx 90           # 複雑なフィルター
+b50 -diff mas -lv 14 -page 2             # 2 ページ目へ
 ```
 
 ## チャートタイプの説明

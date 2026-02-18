@@ -2142,6 +2142,139 @@ def generate_ranking_flex(user_id, top5, nearby_entries=None, ver="jp"):
     return FlexMessage(alt_text=alt_text, contents=FlexContainer.from_dict(bubble))
 
 
+def generate_command_list_flex(user_id):
+    """
+    生成 RANK_COMMANDS 命令列表 Flex Message
+
+    Args:
+        user_id: 当前用户ID
+
+    Returns:
+        FlexMessage
+    """
+    title_text = get_multilingual_text(record_cmd_list_text, user_id)
+
+    sections = [
+        ("Best", [
+            ("b50",  "Best 50"),
+            ("b35",  "Best 35"),
+            ("b15",  "Best 15"),
+            ("b100", "Best 100"),
+        ]),
+        ("All Best", [
+            ("ab50",  "All Best 50"),
+            ("ab35",  "All Best 35"),
+            ("ab100", "All Best 100"),
+        ]),
+        ("Next Best", [
+            ("nxtb50", "Next Best 50"),
+            ("nxtb35", "Next Best 35"),
+            ("nxtb15", "Next Best 15"),
+        ]),
+        ("Others", [
+            ("apb50",  "AP Best 50"),
+            ("fdxb50", "Full DX Best 50"),
+            ("rct50",  "Recent 50"),
+            ("idlb50", "Ideal Best 50"),
+            ("b40",    "Best 40 [Past]"),
+        ]),
+    ]
+
+    header = {
+        "type": "box",
+        "layout": "horizontal",
+        "contents": [
+            {
+                "type": "text",
+                "text": title_text,
+                "weight": "bold",
+                "size": "lg",
+                "color": "#000000",
+                "flex": 1
+            }
+        ],
+        "paddingAll": "16px"
+    }
+
+    body_contents = [{"type": "separator", "color": "#000000"}]
+
+    for i, (label, commands) in enumerate(sections):
+        if i > 0:
+            body_contents.append({"type": "separator", "color": "#000000"})
+
+        body_contents.append({
+            "type": "text",
+            "text": label,
+            "size": "xxs",
+            "color": "#999999",
+            "weight": "bold",
+            "margin": "sm"
+        })
+
+        for j, (cmd, desc) in enumerate(commands):
+            body_contents.append({
+                "type": "box",
+                "layout": "horizontal",
+                "spacing": "md",
+                "alignItems": "center",
+                "paddingAll": "4px",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": cmd,
+                        "size": "sm",
+                        "weight": "bold",
+                        "color": "#000000",
+                        "flex": 3,
+                        "gravity": "center",
+                        "contents": []
+                    },
+                    {
+                        "type": "text",
+                        "text": desc,
+                        "size": "sm",
+                        "color": "#666666",
+                        "flex": 5,
+                        "gravity": "center"
+                    },
+                    {
+                        "type": "button",
+                        "action": {
+                            "type": "message",
+                            "label": "▶",
+                            "text": cmd
+                        },
+                        "style": "link",
+                        "height": "sm",
+                        "color": "#000000",
+                        "flex": 0
+                    }
+                ]
+            })
+            if j < len(commands) - 1:
+                body_contents.append({"type": "separator", "color": "#EEEEEE"})
+
+    body = {
+        "type": "box",
+        "layout": "vertical",
+        "contents": body_contents,
+        "paddingStart": "12px",
+        "paddingEnd": "12px",
+        "paddingBottom": "12px",
+        "paddingTop": "4px"
+    }
+
+    bubble = {
+        "type": "bubble",
+        "size": "kilo",
+        "header": header,
+        "body": body
+    }
+
+    alt_text = get_multilingual_text(record_cmd_list_text, user_id)
+    return FlexMessage(alt_text=alt_text, contents=FlexContainer.from_dict(bubble))
+
+
 def generate_song_list_flex(user_id, title, matching_songs, page, command_prefix, query, matched_sheets_map=None):
     """
     生成歌曲列表 Flex Message（黑白简约风，artist/designer 搜索共用）

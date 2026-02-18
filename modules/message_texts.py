@@ -121,9 +121,9 @@ store_error_text = {
 }
 
 rate_limit_msg_text = {
-    "ja": "⏳ ちょっと待ってー！今同じリクエスト処理中だから！\n終わるまでちょっと待っててね〜",
-    "en": "⏳ Wait a moment! I'm still processing the same request!\nPlease wait until it's done~",
-    "zh": "⏳ 稍等一下！我正在处理相同的请求！\n等我完成再试试吧~"
+    "ja": "🔄 現在システムが混み合っています。\nしばらくしてからもう一度お試しください。",
+    "en": "🔄 The system is currently busy.\nPlease try again in a moment.",
+    "zh": "🔄 系统当前较为繁忙，请稍后再试。"
 }
 
 maintenance_error_text = {
@@ -224,6 +224,13 @@ dxdata_update_text = {
 # ============================================================
 # その他 / Others
 # ============================================================
+
+# 成绩命令列表
+record_cmd_list_text = {
+    "zh": "成绩命令列表",
+    "en": "Record Command List",
+    "ja": "レコードコマンドリスト"
+}
 
 # 临时使用好友账号
 friend_use_once_text = {

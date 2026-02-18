@@ -133,6 +133,20 @@ b50 -diff bas adv exp              # BASIC、ADVANCED 和 EXPERT 难度
 - 可以同时指定多个难度，用空格分隔
 :::
 
+#### 按谱面类型过滤
+
+```
+b50 -type dx                       # 仅 DX 谱面
+b50 -type std                      # 仅 STD 谱面
+```
+
+#### 翻页
+
+```
+b50 -page 2                        # 旧曲第 36-70 名，新曲第 16-30 名
+b100 -page 2                       # 旧曲第 71-140 名，新曲第 31-60 名
+```
+
 ### 组合过滤器
 
 您可以组合多个过滤器：
@@ -144,7 +158,9 @@ b50 -ver buddies -lv 14                  # Buddies 版本且等级 ≥14 的歌�
 b50 -ver splash splash+ -scr 100         # Splash/Splash+ 且达成率 ≥100% 的歌曲
 b50 -diff mas -lv 14                     # MASTER 难度且等级 ≥14 的歌曲
 b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER 难度且达成率 100.5%+
+b50 -type dx -diff mas                   # DX 谱面中的 MASTER 难度
 b50 -lv 14 15 -scr 99.5 -dx 90           # 复杂过滤
+b50 -diff mas -lv 14 -page 2             # 翻到第 2 页
 ```
 
 ## 图表类型说明

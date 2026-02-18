@@ -47,8 +47,6 @@ def parse_level_value(input_str):
         try:
             base = int(input_str[:-1])
             target = [round(base + i * 0.1, 1) for i in range(6, 10)]
-            if input_str == "14+":
-                target.append(15.0)
             return target
         except ValueError:
             logger.error(f"[Maimai] ✗ Failed to parse a number with plus(+): {input_str}")
