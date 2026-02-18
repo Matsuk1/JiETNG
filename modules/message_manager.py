@@ -1999,14 +1999,14 @@ def generate_search_record_results_flex(user_id, id_use, matching_songs):
     return _generate_search_results_flex_internal(user_id, matching_songs, 'record', id_use)
 
 
-def generate_ranking_flex(user_id, ranking_data, user_rank_entry=None, ver="jp"):
+def generate_ranking_flex(user_id, top5, nearby_entries=None, ver="jp"):
     """
-    生成 Rating 排行榜 Flex Message
+    生成 Rating 排行榜 Flex Message（5+7 布局）
 
     Args:
         user_id: 当前用户ID
-        ranking_data: 前10名列表 [{"rank": 1, "name": "xxx", "rating": "15000"}, ...]
-        user_rank_entry: 用户自身排名（如果不在前10则提供）{"rank": 12, "name": "xxx", "rating": "15000"} 或 None
+        top5: 前5名列表 [{"rank": 1, "name": "xxx", "rating": "15000"}, ...]
+        nearby_entries: 以用户为中心的附近名单（用户不在前5时提供），None 表示用户在前5或版本不一致
         ver: 版本 "jp" 或 "intl"
 
     Returns:
@@ -2094,15 +2094,14 @@ def generate_ranking_flex(user_id, ranking_data, user_rank_entry=None, ver="jp")
 
         return row
 
-    for i, entry in enumerate(ranking_data):
-        is_user = (user_rank_entry is None and entry.get("is_user", False))
-        body_contents.append(make_row(entry, highlight=is_user))
-        if i < len(ranking_data) - 1:
+    # 渲染前5名
+    for i, entry in enumerate(top5):
+        body_contents.append(make_row(entry, highlight=entry.get("is_user", False)))
+        if i < len(top5) - 1:
             body_contents.append({"type": "separator", "color": "#DDDDDD"})
 
-    # 用户不在前10，显示虚线分割 + 用户排名
-    if user_rank_entry:
-        # 虚线分割线（用多个短线模拟）
+    # 用户不在前5，显示虚线分割 + 以用户为中心的附近名单
+    if nearby_entries:
         body_contents.append({
             "type": "box",
             "layout": "vertical",
@@ -2117,7 +2116,10 @@ def generate_ranking_flex(user_id, ranking_data, user_rank_entry=None, ver="jp")
             ],
             "margin": "sm"
         })
-        body_contents.append(make_row(user_rank_entry, highlight=True))
+        for i, entry in enumerate(nearby_entries):
+            body_contents.append(make_row(entry, highlight=entry.get("is_user", False)))
+            if i < len(nearby_entries) - 1:
+                body_contents.append({"type": "separator", "color": "#DDDDDD"})
 
     body = {
         "type": "box",

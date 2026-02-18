@@ -1447,25 +1447,45 @@ def get_ranking(user_id, id_use, ver=None):
         else:
             u["rank"] = i + 1
 
-    # 前10名
-    top10 = []
-    user_in_top10 = False
-    for u in ranked_users[:10]:
+    # 指定版本时直接显示前15名，不做个人区域
+    if ver is not None:
+        top15 = []
+        for u in ranked_users[:15]:
+            top15.append({"rank": u["rank"], "name": u["name"], "rating": u["rating"]})
+        return generate_ranking_flex(user_id, top15, nearby_entries=None, ver=user_ver)
+
+    # 找到当前用户在排名列表中的索引
+    user_idx = None
+    for i, u in enumerate(ranked_users):
+        if u["user_id"] == id_use:
+            user_idx = i
+            break
+
+    # 前5名
+    top5 = []
+    for u in ranked_users[:5]:
         entry = {"rank": u["rank"], "name": u["name"], "rating": u["rating"]}
         if u["user_id"] == id_use:
             entry["is_user"] = True
-            user_in_top10 = True
-        top10.append(entry)
+        top5.append(entry)
 
-    # 用户不在前10，找到用户的排名
-    user_rank_entry = None
-    if not user_in_top10:
-        for u in ranked_users:
+    # 用户在前5名内，不需要附近区域
+    user_in_top5 = user_idx is not None and user_idx < 5
+
+    # 用户不在前5时，构建以用户为中心的附近名单（前后各3名）
+    nearby_entries = None
+    if not user_in_top5 and user_idx is not None:
+        # 避免与前5名重叠，附近区域从索引5开始
+        nearby_start = max(5, user_idx - 3)
+        nearby_end = min(len(ranked_users), user_idx + 4)
+        nearby_entries = []
+        for u in ranked_users[nearby_start:nearby_end]:
+            entry = {"rank": u["rank"], "name": u["name"], "rating": u["rating"]}
             if u["user_id"] == id_use:
-                user_rank_entry = {"rank": u["rank"], "name": u["name"], "rating": u["rating"]}
-                break
+                entry["is_user"] = True
+            nearby_entries.append(entry)
 
-    return generate_ranking_flex(user_id, top10, user_rank_entry, ver=user_ver)
+    return generate_ranking_flex(user_id, top5, nearby_entries=nearby_entries, ver=user_ver)
 
 
 def search_by_artist(user_id, artist_query, ver="jp", page=1, source_type="user"):
@@ -2256,7 +2276,9 @@ def generate_profile(user_info, scale=1, user_id=None):
     # icon_url 为默认值时，尝试使用 LINE 头像
     default_icon = [
         "https://maimaidx.jp/maimai-mobile/img/Icon/",
-        "https://maimaidx.jp/maimai-mobile/img/Icon/c22d52b387e3f829.png"
+        "https://maimaidx.jp/maimai-mobile/img/Icon/c22d52b387e3f829.png",
+        "https://maimaidx-eng.com/maimai-mobile/img/Icon/",
+        "https://maimaidx-eng.com/maimai-mobile/img/Icon/c22d52b387e3f829.png"
     ]
     icon_url = user_info.get("icon_url", "")
     round = False
