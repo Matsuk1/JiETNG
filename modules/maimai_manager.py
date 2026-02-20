@@ -978,7 +978,7 @@ async def get_friend_records(cookies: dict, friend_id: str, ver="jp"):
                         "difficulty": difficulty[diff],
                         "type": type,
                         "score": score,
-                        "dx_score": None,
+                        "dx_score": "",
                         "score_icon": score_icon,
                         "combo_icon": combo_icon,
                         "sync_icon": sync_icon
