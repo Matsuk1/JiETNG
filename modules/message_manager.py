@@ -36,9 +36,14 @@ def get_user_language(user_id):
     Returns:
         str: 语言代码 ('ja', 'en', 'zh')，默认为 'en'
     """
+    language = 'en'
     if user_id and user_id in USERS:
-        return USERS[user_id].get('language', 'en')
-    return 'en'
+        language = USERS[user_id].get('language', 'en')
+
+    if language not in ['zh', 'ja', 'en']:
+        language = 'en'
+
+    return language
 
 def format_timezone_string(user_id):
     """
@@ -1353,173 +1358,6 @@ def generate_tip_ad_box(tip_ad, lang):
 # ============================================================
 # 系统错误警报 Flex Message / System Error Alert Flex Message
 # ============================================================
-
-def generate_error_alert_flex(error_title, error_details, context, timestamp):
-    """
-    生成系统错误警报 Flex Message
-
-    Args:
-        error_title: 错误标题
-        error_details: 错误详情（已截断到合理长度）
-        context: 上下文信息字典
-        timestamp: 时间戳
-
-    Returns:
-        FlexMessage: 系统错误警报 Flex Message
-    """
-    # 构建内容行
-    content_rows = []
-
-    # 时间
-    content_rows.append({
-        "type": "box",
-        "layout": "vertical",
-        "contents": [
-            {
-                "type": "text",
-                "text": "Time",
-                "size": "xs",
-                "color": "#999999"
-            },
-            {
-                "type": "text",
-                "text": timestamp,
-                "size": "sm",
-                "weight": "bold",
-                "margin": "xs"
-            }
-        ]
-    })
-
-    # 分隔线
-    content_rows.append({
-        "type": "separator",
-        "margin": "md"
-    })
-
-    # 错误标题
-    content_rows.append({
-        "type": "box",
-        "layout": "vertical",
-        "margin": "md",
-        "contents": [
-            {
-                "type": "text",
-                "text": "Error",
-                "size": "xs",
-                "color": "#999999"
-            },
-            {
-                "type": "text",
-                "text": error_title,
-                "size": "sm",
-                "weight": "bold",
-                "margin": "xs",
-                "wrap": True,
-                "color": "#FF6B6B"
-            }
-        ]
-    })
-
-    # 分隔线
-    content_rows.append({
-        "type": "separator",
-        "margin": "md"
-    })
-
-    # 错误详情
-    # 限制长度避免 flex message 过大
-    detail_text = error_details[:800] + "..." if len(error_details) > 800 else error_details
-
-    content_rows.append({
-        "type": "box",
-        "layout": "vertical",
-        "margin": "md",
-        "contents": [
-            {
-                "type": "text",
-                "text": "Details",
-                "size": "xs",
-                "color": "#999999"
-            },
-            {
-                "type": "text",
-                "text": detail_text,
-                "size": "xs",
-                "margin": "xs",
-                "wrap": True,
-                "color": "#666666"
-            }
-        ]
-    })
-
-    # 如果有上下文信息
-    if context:
-        # 分隔线
-        content_rows.append({
-            "type": "separator",
-            "margin": "md"
-        })
-
-        # 上下文标题
-        context_contents = [
-            {
-                "type": "text",
-                "text": "Context",
-                "size": "xs",
-                "color": "#999999"
-            }
-        ]
-
-        # 添加上下文项
-        for key, value in list(context.items())[:5]:  # 最多显示5项
-            context_contents.append({
-                "type": "text",
-                "text": f"・{key}: {value}",
-                "size": "xs",
-                "color": "#666666",
-                "margin": "sm",
-                "wrap": True
-            })
-
-        content_rows.append({
-            "type": "box",
-            "layout": "vertical",
-            "margin": "md",
-            "contents": context_contents
-        })
-
-    # 创建 bubble
-    bubble = {
-        "type": "bubble",
-        "size": "mega",
-        "header": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": "🚨 System Error Alert",
-                    "weight": "bold",
-                    "size": "lg",
-                    "color": "#FFFFFF"
-                }
-            ],
-            "paddingAll": "16px",
-            "backgroundColor": "#FF3B30"
-        },
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": content_rows,
-            "paddingAll": "16px"
-        }
-    }
-
-    return FlexMessage(
-        alt_text="🚨 System Error Alert",
-        contents=FlexContainer.from_dict(bubble)
-    )
 
 
 def generate_calc_result_flex(notes, scores, difficulty=None, level=None):

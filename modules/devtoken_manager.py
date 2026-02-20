@@ -30,7 +30,8 @@ def load_dev_tokens():
         else:
             try:
                 with open(DEV_TOKENS_FILE, 'r', encoding='utf-8') as f:
-                    _dev_tokens = json.load(f)
+                    data = json.load(f)
+                _dev_tokens = data if isinstance(data, dict) else {}
             except Exception:
                 _dev_tokens = {}
         _dirty = False

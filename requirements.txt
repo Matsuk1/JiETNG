@@ -14,3 +14,4 @@ qrcode==8.2
 requests==2.32.3
 pyzipper==0.3.6
 aioboto3==15.5.0
+pywebpush==2.3.0

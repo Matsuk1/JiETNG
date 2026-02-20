@@ -917,14 +917,6 @@ async def get_friend_records(cookies: dict, friend_id: str, ver="jp"):
     base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
     difficulty = ['basic', 'advanced', 'expert', 'master', 'remaster']
 
-    kaomoji = [
-        "(´･ω･)",
-        "(つ≧▽≦)つ",
-        "(・∀・)",
-        "( ﾟДﾟ)",
-        "(∩^o^)⊃"
-    ]
-
     connector = aiohttp.TCPConnector(ssl=False)
     async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
         # 并发请求所有难度
@@ -986,7 +978,7 @@ async def get_friend_records(cookies: dict, friend_id: str, ver="jp"):
                         "difficulty": difficulty[diff],
                         "type": type,
                         "score": score,
-                        "dx_score": random.choice(kaomoji),
+                        "dx_score": None,
                         "score_icon": score_icon,
                         "combo_icon": combo_icon,
                         "sync_icon": sync_icon

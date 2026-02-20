@@ -85,13 +85,31 @@ default_config = {
         "secret_access_key": "",
         "bucket_name": "",
         "public_url": ""
+    },
+    "web_push": {
+        "vapid_private_key": "",
+        "vapid_public_key": "",
+        "contact": "mailto:admin@example.com"
     }
 }
 
-# 自动创建 config 目录
 config_dir = os.path.dirname(CONFIG_PATH)
 if config_dir:
     os.makedirs(config_dir, exist_ok=True)
+
+def _generate_vapid_keys():
+    """生成 VAPID 密钥对（EC P-256），返回 (private_b64, public_b64)"""
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.backends import default_backend
+    import base64
+    key = ec.generate_private_key(ec.SECP256R1(), default_backend())
+    priv_bytes = key.private_numbers().private_value.to_bytes(32, 'big')
+    pub = key.public_key().public_numbers()
+    pub_bytes = b'\x04' + pub.x.to_bytes(32, 'big') + pub.y.to_bytes(32, 'big')
+    return (
+        base64.urlsafe_b64encode(priv_bytes).rstrip(b'=').decode(),
+        base64.urlsafe_b64encode(pub_bytes).rstrip(b'=').decode()
+    )
 
 def _ensure_fernet_key(value: str) -> str:
 
@@ -130,6 +148,10 @@ else:
 
 _config["keys"]["user_data"] = _ensure_fernet_key(_config["keys"].get("user_data", ""))
 _config["keys"]["bind_token"] = _ensure_bind_token(_config["keys"].get("bind_token", ""))
+
+# 自动生成 VAPID 密钥
+if not _config["web_push"].get("vapid_private_key") or not _config["web_push"].get("vapid_public_key"):
+    _config["web_push"]["vapid_private_key"], _config["web_push"]["vapid_public_key"] = _generate_vapid_keys()
 
 # 写回更新后的配置
 with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
@@ -206,6 +228,12 @@ R2_ACCESS_KEY_ID = R2_CONFIG.get("access_key_id", "")
 R2_SECRET_ACCESS_KEY = R2_CONFIG.get("secret_access_key", "")
 R2_BUCKET_NAME = R2_CONFIG.get("bucket_name", "")
 R2_PUBLIC_URL = R2_CONFIG.get("public_url", "")
+
+# Web Push 配置字段
+WEB_PUSH_CONFIG = _config.get("web_push", {})
+VAPID_PRIVATE_KEY = WEB_PUSH_CONFIG.get("vapid_private_key", "")
+VAPID_PUBLIC_KEY = WEB_PUSH_CONFIG.get("vapid_public_key", "")
+VAPID_CONTACT = WEB_PUSH_CONFIG.get("contact", "mailto:admin@example.com")
 
 # 全局缓存数据
 USERS = {}

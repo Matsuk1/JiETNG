@@ -5,9 +5,9 @@ LINE消息发送模块
 """
 
 import logging
-import tempfile
-import os
-import random
+import functools
+import traceback as _traceback
+from contextlib import contextmanager
 from datetime import datetime
 from linebot.v3.messaging import (
     Configuration,
@@ -18,15 +18,15 @@ from linebot.v3.messaging import (
     TextMessage
 )
 from modules.config_loader import USERS
+from modules.notification_manager import record_notification
 from modules.user_manager import (
-    edit_user_value,
     has_user_read_notice,
     record_notice_read
 )
-from modules.notice_manager import get_latest_notice, get_latest_published_notice
+from modules.notice_manager import get_latest_published_notice
 from modules.perm_request_handler import get_pending_perm_requests
 from modules.perm_request_generator import generate_perm_request_message
-from modules.message_manager import generate_notice_flex, generate_error_alert_flex, system_error
+from modules.message_manager import generate_notice_flex
 
 logger = logging.getLogger(__name__)
 
@@ -118,63 +118,82 @@ def smart_push(user_id: str, messages, configuration: Configuration):
         )
 
 
-def notify_admins_error(
-    error_title: str,
-    error_details: str,
-    context: dict,
-    admin_id: list,
-    configuration: Configuration,
-    error_notification_enabled: bool = True,
-    max_length: int = 4000,
-    user_id: str = None,
-    reply_token: str = None
-):
+def notify_on_error(title: str, context: dict = None, reraise: bool = True):
     """
-    通知管理员发生错误，并可选择性地回复用户
+    装饰器 / 上下文管理器：捕获异常后自动发送错误通知邮件。
+
+    用法（装饰器）：
+        @notify_on_error("Worker Error", reraise=False)
+        def my_func(): ...
+
+    用法（with 语句）：
+        with notify_on_error("Webhook Error", context={"body": body[:200]}):
+            handler.handle(body, signature)
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                _uid = None
+                if args:
+                    a0 = args[0]
+                    if hasattr(a0, 'source'):
+                        _uid = getattr(a0.source, 'user_id', None)
+                    elif isinstance(a0, str) and a0.startswith('U'):
+                        _uid = a0
+                notify_admins_error(
+                    error_title=title,
+                    error_details=f"{type(e).__name__}: {str(e)}\n\n{_traceback.format_exc()}",
+                    context=context or {"Function": func.__name__, "Error": type(e).__name__},
+                    user_id=_uid
+                )
+                if reraise:
+                    raise
+        return wrapper
+
+    # 同时支持 with 语句
+    @contextmanager
+    def ctx_manager():
+        try:
+            yield
+        except Exception as e:
+            notify_admins_error(
+                error_title=title,
+                error_details=f"{type(e).__name__}: {str(e)}\n\n{_traceback.format_exc()}",
+                context=context or {"Error": type(e).__name__}
+            )
+            if reraise:
+                raise
+
+    # 让同一个对象既能当装饰器又能当上下文管理器
+    decorator.__enter__ = ctx_manager().__enter__
+    decorator.__exit__ = lambda *a: None  # 占位，实际由 ctx_manager 处理
+
+    # 包一层，使 with 语法正确工作
+    class _Notifier:
+        def __call__(self, func):
+            return decorator(func)
+
+        def __enter__(self):
+            self._ctx = ctx_manager()
+            return self._ctx.__enter__()
+
+        def __exit__(self, *args):
+            return self._ctx.__exit__(*args)
+
+    return _Notifier()
+
+
+def notify_admins_error(error_title: str, error_details: str, context: dict, user_id: str = None, **_):
+    """
+    记录错误通知到 admin panel。
 
     Args:
         error_title: 错误标题
-        error_details: 错误详情
+        error_details: 错误详情（含堆栈）
         context: 上下文信息
-        admin_id: 管理员ID列表
-        configuration: LINE API配置对象
-        error_notification_enabled: 是否启用错误通知
-        max_length: 错误消息最大长度
-        user_id: 用户ID（可选，用于回复用户）
-        reply_token: 回复令牌（可选，用于回复用户）
+        user_id: 触发错误的用户ID
     """
-    # 先回复用户（如果提供了参数）
-    if user_id and reply_token:
-        try:
-            smart_reply(user_id, reply_token, system_error(user_id), configuration)
-        except Exception as e:
-            logger.error(f"[LineMessenger] ✗ Failed to reply error message: error={e}")
-
-    if not error_notification_enabled:
-        return
-
-    try:
-        # 构建错误消息
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        flex_message = generate_error_alert_flex(error_title, error_details, context, timestamp)
-
-        # 如果错误信息过长，需要分段发送额外的详细信息
-        if len(error_details) > 800:
-            for admin_user_id in admin_id:
-                try:
-                    chunk_msg = [flex_message]
-                    detail_chunks = [error_details[i:i+1000] for i in range(0, len(error_details), 1000)]
-                    for chunk in detail_chunks:
-                        chunk_msg.append(TextMessage(text=chunk))
-                    smart_push(admin_user_id, chunk_msg, configuration)
-                except Exception as e:
-                    logger.error(f"[LineMessenger] ✗ Failed to notify admin: admin_id={admin_user_id}, error={e}")
-        else:
-            for admin_user_id in admin_id:
-                try:
-                    smart_push(admin_user_id, flex_message, configuration)
-                except Exception as e:
-                    logger.error(f"[LineMessenger] ✗ Failed to notify admin: admin_id={admin_user_id}, error={e}")
-
-    except Exception as e:
-        logger.error(f"[LineMessenger] ✗ Error notification system failed: error={e}", exc_info=True)
+    record_notification(error_title, error_details, user_id=user_id, context=context)

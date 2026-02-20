@@ -1,0 +1,19 @@
+{
+    "name": "JiETNG Admin Panel",
+    "short_name": "JiETNG Panel",
+    "description": "JiETNG LINE Bot Admin Control Panel",
+    "start_url": "/admin/panel",
+    "scope": "/admin/",
+    "display": "standalone",
+    "background_color": "#16213e",
+    "theme_color": "#4f6ef7",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "/static/admin-icon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

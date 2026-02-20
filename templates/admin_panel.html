@@ -5,17 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Admin Panel | JiETNG</title>
   <link rel="icon" type="image/png" href="/static/pics/logo.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JiETNG Admin">
+  <link rel="apple-touch-icon" href="/static/admin-icon.png">
+  <meta name="theme-color" content="#0D0D0D" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   {% include 'common_styles.html' %}
 
   <style>
     /* 页面特定 CSS 变量 - Page-specific CSS Variables */
     :root {
       --hover-bg: rgba(0, 0, 0, 0.04);
+      --shadow-sm: none;
+      --shadow-md: none;
+      --shadow-lg: none;
+      --shadow-xl: none;
     }
 
     @media (prefers-color-scheme: dark) {
       :root {
         --hover-bg: rgba(255, 255, 255, 0.08);
+        --shadow-sm: none;
+        --shadow-md: none;
+        --shadow-lg: none;
+        --shadow-xl: none;
       }
     }
 
@@ -65,12 +80,7 @@
     }
 
     .logout-btn:hover {
-      opacity: 0.9;
-      box-shadow: var(--shadow-md);
-    }
-
-    .logout-btn:active {
-      transform: scale(0.98);
+      opacity: 0.85;
     }
 
     .tabs {
@@ -82,6 +92,11 @@
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
       overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .tabs::-webkit-scrollbar {
+      display: none;
     }
 
     .tab {
@@ -144,6 +159,8 @@
       border-radius: var(--radius-md);
       padding: 16px;
       transition: all var(--transition-base);
+      overflow: hidden;
+      min-width: 0;
     }
 
     .user-item:hover {
@@ -164,6 +181,7 @@
       font-size: 14px;
       color: var(--accent-color);
       font-family: 'Courier New', monospace;
+      word-break: break-all;
     }
 
     .user-nickname {
@@ -207,7 +225,6 @@
       width: 100%;
       height: 100%;
       background-color: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(4px);
     }
 
     .modal.show {
@@ -303,7 +320,6 @@
       outline: none;
       border-color: var(--accent-color);
       background-color: var(--card-bg);
-      box-shadow: 0 0 0 3px var(--accent-light);
     }
 
     .form-actions {
@@ -368,12 +384,7 @@
     }
 
     .btn:hover {
-      opacity: 0.9;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .btn:active {
-      transform: scale(0.97);
+      opacity: 0.85;
     }
 
     .user-data {
@@ -397,12 +408,15 @@
       overflow-x: auto;
       max-height: 400px;
       overflow-y: auto;
+      max-width: 100%;
     }
 
     .json-viewer pre {
       margin: 0;
       white-space: pre-wrap;
       word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-all;
       color: var(--text-color);
       line-height: 1.5;
     }
@@ -524,7 +538,6 @@
       outline: none;
       border-color: var(--accent-color);
       background-color: var(--card-bg);
-      box-shadow: 0 0 0 3px var(--accent-light);
     }
 
     .log-viewer {
@@ -559,7 +572,7 @@
     }
 
     .badge-success {
-      background: linear-gradient(135deg, var(--success-color), #059669);
+      background: var(--success-color);
       color: white;
     }
 
@@ -605,7 +618,7 @@
         gap: 8px;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
-        padding-bottom: 8px;
+        padding-bottom: 4px;
       }
 
       .tabs::-webkit-scrollbar {
@@ -772,6 +785,20 @@
       }
     }
 
+    /* 防止横向溢出 */
+    table {
+      display: block;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tab.active {
+        background: #3A3A3A;
+        color: #EBEBEB;
+      }
+    }
+
     /* Animations */
     @keyframes pulse {
       0%, 100% {
@@ -786,8 +813,16 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Admin Control Panel</h1>
-      <a href="/admin/logout" class="logout-btn">Logout</a>
+      <h1>JiETNG Panel</h1>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button id="notif-toggle-btn" onclick="toggleBrowserNotifications()"
+                title="Enable/Disable browser notifications"
+                style="background:none; border:1px solid var(--border-color); border-radius:20px; padding:4px 12px; cursor:pointer; font-size:14px; color:var(--text-color); display:flex; align-items:center; gap:5px;">
+          <span id="notif-toggle-icon">✕</span>
+          <span id="notif-toggle-label" style="font-size:12px;">Notifications</span>
+        </button>
+        <a href="/admin/logout" class="logout-btn">Logout</a>
+      </div>
     </div>
 
     <div class="tabs">
@@ -799,6 +834,7 @@
       <button class="tab" onclick="switchTab('tipad')">Tip/Ad</button>
       <button class="tab" onclick="switchTab('backups')">Backups</button>
       <button class="tab" onclick="switchTab('logs')">Logs</button>
+      <button class="tab" id="notifications-tab-btn" onclick="switchTab('notifications')">Notifications <span id="notification-badge" style="display:none; background:#e74c3c; color:#fff; border-radius:10px; padding:1px 6px; font-size:11px; margin-left:4px;"></span></button>
     </div>
 
     <!-- Users Tab -->
@@ -1263,6 +1299,23 @@
     </div>
   </div>
 
+    <!-- Notifications Tab -->
+    <div id="notifications-tab" class="tab-content">
+      <div class="section">
+        <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>System Notifications</span>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary" onclick="refreshNotifications()">Refresh</button>
+            <button class="btn btn-danger" onclick="clearNotifications()">Clear</button>
+          </div>
+        </div>
+        <div id="notifications-list">
+          <div style="text-align:center; opacity:0.5; padding:20px;">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Edit User Modal -->
   <div id="editUserModal" class="modal">
     <div class="modal-content">
@@ -1466,6 +1519,11 @@
         loadMemoryStats();
       }
 
+      // 如果切换到notifications标签，加载通知
+      if (tabName === 'notifications') {
+        refreshNotifications();
+      }
+
       // 如果切换到cache标签，加载缓存进度和DXData状态
       if (tabName === 'cache') {
         loadCacheProgress();
@@ -1475,6 +1533,12 @@
 
     // Restore tab on page load
     window.addEventListener('DOMContentLoaded', function() {
+      // 从通知点击进入时，hash 为 #notifications，优先跳转并刷新
+      if (window.location.hash === '#notifications') {
+        const tabBtn = document.querySelector('.tab[onclick*="notifications"]');
+        if (tabBtn) { tabBtn.click(); return; }
+      }
+
       const savedTab = localStorage.getItem('admin_active_tab');
       if (savedTab && document.getElementById(savedTab + '-tab')) {
         // Hide all tabs first
@@ -1489,9 +1553,19 @@
         document.getElementById(savedTab + '-tab').classList.add('active');
         document.querySelector('.tab[onclick*="' + savedTab + '"]').classList.add('active');
 
-        // 如果恢复的是logs标签，滚动到底部
+        // 恢复标签时触发对应的数据加载
         if (savedTab === 'logs') {
           setTimeout(scrollLogsToBottom, 100);
+        } else if (savedTab === 'notices') {
+          loadNotices();
+        } else if (savedTab === 'tipad') {
+          loadTipAds();
+        } else if (savedTab === 'backups') {
+          loadBackups();
+        } else if (savedTab === 'notifications') {
+          refreshNotifications();
+        } else if (savedTab === 'stats') {
+          loadMemoryStats();
         }
       }
 
@@ -1843,6 +1917,218 @@
 
       return html;
     }
+
+    function refreshNotifications() {
+      fetch('/admin/notifications')
+        .then(res => res.json())
+        .then(data => {
+          const list = document.getElementById('notifications-list');
+          const badge = document.getElementById('notification-badge');
+
+          // 更新 badge
+          if (data.length > 0) {
+            badge.textContent = data.length;
+            badge.style.display = 'inline';
+          } else {
+            badge.style.display = 'none';
+          }
+
+          if (data.length === 0) {
+            list.innerHTML = '<div style="text-align:center; opacity:0.5; padding:20px;">No notifications</div>';
+            return;
+          }
+
+          list.innerHTML = data.map((n, i) => `
+            <div style="border:1px solid var(--border-color); border-radius:8px; margin-bottom:12px; overflow:hidden;">
+              <div style="background:var(--card-bg); padding:12px 16px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;"
+                   onclick="toggleNotification(${i})">
+                <div>
+                  <span style="color:#e74c3c; font-weight:600;">⚠ ${escapeHtml(n.title)}</span>
+                  <span style="margin-left:12px; opacity:0.5; font-size:12px;">${n.timestamp}</span>
+                  ${n.user_id !== 'Unknown' ? `<br /><span style="margin-left:8px; font-size:12px; color:var(--primary-color);">User: ${escapeHtml(n.user_id)}</span>` : ''}
+                </div>
+                <span id="notif-arrow-${i}" style="opacity:0.5;">▶</span>
+              </div>
+              <div id="notif-detail-${i}" style="display:none; padding:12px 16px; background:var(--bg-color); border-top:1px solid var(--border-color);">
+                ${Object.keys(n.context).length > 0 ? `
+                  <div style="margin-bottom:10px; font-size:12px; opacity:0.7;">
+                    ${Object.entries(n.context).map(([k,v]) => `<span style="margin-right:12px;"><b>${escapeHtml(k)}:</b> ${escapeHtml(String(v))}</span>`).join('')}
+                  </div>` : ''}
+                <pre style="white-space:pre-wrap; word-break:break-all; font-size:12px; margin:0; opacity:0.85;">${escapeHtml(n.details)}</pre>
+              </div>
+            </div>
+          `).join('');
+        })
+        .catch(() => {
+          document.getElementById('notifications-list').innerHTML =
+            '<div style="text-align:center; color:#e74c3c; padding:20px;">Failed to load notifications</div>';
+        });
+    }
+
+    function toggleNotification(i) {
+      const detail = document.getElementById(`notif-detail-${i}`);
+      const arrow = document.getElementById(`notif-arrow-${i}`);
+      const visible = detail.style.display !== 'none';
+      detail.style.display = visible ? 'none' : 'block';
+      arrow.textContent = visible ? '▶' : '▼';
+    }
+
+    function clearNotifications() {
+      if (!confirm('Clear all notifications?')) return;
+      fetch('/admin/notifications', { method: 'DELETE', headers: {'X-CSRFToken': '{{ csrf_token() }}'} })
+        .then(res => res.json())
+        .then(() => refreshNotifications());
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ===== Service Worker 注册（PWA 支持） =====
+    let _swRegistration = null;
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/admin/' })
+        .then(reg => { _swRegistration = reg; })
+        .catch(() => {});
+
+      // 收到 SW 消息（点击通知时跳转 tab 并刷新）
+      navigator.serviceWorker.addEventListener('message', e => {
+        if (e.data?.type === 'OPEN_TAB') {
+          const tabBtn = document.querySelector(`.tab[onclick*="${e.data.tab}"]`);
+          if (tabBtn) tabBtn.click();
+        }
+      });
+    }
+
+    // ===== 浏览器通知开关（Web Push） =====
+    function _urlB64ToUint8Array(b64) {
+      const pad = '='.repeat((4 - b64.length % 4) % 4);
+      const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+      return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+    }
+
+    async function _getSubscription() {
+      const reg = _swRegistration || await navigator.serviceWorker.ready;
+      return reg.pushManager.getSubscription();
+    }
+
+    async function _applyNotifToggleUI() {
+      const icon = document.getElementById('notif-toggle-icon');
+      const label = document.getElementById('notif-toggle-label');
+      const btn = document.getElementById('notif-toggle-btn');
+      const sub = await _getSubscription().catch(() => null);
+      if (sub) {
+        icon.textContent = '✓';
+        label.textContent = 'Notifications On';
+        btn.style.borderColor = 'var(--primary-color)';
+        btn.style.color = 'var(--primary-color)';
+      } else {
+        icon.textContent = '✕';
+        label.textContent = 'Notifications Off';
+        btn.style.borderColor = 'var(--border-color)';
+        btn.style.color = 'var(--text-color)';
+      }
+    }
+
+    async function toggleBrowserNotifications() {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        alert('Push notifications are not supported in this browser.');
+        return;
+      }
+
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        _swRegistration = reg;
+        const sub = await reg.pushManager.getSubscription();
+
+        if (sub) {
+          // 关闭：取消订阅
+          await sub.unsubscribe();
+          fetch('/admin/push-subscription', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
+            body: JSON.stringify({ endpoint: sub.endpoint })
+          });
+          _applyNotifToggleUI();
+          return;
+        }
+
+        // 开启：请求权限 → 订阅 push
+        if (Notification.permission === 'denied') {
+          alert('Browser notifications are blocked. Please allow them in your browser settings.');
+          return;
+        }
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          alert('Notification permission was denied.');
+          return;
+        }
+
+        const vapidRes = await fetch('/admin/vapid-public-key');
+        if (!vapidRes.ok) {
+          alert('Failed to fetch VAPID key: ' + vapidRes.status);
+          return;
+        }
+        const vapidKey = await vapidRes.text();
+
+        const newSub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: _urlB64ToUint8Array(vapidKey)
+        });
+        await fetch('/admin/push-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
+          body: JSON.stringify(newSub.toJSON())
+        });
+        _applyNotifToggleUI();
+
+      } catch (e) {
+        alert('Notification error: ' + e.name + ': ' + e.message);
+      }
+    }
+
+    // 初始化 UI 状态
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(reg => {
+        _swRegistration = reg;
+        _applyNotifToggleUI();
+      });
+    }
+
+    // 定期轮询：更新 badge，无 Push 订阅时作为 fallback 弹通知
+    let _lastNotifCount = -1;  // -1 = 尚未初始化，首次不弹通知
+    setInterval(() => {
+      fetch('/admin/notifications')
+        .then(res => res.json())
+        .then(async data => {
+          const badge = document.getElementById('notification-badge');
+          if (data.length > 0) {
+            badge.textContent = data.length;
+            badge.style.display = 'inline';
+          } else {
+            badge.style.display = 'none';
+          }
+
+          if (_lastNotifCount === -1) {
+            // 首次：仅初始化基线，不弹通知
+            _lastNotifCount = data.length;
+            return;
+          }
+
+          // 有新通知、有权限、且没有 Push 订阅时才用 fallback 弹
+          if (data.length > _lastNotifCount && Notification.permission === 'granted') {
+            const sub = await _getSubscription().catch(() => null);
+            if (!sub) {
+              const latest = data[0];
+              new Notification(`JiETNG: ${latest.title}`, {
+                body: `${latest.timestamp}${latest.user_id !== 'Unknown' ? '  User: ' + latest.user_id : ''}`,
+                tag: 'jietng-fallback'
+              });
+            }
+          }
+          _lastNotifCount = data.length;
+        }).catch(() => {});
+    }, 30000);
 
     function refreshLogs() {
       fetch('/admin/get_logs')
@@ -2613,7 +2899,7 @@
         return;
       }
 
-      let html = '<table style="width: 100%; border-collapse: collapse;">';
+      let html = '<div style="overflow-x: auto; -webkit-overflow-scrolling: touch;"><table style="width: 100%; border-collapse: collapse; min-width: 500px;">';
       html += `
         <thead>
           <tr style="border-bottom: 2px solid var(--border-color);">
@@ -2650,7 +2936,7 @@
         `;
       });
 
-      html += '</tbody></table>';
+      html += '</tbody></table></div>';
       listEl.innerHTML = html;
     }
 

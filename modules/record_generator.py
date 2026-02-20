@@ -22,20 +22,6 @@ from modules.image_manager import *
 
 logger = logging.getLogger(__name__)
 
-def _safe_parse_dx_score(dx_score_str):
-    """安全解析 dx_score 字符串 (如 '613 / 666') 为浮点数"""
-    try:
-        match = re.match(r'^\s*(\d+)\s*/\s*(\d+)\s*$', str(dx_score_str))
-        if match:
-            numerator = int(match.group(1))
-            denominator = int(match.group(2))
-            if denominator == 0:
-                return 0.0
-            return numerator / denominator
-        return float(dx_score_str)
-    except (ValueError, TypeError):
-        return 0.0
-
 def _get_difficulty_color(difficulty):
     colors = {
         "basic": (117, 181, 32),     # 绿色
@@ -56,9 +42,8 @@ def create_thumbnail_in_line(song):
     text_color = (0, 0, 0)
 
     # --- 基础分数 ---
-    dx_score = _safe_parse_dx_score(song['dx_score'])
     draw.text((20, 0), song['score'], fill=text_color, font=font_record_name)
-    draw.text((25, 72), f"{song['dx_score']} → {dx_score * 100:.1f}%", fill=text_color, font=font_record_info)
+    draw.text((25, 72), f"{song['dx_score']} → {song['dx_percentage'] * 100:.1f}%", fill=text_color, font=font_record_info)
 
     # --- 游玩信息 ---
     if 'last_play_time' in song and 'play_count' in song:
@@ -94,32 +79,13 @@ def create_thumbnail_in_line(song):
     )
 
     # --- dx_star 图标 ---
-    if 'dx_score' in song and song['dx_score']:
-        try:
-            star_num = 0
-            if 0 <= dx_score < 0.85:
-                star_num = 0
-            elif 0.85 <= dx_score < 0.9:
-                star_num = 1
-            elif 0.9 <= dx_score < 0.93:
-                star_num = 2
-            elif 0.93 <= dx_score < 0.95:
-                star_num = 3
-            elif 0.95 <= dx_score < 0.97:
-                star_num = 4
-            elif 0.97 <= dx_score <= 1:
-                star_num = 5
-
-            paste_icon_optimized(
-                img, {'star': str(star_num)}, key='star',
-                size=(164, 33),
-                position=(227, 170),
-                save_dir=ICON_DX_STAR_DIR,
-                url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_dxstar_detail_{value}.png"
-            )
-
-        except Exception as e:
-            logger.error(f"[RecordGenerator] ✗ Failed to calculate dx_star: error={e}")
+    paste_icon_optimized(
+        img, song, key='dx_star',
+        size=(164, 33),
+        position=(227, 170),
+        save_dir=ICON_DX_STAR_DIR,
+        url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_dxstar_detail_{value}.png"
+    )
 
     # --- 数值 ---
     draw.text((575, 165), f"{song['internalLevelValue']:.1f} → {song['ra']}", fill=(0, 0, 0), font=font_record_info, anchor="ra")
@@ -207,36 +173,16 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     draw.line([(0, thumb_size[1]), (thumb_size[0], thumb_size[1])], fill=(255, 255, 255), width=90)
 
     # --- dx_star 图标 ---
-    if 'dx_score' in song and song['dx_score']:
-        try:
-            dx_score = _safe_parse_dx_score(song['dx_score'])
-            star_num = 0
-            if 0 <= dx_score < 0.85:
-                star_num = 0
-            elif 0.85 <= dx_score < 0.9:
-                star_num = 1
-            elif 0.9 <= dx_score < 0.93:
-                star_num = 2
-            elif 0.93 <= dx_score < 0.95:
-                star_num = 3
-            elif 0.95 <= dx_score < 0.97:
-                star_num = 4
-            elif 0.97 <= dx_score <= 1:
-                star_num = 5
-
-            # 根据缩略图尺寸动态计算星星图标大小
-            star_width = int(thumb_size[0] * 0.267)
-            star_height = int(thumb_size[1] * 0.107)
-            paste_icon_optimized(
-                img, {'star': str(star_num)}, key='star',
-                size=(star_width, star_height),
-                position=(padding + cover_size, thumb_size[1] - int(thumb_size[1] * 0.213)),
-                save_dir=ICON_DX_STAR_DIR,
-                url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_dxstar_detail_{value}.png"
-            )
-
-        except Exception as e:
-            logger.error(f"[RecordGenerator] ✗ Failed to calculate dx_star: error={e}")
+    # 根据缩略图尺寸动态计算星星图标大小
+    star_width = int(thumb_size[0] * 0.267)
+    star_height = int(thumb_size[1] * 0.107)
+    paste_icon_optimized(
+        img, song, key='dx_star',
+        size=(star_width, star_height),
+        position=(padding + cover_size, thumb_size[1] - int(thumb_size[1] * 0.213)),
+        save_dir=ICON_DX_STAR_DIR,
+        url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_dxstar_detail_{value}.png"
+    )
 
     # --- combo_icon 图标 ---
     # 根据缩略图尺寸动态计算图标大小

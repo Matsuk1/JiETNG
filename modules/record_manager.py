@@ -5,6 +5,7 @@
 """
 
 import logging
+import re
 from typing import List, Dict, Any, Optional
 from modules.config_loader import (
     MAIMAI_VERSION,
@@ -163,6 +164,37 @@ def get_ideal_score(score: float) -> float:
     else:
         return score, None
 
+def parse_dx_score(dx_score_str):
+    """解析 dx_score 字符串 (如 '613 / 666') 为浮点数"""
+    try:
+        match = re.match(r'^\s*(\d+)\s*/\s*(\d+)\s*$', str(dx_score_str))
+        if match:
+            numerator = int(match.group(1))
+            denominator = int(match.group(2))
+            if denominator == 0:
+                return 0.0
+            return numerator / denominator
+        return float(dx_score_str)
+    except (ValueError, TypeError):
+        return 0.0
+
+def calc_dx_star(dx_percentage):
+    star_num = 0
+    if 0 <= dx_percentage < 0.85:
+        star_num = 0
+    elif 0.85 <= dx_percentage < 0.9:
+        star_num = 1
+    elif 0.9 <= dx_percentage < 0.93:
+        star_num = 2
+    elif 0.93 <= dx_percentage < 0.95:
+        star_num = 3
+    elif 0.95 <= dx_percentage < 0.97:
+        star_num = 4
+    elif 0.97 <= dx_percentage <= 1:
+        star_num = 5
+
+    return star_num
+
 def read_record(user_id: str, recent: bool = False, recent_type: bool = False) -> List[Dict[str, Any]]:
     """
     从数据库读取用户成绩记录
@@ -285,6 +317,8 @@ def get_detailed_info(song_record, ver="jp", recent_type=False):
                     record['ra'] = get_single_ra(float(record['internalLevelValue']), float(record['score'][:-1]), ap_clear, recent_type)
                     record['cover_url'] = song['cover_url']
                     record['cover_name'] = song['cover_name']
+                    record['dx_percentage'] = parse_dx_score(record['dx_score'])
+                    record['dx_star'] = calc_dx_star(record['dx_percentage'])
                     break
 
         if not found:

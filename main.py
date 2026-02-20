@@ -74,7 +74,6 @@ from linebot.v3.webhooks import (
 # Song and record generators
 from modules.song_generator import song_info_generate, generate_version_list
 from modules.record_generator import *
-from modules.record_generator import _safe_parse_dx_score
 
 # User and data managers
 from modules.user_manager import *
@@ -126,7 +125,9 @@ from modules.image_manager import *
 # System utilities
 from modules.system_checker import run_system_check, clean_unbound_users
 from modules.rate_limiter import check_rate_limit
-from modules.line_messenger import smart_reply, smart_push, notify_admins_error
+from modules.line_messenger import smart_reply, smart_push, notify_admins_error, notify_on_error
+from modules import notification_manager
+from modules.config_loader import VAPID_PUBLIC_KEY
 from modules.song_matcher import find_matching_songs, is_exact_song_match, normalize_text
 from modules.memory_manager import memory_manager, cleanup_user_caches, cleanup_rate_limiter_tracking
 
@@ -146,8 +147,6 @@ TASK_TIMEOUT_SECONDS = 120
 
 # 搜索结果限制
 MAX_SEARCH_RESULTS = 10
-# 是否启用错误通知
-ERROR_NOTIFICATION_ENABLED = True
 
 # ==================== 日志配置 ====================
 
@@ -302,7 +301,6 @@ def run_task_with_limit(func: callable, args: tuple, sem: threading.Semaphore,
                 task_tracking['cancelled'].discard(task_id)
                 task_tracking['queued'] = [t for t in task_tracking['queued'] if t.get('id') != task_id]
                 logger.info(f"[Task] ⚠ Cancelled: task_id={task_id}")
-                q.task_done()
                 return
 
     # 添加到运行中的任务
@@ -351,21 +349,23 @@ def run_task_with_limit(func: callable, args: tuple, sem: threading.Semaphore,
                         if len(args) > 1 and isinstance(args[1], str):
                             reply_token = args[1]
 
-                # 通知管理员并回复用户
+                # 通知管理员
                 notify_admins_error(
                     error_title=f"Task Execution Failed: {func.__name__}",
                     error_details=f"{type(e).__name__}: {str(e)}\n\n{traceback.format_exc()}",
                     context={
                         "Task": func.__name__,
                         "Error Type": type(e).__name__,
-                        "User ID": user_id or "Unknown"
                     },
-                    admin_id=ADMIN_ID,
-                    configuration=configuration,
-                    error_notification_enabled=ERROR_NOTIFICATION_ENABLED,
-                    user_id=user_id,
-                    reply_token=reply_token
+                    user_id=user_id
                 )
+
+                # 回复用户
+                if user_id and reply_token:
+                    try:
+                        smart_reply(user_id, reply_token, system_error(user_id), configuration)
+                    except Exception:
+                        pass
             finally:
                 task_done.set()
 
@@ -412,54 +412,36 @@ def run_task_with_limit(func: callable, args: tuple, sem: threading.Semaphore,
             STATS['response_time'] += response_time
             logger.info(f"[Task] ✓ Completed: function={func.__name__}, total={STATS['tasks_processed']}, avg_time={STATS['response_time']/STATS['tasks_processed']:.1f}ms")
 
-        q.task_done()
+
+@notify_on_error("Image Task Worker Error", context={"Worker": "image_worker"}, reraise=False)
+def _run_image_task(item):
+    func, args, task_id = (item if len(item) == 3 else (*item, None))
+    run_task_with_limit(func, args, image_concurrency_limit, image_queue, task_id, False)
 
 
 def image_worker() -> None:
     """图片生成任务队列的工作线程"""
     while True:
+        item = image_queue.get()
         try:
-            item = image_queue.get()
-            if len(item) == 3:
-                func, args, task_id = item
-            else:
-                func, args = item
-                task_id = None
-            run_task_with_limit(func, args, image_concurrency_limit, image_queue, task_id, False)
-        except Exception as e:
-            logger.error(f"[Worker] ✗ Image worker error: error={e}", exc_info=True)
-            notify_admins_error(
-                error_title="Image Task Worker Error",
-                error_details=f"{type(e).__name__}: {str(e)}\n\n{traceback.format_exc()}",
-                context={"Worker": "image_worker"},
-                admin_id=ADMIN_ID,
-                configuration=configuration,
-                error_notification_enabled=ERROR_NOTIFICATION_ENABLED
-            )
+            _run_image_task(item)
+        finally:
             image_queue.task_done()
+
+
+@notify_on_error("Web Task Worker Error", context={"Worker": "webtask_worker"}, reraise=False)
+def _run_webtask(item):
+    func, args, task_id = (item if len(item) == 3 else (*item, None))
+    run_task_with_limit(func, args, webtask_concurrency_limit, webtask_queue, task_id, True)
 
 
 def webtask_worker() -> None:
     """Web任务队列的工作线程"""
     while True:
+        item = webtask_queue.get()
         try:
-            item = webtask_queue.get()
-            if len(item) == 3:
-                func, args, task_id = item
-            else:
-                func, args = item
-                task_id = None
-            run_task_with_limit(func, args, webtask_concurrency_limit, webtask_queue, task_id, True)
-        except Exception as e:
-            logger.error(f"[Worker] ✗ Web worker error: error={e}", exc_info=True)
-            notify_admins_error(
-                error_title="Web Task Worker Error",
-                error_details=f"{type(e).__name__}: {str(e)}\n\n{traceback.format_exc()}",
-                context={"Worker": "webtask_worker"},
-                admin_id=ADMIN_ID,
-                configuration=configuration,
-                error_notification_enabled=ERROR_NOTIFICATION_ENABLED
-            )
+            _run_webtask(item)
+        finally:
             webtask_queue.task_done()
 
 
@@ -669,7 +651,7 @@ def check_user_permission(user_id, token_id):
 # ==================== Flask 路由 ====================
 
 @app.route("/linebot/webhook", methods=['POST'])
-@csrf.exempt  # LINE Webhook 使用签名验证，无需 CSRF token
+@csrf.exempt
 def linebot_reply():
     """
     LINE Webhook 接收端点
@@ -689,43 +671,69 @@ def linebot_reply():
         request.destination = destination
         handler.handle(body, signature)
 
-    except json.JSONDecodeError as e:
-        logger.error(f"[Webhook] ✗ JSON parse failed: error={e}")
-        notify_admins_error(
-            error_title="Webhook JSON Parse Failed",
-            error_details=f"{type(e).__name__}: {str(e)}",
-            context={"Body": body[:200]},
-            admin_id=ADMIN_ID,
-            configuration=configuration,
-            error_notification_enabled=ERROR_NOTIFICATION_ENABLED
-        )
-        abort(400)
-
-    except InvalidSignatureError as e:
-        logger.error(f"[Webhook] ✗ LINE signature verification failed: error={e}")
-        notify_admins_error(
-            error_title="LINE Signature Verification Failed",
-            error_details=f"{type(e).__name__}: {str(e)}",
-            context={"Signature": signature[:50]},
-            admin_id=ADMIN_ID,
-            configuration=configuration,
-            error_notification_enabled=ERROR_NOTIFICATION_ENABLED
-        )
-        abort(400)
-
     except Exception as e:
-        logger.error(f"[Webhook] ✗ Handling error: error={e}", exc_info=True)
+        is_bad_request = isinstance(e, (json.JSONDecodeError, InvalidSignatureError))
+        logger.error(f"[Webhook] ✗ {'Bad request' if is_bad_request else 'Handling error'}: error={e}", exc_info=not is_bad_request)
+
+        # 尝试回复用户错误消息（非坏请求时，json_data 已解析成功）
+        if not is_bad_request:
+            try:
+                events = json_data.get('events', [])
+                if events:
+                    ev = events[0]
+                    reply_token = ev.get('replyToken')
+                    uid = ev.get('source', {}).get('userId')
+                    if reply_token and uid:
+                        smart_reply(uid, reply_token, system_error(uid), configuration, addition=False)
+            except Exception:
+                pass
+
+        _notif_uid = None
+        if not is_bad_request:
+            try:
+                _notif_uid = json_data.get('events', [{}])[0].get('source', {}).get('userId')
+            except Exception:
+                pass
         notify_admins_error(
-            error_title="Webhook Handling Error",
+            error_title="Webhook Error",
             error_details=f"{type(e).__name__}: {str(e)}\n\n{traceback.format_exc()}",
-            context={"Event": "Webhook"},
-            admin_id=ADMIN_ID,
-            configuration=configuration,
-            error_notification_enabled=ERROR_NOTIFICATION_ENABLED
+            context={"Error": type(e).__name__, "Detail": str(e)[:200]},
+            user_id=_notif_uid
         )
-        abort(500)
+        abort(400 if is_bad_request else 500)
 
     return 'OK', 200
+
+@app.route("/static/admin-icon.png")
+def admin_pwa_icon():
+    """动态生成带背景和留白的 PWA 图标"""
+    size = 512
+    padding = int(size * 0.18)  # 18% 留白
+    logo_size = size - padding * 2
+
+    bg_color = (22, 33, 62, 255)  # 深蓝背景，与 admin panel 风格一致
+
+    canvas = Image.new('RGBA', (size, size), bg_color)
+
+    with Image.open(LOGO_PATH) as logo:
+        logo = logo.convert('RGBA')
+        logo = logo.resize((logo_size, logo_size), Image.LANCZOS)
+        canvas.paste(logo, (padding, padding), logo)
+
+    buf = BytesIO()
+    canvas.convert('RGB').save(buf, 'PNG')
+    buf.seek(0)
+    return send_file(buf, mimetype='image/png')
+
+
+@app.route("/sw.js")
+def service_worker():
+    """提供 Service Worker 文件（必须从根路径提供以控制 /admin/ 范围）"""
+    response = app.send_static_file('sw.js')
+    response.headers['Content-Type'] = 'application/javascript'
+    response.headers['Service-Worker-Allowed'] = '/admin/'
+    return response
+
 
 @app.route("/linebot/adding", methods=["GET"])
 @app.route("/linebot/add", methods=["GET"])
@@ -2306,7 +2314,7 @@ def generate_profile(user_info, scale=1, user_id=None):
         actual_char_width = char_bbox[2] - char_bbox[0]
         # 在固定宽度区域内居中
         offset = (char_width - actual_char_width) / 2
-        draw.text((start_x + i * char_width + offset, 28), char, fill=(234, 189, 22), font=font_profile)
+        draw.text((start_x + i * char_width + offset, 28), char, fill=(255, 255, 255), font=font_profile)
 
     # 绘制昵称
     draw.rounded_rectangle([219, 89, 671, 145], radius=10, fill=(255, 255, 255), outline=(180, 180, 180), width=2)
@@ -2328,8 +2336,9 @@ def generate_profile(user_info, scale=1, user_id=None):
 
 def select_records(song_record, type="best50", command="", ver="jp"):
     page = 1
+    sort_rule = lambda x: (x["ra"], float(x["score"][:-1]))
     if not command == "":
-        cmds = re.findall(r"-(\w+)\s+([^ -][^-]*)", command)
+        cmds = re.findall(r"-(\w+)(?:\s+([^-]+))?", command)
         for cmd, cmd_num in cmds:
             if cmd == "diff":
                 # 处理难度筛选：-diff bas adv exp mas rem
@@ -2374,13 +2383,24 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                     song_record = list(filter(lambda x: ra_start <= x['ra'] <= ra_stop, song_record))
             elif cmd == "dx":
                 parts = cmd_num.split()
-                if len(parts) == 1:
-                    dx_score = int(re.sub(r"\D", "", parts[0]))
-                    song_record = list(filter(lambda x: _safe_parse_dx_score(x['dx_score']) * 100 >= dx_score, song_record))
+                if not len(parts):
+                    sort_rule = lambda x: (x["dx_percentage"], float(x["score"][:-1]))
+                elif len(parts) == 1:
+                    dx_percentage = int(re.sub(r"\D", "", parts[0]))
+                    song_record = list(filter(lambda x: x['dx_percentage'] * 100 >= dx_percentage, song_record))
                 else:
                     dx_start = int(re.sub(r"\D", "", parts[0]))
                     dx_stop = int(re.sub(r"\D", "", parts[1]))
-                    song_record = list(filter(lambda x: dx_start <= _safe_parse_dx_score(x['dx_score']) * 100 <= dx_stop, song_record))
+                    song_record = list(filter(lambda x: dx_start <= x['dx_percentage'] * 100 <= dx_stop, song_record))
+            elif cmd == "star":
+                parts = cmd_num.split()
+                if len(parts) == 1:
+                    dx_star = int(re.sub(r"\D", "", parts[0]))
+                    song_record = list(filter(lambda x: x['dx_star'] >= dx_star, song_record))
+                else:
+                    dx_start = int(re.sub(r"\D", "", parts[0]))
+                    dx_stop = int(re.sub(r"\D", "", parts[1]))
+                    song_record = list(filter(lambda x: dx_start <= x['dx_star'] <= dx_stop, song_record))
             elif cmd == "scr":
                 parts = cmd_num.split()
                 if len(parts) == 1:
@@ -2422,64 +2442,64 @@ def select_records(song_record, type="best50", command="", ver="jp"):
     down_songs_data = list(filter(lambda x: x['new_song'] == True, song_record))
 
     if type == "best50":
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
 
     elif type == "best40":
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*25 : page*25]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*25 : page*25]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
 
     elif type == "best100":
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*70 : page*70]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*30 : page*30]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*70 : page*70]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*30 : page*30]
 
     elif type == "best35":
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
 
     elif type == "best15":
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
 
     elif type == "allb35":
-        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
+        up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
 
     elif type == "allb50":
-        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*50 : page*50]
+        up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*50 : page*50]
 
     elif type == "allb100":
-        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*100 : page*100]
+        up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*100 : page*100]
 
     elif type == "allb200":
-        up_songs = sorted(song_record, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*200 : page*200]
+        up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*200 : page*200]
 
     elif type == "nxtb50":
         up_addition_songs = list(filter(lambda x: x['version'] != MAIMAI_VERSION[ver][-1], down_songs_data))
         down_songs_data = list(filter(lambda x: x['version'] == MAIMAI_VERSION[ver][-1], down_songs_data))
         up_songs_data += up_addition_songs
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
 
     elif type == "nxtb35":
         up_addition_songs = list(filter(lambda x: x['version'] != MAIMAI_VERSION[ver][-1], down_songs_data))
         up_songs_data += up_addition_songs
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
 
     elif type == "nxtb15":
         down_songs_data = list(filter(lambda x: x['version'] == MAIMAI_VERSION[ver][-1], down_songs_data))
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
 
     elif type == "apb50":
         up_songs_data = [x for x in up_songs_data if x.get("combo_icon") in ("ap", "app")]
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
 
         down_songs_data = [x for x in down_songs_data if x.get("combo_icon") in ("ap", "app")]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
 
     elif type == "fdxb50":
         up_songs_data = [x for x in up_songs_data if x.get("sync_icon") in ("fdx", "fdxp")]
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
 
         down_songs_data = [x for x in down_songs_data if x.get("sync_icon") in ("fdx", "fdxp")]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
 
     elif type == "unknown":
         up_songs = list(filter(lambda x: x['version'] == "UNKNOWN", song_record))
@@ -2506,8 +2526,8 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 rcd['combo_icon'] = "app"
             rcd['ra'] = get_single_ra(rcd['internalLevelValue'], ideal_score, ideal_score == 101)
 
-        up_songs = sorted(up_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*35 : page*35]
-        down_songs = sorted(down_songs_data, key=lambda x: (x["ra"], float(x["score"][:-1])), reverse=True)[(page-1)*15 : page*15]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
 
     return up_songs, down_songs;
 
@@ -3077,18 +3097,14 @@ def handle_accept_perm_request(user_id: str, request_id: str) -> TextMessage:
             requester_name=result.get('requester_name', result['token_id'])
         )
     else:
-        # 不直接暴露错误详情给用户，使用通用错误消息
         notify_admins_error(
             error_title="Permission Request Accept Error",
             error_details=f"Error: {result['error']}\nMessage: {result['message']}\nRequest ID: {request_id}",
             context={
-                "User ID": user_id,
                 "Request ID": request_id,
                 "Error Type": result['error']
             },
-            admin_id=ADMIN_ID,
-            configuration=configuration,
-            error_notification_enabled=ERROR_NOTIFICATION_ENABLED
+            user_id=user_id
         )
         text = get_multilingual_text(system_error_text, user_id)
 
@@ -3115,18 +3131,14 @@ def handle_reject_perm_request(user_id: str, request_id: str) -> TextMessage:
             requester_name=result.get('requester_name', result['token_id'])
         )
     else:
-        # 不直接暴露错误详情给用户，使用通用错误消息
         notify_admins_error(
             error_title="Permission Request Reject Error",
             error_details=f"Error: {result['error']}\nMessage: {result['message']}\nRequest ID: {request_id}",
             context={
-                "User ID": user_id,
                 "Request ID": request_id,
                 "Error Type": result['error']
             },
-            admin_id=ADMIN_ID,
-            configuration=configuration,
-            error_notification_enabled=ERROR_NOTIFICATION_ENABLED
+            user_id=user_id
         )
         text = get_multilingual_text(system_error_text, user_id)
 
@@ -3605,31 +3617,16 @@ def handle_sync_text_command(event):
     # ========================================
     if user_id in ADMIN_ID:
         if user_message == "dxdata update":
-            # 使用新的对比更新函数
             result = update_dxdata_with_comparison(DXDATA_URL, DXDATA_LIST)
 
-            # 使用多语言函数构建消息
             message_text = build_dxdata_update_message(result, user_id)
             reply_message = TextMessage(text=message_text)
 
-            # 回复执行命令的管理员
             smart_reply(user_id, event.reply_token, reply_message, configuration, addition=False)
-
-            # 推送通知给所有其他管理员
-            for admin_user_id in ADMIN_ID:
-                if admin_user_id != user_id:  # 不重复发送给执行命令的管理员
-                    try:
-                        # 为每个管理员构建对应语言的消息
-                        admin_message_text = build_dxdata_update_message(result, admin_user_id)
-                        notification_message = dxdata_update_notification(admin_message_text, admin_user_id)
-                        smart_push(admin_user_id, notification_message, configuration)
-                    except Exception as e:
-                        logger.error(f"[Notification] ✗ Failed to notify admin: admin_id={admin_user_id}, context=dxdata_update, error={e}")
 
             return
 
-        if user_message.startswith("devtoken "):
-            # Parse command
+        if user_message.startswith("devtoken"):
             parts = user_message.split(maxsplit=2)
 
             if len(parts) < 2:
@@ -5072,6 +5069,63 @@ def admin_dxdata_status():
         return jsonify({
             'error': str(e)
         }), 500
+
+@app.route("/admin/notifications", methods=["GET"])
+def admin_get_notifications():
+    """获取所有系统通知"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    return jsonify(notification_manager.get_notifications())
+
+
+@app.route("/admin/notifications", methods=["DELETE"])
+def admin_clear_notifications():
+    """清空所有系统通知"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    notification_manager.clear_notifications()
+    return jsonify({'success': True})
+
+
+@app.route("/admin/vapid-public-key", methods=["GET"])
+def admin_vapid_public_key():
+    """返回 VAPID 公钥（前端订阅 push 时使用）"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    return VAPID_PUBLIC_KEY, 200, {'Content-Type': 'text/plain'}
+
+
+@app.route("/admin/push-subscription", methods=["POST"])
+def admin_add_push_subscription():
+    """保存浏览器 push 订阅"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    sub = request.get_json()
+    if not sub or not sub.get('endpoint'):
+        return jsonify({'error': 'Invalid subscription'}), 400
+
+    notification_manager.add_push_subscription(sub)
+    return jsonify({'success': True})
+
+
+@app.route("/admin/push-subscription", methods=["DELETE"])
+def admin_remove_push_subscription():
+    """删除浏览器 push 订阅"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    endpoint = data.get('endpoint') if data else None
+    if not endpoint:
+        return jsonify({'error': 'Missing endpoint'}), 400
+
+    notification_manager.remove_push_subscription(endpoint)
+    return jsonify({'success': True})
+
 
 # ==================== 开发者 API ====================
 
