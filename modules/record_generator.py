@@ -1,12 +1,10 @@
 import math
 import logging
 import os
-import re
 
 from PIL import Image, ImageDraw
 
 from modules.config_loader import (
-    LOGO_PATH,
     PLATES_DIR,
     ICON_TYPE_DIR,
     ICON_SCORE_DIR,

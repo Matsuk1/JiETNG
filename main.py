@@ -3,7 +3,6 @@ JiETNG Maimai DX LINE Bot 主程序
 """
 
 import os
-import sys
 import random
 import requests
 import json

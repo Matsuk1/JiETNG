@@ -9,9 +9,7 @@ import requests
 import logging
 from PIL import Image
 from io import BytesIO
-from functools import lru_cache
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from modules.config_loader import COVERS_DIR
 
 
