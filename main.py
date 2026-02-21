@@ -2336,12 +2336,11 @@ def generate_profile(user_info, scale=1, user_id=None):
 def select_records(song_record, type="best50", command="", ver="jp"):
     page = 1
     sort_rule = lambda x: (x["ra"], float(x["score"][:-1]))
+    details = {}
     if not command == "":
         cmds = re.findall(r"-(\w+)(?:\s+([^-]+))?", command)
         for cmd, cmd_num in cmds:
-            if cmd == "diff":
-                # 处理难度筛选：-diff bas adv exp mas rem
-                # 难度简写映射
+            if cmd in ["diff", "difficulty"]:
                 diff_map = {
                     'bas': 'basic',
                     'adv': 'advanced',
@@ -2349,67 +2348,75 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                     'mas': 'master',
                     'rem': 'remaster'
                 }
-
                 raw_diffs = cmd_num.split()
                 difficulties = []
                 for d in raw_diffs:
                     d_lower = d.strip().lower()
                     if d_lower:
-                        # 支持简写和全名
                         if d_lower in diff_map:
                             difficulties.append(diff_map[d_lower])
                         elif d_lower in ['basic', 'advanced', 'expert', 'master', 'remaster']:
                             difficulties.append(d_lower)
-
-                # 筛选指定难度的记录
                 if difficulties:
                     song_record = list(filter(lambda x: x.get('difficulty', '').lower() in difficulties, song_record))
-            elif cmd == "lv":
+                    details['Diff'] = ' '.join(d for d in difficulties)
+            elif cmd in ["lv", "level"]:
                 parts = cmd_num.split()
                 if len(parts) == 1:
                     lv_start = float(parts[0])
                     song_record = list(filter(lambda x: x['internalLevelValue'] >= lv_start, song_record))
+                    details['Lv'] = f'≧ {lv_start}'
                 else:
                     lv_start, lv_stop = map(float, parts[:2])
                     song_record = list(filter(lambda x: lv_start <= x['internalLevelValue'] <= lv_stop, song_record))
-            elif cmd == "ra":
+                    details['Lv'] = f'{lv_start} ~ {lv_stop}'
+            elif cmd in ["ra", "rating"]:
                 parts = cmd_num.split()
                 if len(parts) == 1:
                     ra_start = int(parts[0])
                     song_record = list(filter(lambda x: x['ra'] >= ra_start, song_record))
+                    details['RA'] = f'≧ {ra_start}'
                 else:
                     ra_start, ra_stop = map(int, parts[:2])
                     song_record = list(filter(lambda x: ra_start <= x['ra'] <= ra_stop, song_record))
-            elif cmd == "dx":
+                    details['RA'] = f'{ra_start} ~ {ra_stop}'
+            elif cmd in ["dx", "dxscore"]:
                 parts = cmd_num.split()
                 if not len(parts):
                     sort_rule = lambda x: (x["dx_percentage"], float(x["score"][:-1]))
+                    details['Sort'] = 'DX Score'
                 elif len(parts) == 1:
                     dx_percentage = int(re.sub(r"\D", "", parts[0]))
                     song_record = list(filter(lambda x: x['dx_percentage'] * 100 >= dx_percentage, song_record))
+                    details['DxScr'] = f'≧ {dx_percentage}%'
                 else:
                     dx_start = int(re.sub(r"\D", "", parts[0]))
                     dx_stop = int(re.sub(r"\D", "", parts[1]))
                     song_record = list(filter(lambda x: dx_start <= x['dx_percentage'] * 100 <= dx_stop, song_record))
-            elif cmd == "star":
+                    details['DxScr'] = f'{dx_start}% ~ {dx_stop}%'
+            elif cmd in ["dxstar", "star"]:
                 parts = cmd_num.split()
                 if len(parts) == 1:
                     dx_star = int(re.sub(r"\D", "", parts[0]))
                     song_record = list(filter(lambda x: x['dx_star'] >= dx_star, song_record))
+                    details['Star'] = f'≧ {dx_star}'
                 else:
                     dx_start = int(re.sub(r"\D", "", parts[0]))
                     dx_stop = int(re.sub(r"\D", "", parts[1]))
                     song_record = list(filter(lambda x: dx_start <= x['dx_star'] <= dx_stop, song_record))
-            elif cmd == "scr":
+                    details['Star'] = f'{dx_start} ~ {dx_stop}'
+            elif cmd in ["score", "scr"]:
                 parts = cmd_num.split()
                 if len(parts) == 1:
                     score = float(re.sub(r"[^0-9.]", "", parts[0]))
                     song_record = list(filter(lambda x: float(x['score'].replace("%", "")) >= score, song_record))
+                    details['Scr'] = f'≧ {score:.4f}%'
                 else:
                     scr_start = float(re.sub(r"[^0-9.]", "", parts[0]))
                     scr_stop = float(re.sub(r"[^0-9.]", "", parts[1]))
                     song_record = list(filter(lambda x: scr_start <= float(x['score'].replace("%", "")) <= scr_stop, song_record))
-            elif cmd == "ver":
+                    details['Scr'] = f'{scr_start}% ~ {scr_stop}%'
+            elif cmd in ["ver", "version"]:
                 # 处理版本筛选：-ver [version1] [version2] ...
                 raw_versions = cmd_num.split()
                 versions = []
@@ -2420,7 +2427,16 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                         versions.append(processed)
                 # 筛选歌曲版本在指定列表中的记录（忽略大小写）
                 song_record = list(filter(lambda x: (x.get('version') or '').lower() in versions, song_record))
-            elif cmd == "type":
+                details['Ver'] = ""
+                for version in versions:
+                    plus = False
+                    if "plus" in version:
+                        plus = True
+                    details['Ver'] += version.lower().replace("maimaiでらっくす", "dx").replace("plus", "")[:3].strip()
+                    if plus:
+                        details['Ver'] += "+"
+                    details['Ver'] += " "
+            elif cmd in ["type", "tp"]:
                 # 处理谱面类型筛选：-type dx / -type std
                 raw_types = [t.strip().lower() for t in cmd_num.split() if t.strip()]
                 valid_types = []
@@ -2429,9 +2445,12 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                         valid_types.append(t)
                 if valid_types:
                     song_record = list(filter(lambda x: x.get('type', '').lower() in valid_types, song_record))
-            elif cmd == "page":
+                    details['Type'] = ' / '.join(t.upper() for t in valid_types)
+            elif cmd in ["page", "pg"]:
                 try:
                     page = max(1, int(cmd_num.strip()))
+                    if page > 1:
+                        details['Page'] = str(page)
                 except ValueError:
                     pass
 
@@ -2528,7 +2547,7 @@ def select_records(song_record, type="best50", command="", ver="jp"):
         up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
         down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
 
-    return up_songs, down_songs;
+    return up_songs, down_songs, details
 
 async def generate_records(user_id, id_use, type="best50", command="", ver="jp"):
     if id_use not in USERS:
@@ -2543,14 +2562,14 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
     if not len(song_record):
         return record_error(user_id)
 
-    up_songs, down_songs = select_records(song_record, type, command, ver)
+    up_songs, down_songs, details = select_records(song_record, type, command, ver)
     if not up_songs and not down_songs:
         return song_error(user_id)
 
     if type == "unknown":
         type = "未だ知らず"
 
-    record_img = generate_records_picture(up_songs, down_songs, type.upper(), ver)
+    record_img = generate_records_picture(up_songs, down_songs, type.upper(), ver, details)
 
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
@@ -2620,13 +2639,13 @@ async def generate_friend_record(user_id, friend_code, type="best50", cmd="", ve
     recent_type = (type == "best40")
     friend_records = get_detailed_info(friend_records, ver, recent_type)
 
-    up_songs, down_songs = select_records(friend_records, type, cmd, ver)
+    up_songs, down_songs, details = select_records(friend_records, type, cmd, ver)
 
     if not (len(up_songs) + len(down_songs)):
         return song_error(user_id)
 
     user_info_img = generate_profile(friend_info)
-    rcd_img = generate_records_picture(up_songs, down_songs, type.upper(), ver)
+    rcd_img = generate_records_picture(up_songs, down_songs, type.upper(), ver, details)
     user_tz = get_user_timezone(user_id)
     img = compose_images([user_info_img, rcd_img], spacing=0, border_width=0, timezone_offset=user_tz)
 
@@ -2666,7 +2685,7 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     lv_max = max(level_values)
     command = f"-lv {lv_min} {lv_max} -page {page}"
 
-    up_level_list, down_level_list = select_records(song_record, "best50", command, ver)
+    up_level_list, down_level_list, _ = select_records(song_record, "best50", command, ver)
 
     if not up_level_list and not down_level_list:
         return level_record_not_found(level, page, user_id)

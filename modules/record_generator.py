@@ -31,6 +31,48 @@ def _get_difficulty_color(difficulty):
     }
     return colors.get(difficulty.lower(), (200, 200, 200))
 
+
+_DIFF_KEYS = {"basic", "advanced", "expert", "master", "remaster", "utage"}
+
+
+def _draw_detail_line(draw, x, y, key, value, font, max_w, lh):
+    """绘制一行 detail，value 中的难度词替换为彩色圆角矩形小方块。"""
+    tokens = value.split()
+    has_diff = any(t.lower() in _DIFF_KEYS for t in tokens)
+
+    if not has_diff:
+        line = truncate_text(draw, f"{key}:  {value}", font, max_w)
+        draw.text((x, y), line, fill=(80, 80, 80), font=font)
+        return
+
+    prefix = f"{key}:  "
+    prefix_w = int(draw.textlength(prefix, font=font))
+    if prefix_w >= max_w:
+        return
+    draw.text((x, y), prefix, fill=(80, 80, 80), font=font)
+
+    cur_x = x + prefix_w
+    pill_h = lh - 2
+
+    sq = pill_h
+    for token in tokens:
+        diff_key = token.lower()
+        if diff_key in _DIFF_KEYS:
+            if cur_x + sq > x + max_w:
+                break
+            color = _get_difficulty_color(diff_key)
+            draw.rounded_rectangle(
+                (cur_x, y + 1, cur_x + sq, y + 1 + sq),
+                radius=3, fill=color
+            )
+            cur_x += sq + 4
+        else:
+            token_w = int(draw.textlength(token + " ", font=font))
+            if cur_x + token_w > x + max_w:
+                break
+            draw.text((cur_x, y), token, fill=(80, 80, 80), font=font)
+            cur_x += token_w
+
 def create_thumbnail_in_line(song):
     thumb_size=(600, 225)
     bg_color = (255, 255, 255)
@@ -216,7 +258,7 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     final_img = img.convert("RGB")
     return final_img
 
-def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp"):
+def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp", details={}):
     uploaded_data = up_songs + down_songs
     up_num = len(up_songs)
     down_num = len(down_songs)
@@ -272,9 +314,8 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
             f"AVG RATING: {round(float(all_ra)/num, 2):.2f}"
         ]
 
-    # 绘制统计信息背景卡片
+    # 绘制统计信息背景卡片（右侧）
     card_padding = 20
-    card_x = side_width + 10
     card_y = side_width + 10
 
     left_texts = []
@@ -299,9 +340,10 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
     line_height = draw.textbbox((0, 0), "JiETNG", font=font_large)[3]
     text_total_height = len(header_text) * (line_height + 7)
 
-    # 根据实际文本宽度设置卡片宽度
+    # 根据实际文本宽度设置卡片宽度，卡片靠右
     card_width = max_text_width + card_padding * 2
     card_height = text_total_height + card_padding * 2 - 10
+    card_x = img_width - side_width - 10 - card_width
 
     # 绘制带圆角的半透明背景框
     draw.rounded_rectangle(
@@ -321,12 +363,46 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
         fill=(40, 40, 40)  # 深灰色文字
     )
 
-    # 绘制标题
-    bbox = draw.textbbox((0, 0), title, font=font_record_title)
-    title_width = bbox[2] - bbox[0]
-    title_x = img_width - side_width - title_width - 30
-    title_y = card_y - 35
-    draw.text((title_x, title_y), title, fill=(190, 190, 190), font=font_record_title)
+    # 绘制标题/详情（左侧）
+    if not details:
+        title_y = card_y - 35
+        draw.text((side_width + 10, title_y), title, fill=(255, 255, 255), font=font_record_title,
+                  stroke_width=2, stroke_fill=(50, 50, 50))
+    else:
+        # 将 title 渲染到临时 RGBA 图，顺时针旋转 45°，缩放至 card_height
+        tb = draw.textbbox((0, 0), title, font=font_record_detail_title)
+        tmp = Image.new("RGBA", (tb[2] + 4, tb[3] + 4), (0, 0, 0, 0))
+        ImageDraw.Draw(tmp).text((2, 2), title, fill=(100, 100, 100, 255), font=font_record_detail_title)
+        tmp_rot = tmp.rotate(-45, expand=True, resample=Image.Resampling.BICUBIC)
+        rot_h = card_height
+        rot_w = max(1, int(tmp_rot.width * rot_h / tmp_rot.height))
+        tmp_rot = tmp_rot.resize((rot_w, rot_h), Image.Resampling.LANCZOS)
+
+        combined = combined.convert("RGBA")
+        combined.paste(tmp_rot, (side_width + 10, card_y), tmp_rot)
+        combined = combined.convert("RGB")
+        draw = ImageDraw.Draw(combined)
+
+        # details 在 title 右侧竖向排列，预留 2 列，超出则 truncate
+        col_x_start = side_width + rot_w + 15
+        max_x = card_x - 5
+        col_gap = 15
+        col_max_w = max(1, (max_x - col_x_start - col_gap) // 2)
+        lh = draw.textbbox((0, 0), "A", font=font_large)[3] + 2
+        col_num = 0
+        col_x = col_x_start
+        col_y = card_y + 5
+
+        for key, value in details.items():
+            if col_y + lh > card_y + card_height:
+                col_num += 1
+                if col_num >= 2:
+                    break
+                col_x = col_x_start + col_num * (col_max_w + col_gap)
+                col_y = card_y + 5
+
+            _draw_detail_line(draw, col_x, col_y, key, str(value), font_large, col_max_w, lh)
+            col_y += lh
 
     up_thumbnails = [create_thumbnail(song, thumb_size) for song in up_songs[:grid_size[0] * grid_size[1]]]
     down_thumbnails = [create_thumbnail(song, thumb_size) for song in down_songs[:grid_size[0] * grid_size[1]]]

@@ -309,7 +309,7 @@ def query_player():
             return jsonify({'error': 'Failed to fetch data from diving-fish'}), 500
 
         profile_img = generate_profile(user_data)
-        up_songs, down_songs = select_records(charts)
+        up_songs, down_songs, _ = select_records(charts)
         record_img = generate_records_picture(up_songs, down_songs, "BEST50")
         img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=8)
 

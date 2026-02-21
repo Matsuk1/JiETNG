@@ -19,6 +19,7 @@ font_song_title = ImageFont.truetype(FONT_PATH, 34)
 font_song_info = ImageFont.truetype(FONT_PATH, 24)
 font_level_badge = ImageFont.truetype(FONT_PATH, 40)
 font_record_title = ImageFont.truetype(FONT_PATH, 170)
+font_record_detail_title = ImageFont.truetype(FONT_PATH, 65)
 
 # 获取logger
 logger = logging.getLogger(__name__)
