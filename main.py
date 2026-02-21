@@ -1368,7 +1368,7 @@ async def search_song(user_id, acronym, ver="jp"):
 
     # 返回搜索结果列表
     if len(matching_songs) > 1:
-        return generate_search_results_flex(user_id, matching_songs)
+        return generate_search_results_flex(user_id, matching_songs, 'song')
     
     # 单个结果，调用 search_song_by_id
     song = matching_songs[0]
@@ -1745,7 +1745,7 @@ async def get_song_record(user_id, id_use, acronym, ver="jp"):
 
     # 返回搜索结果列表
     if len(songs_with_records) > 1:
-        return generate_search_record_results_flex(user_id, id_use, songs_with_records)
+        return generate_search_results_flex(user_id, matching_songs, 'record', id_use)
 
     # 单个结果，调用 get_song_record_by_id
     song = songs_with_records[0]

@@ -591,19 +591,6 @@ def generate_song_info_flex(song_id, image_url, image_width, image_height, user_
             }
         })
 
-    # 保存图片按钮（共用）
-    buttons.append({
-        "type": "button",
-        "style": "secondary",
-        "height": "sm",
-        "margin": "sm",
-        "action": {
-            "type": "uri",
-            "label": get_multilingual_text(save_image_button_text, user_id),
-            "uri": image_url
-        }
-    })
-
     alt_text = get_multilingual_text(song_info_alt_text, user_id) if mode == 'info' else get_multilingual_text(song_record_alt_text, user_id)
 
     bubble = {
@@ -612,6 +599,10 @@ def generate_song_info_flex(song_id, image_url, image_width, image_height, user_
         "hero": {
             "type": "image",
             "url": image_url,
+            "action": {
+                "type": "uri",
+                "uri": image_url
+            },
             "size": "full",
             "aspectRatio": aspect_ratio,
             "aspectMode": "fit"
@@ -1656,9 +1647,9 @@ def _build_calc_bubble(notes, scores, difficulty=None, level=None):
     return bubble
 
 
-def _generate_search_results_flex_internal(user_id, matching_songs, search_type='song', id_use=None):
+def generate_search_results_flex(user_id, matching_songs, search_type='song', id_use=None):
     """
-    生成搜索结果列表 Flex Message（内部通用函数，黑白简约风）
+    生成搜索结果列表 Flex Message
 
     Args:
         user_id: 用户ID
@@ -1807,34 +1798,6 @@ def _generate_search_results_flex_internal(user_id, matching_songs, search_type=
         alt_text=title_text,
         contents=FlexContainer.from_dict(bubble)
     )
-
-
-def generate_search_results_flex(user_id, matching_songs):
-    """
-    生成搜索结果列表 Flex Message
-
-    Args:
-        user_id: 用户ID
-        matching_songs: 匹配的歌曲列表
-
-    Returns:
-        FlexMessage: 搜索结果列表
-    """
-    return _generate_search_results_flex_internal(user_id, matching_songs, 'song')
-
-
-def generate_search_record_results_flex(user_id, id_use, matching_songs):
-    """
-    生成成绩搜索结果列表 Flex Message
-
-    Args:
-        user_id: 用户ID
-        matching_songs: 匹配的歌曲列表（包含游玩记录）
-
-    Returns:
-        FlexMessage: 成绩搜索结果列表
-    """
-    return _generate_search_results_flex_internal(user_id, matching_songs, 'record', id_use)
 
 
 def generate_ranking_flex(user_id, top5, nearby_entries=None, ver="jp"):
