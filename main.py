@@ -4040,17 +4040,6 @@ def admin_panel():
             'json_str': json.dumps(user_info, indent=2, ensure_ascii=False)
         }
 
-    # 获取任务队列信息
-    with task_tracking_lock:
-        running_tasks = list(task_tracking['running'])
-        queued_tasks = list(task_tracking['queued'])
-        completed_tasks = list(task_tracking['completed'])
-
-    # 为任务添加用户昵称 - 也使用懒加载
-    for task in running_tasks + queued_tasks + completed_tasks:
-        if 'user_id' in task:
-            task['nickname'] = 'Loading...'
-
     # 获取统计信息
     total_users = len(USERS)
     jp_users = sum(1 for user in USERS.values() if user.get("version") == "jp")
@@ -4127,9 +4116,6 @@ def admin_panel():
         "admin_panel.html",
         users_data=users_data,
         total_users=total_users,
-        running_tasks=running_tasks,
-        queued_tasks=queued_tasks,
-        completed_tasks=completed_tasks,
         stats=stats,
         logs=logs
     )
@@ -4196,46 +4182,6 @@ def admin_trigger_update():
             'success': False,
             'message': str(e)
         }), 500
-
-@app.route("/admin/cancel_task", methods=["POST"])
-@csrf.exempt
-def admin_cancel_task():
-    """取消排队中的任务"""
-    if not check_admin_auth():
-        return jsonify({'error': 'Unauthorized'}), 401
-
-    data = request.get_json()
-    task_id = data.get('task_id')
-
-    if not task_id:
-        return jsonify({'error': 'Task ID required'}), 400
-
-    # 检查任务是否在排队中
-    with task_tracking_lock:
-        queued_task = None
-        for task in task_tracking['queued']:
-            if task.get('id') == task_id:
-                queued_task = task
-                break
-
-        if not queued_task:
-            return jsonify({
-                'success': False,
-                'message': 'Task not found in queue (already running or completed)'
-            }), 404
-
-        # 将任务添加到已取消集合
-        task_tracking['cancelled'].add(task_id)
-
-        # 标记任务为已取消
-        queued_task['status'] = 'cancelled'
-
-        logger.info(f"[Admin] ✓ Task cancelled: task_id={task_id}")
-
-    return jsonify({
-        'success': True,
-        'message': f'Task {task_id} marked for cancellation'
-    })
 
 @app.route("/admin/get_logs", methods=["GET"])
 def admin_get_logs():
@@ -5087,6 +5033,21 @@ def admin_dxdata_status():
         return jsonify({
             'error': str(e)
         }), 500
+
+@app.route("/admin/update_dxdata", methods=["POST"])
+@csrf.exempt
+def admin_update_dxdata():
+    """触发 DXData 更新"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        result = update_dxdata_with_comparison(DXDATA_URL, DXDATA_LIST)
+        message = build_dxdata_update_message(result, None)
+        return jsonify({'success': True, 'message': message})
+    except Exception as e:
+        logger.error(f"[Admin] ✗ Update DXData error: error={e}", exc_info=True)
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route("/admin/notifications", methods=["GET"])
 def admin_get_notifications():
