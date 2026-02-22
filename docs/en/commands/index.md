@@ -69,9 +69,6 @@ This document lists all available commands for the JiETNG LINE Bot.
 | `ab35` | `allb35`, `all best 35`, `オールベスト35` | Mixed version Best 35 |
 | `ab50` | `allb50`, `all best 50`, `オールベスト50` | Mixed version Best 50 |
 | `ab100` | `allb100`, `all best 100`, `オールベスト100` | Mixed version Best 100 |
-| `nxtb50` | `nextb50`, `next best 50`, `ネクストベスト50` | Next version Best 50 |
-| `nxtb35` | `nextb35`, `next best 35`, `ネクストベスト35` | Next version Best 35 |
-| `nxtb15` | `nextb15`, `next best 15`, `ネクストベスト15` | Next version Best 15 |
 | `apb50` | `ap50`, `all perfect 50`, `オールパーフェクト50` | AP/AP+ only Best 50 |
 | `fdxb50` | `fdx50`, `full dx 50`, `フールでらっくす50` | FDX/FDX+ only Best 50 |
 | `rct50` | `r50`, `recent50`, `recent 50` | Recent 50 plays |

@@ -1967,11 +1967,6 @@ def generate_command_list_flex(user_id):
             ("ab35",  "All Best 35"),
             ("ab100", "All Best 100"),
         ]),
-        ("Next Best", [
-            ("nxtb50", "Next Best 50"),
-            ("nxtb35", "Next Best 35"),
-            ("nxtb15", "Next Best 15"),
-        ]),
         ("Others", [
             ("apb50",  "AP Best 50"),
             ("fdxb50", "Full DX Best 50"),

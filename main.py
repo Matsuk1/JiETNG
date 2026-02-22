@@ -214,11 +214,6 @@ RANK_COMMANDS = {
     ("ab50", "allb50", "all best 50", "オールベスト50"): "allb50",
     ("ab100", "allb100", "all best 100", "オールベスト100"): "allb100",
 
-    # Next Best
-    ("nxtb50", "nextb50", "next best 50", "ネクストベスト50"): "nxtb50",
-    ("nxtb35", "nextb35", "next best 35", "ネクストベスト35"): "nxtb35",
-    ("nxtb15", "nextb15", "next best 15", "ネクストベスト15"): "nxtb15",
-
     # 特殊系列
     ("apb50", "ap50", "all perfect 50", "オールパーフェクト50"): "apb50",
     ("fdxb50", "fdx50", "Full DX 50", "フールでらっくす50"): "fdxb50",
@@ -2336,6 +2331,10 @@ def generate_profile(user_info, scale=1, user_id=None):
 def select_records(song_record, type="best50", command="", ver="jp"):
     page = 1
     sort_rule = lambda x: (x["ra"], float(x["score"][:-1]))
+    filter_rules = [
+        (lambda x: x['new_song'] == False),
+        (lambda x: x['new_song'] == True)
+    ]
     details = {}
     if not command == "":
         cmds = re.findall(r"-(\w+)(?:\s+([^-]+))?", command)
@@ -2370,6 +2369,12 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                     lv_start, lv_stop = map(float, parts[:2])
                     song_record = list(filter(lambda x: lv_start <= x['internalLevelValue'] <= lv_stop, song_record))
                     details['Lv'] = f'{lv_start} ~ {lv_stop}'
+            elif cmd in ["next", "nxt"]:
+                filter_rules = [
+                    (lambda x: x['version'] != MAIMAI_VERSION[ver][-1]),
+                    (lambda x: x['version'] == MAIMAI_VERSION[ver][-1])
+                ]
+                details['NextVer'] = 'ON'
             elif cmd in ["ra", "rating"]:
                 parts = cmd_num.split()
                 if len(parts) == 1:
@@ -2456,8 +2461,8 @@ def select_records(song_record, type="best50", command="", ver="jp"):
 
     up_songs = down_songs = []
 
-    up_songs_data = list(filter(lambda x: x['new_song'] == False, song_record))
-    down_songs_data = list(filter(lambda x: x['new_song'] == True, song_record))
+    up_songs_data = list(filter(filter_rules[0], song_record))
+    down_songs_data = list(filter(filter_rules[1], song_record))
 
     if type == "best50":
         up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
@@ -2488,22 +2493,6 @@ def select_records(song_record, type="best50", command="", ver="jp"):
 
     elif type == "allb200":
         up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*200 : page*200]
-
-    elif type == "nxtb50":
-        up_addition_songs = list(filter(lambda x: x['version'] != MAIMAI_VERSION[ver][-1], down_songs_data))
-        down_songs_data = list(filter(lambda x: x['version'] == MAIMAI_VERSION[ver][-1], down_songs_data))
-        up_songs_data += up_addition_songs
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
-
-    elif type == "nxtb35":
-        up_addition_songs = list(filter(lambda x: x['version'] != MAIMAI_VERSION[ver][-1], down_songs_data))
-        up_songs_data += up_addition_songs
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
-
-    elif type == "nxtb15":
-        down_songs_data = list(filter(lambda x: x['version'] == MAIMAI_VERSION[ver][-1], down_songs_data))
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
 
     elif type == "apb50":
         up_songs_data = [x for x in up_songs_data if x.get("combo_icon") in ("ap", "app")]
@@ -2944,9 +2933,6 @@ IMAGE_TASK_ROUTES = {
         "ab35", "allb35", "all best 35", "オールベスト35",
         "ab50", "allb50", "all best 50", "オールベスト50",
         "ab100", "allb100", "all best 100", "オールベスト100",
-        "nxtb50", "nextb50", "next best 50", "ネクストベスト50",
-        "nxtb35", "nextb35", "next best 35", "ネクストベスト35",
-        "nxtb15", "nextb15", "next best 15", "ネクストベスト15",
         "apb50", "ap50", "all perfect 50", "オールパーフェクト50",
         "fdxb50", "fdx50", "Full DX 50", "フールでらっくす50",
         "rct50", "r50", "recent50", "recent 50",
