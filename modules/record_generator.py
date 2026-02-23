@@ -42,14 +42,14 @@ def _draw_detail_line(draw, x, y, key, value, font, max_w, lh):
 
     if not has_diff:
         line = truncate_text(draw, f"{key}:  {value}", font, max_w)
-        draw.text((x, y), line, fill=(80, 80, 80), font=font)
+        draw.text((x, y), line, fill=(40, 40, 40), font=font)
         return
 
     prefix = f"{key}:  "
     prefix_w = int(draw.textlength(prefix, font=font))
     if prefix_w >= max_w:
         return
-    draw.text((x, y), prefix, fill=(80, 80, 80), font=font)
+    draw.text((x, y), prefix, fill=(40, 40, 40), font=font)
 
     cur_x = x + prefix_w
     pill_h = lh - 2
@@ -138,7 +138,9 @@ def create_thumbnail_in_line(song):
 
     return final_img
 
-def create_thumbnail(song, thumb_size=(300, 150), padding=15):
+def create_thumbnail(song):
+    thumb_size=(300, 150)
+    padding=15
     bg_color = _get_difficulty_color(song['difficulty'])
     img = Image.new("RGB", thumb_size, bg_color)
     draw = ImageDraw.Draw(img)
@@ -146,8 +148,7 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     text_color = (114, 20, 141) if song['difficulty'] == "remaster" else (255, 255, 255)
 
     # --- 封面 ---
-    # 根据缩略图尺寸动态计算封面大小
-    cover_size = int(thumb_size[0] * 0.267)
+    cover_size = 80
     if 'cover_name' in song and song['cover_name']:
         try:
             cover_img = get_cover_image(
@@ -172,10 +173,10 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
         url_func=lambda value: "https://maimaidx.jp/maimai-mobile/img/music_standard.png" if value == "std" else "https://maimaidx.jp/maimai-mobile/img/music_dx.png" if value == "dx" else "https://maimaidx.jp/maimai-mobile/img/diff_utage.png"
     )
 
-    # 根据缩略图尺寸动态计算布局
-    line_spacing = int(thumb_size[1] * 0.187)
+    # 计算布局
+    line_spacing = 28
     text_x_offset = padding + cover_size + 10
-    score_x_offset = thumb_size[0] - 15
+    score_x_offset = 285
 
     # --- 歌曲标题 ---
     max_text_width = thumb_size[0] - text_x_offset - 20
@@ -190,9 +191,8 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     draw.text((text_x_offset, padding + line_spacing), song['score'], fill=text_color, font=font_stadium)
 
     # --- score_icon 图标 ---
-    # 根据缩略图尺寸动态计算图标大小
-    score_icon_width = int(thumb_size[0] * 0.217)
-    score_icon_height = int(thumb_size[1] * 0.2)
+    score_icon_width = 65
+    score_icon_height = 30
     paste_icon_optimized(
         img, song, key='score_icon',
         size=(score_icon_width, score_icon_height),
@@ -213,25 +213,23 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     draw.line([(0, thumb_size[1]), (thumb_size[0], thumb_size[1])], fill=(255, 255, 255), width=90)
 
     # --- dx_star 图标 ---
-    # 根据缩略图尺寸动态计算星星图标大小
-    star_width = int(thumb_size[0] * 0.267)
-    star_height = int(thumb_size[1] * 0.107)
+    star_width = 80
+    star_height = 16
     paste_icon_optimized(
         img, song, key='dx_star',
         size=(star_width, star_height),
-        position=(padding + cover_size, thumb_size[1] - int(thumb_size[1] * 0.213)),
+        position=(padding + cover_size - 4, 119),
         save_dir=ICON_DX_STAR_DIR,
         url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_dxstar_detail_{value}.png"
     )
 
     # --- combo_icon 图标 ---
-    # 根据缩略图尺寸动态计算图标大小
-    combo_icon_width = int(thumb_size[0] * 0.133)
-    combo_icon_height = int(thumb_size[1] * 0.3)
+    combo_icon_width = 40
+    combo_icon_height = 45
     paste_icon_optimized(
         img, song, key='combo_icon',
         size=(combo_icon_width, combo_icon_height),
-        position=(padding - 5, thumb_size[1] - int(thumb_size[1] * 0.32)),
+        position=(padding - 8, 103),
         save_dir=ICON_COMBO_DIR,
         url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_{value}.png"
     )
@@ -240,7 +238,7 @@ def create_thumbnail(song, thumb_size=(300, 150), padding=15):
     paste_icon_optimized(
         img, song, key='sync_icon',
         size=(combo_icon_width, combo_icon_height),
-        position=(padding + combo_icon_width - 5, thumb_size[1] - int(thumb_size[1] * 0.32)),
+        position=(padding - 8 + combo_icon_width, 103),
         save_dir=ICON_SYNC_DIR,
         url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_{value}.png"
     )
@@ -340,10 +338,10 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
     line_height = draw.textbbox((0, 0), "JiETNG", font=font_large)[3]
     text_total_height = len(header_text) * (line_height + 7)
 
-    # 根据实际文本宽度设置卡片宽度，卡片靠右
+    # 根据实际文本宽度设置卡片宽度，卡片靠左
     card_width = max_text_width + card_padding * 2
     card_height = text_total_height + card_padding * 2 - 10
-    card_x = img_width - side_width - 10 - card_width
+    card_x = side_width + 10
 
     # 绘制带圆角的半透明背景框
     draw.rounded_rectangle(
@@ -363,49 +361,68 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
         fill=(40, 40, 40)  # 深灰色文字
     )
 
-    # 绘制标题/详情（左侧）
+    # 绘制标题/详情（右侧）
     if not details:
         title_y = card_y - 35
-        draw.text((side_width + 10, title_y), title, fill=(255, 255, 255), font=font_record_title,
-                  stroke_width=2, stroke_fill=(50, 50, 50))
+        title_w = int(draw.textlength(title, font=font_record_title))
+        title_x = img_width - side_width - 10 - title_w
+        draw.text((title_x, title_y), title, fill=(255, 255, 255), font=font_record_title, stroke_width=3, stroke_fill=(50, 50, 50))
     else:
-        # 将 title 渲染到临时 RGBA 图，顺时针旋转 45°，缩放至 card_height
+        # 将 title 渲染到临时 RGBA 图，逆时针旋转 45°，缩放至 card_height
         tb = draw.textbbox((0, 0), title, font=font_record_detail_title)
         tmp = Image.new("RGBA", (tb[2] + 4, tb[3] + 4), (0, 0, 0, 0))
-        ImageDraw.Draw(tmp).text((2, 2), title, fill=(100, 100, 100, 255), font=font_record_detail_title)
-        tmp_rot = tmp.rotate(-45, expand=True, resample=Image.Resampling.BICUBIC)
+        ImageDraw.Draw(tmp).text((2, 2), title, fill=(255, 255, 255, 255), font=font_record_detail_title, stroke_width=2, stroke_fill=(50, 50, 50))
+        tmp_rot = tmp.rotate(45, expand=True, resample=Image.Resampling.BICUBIC)
         rot_h = card_height
         rot_w = max(1, int(tmp_rot.width * rot_h / tmp_rot.height))
         tmp_rot = tmp_rot.resize((rot_w, rot_h), Image.Resampling.LANCZOS)
 
+        title_paste_x = card_x + card_width + 15
         combined = combined.convert("RGBA")
-        combined.paste(tmp_rot, (side_width + 10, card_y), tmp_rot)
+        combined.paste(tmp_rot, (title_paste_x, card_y), tmp_rot)
         combined = combined.convert("RGB")
         draw = ImageDraw.Draw(combined)
 
-        # details 在 title 右侧竖向排列，预留 2 列，超出则 truncate
-        col_x_start = side_width + rot_w + 15
-        max_x = card_x - 5
+        # 计算列数：每列最多 4 条，最多 2 列
+        details_items = list(details.items())
+        num_items = len(details_items)
+        items_per_col = 4
+        num_cols = min(2, math.ceil(num_items / items_per_col)) if num_items > 0 else 1
+
+        left_bound = title_paste_x + rot_w
+        right_bound = img_width
+        avail_w = max(1, right_bound - left_bound)
         col_gap = 15
-        col_max_w = max(1, (max_x - col_x_start - col_gap) // 2)
         lh = draw.textbbox((0, 0), "A", font=font_large)[3] + 2
-        col_num = 0
-        col_x = col_x_start
-        col_y = card_y + 5
 
-        for key, value in details.items():
-            if col_y + lh > card_y + card_height:
-                col_num += 1
-                if col_num >= 2:
+        details_card_x = left_bound + card_padding
+        details_card_x2 = right_bound - 30
+        if num_cols == 1:
+            col_max_w = max(1, avail_w - card_padding * 2)
+        else:
+            col_max_w = max(1, (avail_w - card_padding * 2 - col_gap) // 2)
+
+        draw.rounded_rectangle(
+            [details_card_x, card_y, details_card_x2, card_y + card_height],
+            radius=12,
+            fill=(245, 248, 252),
+            outline=(200, 210, 225),
+            width=2
+        )
+
+        for col_num in range(num_cols):
+            col_x = details_card_x + card_padding + col_num * (col_max_w + col_gap)
+            col_y = card_y + card_padding - 5
+            for i in range(items_per_col):
+                idx = col_num * items_per_col + i
+                if idx >= num_items:
                     break
-                col_x = col_x_start + col_num * (col_max_w + col_gap)
-                col_y = card_y + 5
+                key, value = details_items[idx]
+                _draw_detail_line(draw, col_x, col_y, key, str(value), font_large, col_max_w, lh)
+                col_y += lh
 
-            _draw_detail_line(draw, col_x, col_y, key, str(value), font_large, col_max_w, lh)
-            col_y += lh
-
-    up_thumbnails = [create_thumbnail(song, thumb_size) for song in up_songs[:grid_size[0] * grid_size[1]]]
-    down_thumbnails = [create_thumbnail(song, thumb_size) for song in down_songs[:grid_size[0] * grid_size[1]]]
+    up_thumbnails = [create_thumbnail(song) for song in up_songs[:grid_size[0] * grid_size[1]]]
+    down_thumbnails = [create_thumbnail(song) for song in down_songs[:grid_size[0] * grid_size[1]]]
     thumbnails = up_thumbnails + down_thumbnails
 
     for i, thumb in enumerate(up_thumbnails):
@@ -746,14 +763,14 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
             title_text_size = draw.textlength(title, font=font_record_title)
             title_x = img_width - margin - title_text_size - 30
             title_y = margin - 25
-            draw.text((title_x, title_y), title, fill=(206, 206, 206), font=font_record_title)
+            draw.text((title_x, title_y), title, fill=(255, 255, 255), font=font_record_title, stroke_width=3, stroke_fill=(50, 50, 50))
             logger.debug(f"[RecordGenerator] Plate image not found, using text: plate={title}")
     except Exception as e:
         # 出错时回退到文字显示
         title_text_size = draw.textlength(title, font=font_record_title)
         title_x = img_width - margin - title_text_size - 30
         title_y = margin - 25
-        draw.text((title_x, title_y), title, fill=(206, 206, 206), font=font_record_title)
+        draw.text((title_x, title_y), title, fill=(255, 255, 255), font=font_record_title, stroke_width=3, stroke_fill=(50, 50, 50))
         logger.error(f"[RecordGenerator] ✗ Failed to load plate image: plate={title}, error={e}")
 
     # 渲染主体图像内容
@@ -912,7 +929,7 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
     title_text_size = draw.textlength(title_text, font=font_record_title)
     title_x = img_width - margin - title_text_size - 15
     title_y = 5
-    draw.text((title_x, title_y), title_text, fill=(206, 206, 206), font=font_record_title)
+    draw.text((title_x, title_y), title_text, fill=(255, 255, 255), font=font_record_title, stroke_width=3, stroke_fill=(50, 50, 50))
 
     # 渲染主体图像内容
     cards_total_height = 2 * card_height + card_gap_y
