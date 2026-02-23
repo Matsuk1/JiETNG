@@ -1,5 +1,5 @@
 from PIL import Image, ImageDraw
-from modules.record_generator import create_thumbnail, create_thumbnail_in_line
+from modules.record_generator import create_thumbnail_in_line
 from modules.image_manager import *
 from modules.image_cache import paste_icon_optimized, get_cover_image
 from modules.config_loader import ICON_TYPE_DIR

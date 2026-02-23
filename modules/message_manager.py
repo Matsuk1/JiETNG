@@ -2036,9 +2036,9 @@ def generate_command_list_flex(user_id):
                     {
                         "type": "button",
                         "action": {
-                            "type": "message",
-                            "label": "▶",
-                            "text": cmd
+                            "type": "clipboard",
+                            "label": "📋",
+                            "clipboardText": cmd
                         },
                         "style": "link",
                         "height": "sm",

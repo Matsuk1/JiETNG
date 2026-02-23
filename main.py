@@ -2323,7 +2323,7 @@ def generate_profile(user_info, scale=1, user_id=None):
     text_width = bbox[2] - bbox[0]
     rect_width = 452
     center_x = 219 + (rect_width - text_width) // 2
-    draw.text((center_x, 155), trophy_content, fill=(0, 0, 0), font=font_trophy)
+    draw.text((center_x, 155), trophy_content, fill=(255, 255, 255), font=font_trophy, stroke_width=2, stroke_fill=(0, 0, 0))
 
     info_img = info_img.resize((int(img_width * scale), int(img_height * scale)), Image.Resampling.LANCZOS)
     return info_img
