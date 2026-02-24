@@ -139,11 +139,7 @@
 
   /* HTML 纯色背景 - 作为备用，实际渐变在 body::before */
   html {
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-    /* 关键：padding 让 html 延伸到 safe-area 区域 */
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-    /* 纯色背景作为备用 */
+    min-height: 100%;
     background: var(--bg-gradient-1);
   }
 
@@ -155,7 +151,9 @@
     font-size: 14px;
     line-height: 1.6;
     min-height: 100vh;
-    min-height: -webkit-fill-available;
+    min-height: 100dvh;
+    /* 底部 home indicator 安全区域 */
+    padding-bottom: env(safe-area-inset-bottom);
     position: relative;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

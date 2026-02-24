@@ -14,6 +14,7 @@
       align-items: center;
       justify-content: center;
       padding: 24px;
+      padding-top: calc(24px + env(safe-area-inset-top));
       min-height: 100vh;
       background: var(--surface-bg);
     }
@@ -89,7 +90,7 @@
     .submit-btn {
       width: 100%;
       padding: 13px;
-      background: var(--accent-color);
+      background: var(--info-color);
       color: #ffffff;
       border: none;
       border-radius: var(--radius-md);
@@ -101,7 +102,7 @@
     }
 
     .submit-btn:hover {
-      background: var(--accent-hover);
+      opacity: 0.85;
       box-shadow: var(--shadow-md);
     }
 
@@ -134,40 +135,50 @@
       color: var(--text-tertiary);
     }
 
-    /* Loading spinner */
-    .loading {
+    /* 全屏加载遮罩 */
+    #loading-overlay {
       display: none;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 20px;
-      height: 20px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: #ffffff;
+      position: fixed;
+      inset: 0;
+      background: var(--surface-bg);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #loading-overlay.active {
+      display: flex;
+    }
+
+    #loading-overlay .spinner {
+      width: 120px;
+      height: 120px;
+      border: 8px solid var(--border-color);
+      border-top-color: var(--accent-color);
       border-radius: 50%;
-      animation: spin 0.6s linear infinite;
+      animation: spin 0.9s linear infinite;
     }
 
     @keyframes spin {
-      to { transform: translate(-50%, -50%) rotate(360deg); }
-    }
-
-    .submit-btn.loading {
-      pointer-events: none;
-      opacity: 0.7;
-    }
-
-    .submit-btn.loading span {
-      opacity: 0;
-    }
-
-    .submit-btn.loading .loading {
-      display: block;
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
+  <script>
+    // iOS standalone PWA 安全区域修复
+    !function() {
+      if (!navigator.standalone) return;
+      var probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;top:0;left:0;width:0;padding-top:env(safe-area-inset-top,0px);pointer-events:none;visibility:hidden;';
+      document.body.appendChild(probe);
+      var sat = parseFloat(getComputedStyle(probe).paddingTop) || 0;
+      document.body.removeChild(probe);
+      if (!sat) sat = window.screen.height >= 852 ? 59 : 44;
+      document.body.style.paddingTop = (24 + sat) + 'px';
+    }();
+  </script>
+  <div id="loading-overlay"><div class="spinner"></div></div>
   <div class="login-container">
     <div class="login-header">
       <h1>Admin Panel</h1>
@@ -197,7 +208,6 @@
 
       <button type="submit" class="submit-btn" id="submit-btn">
         <span>Login</span>
-        <div class="loading"></div>
       </button>
     </form>
 
@@ -209,8 +219,7 @@
   <script>
     // 表单提交处理
     function handleSubmit(event) {
-      const btn = document.getElementById('submit-btn');
-      btn.classList.add('loading');
+      document.getElementById('loading-overlay').classList.add('active');
     }
   </script>
 </body>

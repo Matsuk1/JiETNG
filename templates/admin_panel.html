@@ -39,6 +39,7 @@
     /* 页面特定样式 - Page-specific Styles */
     body {
       padding: 20px;
+      padding-top: calc(20px + env(safe-area-inset-top));
       background: var(--surface-bg);
       min-height: 100vh;
     }
@@ -731,6 +732,21 @@
   </style>
 </head>
 <body>
+  <script>
+    // iOS standalone PWA 安全区域修复
+    // env(safe-area-inset-top) 在某些情况下返回 0，用 JS 探测并补救
+    !function() {
+      if (!navigator.standalone) return;
+      var probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;top:0;left:0;width:0;padding-top:env(safe-area-inset-top,0px);pointer-events:none;visibility:hidden;';
+      document.body.appendChild(probe);
+      var sat = parseFloat(getComputedStyle(probe).paddingTop) || 0;
+      document.body.removeChild(probe);
+      // env() 无效时的备用值（灵动岛 ≈ 59px，刘海屏 ≈ 44px）
+      if (!sat) sat = window.screen.height >= 852 ? 59 : 44;
+      document.body.style.paddingTop = (20 + sat) + 'px';
+    }();
+  </script>
   <div class="container">
     <div class="header">
       <h1>JiETNG Panel</h1>
