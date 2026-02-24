@@ -875,6 +875,15 @@ Token not provided. <br />
             }
             return render_template("error.html", message=maintenance_messages.get(user_language, maintenance_messages["ja"]), language=user_language), 503
         elif result:
+            if "registered_via_token" not in USERS.get(user_id, {}):
+                if mode == "bind":
+                    task_id = f"bind_{secrets.token_hex(8)}"
+                    webtask_queue.put_nowait((async_bind_update_task, (user_id, user_version), task_id))
+                else:
+                    try:
+                        smart_push(user_id, rebind_msg(user_id), configuration)
+                    except Exception as e:
+                        logger.error(f"[Rebind] ⚠ Failed to push: {e}")
             return render_template("success.html", language=user_language, mode=mode)
         else:
             invalid_credentials_messages = {
@@ -948,22 +957,6 @@ async def process_sega_credentials(user_id, segaid, password, ver="jp", language
     edit_user_value(user_id, 'language', language)
     edit_user_value(user_id, 'timezone', timezone)
 
-    if "registered_via_token" not in USERS[user_id]:
-        # 尝试更新数据
-        if not rebind:
-            try:
-                messages = await maimai_update(user_id, ver)
-            except Exception as e:
-                logger.error(f"[Bind Task] ⚠ Failed to update: {e}")
-                messages = rebind_msg(user_id)
-        else:
-            messages = rebind_msg(user_id)
-
-        # 尝试推送消息
-        try:
-            smart_push(user_id, messages, configuration)
-        except Exception as e:
-            logger.error(f"[Bind Task] ⚠ Cancelled: smart push to {user_id}")
     return True
 
 
@@ -989,6 +982,18 @@ def async_maimai_update_task(event):
     reply_msg = asyncio.run(maimai_update(user_id, ver))
     if reply_token:
         smart_reply(user_id, reply_token, reply_msg, configuration)
+
+def async_bind_update_task(user_id, ver):
+    """绑定后异步数据更新任务 - 在webtask_queue中执行"""
+    try:
+        messages = asyncio.run(maimai_update(user_id, ver))
+    except Exception as e:
+        logger.error(f"[Bind Update] ⚠ Failed to update: {e}")
+        messages = rebind_msg(user_id)
+    try:
+        smart_push(user_id, messages, configuration)
+    except Exception as e:
+        logger.error(f"[Bind Update] ⚠ Failed to push: {e}")
 
 def async_generate_friend_record_task(event):
     """异步生成好友成绩任务 - 在webtask_queue中执行"""
