@@ -439,9 +439,22 @@
       }
     }
 
-    // 提交时显示 loading 遮罩
-    document.querySelector('form').addEventListener('submit', function() {
+    // 提交时显示 loading 遮罩，使用 fetch 避免 LINE WKWebView 页面导航冻结渲染
+    document.querySelector('form').addEventListener('submit', async function(event) {
+      event.preventDefault();
       document.getElementById('loading-overlay').classList.add('active');
+      try {
+        const response = await fetch(window.location.href, {
+          method: 'POST',
+          body: new FormData(this)
+        });
+        const html = await response.text();
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (e) {
+        document.getElementById('loading-overlay').classList.remove('active');
+      }
     });
 
     // 页面加载时自动设置用户语言和预填充数据
