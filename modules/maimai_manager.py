@@ -942,7 +942,7 @@ async def get_friend_records(cookies: dict, friend_id: str, ver="jp"):
                     name_node = block.xpath('.//div[contains(@class, "music_name_block")]/text()')
                     if not name_node:
                         continue
-                    name = name_node[0].strip()
+                    name = name_node[0]
 
                     score_cells = block.xpath(f'.//td[contains(@class, "{difficulty[diff]}_score_label")]/text()')
                     if len(score_cells) <= 1:

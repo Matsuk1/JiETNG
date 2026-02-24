@@ -13,7 +13,7 @@ font_record_name  = ImageFont.truetype(FONT_PATH, 60)
 font_record_info = ImageFont.truetype(FONT_PATH, 29)
 
 font_profile = ImageFont.truetype(FONT_PATH, 32)
-font_trophy = ImageFont.truetype(FONT_PATH, 24)
+font_trophy = ImageFont.truetype(FONT_PATH, 22)
 
 font_song_title = ImageFont.truetype(FONT_PATH, 34)
 font_song_info = ImageFont.truetype(FONT_PATH, 24)
