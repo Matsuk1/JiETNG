@@ -30,6 +30,7 @@
 - **成绩追踪**: 自动同步并存储 Best/Recent 游戏记录
 - **数据可视化**: 生成详细的 B50/B100 成绩图表，支持自定义筛选条件
 - **好友系统**: 查看好友成绩，管理好友申请
+- **排行榜**: DX Rating 用户排名，支持日服/国际服分版本查看
 - **版本进度**: 追踪各版本达成情况（极/将/神/舞舞）
 - **推歌功能**: 按难度定数随机推荐歌曲
 - **位置服务**: 查找附近的 Maimai 游戏厅
@@ -133,36 +134,13 @@ git clone https://github.com/Matsuk1/JiETNG.git
 cd JiETNG
 ```
 
-#### 2. 安装系统依赖
-
-本项目依赖 `zbar` 库用于二维码识别，需要先安装系统级依赖：
-
-**macOS**:
-```bash
-brew install zbar
-```
-
-**Ubuntu/Debian**:
-```bash
-sudo apt-get update
-sudo apt-get install libzbar0
-```
-
-**CentOS/RHEL**:
-```bash
-sudo yum install zbar
-```
-
-**Windows**:
-从 [ZBar 官网](http://zbar.sourceforge.net/) 下载并安装二进制文件
-
-#### 3. 安装 Python 依赖
+#### 2. 安装 Python 依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-#### 4. 配置数据库
+#### 3. 配置数据库
 
 ```bash
 # 登录 MySQL
@@ -170,7 +148,7 @@ mysql -u root -p
 
 # 创建数据库和用户
 CREATE DATABASE maimai_records CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'jietng'@'localhost' IDENTIFIED BY 'jietng_2025';
+CREATE USER 'jietng'@'localhost' IDENTIFIED BY 'your_password';
 GRANT ALL PRIVILEGES ON maimai_records.* TO 'jietng'@'localhost';
 FLUSH PRIVILEGES;
 
@@ -178,15 +156,24 @@ FLUSH PRIVILEGES;
 mysql -u jietng -p maimai_records < records_db.sql
 ```
 
+#### 4. 获取 LINE Channel 凭证
+
+1. 访问 [LINE Developers Console](https://developers.line.biz/)
+2. 创建 Messaging API Channel
+3. 获取 **Channel Access Token** 和 **Channel Secret**
+4. 设置 Webhook URL：`https://your-domain.com/linebot/webhook`
+5. 启用 **Use webhook**
+
 #### 5. 配置 config.json
 
-编辑 `config.json` 文件：
+编辑 `config.json` 文件（完整结构参见[配置参考](#完整的-configjson)）：
 
 ```json
 {
     "admin_id": ["U0123456789abcdef"],
     "admin_password": "your_admin_password",
     "domain": "your-domain.com",
+    "host": "0.0.0.0",
     "port": 5000,
     "line_channel": {
         "account_id": "@yourlineid",
@@ -196,12 +183,12 @@ mysql -u jietng -p maimai_records < records_db.sql
     "record_database": {
         "host": "localhost",
         "user": "jietng",
-        "password": "jietng_2025",
+        "password": "your_password",
         "database": "maimai_records"
     },
     "urls": {
         "line_adding": "https://line.me/R/ti/p/@yourlineid",
-        "support_page": "https://jietng.matsuki.work/commands/",
+        "support_page": "https://your-domain.com/commands/",
         "dxdata": [
             "https://raw.githubusercontent.com/gekichumai/dxrating/refs/heads/main/packages/dxdata/dxdata.json",
             "https://dp4p6x0xfi5o9.cloudfront.net/maimai/data.json"
@@ -215,21 +202,13 @@ mysql -u jietng -p maimai_records < records_db.sql
 }
 ```
 
-#### 6. 获取 LINE Channel 凭证
-
-1. 访问 [LINE Developers Console](https://developers.line.biz/)
-2. 创建 Messaging API Channel
-3. 获取 **Channel Access Token** 和 **Channel Secret**
-4. 设置 Webhook URL：`https://your-domain.com/linebot/webhook`
-5. 启用 **Use webhook**
-
-#### 7. 启动服务
+#### 6. 启动服务
 
 ```bash
 python main.py
 ```
 
-服务将在 `http://0.0.0.0:5000` 启动
+服务将在 `http://0.0.0.0:<port>` 启动（端口由 config.json 中的 `port` 决定）
 
 ### 生产环境部署（推荐）
 
@@ -394,14 +373,16 @@ JiETNG/
 │   ├── dxdata_manager.py      # 歌曲数据管理
 │   ├── image_cache.py         # 图像缓存
 │   ├── image_manager.py       # 图像处理
-│   ├── image_uploader.py      # 图床上传（Imgur/uguu/0x0）
+│   ├── image_uploader.py      # 图床上传（Imgur/Cloudflare R2）
 │   ├── json_encrypt.py        # 加密工具
 │   ├── line_messenger.py      # LINE 消息发送
 │   ├── maimai_manager.py      # Maimai API 接口
 │   ├── memory_manager.py      # 内存管理和清理
-│   ├── message_manager.py     # 多语言消息管理（含公告）
+│   ├── message_manager.py     # 多语言消息管理
+│   ├── message_texts.py       # 多语言消息文本定义
 │   ├── notice_manager.py      # 公告系统
 │   ├── notice_stats.py        # 公告统计
+│   ├── notification_manager.py # 系统通知管理（Web Push）
 │   ├── perm_request_generator.py  # 权限请求生成器
 │   ├── perm_request_handler.py    # 权限请求处理器
 │   ├── rate_limiter.py        # 频率限制 + 请求追踪
@@ -411,6 +392,7 @@ JiETNG/
 │   ├── song_matcher.py        # 歌曲搜索（支持模糊匹配）
 │   ├── storelist_generator.py # 机厅列表生成（Flex Message）
 │   ├── system_checker.py      # 系统自检
+│   ├── tip_ad_manager.py      # 更新完成后提示/广告管理
 │   └── user_manager.py        # 用户管理 + 昵称缓存
 ├── templates/                 # HTML 模板
 │   ├── admin_login.html       # 管理员登录页
@@ -418,16 +400,32 @@ JiETNG/
 │   ├── bind_form.html         # 账户绑定表单
 │   ├── common_styles.html     # 通用样式
 │   ├── error.html             # 错误页面
+│   ├── loading.html           # 加载中过渡页面
 │   └── success.html           # 成功页面
 ├── data/                      # 数据文件
-│   ├── dxdata.json            # 歌曲数据库
+│   ├── dxdata/                # 歌曲数据库目录
+│   │   ├── dxdata.json        # 歌曲定数数据
+│   │   ├── dxdata_version.json # 版本信息
+│   │   └── intl_override.csv  # 国际服覆盖数据
+│   ├── images/                # 生成的图片缓存
+│   ├── backup/                # 数据备份
 │   ├── notice.json            # 公告信息
-│   ├── intl_override.csv      # 区域数据
+│   ├── tip_ad.json            # 更新提示/广告配置
 │   └── user.json.enc          # 用户数据（加密）
 └── assets/                    # 静态资源
     ├── fonts/                 # 字体文件
-    ├── pics/                  # 图片
+    ├── pics/                  # 图片（logo 等）
+    ├── covers/                # 歌曲封面图
+    ├── plates/                # 牌子图片
+    ├── versions/              # 版本图标
     └── icon/                  # 图标资源
+        ├── combo/             # Full Combo 图标
+        ├── combo_rcd/         # 成绩页 Combo 图标
+        ├── dx_star/           # DX Star 图标
+        ├── score/             # 评分等级图标
+        ├── sync/              # Full Sync 图标
+        ├── sync_rcd/          # 成绩页 Sync 图标
+        └── type/              # 谱面类型图标（DX/STD）
 ```
 
 ### 数据库结构
@@ -501,22 +499,41 @@ POST     /admin/trigger_cleanup    # 手动触发内存清理
 
 ```json
 {
-    "admin_id": ["U0123..."],              // LINE 管理员用户 ID
+    "admin_id": ["U0123..."],              // LINE 管理员用户 ID 列表
     "admin_password": "secure_pwd",        // 管理后台密码
     "maimai_version": {
-        "jp": ["PRiSM PLUS", "CiRCLE"],    // 日服版本
-        "intl": ["PRiSM PLUS"]             // 国际服版本
+        "jp": ["PRiSM PLUS", "CiRCLE"],    // 日服当前/上一版本
+        "intl": ["PRiSM PLUS"]             // 国际服当前版本
     },
-    "domain": "jietng.example.com",        // 服务域名
+    "temp_version": {
+        "abbr": "CiRCLE",                  // 下一版本缩写（用于临时数据）
+        "title": "CiRCLE"                  // 下一版本全名
+    },
+    "domain": "your-domain.com",           // 服务域名（不含协议）
+    "host": "0.0.0.0",                     // 监听地址
     "port": 5000,                          // 服务端口
     "file_path": {
-        "dxdata_list": "./data/dxdata.json",
-        "dxdata_version": "./data/dxdata_version.json",
-        "override_list": "./data/intl_override.csv",
+        "dxdata_list": "./data/dxdata/dxdata.json",
+        "dxdata_version": "./data/dxdata/dxdata_version.json",
+        "override_list": "./data/dxdata/intl_override.csv",
         "user_list": "./data/user.json.enc",
         "notice_file": "./data/notice.json",
+        "tip_ad_file": "./data/tip_ad.json",
+        "img_dir": "./data/images",
+        "backup": "./data/backup",
         "font": "./assets/fonts/line_seed_jietng.ttf",
-        "logo": "./assets/pics/logo.png"
+        "logo": "./assets/pics/logo.png",
+        "covers": "./assets/covers",
+        "icon_type": "./assets/icon/type",
+        "icon_score": "./assets/icon/score",
+        "icon_dx_star": "./assets/icon/dx_star",
+        "icon_combo": "./assets/icon/combo",
+        "icon_sync": "./assets/icon/sync",
+        "icon_base": "./assets/icon",
+        "versions": "./assets/versions",
+        "plates": "./assets/plates",
+        "icon_combo_rcd": "./assets/icon/combo_rcd",
+        "icon_sync_rcd": "./assets/icon/sync_rcd"
     },
     "record_database": {
         "host": "localhost",
@@ -526,7 +543,7 @@ POST     /admin/trigger_cleanup    # 手动触发内存清理
     },
     "urls": {
         "line_adding": "https://line.me/R/ti/p/@yourlineid",
-        "support_page": "https://jietng.matsuki.work/commands/",
+        "support_page": "https://your-domain.com/commands/",
         "dxdata": [
             "https://raw.githubusercontent.com/gekichumai/dxrating/refs/heads/main/packages/dxdata/dxdata.json",
             "https://dp4p6x0xfi5o9.cloudfront.net/maimai/data.json"
@@ -541,6 +558,14 @@ POST     /admin/trigger_cleanup    # 手动触发内存清理
         "user_data": "AUTO_GENERATED_KEY",     // 自动生成的 Fernet 密钥
         "bind_token": "AUTO_GENERATED_TOKEN",  // 自动生成的绑定令牌
         "imgur_client_id": "YOUR_IMGUR_CLIENT_ID"  // Imgur API Client ID（可选）
+    },
+    "cloudflare_r2": {
+        "enabled": false,                      // 是否启用 R2 图床
+        "account_id": "",
+        "access_key_id": "",
+        "secret_access_key": "",
+        "bucket_name": "",
+        "public_url": ""
     }
 }
 ```

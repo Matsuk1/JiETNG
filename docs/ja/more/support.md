@@ -146,7 +146,7 @@ JiETNG の改善を手伝いたいですか？
 
 ## 開発をサポート
 
-JiETNG が気に入りましたか？継続的な開発をサポートしましょう：
+開発をサポート：
 
 ### 💝 財政的支援
 
@@ -239,8 +239,3 @@ JiETNG が気に入りましたか？継続的な開発をサポートしまし�
 - 💡 [機能をリクエスト](https://github.com/Matsuk1/JiETNG/issues/new?labels=enhancement)
 - 💝 [開発をサポート](https://ja.liberapay.com/_matsuk1/donate?currency=JPY)
 
----
-
-<div style="text-align: center; padding: 20px; opacity: 0.7;">
-  <p>JiETNG をご利用いただきありがとうございます！あなたのサポートがこのプロジェクトを維持しています。💙</p>
-</div>

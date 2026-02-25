@@ -32,27 +32,6 @@ JiETNG (pronounced "jie ting") is a free, feature-rich bot available on LINE tha
 - **Level Analysis**: View all scores for specific levels
 - **Version Statistics**: See your performance across different versions
 
-## Why Choose JiETNG?
-
-### Casual Players
-
-- **Simple Commands**: Easy-to-use interface for querying scores
-- **Visual Charts**: Beautiful graphics make data easy to understand
-- **Quick Updates**: Sync your scores in seconds
-- **Mobile Friendly**: Works perfectly on your phone
-
-### Competitive Players
-
-- **Detailed Analysis**: In-depth analysis of your performance
-- **Rating Tracking**: Monitor your rating changes over time
-- **Goal Setting**: Track progress toward specific achievements
-- **Friend Competition**: Compare scores with rivals
-
-### Community Organizers
-
-- **Score Sharing**: Easily share achievements
-- **Multi-language**: Support for Japanese, English, and Chinese
-
 ## How It Works
 
 ```mermaid
@@ -109,26 +88,9 @@ While JiETNG's source code is proprietary, the development process is transparen
 - 💡 Feature requests from users
 - 📖 Comprehensive documentation
 
-## Community
-
-Join hundreds of 『maimai でらっくす』 players using JiETNG:
-
-- 🌏 Players from Japan, Asia, and around the world
-- 💬 Active community discussions
-- 🎯 Regular events and competitions
-- 🤝 Friendly and welcoming atmosphere
-
 ## Getting Started
 
-Ready to start tracking your scores?
-
 [Quick Start Guide →](/en/guide/getting-started)
-
-## Support the Project
-
-JiETNG is free to use and maintained by a single developer. If you find it useful, please consider supporting its development:
-
-[Learn How to Support →](/en/more/support)
 
 ---
 

@@ -95,17 +95,9 @@ random-song 15
 
 ### Level Filter Syntax
 
-- `14` represents 14.0~14.4
-- `13+` represents 13.5~13.9
+- `14` represents 14.0~14.5
+- `13+` represents 13.6~13.9
 - `14.6` represents only charts with a constant of 14.6
-
-:::tip Random Challenge
-You can use the random feature to:
-- Practice challenges
-- Discover new songs
-- Break out of your usual music style
-- Use as daily task goals
-:::
 
 ---
 
@@ -263,45 +255,6 @@ Pagination:
 13+ のレコードリスト 3
 ```
 
-:::tip Tips
-Use level records to:
-- Track high difficulty progress
-- Find improvement opportunities
-- Analyze weaknesses
-- Set practice goals
-:::
-
----
-
-## Advanced Usage
-
-### Find Similar Songs
-
-1. Search for a song you like:
-   ```
-   blew moon info
-   ```
-2. Check the category or artist
-3. View the song list from the same version to find similar works
-
-### Discover New Songs
-
-1. Random by level:
-   ```
-   random 13+
-   ```
-2. View song information
-3. If already played, can directly check scores
-
-### Practice Planning
-
-1. Check songs by level:
-   ```
-   14 record-list
-   ```
-2. Find songs to improve
-3. View chart details to assist practice
-
 ---
 
 ## Comparison: Search vs Score Query
@@ -313,14 +266,6 @@ Use level records to:
 | **Display Content** | Song information | Personal data |
 | **Use Case** | Explore/learn about songs | Progress tracking |
 | **Response Speed** | Fast | Fast (cached) |
-
-:::tip Pro Tip
-If you're sure about the song name, you can use the record command directly:
-```
-blew moon record
-```
-This will display both song information and scores at once!
-:::
 
 ---
 

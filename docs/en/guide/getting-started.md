@@ -20,8 +20,6 @@ Before you begin, make sure you have:
 
 ## Step 2: Bind Your SEGA ID
 
-This is the most important step - connecting your SEGA account to the bot.
-
 ### Start Binding
 
 Send this to the bot:
@@ -76,14 +74,7 @@ maimai update
 - ⏱️ Update time: 20-30 seconds
 - 📊 Fetches all your songs and scores
 
-:::tip 🎯 When to Update
-- After playing at the arcade
-- Before you want to view your latest scores
-:::
-
 ## Step 4: Generate Your Best 50
-
-Now for the fun part - view your best scores!
 
 ### Basic Command
 
@@ -113,7 +104,7 @@ b15       # Only top 15 new songs
 
 ### Explore Features
 
-Now that you're set up, try these commands:
+Example commands:
 
 **Search for songs**:
 ```
@@ -182,22 +173,6 @@ FESTiVAL achievement
 
 [View full troubleshooting guide →](/en/more/faq)
 
-## Tips & Tricks
-
-### 💡 Pro Tips
-
-1. **Update regularly**: `maimai update` immediately after playing
-2. **Use filters**: `b50 -lv 14 -scr 97 98` to find improvement opportunities
-3. **Add friends**: Compare scores with other players
-4. **Track plates**: Use `[version] achievement` to track progress
-5. **Set goals**: Use `idealb50` to see potential rating
-
-### 🎯 Getting the Most from JiETNG
-
-- 🤝 Join the community Discord
-- 📊 Check your progress regularly
-- 💬 Share your achievements in the community
-
 ## Need Help?
 
 - 📖 [Read full documentation](/en/guide/introduction)
@@ -206,6 +181,3 @@ FESTiVAL achievement
 - 🐛 [Report issues](https://github.com/Matsuk1/JiETNG/issues)
 - 📧 [Contact support](/en/more/support)
 
----
-
-**Have fun and improve your rating!** 🎊

@@ -249,9 +249,7 @@ View all songs of a specified difficulty level, grouped by internal constants (e
 
 ### Server Selection
 
-Level queries automatically use your currently selected server (JP or INTL):
-- Use `maimai jp` to view JP server songs
-- Use `maimai intl` to view INTL server songs
+Level queries automatically use the server version set during binding (JP or INTL).
 
 ### Use Cases
 

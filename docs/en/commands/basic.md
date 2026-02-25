@@ -26,6 +26,17 @@ unbind
 This action is irreversible. All your data will be permanently deleted.
 :::
 
+### Update Account Settings
+
+Update your password, timezone, language or Aime settings without unbinding:
+
+```
+settings
+rebind
+```
+
+Sends a link to a web form where you can modify your current account settings. The SEGA ID cannot be changed.
+
 ### Update Scores
 
 Fetch your latest scores from SEGA:
@@ -62,16 +73,24 @@ Displays achievement rate values for each note type.
 profile
 ```
 
-## Help & Information
+## Leaderboard
 
-### View Help
+### DX Rating Leaderboard
+
+View DX Rating rankings among users in your current version:
 
 ```
-help
-ヘルプ
+rank
+ranking
+ランキング
 ```
 
-Displays quick command reference.
+You can also specify a version:
+
+```
+rank jp
+rank intl
+```
 
 ## Tips
 
@@ -95,7 +114,7 @@ RANDOM = random
 
 ### Spacing
 
-Most commands handle extra spaces gracefully:
+Most commands ignore extra spaces:
 
 ```
 ヒバナ info       # Works fine

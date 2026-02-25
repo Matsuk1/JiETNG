@@ -53,7 +53,11 @@ The web form will ask you for:
 
 ### Step 4: Confirmation
 
-After successful binding, you'll receive a confirmation message and can start using all features.
+After successful binding, the page will immediately show a success screen. Your score data will sync in the background, and the bot will notify you via LINE message once complete.
+
+:::tip Background Update
+The first-time score sync (`maimai update`) runs in the background and completes in seconds. You don't need to wait — feel free to close the page.
+:::
 
 ## Checking Binding Status
 
@@ -71,6 +75,17 @@ This will show your current binding information, including:
 - Version (jp/intl)
 - Language settings
 - Personal information status
+
+## Updating Account Settings (rebind)
+
+Update your password, timezone, language or Aime settings without unbinding:
+
+```
+settings
+rebind
+```
+
+The bot sends a web link with a form pre-filled with your current information (SEGA ID cannot be changed). You'll receive a confirmation immediately after submitting.
 
 ## Unbinding
 

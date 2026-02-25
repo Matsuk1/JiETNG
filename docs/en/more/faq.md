@@ -12,7 +12,6 @@ JiETNG is a LINE bot for 『maimai でらっくす』 players that provides:
 - Song search and discovery
 - Plate progress tracking
 - Friend ranking comparisons
-- And much more!
 
 ### Do I need to pay to use JiETNG?
 
@@ -59,7 +58,7 @@ Send one of these commands:
 - `best50`
 - `ベスト50`
 
-Make sure you've bound your SEGA ID first!
+Bind your SEGA ID before using `b50` and similar commands.
 
 See [Score Commands](/en/commands/record) for details.
 
@@ -194,5 +193,3 @@ Send `unbind` to permanently delete all your data from JiETNG.
 3. Search [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues)
 4. Ask in [Discord](https://discord.gg/NXxFn9T8Xz)
 5. Create new [GitHub Issue](https://github.com/Matsuk1/JiETNG/issues/new)
-
-We're here to help! 💙

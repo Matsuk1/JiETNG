@@ -30,6 +30,7 @@
 - **スコア追跡**: Best/Recent ゲーム記録の自動同期と保存
 - **データ可視化**: 詳細な B50/B100 スコアチャート生成、カスタムフィルター対応
 - **フレンドシステム**: フレンドスコアの閲覧、フレンド申請管理
+- **ランキング**: DX Rating ユーザーランキング（日本版・海外版別対応）
 - **バージョン進捗**: 各バージョンの達成状況追跡（極/将/神/舞舞）
 - **楽曲推薦**: 難易度定数によるランダム楽曲推薦
 - **位置情報サービス**: 近くの Maimai 設置店舗を検索
@@ -133,36 +134,13 @@ git clone https://github.com/Matsuk1/JiETNG.git
 cd JiETNG
 ```
 
-#### 2. システム依存関係をインストール
-
-本プロジェクトは QR コード認識のため `zbar` ライブラリが必要です。まずシステムレベルの依存関係をインストールしてください：
-
-**macOS**:
-```bash
-brew install zbar
-```
-
-**Ubuntu/Debian**:
-```bash
-sudo apt-get update
-sudo apt-get install libzbar0
-```
-
-**CentOS/RHEL**:
-```bash
-sudo yum install zbar
-```
-
-**Windows**:
-[ZBar 公式サイト](http://zbar.sourceforge.net/) からバイナリをダウンロードしてインストール
-
-#### 3. Python 依存関係をインストール
+#### 2. Python 依存関係をインストール
 
 ```bash
 pip install -r requirements.txt
 ```
 
-#### 4. データベースを設定
+#### 3. データベースを設定
 
 ```bash
 # MySQL にログイン
@@ -170,7 +148,7 @@ mysql -u root -p
 
 # データベースとユーザーを作成
 CREATE DATABASE maimai_records CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'jietng'@'localhost' IDENTIFIED BY 'jietng_2025';
+CREATE USER 'jietng'@'localhost' IDENTIFIED BY 'your_password';
 GRANT ALL PRIVILEGES ON maimai_records.* TO 'jietng'@'localhost';
 FLUSH PRIVILEGES;
 
@@ -178,15 +156,24 @@ FLUSH PRIVILEGES;
 mysql -u jietng -p maimai_records < records_db.sql
 ```
 
+#### 4. LINE Channel 認証情報を取得
+
+1. [LINE Developers Console](https://developers.line.biz/) にアクセス
+2. Messaging API Channel を作成
+3. **Channel Access Token** と **Channel Secret** を取得
+4. Webhook URL を設定：`https://your-domain.com/linebot/webhook`
+5. **Use webhook** を有効化
+
 #### 5. config.json を設定
 
-`config.json` ファイルを編集：
+`config.json` ファイルを編集（完全な構造は[設定リファレンス](#完全な-configjson)を参照）：
 
 ```json
 {
     "admin_id": ["U0123456789abcdef"],
     "admin_password": "your_admin_password",
     "domain": "your-domain.com",
+    "host": "0.0.0.0",
     "port": 5000,
     "line_channel": {
         "account_id": "@yourlineid",
@@ -196,35 +183,32 @@ mysql -u jietng -p maimai_records < records_db.sql
     "record_database": {
         "host": "localhost",
         "user": "jietng",
-        "password": "jietng_2025",
+        "password": "your_password",
         "database": "maimai_records"
     },
     "urls": {
         "line_adding": "https://line.me/R/ti/p/@yourlineid",
-        "support_page": "https://jietng.matsuki.work/ja/commands/",
+        "support_page": "https://your-domain.com/commands/",
         "dxdata": [
             "https://raw.githubusercontent.com/gekichumai/dxrating/refs/heads/main/packages/dxdata/dxdata.json",
             "https://dp4p6x0xfi5o9.cloudfront.net/maimai/data.json"
         ]
+    },
+    "keys": {
+        "user_data": "",
+        "bind_token": "",
+        "imgur_client_id": ""
     }
 }
 ```
 
-#### 6. LINE Channel 認証情報を取得
-
-1. [LINE Developers Console](https://developers.line.biz/) にアクセス
-2. Messaging API Channel を作成
-3. **Channel Access Token** と **Channel Secret** を取得
-4. Webhook URL を設定：`https://your-domain.com/linebot/webhook`
-5. **Use webhook** を有効化
-
-#### 7. サービスを起動
+#### 6. サービスを起動
 
 ```bash
 python main.py
 ```
 
-サービスは `http://0.0.0.0:5000` で起動します
+サービスは `http://0.0.0.0:<port>` で起動します（ポートは config.json の `port` で設定）
 
 ### 本番環境デプロイ（推奨）
 
@@ -389,14 +373,16 @@ JiETNG/
 │   ├── dxdata_manager.py      # 楽曲データ管理
 │   ├── image_cache.py         # 画像キャッシュ
 │   ├── image_manager.py       # 画像処理
-│   ├── image_uploader.py      # 画像アップロード（Imgur/uguu/0x0）
+│   ├── image_uploader.py      # 画像アップロード（Imgur/Cloudflare R2）
 │   ├── json_encrypt.py        # 暗号化ツール
 │   ├── line_messenger.py      # LINE メッセージ送信
 │   ├── maimai_manager.py      # Maimai API インターフェース
 │   ├── memory_manager.py      # メモリ管理とクリーンアップ
-│   ├── message_manager.py     # 多言語メッセージ管理（お知らせ含む）
+│   ├── message_manager.py     # 多言語メッセージ管理
+│   ├── message_texts.py       # 多言語メッセージテキスト定義
 │   ├── notice_manager.py      # お知らせシステム
 │   ├── notice_stats.py        # お知らせ統計
+│   ├── notification_manager.py # システム通知管理（Web Push）
 │   ├── perm_request_generator.py  # 権限リクエスト生成器
 │   ├── perm_request_handler.py    # 権限リクエストハンドラー
 │   ├── rate_limiter.py        # 頻度制限 + リクエスト追跡
@@ -406,6 +392,7 @@ JiETNG/
 │   ├── song_matcher.py        # 楽曲検索（あいまい一致対応）
 │   ├── storelist_generator.py # 設置店舗リスト生成（Flex Message）
 │   ├── system_checker.py      # システム自己診断
+│   ├── tip_ad_manager.py      # 更新後ヒント/広告管理
 │   └── user_manager.py        # ユーザー管理 + ニックネームキャッシュ
 ├── templates/                 # HTML テンプレート
 │   ├── admin_login.html       # 管理者ログインページ
@@ -413,16 +400,32 @@ JiETNG/
 │   ├── bind_form.html         # アカウント連携フォーム
 │   ├── common_styles.html     # 共通スタイル
 │   ├── error.html             # エラーページ
+│   ├── loading.html           # ローディング遷移ページ
 │   └── success.html           # 成功ページ
 ├── data/                      # データファイル
-│   ├── dxdata.json            # 楽曲データベース
+│   ├── dxdata/                # 楽曲データベースディレクトリ
+│   │   ├── dxdata.json        # 楽曲定数データ
+│   │   ├── dxdata_version.json # バージョン情報
+│   │   └── intl_override.csv  # 海外版オーバーライドデータ
+│   ├── images/                # 生成画像キャッシュ
+│   ├── backup/                # データバックアップ
 │   ├── notice.json            # お知らせ情報
-│   ├── intl_override.csv      # 地域データ
+│   ├── tip_ad.json            # 更新後ヒント/広告設定
 │   └── user.json.enc          # ユーザーデータ（暗号化）
 └── assets/                    # 静的リソース
     ├── fonts/                 # フォントファイル
-    ├── pics/                  # 画像
+    ├── pics/                  # 画像（ロゴ等）
+    ├── covers/                # 楽曲カバー画像
+    ├── plates/                # 称号プレート画像
+    ├── versions/              # バージョンアイコン
     └── icon/                  # アイコンリソース
+        ├── combo/             # Full Combo アイコン
+        ├── combo_rcd/         # レコードページ Combo アイコン
+        ├── dx_star/           # DX Star アイコン
+        ├── score/             # スコアランクアイコン
+        ├── sync/              # Full Sync アイコン
+        ├── sync_rcd/          # レコードページ Sync アイコン
+        └── type/              # 譜面タイプアイコン（DX/STD）
 ```
 
 ### データベース構造
@@ -496,22 +499,41 @@ POST     /admin/trigger_cleanup    # 手動メモリクリーンアップ
 
 ```json
 {
-    "admin_id": ["U0123..."],              // LINE 管理者ユーザー ID
+    "admin_id": ["U0123..."],              // LINE 管理者ユーザー ID リスト
     "admin_password": "secure_pwd",        // 管理パネルパスワード
     "maimai_version": {
-        "jp": ["PRiSM PLUS", "CiRCLE"],    // 日本版バージョン
+        "jp": ["PRiSM PLUS", "CiRCLE"],    // 日本版 現行/前バージョン
         "intl": ["PRiSM PLUS"]             // 海外版バージョン
     },
-    "domain": "jietng.example.com",        // サービスドメイン
+    "temp_version": {
+        "abbr": "CiRCLE",                  // 次期バージョン略称
+        "title": "CiRCLE"                  // 次期バージョン正式名称
+    },
+    "domain": "your-domain.com",           // サービスドメイン（プロトコルなし）
+    "host": "0.0.0.0",                     // リッスンアドレス
     "port": 5000,                          // サービスポート
     "file_path": {
-        "dxdata_list": "./data/dxdata.json",
-        "dxdata_version": "./data/dxdata_version.json",
-        "override_list": "./data/intl_override.csv",
+        "dxdata_list": "./data/dxdata/dxdata.json",
+        "dxdata_version": "./data/dxdata/dxdata_version.json",
+        "override_list": "./data/dxdata/intl_override.csv",
         "user_list": "./data/user.json.enc",
         "notice_file": "./data/notice.json",
+        "tip_ad_file": "./data/tip_ad.json",
+        "img_dir": "./data/images",
+        "backup": "./data/backup",
         "font": "./assets/fonts/line_seed_jietng.ttf",
-        "logo": "./assets/pics/logo.png"
+        "logo": "./assets/pics/logo.png",
+        "covers": "./assets/covers",
+        "icon_type": "./assets/icon/type",
+        "icon_score": "./assets/icon/score",
+        "icon_dx_star": "./assets/icon/dx_star",
+        "icon_combo": "./assets/icon/combo",
+        "icon_sync": "./assets/icon/sync",
+        "icon_base": "./assets/icon",
+        "versions": "./assets/versions",
+        "plates": "./assets/plates",
+        "icon_combo_rcd": "./assets/icon/combo_rcd",
+        "icon_sync_rcd": "./assets/icon/sync_rcd"
     },
     "record_database": {
         "host": "localhost",
@@ -521,7 +543,7 @@ POST     /admin/trigger_cleanup    # 手動メモリクリーンアップ
     },
     "urls": {
         "line_adding": "https://line.me/R/ti/p/@yourlineid",
-        "support_page": "https://jietng.matsuki.work/ja/commands/",
+        "support_page": "https://your-domain.com/commands/",
         "dxdata": [
             "https://raw.githubusercontent.com/gekichumai/dxrating/refs/heads/main/packages/dxdata/dxdata.json",
             "https://dp4p6x0xfi5o9.cloudfront.net/maimai/data.json"
@@ -536,6 +558,14 @@ POST     /admin/trigger_cleanup    # 手動メモリクリーンアップ
         "user_data": "AUTO_GENERATED_KEY",     // 自動生成 Fernet キー
         "bind_token": "AUTO_GENERATED_TOKEN",  // 自動生成バインドトークン
         "imgur_client_id": "YOUR_IMGUR_CLIENT_ID"  // Imgur API Client ID（オプション）
+    },
+    "cloudflare_r2": {
+        "enabled": false,                      // Cloudflare R2 画像ストレージを使用するか
+        "account_id": "",
+        "access_key_id": "",
+        "secret_access_key": "",
+        "bucket_name": "",
+        "public_url": ""
     }
 }
 ```

@@ -146,7 +146,7 @@
 
 ## 支持开发
 
-喜欢 JiETNG？支持其持续开发：
+支持开发：
 
 ### 💝 经济支持
 
@@ -239,8 +239,3 @@
 - 💡 [请求功能](https://github.com/Matsuk1/JiETNG/issues/new?labels=enhancement)
 - 💝 [支持开发](https://ja.liberapay.com/_matsuk1/donate?currency=JPY)
 
----
-
-<div style="text-align: center; padding: 20px; opacity: 0.7;">
-  <p>感谢您使用 JiETNG！您的支持使这个项目保持活力。💙</p>
-</div>

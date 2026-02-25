@@ -12,7 +12,6 @@ JiETNG 是一个面向 『maimai でらっくす』 玩家的 LINE 机器人，�
 - 曲目搜索和发现
 - 牌子进度追踪
 - 好友排名对比
-- 还有更多！
 
 ### JiETNG 需要付费吗？
 
@@ -59,7 +58,7 @@ JiETNG 是一个面向 『maimai でらっくす』 玩家的 LINE 机器人，�
 - `best50`
 - `ベスト50`
 
-首先确保您已绑定 SEGA ID！
+使用 `b50` 等命令前，请先绑定 SEGA ID。
 
 详情请参阅 [成绩命令](/commands/record)。
 
@@ -194,5 +193,3 @@ maimai update
 3. 搜索 [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues)
 4. 在 [Discord](https://discord.gg/NXxFn9T8Xz) 提问
 5. 创建新 [GitHub Issue](https://github.com/Matsuk1/JiETNG/issues/new)
-
-我们随时为您提供帮助！💙

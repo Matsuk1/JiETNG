@@ -36,6 +36,7 @@ This document lists all available commands for the JiETNG LINE Bot.
 | `bind` | `segaid bind`, `バインド` | Bind SEGA account |
 | `profile` | `get me`, `getme`, `ゲットミー` | View current account binding info |
 | `unbind` | `アンバインド` | Unbind account |
+| `settings` | `rebind` | Update account settings (password, timezone, language, etc.) without unbinding |
 
 ### Data Update
 
@@ -45,7 +46,7 @@ This document lists all available commands for the JiETNG LINE Bot.
 
 **Notes**:
 - Data update requires SEGA account binding
-- Update process may take 1-2 minutes
+- Update typically completes within seconds
 - Rate limit: Maximum 2 requests per 30 seconds
 
 ---
@@ -248,6 +249,18 @@ friend-rcd 1234567890123456   # View friend's B50
 - Send your current location or any location
 - Bot will return nearby maimai arcade information (name, address, distance, map link)
 
+### Leaderboard
+
+| Command | Aliases | Description |
+|---------|---------|-------------|
+| `rank` | `ranking`, `ランキング` | View DX Rating leaderboard for your current version |
+| `rank jp` | `ranking jp`, `ランキング jp` | View JP server DX Rating leaderboard |
+| `rank intl` | `ranking intl`, `ランキング intl` | View International server DX Rating leaderboard |
+
+**Notes**:
+- Displays DX Rating rankings among JiETNG users in the same version
+- Specify `jp` or `intl` to view the leaderboard for a specific version
+
 ---
 
 ## Admin Commands
@@ -267,8 +280,10 @@ friend-rcd 1234567890123456   # View friend's B50
 ```
 donate                     # View donation support options
 bind                       # Bind SEGA account
+settings                   # Update account settings
 update                     # Update score data
 b50                        # View B50
+rank                       # View DX Rating leaderboard
 ヒバナってどんな曲            # View song info
 ヒバナのレコード              # View personal score
 宴極の達成状況               # View Extreme achievement
@@ -290,5 +305,5 @@ b50 -dx 92                 # DX score ≥92% (no limit)
 
 ---
 
-**Last Updated**: 2025-10-27
+**Last Updated**: 2026-02-25
 **Version**: Generated from main.py analysis

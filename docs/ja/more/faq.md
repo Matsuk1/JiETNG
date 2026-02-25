@@ -12,7 +12,6 @@ JiETNG は 『maimai でらっくす』 プレイヤー向けの LINE ボット�
 - 楽曲検索と発見
 - プレート進捗追跡
 - フレンドランキング比較
-- その他多数！
 
 ### JiETNG は有料ですか？
 
@@ -59,7 +58,7 @@ JiETNG は 『maimai でらっくす』 プレイヤー向けの LINE ボット�
 - `best50`
 - `ベスト50`
 
-まず SEGA ID を連携していることを確認してください！
+`b50` などのコマンドを使用する前に、SEGA ID を連携してください。
 
 詳細は[スコアコマンド](/ja/commands/record)を参照してください。
 
@@ -194,5 +193,3 @@ maimai update
 3. [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues) を検索
 4. [Discord](https://discord.gg/NXxFn9T8Xz) で質問
 5. 新しい [GitHub Issue](https://github.com/Matsuk1/JiETNG/issues/new) を作成
-
-いつでもお手伝いします！💙

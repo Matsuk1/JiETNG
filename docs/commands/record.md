@@ -34,7 +34,6 @@ best15       # 仅显示前 15 首新曲
 ab35         # All Best 35 （忽略歌曲版本）
 ab50         # All Best 50 （忽略歌曲版本）
 ab100        # All Best 100（忽略歌曲版本）
-anxt50       # Next Best 50（下个版本）
 apb50        # All Perfect Best 50（仅 AP/AP+ 成绩）
 fdxb50       # Full DX Best 50（仅 FDX/FDX+ 成绩）
 idlb50       # Ideal Best 50（模拟最好成绩）
@@ -250,9 +249,7 @@ b50 -diff mas -lv 14 -page 2             # 翻到第 2 页
 
 ### 服务器选择
 
-定数查询会自动使用您当前选择的服务器（JP 或 INTL）：
-- 使用 `maimai jp` 查看日服歌曲
-- 使用 `maimai intl` 查看国际服歌曲
+定数查询自动使用绑定时设置的服务器版本（JP 或 INTL）。
 
 ### 使用场景
 

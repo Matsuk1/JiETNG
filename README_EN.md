@@ -30,6 +30,7 @@ Supports Japanese and International servers
 - **Score Tracking**: Automatic synchronization and storage of Best/Recent game records
 - **Data Visualization**: Generate detailed B50/B100 score charts with customizable filters
 - **Friend System**: View friend scores and manage friend requests
+- **Leaderboard**: DX Rating user rankings with separate JP/INTL server views
 - **Version Progress**: Track completion status for version-specific achievements
 - **Song Recommendations**: Random song selection by difficulty rating
 - **Location Services**: Find nearby Maimai arcade locations
@@ -118,36 +119,13 @@ git clone https://github.com/Matsuk1/JiETNG.git
 cd JiETNG
 ```
 
-#### 2. Install System Dependencies
-
-This project requires `zbar` library for QR code recognition. Install system-level dependencies first:
-
-**macOS**:
-```bash
-brew install zbar
-```
-
-**Ubuntu/Debian**:
-```bash
-sudo apt-get update
-sudo apt-get install libzbar0
-```
-
-**CentOS/RHEL**:
-```bash
-sudo yum install zbar
-```
-
-**Windows**:
-Download and install binaries from [ZBar official website](http://zbar.sourceforge.net/)
-
-#### 3. Install Python Dependencies
+#### 2. Install Python Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-#### 4. Configure Database
+#### 3. Configure Database
 
 ```bash
 # Login to MySQL
@@ -155,7 +133,7 @@ mysql -u root -p
 
 # Create database and user
 CREATE DATABASE maimai_records CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'jietng'@'localhost' IDENTIFIED BY 'jietng_2025';
+CREATE USER 'jietng'@'localhost' IDENTIFIED BY 'your_password';
 GRANT ALL PRIVILEGES ON maimai_records.* TO 'jietng'@'localhost';
 FLUSH PRIVILEGES;
 
@@ -163,15 +141,24 @@ FLUSH PRIVILEGES;
 mysql -u jietng -p maimai_records < records_db.sql
 ```
 
+#### 4. Obtain LINE Channel Credentials
+
+1. Visit [LINE Developers Console](https://developers.line.biz/)
+2. Create a Messaging API Channel
+3. Obtain **Channel Access Token** and **Channel Secret**
+4. Set Webhook URL: `https://your-domain.com/linebot/webhook`
+5. Enable **Use webhook**
+
 #### 5. Configure config.json
 
-Edit `config.json` with your settings:
+Edit `config.json` (see [Configuration Reference](#complete-configjson) for full structure):
 
 ```json
 {
     "admin_id": ["U0123456789abcdef"],
     "admin_password": "your_admin_password",
     "domain": "your-domain.com",
+    "host": "0.0.0.0",
     "port": 5000,
     "line_channel": {
         "account_id": "@yourlineid",
@@ -181,35 +168,32 @@ Edit `config.json` with your settings:
     "record_database": {
         "host": "localhost",
         "user": "jietng",
-        "password": "jietng_2025",
+        "password": "your_password",
         "database": "maimai_records"
     },
     "urls": {
         "line_adding": "https://line.me/R/ti/p/@yourlineid",
-        "support_page": "https://jietng.matsuki.work/en/commands/",
+        "support_page": "https://your-domain.com/commands/",
         "dxdata": [
             "https://raw.githubusercontent.com/gekichumai/dxrating/refs/heads/main/packages/dxdata/dxdata.json",
             "https://dp4p6x0xfi5o9.cloudfront.net/maimai/data.json"
         ]
+    },
+    "keys": {
+        "user_data": "",
+        "bind_token": "",
+        "imgur_client_id": ""
     }
 }
 ```
 
-#### 6. Obtain LINE Channel Credentials
-
-1. Visit [LINE Developers Console](https://developers.line.biz/)
-2. Create a Messaging API Channel
-3. Obtain **Channel Access Token** and **Channel Secret**
-4. Set Webhook URL: `https://your-domain.com/linebot/webhook`
-5. Enable **Use webhook**
-
-#### 7. Start Service
+#### 6. Start Service
 
 ```bash
 python main.py
 ```
 
-Service will start on `http://0.0.0.0:5000`
+Service will start on `http://0.0.0.0:<port>` (port configured in config.json)
 
 ### Production Deployment (Recommended)
 
@@ -374,14 +358,16 @@ JiETNG/
 │   ├── dxdata_manager.py      # Song data management
 │   ├── image_cache.py         # Image caching
 │   ├── image_manager.py       # Image processing
-│   ├── image_uploader.py      # Image hosting upload (Imgur/uguu/0x0)
+│   ├── image_uploader.py      # Image upload (Imgur/Cloudflare R2)
 │   ├── json_encrypt.py        # Encryption utilities
 │   ├── line_messenger.py      # LINE message sending
 │   ├── maimai_manager.py      # Maimai API interface
 │   ├── memory_manager.py      # Memory management and cleanup
-│   ├── message_manager.py     # Multi-language message management (with announcements)
+│   ├── message_manager.py     # Multi-language message management
+│   ├── message_texts.py       # Multi-language message text definitions
 │   ├── notice_manager.py      # Announcement system
 │   ├── notice_stats.py        # Announcement statistics
+│   ├── notification_manager.py # System notification management (Web Push)
 │   ├── perm_request_generator.py  # Permission request generator
 │   ├── perm_request_handler.py    # Permission request handler
 │   ├── rate_limiter.py        # Rate limiting + request tracking
@@ -391,6 +377,7 @@ JiETNG/
 │   ├── song_matcher.py        # Song search with fuzzy matching
 │   ├── storelist_generator.py # Arcade store list generation (Flex Message)
 │   ├── system_checker.py      # System self-check
+│   ├── tip_ad_manager.py      # Post-update tip/ad management
 │   └── user_manager.py        # User management + nickname cache
 ├── templates/                 # HTML templates
 │   ├── admin_login.html       # Admin login page
@@ -398,16 +385,32 @@ JiETNG/
 │   ├── bind_form.html         # Account binding form
 │   ├── common_styles.html     # Common styles
 │   ├── error.html             # Error page
+│   ├── loading.html           # Loading transition page
 │   └── success.html           # Success page
 ├── data/                      # Data files
-│   ├── dxdata.json            # Song database
+│   ├── dxdata/                # Song database directory
+│   │   ├── dxdata.json        # Song constant data
+│   │   ├── dxdata_version.json # Version information
+│   │   └── intl_override.csv  # International server overrides
+│   ├── images/                # Generated image cache
+│   ├── backup/                # Data backups
 │   ├── notice.json            # Announcements
-│   ├── intl_override.csv      # Regional data
+│   ├── tip_ad.json            # Post-update tip/ad config
 │   └── user.json.enc          # User data (encrypted)
 └── assets/                    # Static resources
     ├── fonts/                 # Font files
-    ├── pics/                  # Images
+    ├── pics/                  # Images (logo, etc.)
+    ├── covers/                # Song cover images
+    ├── plates/                # Nameplate images
+    ├── versions/              # Version icons
     └── icon/                  # Icon resources
+        ├── combo/             # Full Combo icons
+        ├── combo_rcd/         # Record page Combo icons
+        ├── dx_star/           # DX Star icons
+        ├── score/             # Score rank icons
+        ├── sync/              # Full Sync icons
+        ├── sync_rcd/          # Record page Sync icons
+        └── type/              # Chart type icons (DX/STD)
 ```
 
 ### Database Schema
@@ -484,19 +487,38 @@ POST     /admin/trigger_cleanup    # Manual memory cleanup
     "admin_id": ["U0123..."],              // LINE admin user IDs
     "admin_password": "secure_pwd",        // Admin panel password
     "maimai_version": {
-        "jp": ["PRiSM PLUS", "CiRCLE"],    // JP server versions
-        "intl": ["PRiSM PLUS"]             // International versions
+        "jp": ["PRiSM PLUS", "CiRCLE"],    // JP server current/previous versions
+        "intl": ["PRiSM PLUS"]             // International server versions
     },
-    "domain": "jietng.example.com",        // Service domain
+    "temp_version": {
+        "abbr": "CiRCLE",                  // Upcoming version abbreviation
+        "title": "CiRCLE"                  // Upcoming version title
+    },
+    "domain": "your-domain.com",           // Service domain (no protocol)
+    "host": "0.0.0.0",                     // Listen address
     "port": 5000,                          // Service port
     "file_path": {
-        "dxdata_list": "./data/dxdata.json",
-        "dxdata_version": "./data/dxdata_version.json",
-        "override_list": "./data/intl_override.csv",
+        "dxdata_list": "./data/dxdata/dxdata.json",
+        "dxdata_version": "./data/dxdata/dxdata_version.json",
+        "override_list": "./data/dxdata/intl_override.csv",
         "user_list": "./data/user.json.enc",
         "notice_file": "./data/notice.json",
+        "tip_ad_file": "./data/tip_ad.json",
+        "img_dir": "./data/images",
+        "backup": "./data/backup",
         "font": "./assets/fonts/line_seed_jietng.ttf",
-        "logo": "./assets/pics/logo.png"
+        "logo": "./assets/pics/logo.png",
+        "covers": "./assets/covers",
+        "icon_type": "./assets/icon/type",
+        "icon_score": "./assets/icon/score",
+        "icon_dx_star": "./assets/icon/dx_star",
+        "icon_combo": "./assets/icon/combo",
+        "icon_sync": "./assets/icon/sync",
+        "icon_base": "./assets/icon",
+        "versions": "./assets/versions",
+        "plates": "./assets/plates",
+        "icon_combo_rcd": "./assets/icon/combo_rcd",
+        "icon_sync_rcd": "./assets/icon/sync_rcd"
     },
     "record_database": {
         "host": "localhost",
@@ -506,7 +528,7 @@ POST     /admin/trigger_cleanup    # Manual memory cleanup
     },
     "urls": {
         "line_adding": "https://line.me/R/ti/p/@yourlineid",
-        "support_page": "https://jietng.matsuki.work/en/commands/",
+        "support_page": "https://your-domain.com/commands/",
         "dxdata": [
             "https://raw.githubusercontent.com/gekichumai/dxrating/refs/heads/main/packages/dxdata/dxdata.json",
             "https://dp4p6x0xfi5o9.cloudfront.net/maimai/data.json"
@@ -521,6 +543,14 @@ POST     /admin/trigger_cleanup    # Manual memory cleanup
         "user_data": "AUTO_GENERATED_KEY",     // Auto-generated Fernet key
         "bind_token": "AUTO_GENERATED_TOKEN",  // Auto-generated bind token
         "imgur_client_id": "YOUR_IMGUR_CLIENT_ID"  // Imgur API Client ID (optional)
+    },
+    "cloudflare_r2": {
+        "enabled": false,                      // Enable Cloudflare R2 image storage
+        "account_id": "",
+        "access_key_id": "",
+        "secret_access_key": "",
+        "bucket_name": "",
+        "public_url": ""
     }
 }
 ```

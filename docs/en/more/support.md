@@ -146,7 +146,7 @@ Coming soon - detailed API documentation for advanced users.
 
 ## Support Development
 
-Love JiETNG? Support its continued development:
+Support development:
 
 ### 💝 Financial Support
 
@@ -239,8 +239,3 @@ For legal or privacy concerns:
 - 💡 [Request Feature](https://github.com/Matsuk1/JiETNG/issues/new?labels=enhancement)
 - 💝 [Support Development](https://ja.liberapay.com/_matsuk1/donate?currency=JPY)
 
----
-
-<div style="text-align: center; padding: 20px; opacity: 0.7;">
-  <p>Thank you for using JiETNG! Your support keeps this project alive. 💙</p>
-</div>
