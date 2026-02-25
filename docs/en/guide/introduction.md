@@ -54,7 +54,6 @@ graph LR
 
 - Large user base in Japan
 - Rich UI with FlexMessage
-- QuickReply for easy navigation
 - Official LINE Bot features
 - Multi-language support (Japanese, English, Chinese)
 
@@ -77,7 +76,7 @@ JiETNG is built with modern, reliable technologies:
 - **Messaging Platform**: python-line-bot-sdk
 - **Data Storage**: Encrypted JSON database
 - **Image Generation**: Pillow (PIL)
-- **Web Scraping**: BeautifulSoup4, lxml
+- **Web Scraping**: lxml
 
 ## Open Development
 

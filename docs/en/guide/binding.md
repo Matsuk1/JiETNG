@@ -14,23 +14,15 @@ There is no command-line binding method. You cannot enter your credentials direc
 
 ### Step 1: Start the Binding Process
 
-Send one of these commands to the bot:
+Send the command to the bot:
 
-- `bind`
-- `segaid bind`
-- `バインド` (Japanese)
+```
+bind
+```
 
 ### Step 2: Open the Binding URL
 
-The bot will send a button with a unique URL:
-
-```
-SEGA アカウント連携
-SEGA アカウントと連携されます
-有効期限は発行から2分間です
-
-[押しで連携] ← Click this button
-```
+The bot will send a button with a unique URL, click it.
 
 :::tip Token Expiration
 Binding tokens expire after **2 minutes**. If it expires, simply send the `bind` command again to get a new token.
@@ -65,9 +57,7 @@ Verify if your account is bound:
 
 ```
 profile
-get me
 getme
-ゲットミー
 ```
 
 This will show your current binding information, including:
@@ -127,15 +117,6 @@ This action cannot be undone.
 - Try logging into [maimai NET](https://maimaidx.jp/maimai-mobile/) directly to verify credentials
 - For international version, use [maimai NET DX International](https://maimaidx-eng.com/maimai-mobile/)
 
-### Already Bound Error
-
-**Problem**: "This SEGA ID is already bound to another account"
-
-**Solution**:
-- Each SEGA ID can only be bound to one LINE account at a time
-- To rebind, first `unbind` from the previous account
-- If you can't access the previous account, contact support
-
 ### Web Form Won't Load
 
 **Problem**: Binding URL won't open or shows errors
@@ -178,25 +159,12 @@ Select the version that matches where you actually play 『maimai でらっく�
 4. **Log out after use**: Remember to log out when using shared devices
 5. **Report suspicious activity**: Report any unauthorized access
 
-## Features Available After Binding
-
-Once bound, you can:
-
-✅ Generate Best 50 charts
-✅ View song records
-✅ Track plate progress
-✅ Search for songs
-✅ Update scores from maimai NET
-✅ Find nearby shops
-
-## Automatic Score Updates
+## Score Updates
 
 After binding, you can manually update scores:
 
 ```
 maimai update
-update
-アップデート
 ```
 
 This will fetch your latest scores from maimai NET and update the records in the bot.

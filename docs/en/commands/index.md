@@ -13,7 +13,6 @@ This document lists all available commands for the JiETNG LINE Bot.
 - [Version Achievements](#version-achievements)
 - [Friend Features](#friend-features)
 - [Utility Commands](#utility-commands)
-- [Admin Commands](#admin-commands)
 
 ---
 
@@ -23,9 +22,9 @@ This document lists all available commands for the JiETNG LINE Bot.
 
 | Command | Aliases | Description |
 |---------|---------|-------------|
-| `donate` | `ドネーション` | Display donation information to support JiETNG's development |
+| `donate` | None | Display donation information to support JiETNG's development |
 | `status` | None | Display bot status (uptime, CPU, memory, etc.) |
-| `command` | `cmd`, `コマンド` | Display the list of available score commands |
+| `command` | `cmd` | Display the list of available score commands |
 
 ---
 
@@ -35,16 +34,16 @@ This document lists all available commands for the JiETNG LINE Bot.
 
 | Command | Aliases | Description |
 |---------|---------|-------------|
-| `bind` | `segaid bind`, `バインド` | Bind SEGA account |
-| `profile` | `get me`, `getme`, `ゲットミー` | View current account binding info |
-| `unbind` | `アンバインド` | Unbind account |
+| `bind` | None | Bind SEGA account |
+| `profile` | `getme` | View current account binding info |
+| `unbind` | None | Unbind account |
 | `settings` | `rebind` | Update account settings (password, timezone, language, version, etc.) without unbinding |
 
 ### Data Update
 
 | Command | Aliases | Description |
 |---------|---------|-------------|
-| `maimai update` | `update`, `record update`, `マイマイアップデート`, `レコードアップデート`, `アップデート` | Sync latest scores from maimai NET |
+| `maimai update` | `update` | Sync latest scores from maimai NET |
 
 **Notes**:
 - Data update requires SEGA account binding
@@ -129,9 +128,8 @@ idealb50 -lv 13.5 14.0               # Ideal B50 with constant 13.5-14.0
 
 | Command Format | Aliases | Description | Example |
 |----------------|---------|-------------|---------|
-| `[Level]のレコードリスト` | `[Level]record-list`, `[Level]records` | View all scores for specified level | `13のレコードリスト` |
-| `[Constant]のレコードリスト` | `[Constant]record-list`, `[Constant]records` | View all scores for specified constant | `14.5のレコードリスト` |
-| `[Level]のレコードリスト [Page]` | `[Level]record-list [Page]`, `[Level]records [Page]` | View scores for level (page N) | `13のレコードリスト 2` |
+| `[Level]のレコードリスト (Page)` | `[Level]record-list (Page)`, `[Level]records (Page)` | View all scores for specified level | `13のレコードリスト` |
+| `[Constant]のレコードリスト (Page)` | `[Constant]record-list (Page)`, `[Constant]records (Page)` | View all scores for specified constant | `14.5のレコードリスト` |
 
 **Notes**:
 - **Level List**: Enter an integer (1-15) to view all charts in that level
@@ -199,7 +197,7 @@ UNiVERSEのバージョンリスト
 
 | Command | Aliases | Description |
 |---------|---------|-------------|
-| `friend list` | `friendlist`, `フレンドリスト` | View added friends list |
+| `friend list` | `friends` | View added friends list |
 | `friend-rcd [Code] [type?] [filters?]` | None | View friend's score chart |
 
 **Examples**:
@@ -225,15 +223,12 @@ friend-rcd 1234567890123456 b50 -lv 14.7     # View friend's B50 (constant 14.7)
 | Command | Description | Example |
 |---------|-------------|---------|
 | `rc [constant]` | View Rating table for specified constant | `rc 13.2` |
-| `RC [constant]` | Rating table (uppercase) | `RC 13.2` |
-| `Rc [constant]` | Rating table (capitalized) | `Rc 13.2` |
 
 ### Score Calculator
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `calc [tap] [hold] [slide] [break]` | Calculate 4-key score (no touch) | `calc 500 100 200 50` |
-| `calc [tap] [hold] [slide] [touch] [break]` | Calculate 5-key score (with touch) | `calc 500 100 200 50 50` |
+| `calc [tap] [hold] [slide] (touch) [break]` | Calculate notes' score | `calc 500 100 200 50 50` |
 
 **Notes**:
 - Calculator shows achievement for various miss types (Great/Good/Miss)
@@ -243,10 +238,7 @@ friend-rcd 1234567890123456 b50 -lv 14.7     # View friend's B50 (constant 14.7)
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `ランダム曲` | Randomly select a song | `ランダム曲` |
-| `ランダム` | Randomly select a song (short) | `ランダム` |
-| `random-song` | Randomly select a song (English) | `random-song` |
-| `random` | Randomly select a song (English short) | `random` |
+| `random (level/levelValue)` | Randomly select a song | `random 14` |
 
 ### Location Service
 
@@ -289,16 +281,6 @@ In group chats, mention (@) another registered JiETNG user to view their score d
 **Notes**:
 - The mentioned user must be a registered JiETNG user, otherwise falls back to your own data
 - Supports all score-related commands (b50, b100, record-list, progress, etc.)
-
----
-
-## Admin Commands
-
-**Note**: The following commands are admin-only
-
-| Command | Description |
-|---------|-------------|
-| `dxdata update` | Manually update dxdata database and compare changes |
 
 ---
 

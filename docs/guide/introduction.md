@@ -54,7 +54,6 @@ graph LR
 
 - 日本本地用户群
 - FlexMessage 提供丰富 UI
-- QuickReply 便于导航
 - 官方 LINE Bot 功能
 - 多语言支持（日语、英语、中文）
 
@@ -77,7 +76,7 @@ JiETNG 使用现代、可靠的技术构建：
 - **消息平台**: python-line-bot-sdk
 - **数据存储**: 加密的 JSON 数据库
 - **图像生成**: Pillow (PIL)
-- **网页抓取**: BeautifulSoup4, lxml
+- **网页抓取**: lxml
 
 ## 开放开发
 

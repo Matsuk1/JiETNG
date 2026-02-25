@@ -33,21 +33,6 @@ unbind_msg_text = {
     "zh": "✅ SEGA ID 解绑成功！"
 }
 
-# ============================================================
-# データ更新関連 / Data Update
-# ============================================================
-
-update_over_text = {
-    "ja": "✅ アップデート完了！",
-    "en": "✅ Update completed!",
-    "zh": "✅ 更新完成！"
-}
-
-update_error_text = {
-    "ja": "❗️あれ？アップデート中にエラーが出ちゃった！",
-    "en": "❗️Oops! An error occurred during the update!",
-    "zh": "❗️哎呀？更新过程中出现错误了！"
-}
 
 # ============================================================
 # エラーメッセージ / Error Messages
@@ -154,12 +139,6 @@ mention_error_text = {
     "zh": "被提到的用户好像还没有注册！"
 }
 
-multiple_mention_error_text = {
-    "ja": "ごめん！一度に複数のユーザーをメンションできないよ〜",
-    "en": "Sorry! You can't mention multiple users at once~",
-    "zh": "抱歉！不能一次提到多个用户哦~"
-}
-
 
 # 权限请求通知相关文本
 perm_request_notification_title_text = {
@@ -209,12 +188,6 @@ perm_request_reject_success_text = {
 # 管理者通知 / Admin Notifications
 # ============================================================
 
-notice_upload_text = {
-    "ja": "✅ Notice uploaded",
-    "en": "✅ Notice uploaded",
-    "zh": "✅ 公告已上传"
-}
-
 dxdata_update_text = {
     "ja": "✅ Dxdata Updated!",
     "en": "✅ Dxdata Updated!",
@@ -230,13 +203,6 @@ record_cmd_list_text = {
     "zh": "成绩命令列表",
     "en": "Record Command List",
     "ja": "レコードコマンドリスト"
-}
-
-# 临时使用好友账号
-friend_use_once_text = {
-    "ja": "これからは一回だけ「{name}」さんとしてレコードをチェックしていきますよ！\n色んなコマンドを使ってみてね！",
-    "en": "Checking records as '{name}' just once!\nTry various commands!",
-    "zh": "这次将作为「{name}」查看记录！\n试试各种命令吧！"
 }
 
 # 指定レベルのレコードなし

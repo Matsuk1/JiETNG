@@ -83,7 +83,6 @@ JiETNG 使用以下第三方库和服务：
 - **Flask** - BSD 许可证
 - **python-line-bot-sdk** - Apache 2.0 许可证
 - **Pillow (PIL)** - HPND 许可证
-- **BeautifulSoup4** - MIT 许可证
 - **mysql-connector-python** - GPL v2 with FOSS Exception
 - **cryptography** - Apache 2.0 / BSD 许可证
 

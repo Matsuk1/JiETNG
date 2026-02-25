@@ -52,55 +52,6 @@ Each result includes:
 
 ---
 
-## Random Song
-
-Randomly get a song, with optional level specification.
-
-### Basic Random
-
-**Command Format:**
-
-```
-random
-random-song
-ランダム
-ランダム曲
-```
-
-**Example:**
-
-```
-random
-```
-
-Randomly selects a song from the entire 『maimai でらっくす』 song library.
-
-### Random by Level
-
-**Command Format:**
-
-```
-random [level]
-random-song [level]
-ランダム [level]
-```
-
-**Examples:**
-
-```
-random 14
-ランダム曲 13+
-random-song 15
-```
-
-### Level Filter Syntax
-
-- `14` represents 14.0~14.5
-- `13+` represents 13.6~13.9
-- `14.6` represents only charts with a constant of 14.6
-
----
-
 ## View Songs by Version
 
 View all songs added in a specific 『maimai でらっくす』 version.

@@ -128,46 +128,6 @@ def get_update_quick_reply(user_id=None):
         ]
     )
 
-def get_update_over_quick_reply(user_id=None):
-    """获取更新完成后的 QuickReply"""
-    label_rct50 = get_quick_reply_label("recent_50", user_id)
-    label_ab50 = get_quick_reply_label("all_best_50", user_id)
-    return QuickReply(
-        items=[
-            QuickReplyItem(action=MessageAction(
-                label=label_rct50,
-                text="rct50",
-                display_text=label_rct50
-            )),
-            QuickReplyItem(action=MessageAction(
-                label=label_ab50,
-                text="ab50",
-                display_text=label_ab50
-            )),
-            QuickReplyItem(action=URIAction(
-                label=get_quick_reply_label("support", user_id),
-                uri=SUPPORT_PAGE
-            ))
-        ]
-    )
-
-def get_update_error_quick_reply(user_id=None):
-    """获取更新错误后的 QuickReply"""
-    label = get_quick_reply_label("retry", user_id)
-    return QuickReply(
-        items=[
-            QuickReplyItem(action=MessageAction(
-                label=label,
-                text="maimai update",
-                display_text=label
-            )),
-            QuickReplyItem(action=URIAction(
-                label=get_quick_reply_label("support", user_id),
-                uri=SUPPORT_PAGE
-            ))
-        ]
-    )
-
 def get_segaid_error_quick_reply(user_id=None):
     """获取 SEGA ID 错误的 QuickReply"""
     label = get_quick_reply_label("account_bind", user_id)
@@ -213,14 +173,6 @@ def rebind_msg(user_id=None):
 def unbind_msg(user_id=None):
     """生成 SEGA ID 解绑成功消息"""
     return create_text_message(unbind_msg_text, user_id)
-
-def update_over(user_id=None):
-    """生成更新完成消息"""
-    return create_text_message(update_over_text, user_id, get_update_over_quick_reply(user_id))
-
-def update_error(user_id=None):
-    """生成更新错误消息"""
-    return create_text_message(update_error_text, user_id, get_update_error_quick_reply(user_id))
 
 def segaid_error(user_id=None):
     """生成 SEGA ID 错误消息"""
@@ -286,22 +238,9 @@ def mention_error(user_id=None):
     """生成提到用户不存在错误消息"""
     return create_text_message(mention_error_text, user_id)
 
-def multiple_mention_error(user_id=None):
-    """生成多个用户提到错误消息"""
-    return create_text_message(multiple_mention_error_text, user_id)
-
 def get_perm_request_notification_alt_text(count, user_id=None):
     """获取权限请求通知的 alt text"""
     return get_multilingual_text(perm_request_notification_alt_text, user_id).format(count=count)
-
-def notice_upload(user_id=None):
-    """生成公告上传消息"""
-    return create_text_message(notice_upload_text, user_id)
-
-def friend_use_once(name, user_id=None):
-    """生成临时使用好友账号消息"""
-    text = get_multilingual_text(friend_use_once_text, user_id).format(name=name)
-    return TextMessage(text=text)
 
 def level_record_not_found(level, page, user_id=None):
     """生成指定等级记录未找到消息"""

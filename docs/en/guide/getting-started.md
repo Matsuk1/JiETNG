@@ -82,14 +82,6 @@ maimai update
 b50
 ```
 
-### What You'll Get
-
-A beautiful chart showing:
-- 📊 Your top 35 old songs (songs from previous versions)
-- 🎵 Your top 15 new songs (songs from current version)
-- 📈 Total rating
-- 🎯 Detailed information for each song
-
 ### Other Variants
 
 ```
@@ -124,7 +116,7 @@ friend list
 
 **View version achievements**:
 ```
-FESTiVAL achievement
+暁極 achievement
 ```
 
 ### Learn More

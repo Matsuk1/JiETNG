@@ -49,9 +49,6 @@ rebind
 
 ```
 maimai update
-update
-マイマイアップデート
-レコードアップデート
 ```
 
 ## 计算器

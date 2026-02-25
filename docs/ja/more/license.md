@@ -83,7 +83,6 @@ JiETNG は以下のサードパーティライブラリとサービスを使用�
 - **Flask** - BSD ライセンス
 - **python-line-bot-sdk** - Apache 2.0 ライセンス
 - **Pillow (PIL)** - HPND ライセンス
-- **BeautifulSoup4** - MIT ライセンス
 - **mysql-connector-python** - GPL v2 with FOSS Exception
 - **cryptography** - Apache 2.0 / BSD ライセンス
 

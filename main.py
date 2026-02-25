@@ -2771,12 +2771,8 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
 WEB_TASK_ROUTES = {
     # 精确匹配规则
     'exact': {
-        "マイマイアップデート": async_maimai_update_task,
         "maimai update": async_maimai_update_task,
-        "レコードアップデート": async_maimai_update_task,
-        "record update": async_maimai_update_task,
         "update": async_maimai_update_task,
-        "アップデート": async_maimai_update_task
     },
     # 前缀匹配规则
     'prefix': {
@@ -3061,7 +3057,7 @@ def route_to_image_queue(event):
             return True
 
     # 检查 ランダム曲 / random-song
-    if user_message.startswith(("ランダム曲", "ランダム", "random-song", "random")):
+    if user_message.startswith("random"):
         try:
             task_id = f"image_{user_id}_{datetime.now().timestamp()}"
             nickname = get_user_nickname_wrapper(user_id, use_cache=True)
@@ -3379,13 +3375,13 @@ def handle_sync_text_command(event):
     # ========================================
     # 0. Unbind 命令特殊处理（需要二次确认）
     # ========================================
-    UNBIND_COMMANDS = ["unbind", "アンバインド"]
+    UNBIND_COMMANDS = ["unbind"]
     if user_message in UNBIND_COMMANDS:
         # 第一步：返回确认提示
         reply_message = TextMessage(text=get_multilingual_text(unbind_confirm_text, user_id))
         return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
 
-    UNBIND_CONFIRM_COMMANDS = ["unbind confirm", "アンバインド confirm", "アンバインド コンファーム"]
+    UNBIND_CONFIRM_COMMANDS = ["unbind confirm"]
     if user_message in UNBIND_CONFIRM_COMMANDS:
         # 第二步：执行解绑操作
         reply_message = user_unbind(user_id)
@@ -3397,26 +3393,21 @@ def handle_sync_text_command(event):
     COMMAND_MAP = {
         # 捐赠
         "donate": lambda: donate_message,
-        "ドネーション": lambda: donate_message,
 
         # 账户管理
         "profile": lambda: get_user_info(user_id, source_type),
-        "get me": lambda: get_user_info(user_id, source_type),
         "getme": lambda: get_user_info(user_id, source_type),
-        "ゲットミー": lambda: get_user_info(user_id, source_type),
 
         # 好友列表
         "friend list": lambda: get_friend_list(user_id, source_type),
-        "フレンドリスト": lambda: get_friend_list(user_id, source_type),
-        "friendlist": lambda: get_friend_list(user_id, source_type),
+        "friends": lambda: get_friend_list(user_id, source_type),
 
         # 系统状态
         "status": lambda: get_bot_status(user_id),
 
         # 命令列表
         "command": lambda: generate_command_list_flex(user_id),
-        "cmd": lambda: generate_command_list_flex(user_id),
-        "コマンド": lambda: generate_command_list_flex(user_id)
+        "cmd": lambda: generate_command_list_flex(user_id)
     }
 
     if user_message in COMMAND_MAP:
@@ -3528,7 +3519,7 @@ def handle_sync_text_command(event):
     # ========================================
     # 4. SEGA ID 绑定
     # ========================================
-    BIND_COMMANDS = ["bind", "segaid bind", "バインド"]
+    BIND_COMMANDS = ["bind"]
     if user_message.lower() in BIND_COMMANDS:
         # 检查是否在群聊中发送
         source_type = getattr(event.source, 'type', 'user')

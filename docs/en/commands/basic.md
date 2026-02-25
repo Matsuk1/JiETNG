@@ -49,9 +49,6 @@ Fetch your latest scores from SEGA:
 
 ```
 maimai update
-update
-マイマイアップデート
-レコードアップデート
 ```
 
 ## Calculator

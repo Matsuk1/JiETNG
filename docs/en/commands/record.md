@@ -1,6 +1,6 @@
 # Record Commands
 
-Best 50 (b50) and Best 100 (b100) charts are fundamental features of JiETNG, displaying your highest-rated scores with beautifully designed visualizations.
+Best 50 (b50) chart is fundamental features of JiETNG, displaying your highest-rated scores with beautifully designed visualizations.
 
 ## What is Best 50?
 
@@ -38,31 +38,6 @@ apb50        # All Perfect Best 50 (AP/AP+ scores only)
 fdxb50       # Full DX Best 50 (FDX/FDX+ scores only)
 idlb50       # Ideal Best 50 (simulate best scores)
 ```
-
-## Chart Features
-
-### What's Displayed
-
-Each score card displays:
-
-- <� **Song name** and difficulty
-- <� **Song version**: old version or current version
-- P **Internal constant**: e.g., 14.7
-- =� **Achievement rate**: Your score percentage
-- <� **Rank grade**: SSS+, SSS, SS+, etc.
-- < **Full Combo type**: AP+, AP, FC+, FC
-- =% **Full Sync**: FDX+, FDX, FS+, FS
-- =� **Rating**: Single song rating
-- =� **DX Rating**: Your DX Rating
-
-### User Info Header
-
-Charts include your profile:
-
-- =d Player name and avatar
-- <� Dan/Class
-- P Total rating
-- <� Title
 
 ## Advanced Usage
 

@@ -83,7 +83,6 @@ JiETNG uses the following third-party libraries and services:
 - **Flask** - BSD License
 - **python-line-bot-sdk** - Apache 2.0 License
 - **Pillow (PIL)** - HPND License
-- **BeautifulSoup4** - MIT License
 - **mysql-connector-python** - GPL v2 with FOSS Exception
 - **cryptography** - Apache 2.0 / BSD License
 
