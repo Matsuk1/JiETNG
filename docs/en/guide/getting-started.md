@@ -71,7 +71,7 @@ maimai update
 
 ### Wait for Processing
 
-- ⏱️ Update time: 20-30 seconds
+- ⏱️ Update time: 2-3 seconds
 - 📊 Fetches all your songs and scores
 
 ## Step 4: Generate Your Best 50

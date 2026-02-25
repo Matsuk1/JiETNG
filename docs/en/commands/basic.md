@@ -1,97 +1,113 @@
 # Basic Commands
 
-This page covers all the essential commands you'll use frequently when working with JiETNG.
-
 ## Account Management
 
-### Bind SEGA Account
-
-Link your SEGA ID to start using JiETNG:
+### Bind
 
 ```
 bind
+segaid bind
+バインド
 ```
 
-This will provide a web link for secure binding. Private chat only.
+Sends a binding link (valid for 2 minutes). Private chat only.
 
-### Unbind Account
-
-Remove your SEGA ID and delete all stored data:
+### Unbind
 
 ```
 unbind
 ```
 
-The bot will ask for confirmation. Send the following to confirm:
+Requires confirmation:
 
 ```
 unbind confirm
 ```
 
 :::danger Warning
-This action is irreversible. All your data will be permanently deleted.
+This action is irreversible. All data will be permanently deleted.
 :::
 
 ### Update Account Settings
-
-Update your password, timezone, language or Aime settings without unbinding:
 
 ```
 settings
 rebind
 ```
 
-Sends a link to a web form where you can modify your current account settings. The SEGA ID cannot be changed. Private chat only.
+Sends a settings link to update password, version, timezone, language, Aime, etc. SEGA ID cannot be changed. Private chat only.
 
 ### Update Scores
 
-Fetch your latest scores from SEGA:
-
 ```
 maimai update
+update
+アップデート
+マイマイアップデート
+レコードアップデート
+record update
 ```
+
+Rate limit: maximum 2 requests per 30 seconds.
+
+### View Binding Info
+
+```
+profile
+get me
+getme
+ゲットミー
+```
+
+---
 
 ## Calculator
 
 ### Achievement Rate Calculator
 
-Calculate the percentage needed to reach target achievement rates:
-
 ```
 calc <tap> <hold> <slide> [<touch>] <break>
 ```
 
-Example (for a song with 100 taps, 50 holds, 30 slides, 20 touches, 10 breaks):
-```
-calc 100 50 30 20 10
-```
-
-Displays achievement rate values for each note type.
-
-## User Profile
-
-### Get User Information
+4 parameters (no touch) or 5 parameters (with touch):
 
 ```
-profile
+calc 500 100 200 50        # no touch
+calc 500 100 200 30 50     # with touch
 ```
+
+### Rating Table
+
+```
+rc 14.7
+RC 14.7
+Rc 14.7
+```
+
+Enter a constant (1.0~15.0, one decimal place max) to view the Rating value for each achievement rate.
+
+---
 
 ## Leaderboard
-
-### DX Rating Leaderboard
-
-View DX Rating rankings among users in your current version:
 
 ```
 rank
 ranking
 ランキング
+rank jp       # JP server leaderboard
+rank intl     # International server leaderboard
 ```
 
-You can also specify a version:
+---
+
+## Random Song
 
 ```
-rank jp
-rank intl
+random
+random-song
+ランダム
+ランダム曲
+random 14        # Random Lv.14 song (14.0~14.5)
+random 14+       # Random Lv.14+ song (14.6~14.9)
+random 14.7      # Random constant 14.7 song
 ```
-

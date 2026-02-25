@@ -315,8 +315,3 @@ b50 -scr 100.3             # Achievement ≥100.3% (no limit)
 b50 -dx 92 95              # DX score 92%-95%
 b50 -dx 92                 # DX score ≥92% (no limit)
 ```
-
----
-
-**Last Updated**: 2026-02-25
-**Version**: Generated from main.py analysis
