@@ -59,24 +59,23 @@ This document lists all available commands for the JiETNG LINE Bot.
 
 | Command | Aliases | Description |
 |---------|---------|-------------|
-| `b50` | `best50`, `best 50`, `ベスト50` | Best 35 (old ver.) + Best 15 (new ver.) |
-| `b40` | `best40`, `best 40`, `ベスト40` | Best 25 (old ver.) + Best 15 (new ver.) - Legacy Rating calculation |
-| `b100` | `best100`, `best 100`, `ベスト100` | Best 70 (old ver.) + Best 30 (new ver.) |
-| `b35` | `best35`, `best 35`, `ベスト35` | Old version Best 35 only |
-| `b15` | `best15`, `best 15`, `ベスト15` | New version Best 15 only |
+| `b50` | `best50` | Best 35 (old ver.) + Best 15 (new ver.) |
+| `b40` | `best40` | Best 25 (old ver.) + Best 15 (new ver.) - Legacy Rating calculation |
+| `b100` | `best100` | Best 70 (old ver.) + Best 30 (new ver.) |
+| `b35` | `best35` | Old version Best 35 only |
+| `b15` | `best15` | New version Best 15 only |
 
 ### Special Score Charts
 
 | Command | Aliases | Description |
 |---------|---------|-------------|
-| `ab35` | `allb35`, `all best 35`, `オールベスト35` | Mixed version Best 35 |
-| `ab50` | `allb50`, `all best 50`, `オールベスト50` | Mixed version Best 50 |
-| `ab100` | `allb100`, `all best 100`, `オールベスト100` | Mixed version Best 100 |
-| `apb50` | `ap50`, `all perfect 50`, `オールパーフェクト50` | AP/AP+ only Best 50 |
-| `fdxb50` | `fdx50`, `full dx 50`, `フールでらっくす50` | FDX/FDX+ only Best 50 |
-| `rct50` | `r50`, `recent50`, `recent 50` | Recent 50 plays |
-| `idealb50` | `idlb50`, `ideal best 50`, `理想的ベスト50` | Ideal Best 50 (auto-upgrade to next rank) |
-| `unknown` | `unknown songs`, `unknown data` | Unrecognized songs |
+| `ab35` | `allb35` | Mixed version Best 35 |
+| `ab50` | `allb50` | Mixed version Best 50 |
+| `ab100` | `allb100` | Mixed version Best 100 |
+| `apb50` | `ap50` | AP/AP+ only Best 50 |
+| `fdxb50` | `fdx50` | FDX/FDX+ only Best 50 |
+| `rct50` | `r50`, `recent50` | Recent 50 plays |
+| `idealb50` | `idlb50` | Ideal Best 50 |
 
 ### Advanced Filters
 

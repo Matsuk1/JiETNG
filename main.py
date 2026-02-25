@@ -203,23 +203,23 @@ app.secret_key = secrets.token_hex(32)  # 用于session加密
 # 配置成绩命令列表
 RANK_COMMANDS = {
     # Best 系列
-    ("b50", "best50", "best 50", "ベスト50"): "best50",
-    ("b40", "best40", "best 40", "ベスト40"): "best40",
-    ("b100", "best100", "best 100", "ベスト100"): "best100",
-    ("b35", "best35", "best 35", "ベスト35"): "best35",
-    ("b15", "best15", "best 15", "ベスト15"): "best15",
+    ("b50", "best50"): "best50",
+    ("b40", "best40"): "best40",
+    ("b100", "best100"): "best100",
+    ("b35", "best35"): "best35",
+    ("b15", "best15"): "best15",
 
     # All Best 系列
-    ("ab35", "allb35", "all best 35", "オールベスト35"): "allb35",
-    ("ab50", "allb50", "all best 50", "オールベスト50"): "allb50",
-    ("ab100", "allb100", "all best 100", "オールベスト100"): "allb100",
+    ("ab35", "allb35"): "allb35",
+    ("ab50", "allb50"): "allb50",
+    ("ab100", "allb100"): "allb100",
 
     # 特殊系列
-    ("apb50", "ap50", "all perfect 50", "オールパーフェクト50"): "apb50",
-    ("fdxb50", "fdx50", "Full DX 50", "フールでらっくす50"): "fdxb50",
-    ("rct50", "r50", "recent50", "recent 50"): "rct50",
-    ("idealb50", "idlb50", "ideal best 50", "理想的ベスト50"): "idlb50",
-    ("unknown", "unknown songs", "unknown data"): "unknown",
+    ("apb50", "ap50"): "apb50",
+    ("fdxb50", "fdx50"): "fdxb50",
+    ("rct50", "r50", "recent50"): "rct50",
+    ("idealb50", "idlb50"): "idlb50",
+    ("unknown"): "unknown",
 }
 
 # 启用 CSRF 保护
@@ -2367,9 +2367,9 @@ def select_records(song_record, type="best50", command="", ver="jp"):
             elif cmd in ["lv", "level"]:
                 parts = cmd_num.split()
                 if len(parts) == 1:
-                    lv_start = float(parts[0])
-                    song_record = list(filter(lambda x: x['internalLevelValue'] >= lv_start, song_record))
-                    details['Lv'] = f'≧ {lv_start}'
+                    level = float(parts[0])
+                    song_record = list(filter(lambda x: x['internalLevelValue'] == level, song_record))
+                    details['Lv'] = f'= {level}'
                 else:
                     lv_start, lv_stop = map(float, parts[:2])
                     song_record = list(filter(lambda x: lv_start <= x['internalLevelValue'] <= lv_stop, song_record))
@@ -2383,9 +2383,9 @@ def select_records(song_record, type="best50", command="", ver="jp"):
             elif cmd in ["ra", "rating"]:
                 parts = cmd_num.split()
                 if len(parts) == 1:
-                    ra_start = int(parts[0])
-                    song_record = list(filter(lambda x: x['ra'] >= ra_start, song_record))
-                    details['RA'] = f'≧ {ra_start}'
+                    ra = int(parts[0])
+                    song_record = list(filter(lambda x: x['ra'] == ra, song_record))
+                    details['RA'] = f'= {ra}'
                 else:
                     ra_start, ra_stop = map(int, parts[:2])
                     song_record = list(filter(lambda x: ra_start <= x['ra'] <= ra_stop, song_record))
@@ -2408,8 +2408,8 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 parts = cmd_num.split()
                 if len(parts) == 1:
                     dx_star = int(re.sub(r"\D", "", parts[0]))
-                    song_record = list(filter(lambda x: x['dx_star'] >= dx_star, song_record))
-                    details['Star'] = f'≧ {dx_star}'
+                    song_record = list(filter(lambda x: x['dx_star'] == dx_star, song_record))
+                    details['Star'] = f'= {dx_star}'
                 else:
                     dx_start = int(re.sub(r"\D", "", parts[0]))
                     dx_stop = int(re.sub(r"\D", "", parts[1]))
