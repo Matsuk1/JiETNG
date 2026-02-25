@@ -58,10 +58,10 @@ b50 -lv 14 14.9                          # 定数 14.0~14.9
 b50 -ra 301 312                          # Rating 301~312
 b50 -scr 100.3                           # 达成率 ≥100.3%
 b50 -dx 92 95                            # DX score 92%~95%
-b50 -ver buddies -lv 14 14.9            # Buddies 版本 14 级歌曲
-b50 -diff mas rem -scr 100.5            # MASTER/Re:MASTER 且达成率 ≥100.5%
+b50 -ver buddies -lv 14 14.9             # Buddies 版本 14 级歌曲
+b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER 且达成率 ≥100.5%
 b50 -type dx -diff mas                   # DX 谱面 MASTER 难度
-b50 -diff mas -lv 14 14.9 -page 2       # 翻到第 2 页
+b50 -diff mas -lv 14 14.9 -page 2        # 翻到第 2 页
 ```
 
 ---
@@ -74,7 +74,7 @@ b50 -diff mas -lv 14 14.9 -page 2       # 翻到第 2 页
 
 ```
 13の定数リスト    # 日文命令
-13のレベルリスト  # 日文命令（等级列表）
+13のレベルリスト  # 日文命令
 13 level-list   # 英文命令
 ```
 
@@ -90,8 +90,7 @@ b50 -diff mas -lv 14 14.9 -page 2       # 翻到第 2 页
 
 ```
 13sss+進捗        # 13 难度 SSS+ 评级进度
-13+sss progress   # 13+ 难度 SSS 评级进度（英文命令）
-14AP进度 2        # 14 难度 AP 评级进度（第 2 页）
+13+sss progress   # 13+ 难度 SSS 评级进度
 15fdx+ progress   # 15 难度 FDX+ 评级进度
 ```
 
@@ -106,10 +105,3 @@ b50 -diff mas -lv 14 14.9 -page 2       # 翻到第 2 页
 - 支持日文（進捗）、英文（progress）和中文（进度）关键字
 - 支持的难度：11、11+、12、12+、13、13+、14、14+、15
 :::
-
-### 显示内容
-
-- **已完成**：达到目标评级的谱面（每页最多 35 个）
-- **未完成**：未达到目标评级的谱面（每页最多 15 个）
-- 按达成率从高到低排序
-- 第一页显示统计信息（已完成 / 未完成 / 未游玩 / 总计）

@@ -71,42 +71,9 @@ This document lists all available commands for the JiETNG LINE Bot.
 | `rct50` | `r50` | Recent 50 plays |
 | `idealb50` | `idlb50` | Ideal Best 50 |
 
-### Advanced Filters
+### Filters
 
-All score chart commands support the following filters:
-
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `-lv [value] [max]` | Filter by chart constant. Single value = exact match; two values = range | `b50 -lv 13.2 13.8` or `b50 -lv 13.7` |
-| `-ra [value] [max]` | Filter by Rating. Single value = exact match; two values = range | `b50 -ra 301 312` or `b50 -ra 301` |
-| `-star [value] [max]` | Filter by DX star count. Single value = exact match; two values = range | `b50 -star 3 5` or `b50 -star 3` |
-| `-scr [min] [max]` | Filter by achievement rate (max optional, unlimited if omitted) | `b50 -scr 100.3 100.8` or `b50 -scr 100.3` |
-| `-dx [min] [max]` | Filter by DX score percentage (max optional, unlimited if omitted) | `b50 -dx 92 95` or `b50 -dx 92` |
-
-**Note**: Filter behavior differs by parameter type:
-- `-lv 13.7` means chart constant = 13.7 (exact match); use `-lv 13.5 14.0` for a range
-- `-ra 301` means Rating = 301 (exact match); use `-ra 301 312` for a range
-- `-star 3` means DX star count = 3 (exact match); use `-star 3 5` for a range
-- `-scr 100.3` means achievement ≥100.3% (no upper limit)
-- `-dx 92` means DX score ≥92% (no upper limit)
-
-#### Filter Examples
-
-```
-b50 -lv 13.2 13.8                    # B50 with constant 13.2-13.8
-b50 -lv 13.7                         # B50 with constant exactly 13.7
-b50 -ra 301 312                      # B50 with Rating 301-312
-b50 -ra 301                          # B50 with exactly Rating 301
-b50 -star 3 5                        # B50 with DX star count 3-5
-b50 -star 3                          # B50 with exactly 3 DX stars
-b50 -scr 100.3 100.8                 # B50 with achievement 100.3%-100.8%
-b50 -scr 100.3                       # B50 with achievement ≥100.3% (no limit)
-b50 -dx 92 95                        # B50 with DX score 92%-95%
-b50 -dx 92                           # B50 with DX score ≥92% (no limit)
-b50 -lv 13.2 13.8 -scr 100.0         # B50 with constant 13.2-13.8 and achievement ≥100%
-b100 -lv 13.0 14.9 -dx 92 95         # B100 with constant 13.0-14.9 and DX 92%-95%
-idealb50 -lv 13.5 14.0               # Ideal B50 with constant 13.5-14.0
-```
+Supports `-lv`, `-ra`, `-scr`, `-dx`, `-star`, `-diff`, `-ver`, `-type`, `-page` and more. See [Record Commands](/en/commands/record#filters) for details.
 
 ---
 

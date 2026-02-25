@@ -58,10 +58,10 @@ b50 -lv 14 14.9                          # Constant 14.0~14.9
 b50 -ra 301 312                          # Rating 301~312
 b50 -scr 100.3                           # Achievement ≥100.3%
 b50 -dx 92 95                            # DX score 92%~95%
-b50 -ver buddies -lv 14 14.9            # Buddies version level 14 songs
-b50 -diff mas rem -scr 100.5            # MASTER/Re:MASTER with achievement ≥100.5%
+b50 -ver buddies -lv 14 14.9             # Buddies version level 14 songs
+b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER with achievement ≥100.5%
 b50 -type dx -diff mas                   # DX charts, MASTER difficulty
-b50 -diff mas -lv 14 14.9 -page 2       # Go to page 2
+b50 -diff mas -lv 14 14.9 -page 2        # Go to page 2
 ```
 
 ---
@@ -74,7 +74,7 @@ View all songs for a specified difficulty level, grouped by internal constant.
 
 ```
 13の定数リスト    # Japanese command
-13のレベルリスト  # Japanese command (level list)
+13のレベルリスト  # Japanese command
 13 level-list   # English command
 ```
 
@@ -90,8 +90,7 @@ View achievement progress for a specified difficulty level and rank.
 
 ```
 13sss+進捗        # Level 13 SSS+ rank progress
-13+sss progress   # Level 13+ SSS rank progress (English)
-14AP progress 2   # Level 14 AP rank progress (page 2)
+13+sss progress   # Level 13+ SSS rank progress
 15fdx+ progress   # Level 15 FDX+ rank progress
 ```
 
@@ -106,10 +105,3 @@ View achievement progress for a specified difficulty level and rank.
 - Supports Japanese (進捗), English (progress) keywords
 - Supported difficulty levels: 11, 11+, 12, 12+, 13, 13+, 14, 14+, 15
 :::
-
-### What's Displayed
-
-- **Completed**: Charts that achieved the target rank (up to 35 per page)
-- **Incomplete**: Charts that haven't reached the target rank (up to 15 per page)
-- Sorted by achievement rate, high to low
-- First page shows statistics (completed / incomplete / unplayed / total)
