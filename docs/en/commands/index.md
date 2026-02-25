@@ -38,7 +38,7 @@ This document lists all available commands for the JiETNG LINE Bot.
 | `bind` | `segaid bind`, `バインド` | Bind SEGA account |
 | `profile` | `get me`, `getme`, `ゲットミー` | View current account binding info |
 | `unbind` | `アンバインド` | Unbind account |
-| `settings` | `rebind` | Update account settings (password, timezone, language, etc.) without unbinding |
+| `settings` | `rebind` | Update account settings (password, timezone, language, version, etc.) without unbinding |
 
 ### Data Update
 
