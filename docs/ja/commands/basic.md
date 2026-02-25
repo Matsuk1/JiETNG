@@ -6,8 +6,6 @@
 
 ```
 bind
-segaid bind
-バインド
 ```
 
 連携リンクを送信します（有効期限：2 分）。プライベートチャートのみ対応。
@@ -42,10 +40,6 @@ rebind
 ```
 maimai update
 update
-アップデート
-マイマイアップデート
-レコードアップデート
-record update
 ```
 
 レート制限：30 秒以内に最大 2 回。
@@ -54,9 +48,7 @@ record update
 
 ```
 profile
-get me
 getme
-ゲットミー
 ```
 
 ---
@@ -104,9 +96,6 @@ rank intl     # 海外版ランキング
 
 ```
 random
-random-song
-ランダム
-ランダム曲
 random 14        # Lv.14 ランダム（14.0～14.5）
 random 14+       # Lv.14+ ランダム（14.6～14.9）
 random 14.7      # 定数 14.7 ランダム

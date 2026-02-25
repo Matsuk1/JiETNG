@@ -6,8 +6,6 @@
 
 ```
 bind
-segaid bind
-バインド
 ```
 
 发送后收到绑定链接（有效期 2 分钟）。仅限私聊。
@@ -42,10 +40,6 @@ rebind
 ```
 maimai update
 update
-アップデート
-マイマイアップデート
-レコードアップデート
-record update
 ```
 
 频率限制：30 秒内最多 2 次。
@@ -54,9 +48,7 @@ record update
 
 ```
 profile
-get me
 getme
-ゲットミー
 ```
 
 ---
@@ -104,9 +96,6 @@ rank intl     # 国际服排行榜
 
 ```
 random
-random-song
-ランダム
-ランダム曲
 random 14        # 随机 Lv.14 歌曲（14.0~14.5）
 random 14+       # 随机 Lv.14+ 歌曲（14.6~14.9）
 random 14.7      # 随机定数 14.7 歌曲

@@ -45,11 +45,6 @@ This document lists all available commands for the JiETNG LINE Bot.
 |---------|---------|-------------|
 | `maimai update` | `update` | Sync latest scores from maimai NET |
 
-**Notes**:
-- Data update requires SEGA account binding
-- Update typically completes within seconds
-- Rate limit: Maximum 2 requests per 30 seconds
-
 ---
 
 ## Score Queries
@@ -259,10 +254,6 @@ friend-rcd 1234567890123456 b50 -lv 14.7     # View friend's B50 (constant 14.7)
 | `rank jp` | `ranking jp`, `ランキング jp` | View JP server DX Rating leaderboard |
 | `rank intl` | `ranking intl`, `ランキング intl` | View International server DX Rating leaderboard |
 
-**Notes**:
-- Displays DX Rating rankings among JiETNG users in the same version
-- Specify `jp` or `intl` to view the leaderboard for a specific version
-
 ---
 
 ## @Mention Feature
@@ -282,36 +273,3 @@ In group chats, mention (@) another registered JiETNG user to view their score d
 - The mentioned user must be a registered JiETNG user, otherwise falls back to your own data
 - Supports all score-related commands (b50, b100, record-list, progress, etc.)
 
----
-
-## Quick Reference
-
-### Common Commands
-
-```
-donate                     # View donation support options
-bind                       # Bind SEGA account
-settings                   # Update account settings
-update                     # Update score data
-b50                        # View B50
-rank                       # View DX Rating leaderboard
-ヒバナってどんな曲            # View song info
-ヒバナのレコード              # View personal score
-宴極の達成状況               # View Extreme achievement
-friend list                # Friends list
-```
-
-### Filter Examples
-
-```
-b50 -lv 13.2 13.8          # Constant 13.2-13.8
-b50 -lv 13.7               # Exactly constant 13.7
-b50 -ra 301 312            # Rating 301-312
-b50 -ra 301                # Exactly Rating 301
-b50 -star 3 5              # DX star count 3-5
-b50 -star 3                # Exactly 3 DX stars
-b50 -scr 100.3 100.8       # Achievement 100.3%-100.8%
-b50 -scr 100.3             # Achievement ≥100.3% (no limit)
-b50 -dx 92 95              # DX score 92%-95%
-b50 -dx 92                 # DX score ≥92% (no limit)
-```

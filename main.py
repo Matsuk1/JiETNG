@@ -3453,8 +3453,8 @@ def handle_sync_text_command(event):
          lambda msg: asyncio.run(search_song(user_id, re.sub(r"\s*(ってどんな曲|info|song-info)$", "", msg).strip(), mai_ver))),
 
         # 随机歌曲
-        (lambda msg: msg.startswith(("ランダム曲", "ランダム", "random-song", "random")),
-         lambda msg: asyncio.run(random_song(user_id, re.sub(r"^(ランダム曲|ランダム|random-song|random)", "", msg).strip(), mai_ver))),
+        (lambda msg: msg.startswith("random"),
+         lambda msg: asyncio.run(random_song(user_id, re.sub(r"^(random)", "", msg).strip(), mai_ver))),
 
         # Rating 对照表
         (lambda msg: msg.startswith(("rc ", "RC ", "Rc ")),

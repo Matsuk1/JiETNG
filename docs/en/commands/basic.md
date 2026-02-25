@@ -6,8 +6,6 @@
 
 ```
 bind
-segaid bind
-バインド
 ```
 
 Sends a binding link (valid for 2 minutes). Private chat only.
@@ -42,10 +40,6 @@ Sends a settings link to update password, version, timezone, language, Aime, etc
 ```
 maimai update
 update
-アップデート
-マイマイアップデート
-レコードアップデート
-record update
 ```
 
 Rate limit: maximum 2 requests per 30 seconds.
@@ -54,9 +48,7 @@ Rate limit: maximum 2 requests per 30 seconds.
 
 ```
 profile
-get me
 getme
-ゲットミー
 ```
 
 ---
@@ -104,9 +96,6 @@ rank intl     # International server leaderboard
 
 ```
 random
-random-song
-ランダム
-ランダム曲
 random 14        # Random Lv.14 song (14.0~14.5)
 random 14+       # Random Lv.14+ song (14.6~14.9)
 random 14.7      # Random constant 14.7 song
