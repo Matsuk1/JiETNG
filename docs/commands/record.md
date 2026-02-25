@@ -73,15 +73,15 @@ idlb50       # Ideal Best 50（模拟最好成绩）
 #### 按等级过滤
 
 ```
-b50 -lv 15              # 仅等级 15 的歌曲
-b50 -lv 14 15           # 等级 14-15
-b50 -lv 13.7            # 内部定数 13.7 及以上
+b50 -lv 14.7            # 精确匹配定数 14.7
+b50 -lv 14 14.9         # 定数 14.0~14.9（所有 14 级歌曲）
+b50 -lv 15 15.9         # 定数 15.0~15.9（所有 15 级歌曲）
 ```
 
 #### 按 Rating 过滤
 
 ```
-b50 -ra 200             # 仅 Rating 200+
+b50 -ra 200             # 精确匹配 Rating 200
 b50 -ra 180 200         # Rating 180-200
 ```
 
@@ -97,6 +97,13 @@ b50 -scr 99 100         # 达成率 99%-100%
 ```
 b50 -dx 95              # DX score 95%+
 b50 -dx 90 95           # DX score 90-95%
+```
+
+#### 按 DX 星数过滤
+
+```
+b50 -star 3             # 精确匹配 3 颗 DX 星
+b50 -star 3 5           # 3~5 颗 DX 星
 ```
 
 #### 按版本过滤
@@ -151,15 +158,15 @@ b100 -page 2                       # 旧曲第 71-140 名，新曲第 31-60 名
 您可以组合多个过滤器：
 
 ```
-b50 -lv 15 -scr 100.5                    # 等级 15 且达成率 100.5%+ 的歌曲
-b50 -ra 200 -dx 95                       # Rating 200+ 且 DX score 95%+
-b50 -ver buddies -lv 14                  # Buddies 版本且等级 ≥14 的歌曲
+b50 -lv 14.7 -scr 100.5                  # 定数 14.7 且达成率 100.5%+
+b50 -ra 200 -dx 95                       # 精确匹配 Rating 200 且 DX score ≥95%
+b50 -ver buddies -lv 14 14.9             # Buddies 版本的所有 14 级歌曲
 b50 -ver splash splash+ -scr 100         # Splash/Splash+ 且达成率 ≥100% 的歌曲
-b50 -diff mas -lv 14                     # MASTER 难度且等级 ≥14 的歌曲
+b50 -diff mas -lv 14 14.9               # MASTER 难度的所有 14 级歌曲
 b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER 难度且达成率 100.5%+
-b50 -type dx -diff mas                   # DX 谱面中的 MASTER 难度
-b50 -lv 14 15 -scr 99.5 -dx 90           # 复杂过滤
-b50 -diff mas -lv 14 -page 2             # 翻到第 2 页
+b50 -type dx -diff mas                   # DX 谱面的 MASTER 难度
+b50 -lv 14 15 -scr 99.5 -dx 90           # 复杂筛选
+b50 -diff mas -lv 14 14.9 -page 2        # 翻到第 2 页
 ```
 
 ## 图表类型说明

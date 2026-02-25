@@ -73,15 +73,15 @@ You can apply filters to customize b50 output:
 #### Filter by Level
 
 ```
-b50 -lv 15              # Only level 15 songs
-b50 -lv 14 15           # Level 14-15
-b50 -lv 13.7            # Internal constant 13.7 and above
+b50 -lv 14.7            # Exactly constant 14.7
+b50 -lv 14 14.9         # Constant 14.0~14.9 (all level 14 songs)
+b50 -lv 15 15.9         # Constant 15.0~15.9 (all level 15 songs)
 ```
 
 #### Filter by Rating
 
 ```
-b50 -ra 200             # Only Rating 200+
+b50 -ra 200             # Exactly Rating 200
 b50 -ra 180 200         # Rating 180-200
 ```
 
@@ -97,6 +97,13 @@ b50 -scr 99 100         # Achievement rate 99%-100%
 ```
 b50 -dx 95              # DX score 95%+
 b50 -dx 90 95           # DX score 90-95%
+```
+
+#### Filter by DX Star Rating
+
+```
+b50 -star 3             # Exactly 3 DX stars
+b50 -star 3 5           # 3~5 DX stars
 ```
 
 #### Filter by Version
@@ -151,15 +158,15 @@ b100 -page 2                       # Old songs #71-140, new songs #31-60
 You can combine multiple filters:
 
 ```
-b50 -lv 15 -scr 100.5                    # Level 15 with achievement rate 100.5%+
-b50 -ra 200 -dx 95                       # Rating 200+ with DX score 95%+
-b50 -ver buddies -lv 14                  # Buddies version with level ≥14
+b50 -lv 14.7 -scr 100.5                  # Constant 14.7 with achievement rate 100.5%+
+b50 -ra 200 -dx 95                       # Exactly Rating 200 with DX score ≥95%
+b50 -ver buddies -lv 14 14.9             # Buddies version with level 14 songs
 b50 -ver splash splash+ -scr 100         # Splash/Splash+ with achievement ≥100%
-b50 -diff mas -lv 14                     # MASTER difficulty with level ≥14
+b50 -diff mas -lv 14 14.9               # MASTER difficulty with level 14 songs
 b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER with achievement 100.5%+
 b50 -type dx -diff mas                   # MASTER difficulty in DX charts
 b50 -lv 14 15 -scr 99.5 -dx 90           # Complex filtering
-b50 -diff mas -lv 14 -page 2             # Go to page 2
+b50 -diff mas -lv 14 14.9 -page 2        # Go to page 2
 ```
 
 ## Chart Type Explanations
