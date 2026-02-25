@@ -1,237 +1,98 @@
 # 成绩系统
 
-Best 50（b50）图表是 JiETNG 的基础功能，以精美的可视化设计展示您的最高评分成绩。
-
-## 什么是 Best 50？
-
-"Best 50"系统是『maimai でらっくす』的官方排名方法,由以下组成:
-
-- **Best 35**:您在**旧曲**(以前版本的歌曲)中的前 35 个最高分
-- **Best 15**:您在**新曲**(当前版本的歌曲)中的前 15 个最高分
-
-您的 **DX Rating** 是这 50 个分数的总和。
-
-<img src="/b50_example.png" alt="Best 50 成绩示例" style="width: 22%; max-width: 400px; min-width: 200px; display: block; margin: 1.5rem auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
-
 ## 命令
 
 ### 基础 Best 图表
 
 ```
-b50          # 生成 Best 50 图表
-b40          # 生成 Best 40 图表（过去的 Rating 计算方案）
-b100         # 生成 Best 100 图表
-best50       # b50 的替代命令
-best40       # b40 的替代命令
-best100      # b100 的替代命令
+b50          # Best 50 图表（旧曲 35 + 新曲 15）
+b40          # Best 40 图表（过去的 Rating 计算方案，旧曲 25 + 新曲 15）
+b100         # Best 100 图表（旧曲 70 + 新曲 30）
+best50 / best40 / best100   # 同上，替代命令
 ```
 
 ### 变体
 
 ```
-best35       # 仅显示前 35 首旧曲
-best15       # 仅显示前 15 首新曲
-ab35         # All Best 35 （忽略歌曲版本）
-ab50         # All Best 50 （忽略歌曲版本）
-ab100        # All Best 100（忽略歌曲版本）
-apb50        # All Perfect Best 50（仅 AP/AP+ 成绩）
-fdxb50       # Full DX Best 50（仅 FDX/FDX+ 成绩）
-idlb50       # Ideal Best 50（模拟最好成绩）
+b35 / best35              # 仅旧曲 Best 35
+b15 / best15              # 仅新曲 Best 15
+ab35 / allb35             # All Best 35（忽略版本）
+ab50 / allb50             # All Best 50（忽略版本）
+ab100 / allb100           # All Best 100（忽略版本）
+apb50 / ap50              # All Perfect Best 50（仅 AP/AP+ 成绩）
+fdxb50 / fdx50            # Full DX Best 50（仅 FDX/FDX+ 成绩）
+idealb50 / idlb50         # Ideal Best 50（模拟上一梯度成绩）
+rct50 / r50 / recent50    # Recent 50（最近 50 次游玩）
+unknown                   # 未识别歌曲成绩
 ```
 
-## 高级用法
+## 过滤参数
 
-### 过滤成绩
+所有 B 系命令均支持以下过滤参数：
 
-您可以应用过滤器来自定义 b50 输出：
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| `-lv [值] [最大值]` | 按定数筛选。单值精确匹配，双值为范围 | `-lv 14.7` 或 `-lv 14 14.9` |
+| `-ra [值] [最大值]` | 按 Rating 筛选。单值精确匹配，双值为范围 | `-ra 301` 或 `-ra 301 312` |
+| `-star [值] [最大值]` | 按 DX 星数筛选。单值精确匹配，双值为范围 | `-star 3` 或 `-star 3 5` |
+| `-scr [最小值] [最大值]` | 按达成率筛选（最大值可选） | `-scr 100.3` 或 `-scr 99 100` |
+| `-dx [最小值] [最大值]` | 按 DX score 百分比筛选（最大值可选） | `-dx 92` 或 `-dx 90 95` |
+| `-ver [版本...]` | 按版本筛选，可多选 | `-ver buddies` 或 `-ver splash splash+` |
+| `-diff [难度...]` | 按难度筛选，可多选 | `-diff mas` 或 `-diff mas rem` |
+| `-type [dx\|std]` | 按谱面类型筛选 | `-type dx` |
+| `-page [页码]` | 翻页 | `-page 2` |
 
-#### 按等级过滤
-
-```
-b50 -lv 14.7            # 精确匹配定数 14.7
-b50 -lv 14 14.9         # 定数 14.0~14.9（所有 14 级歌曲）
-b50 -lv 15 15.9         # 定数 15.0~15.9（所有 15 级歌曲）
-```
-
-#### 按 Rating 过滤
-
-```
-b50 -ra 200             # 精确匹配 Rating 200
-b50 -ra 180 200         # Rating 180-200
-```
-
-#### 按达成率过滤
-
-```
-b50 -scr 100.5          # 达成率 100.5%+
-b50 -scr 99 100         # 达成率 99%-100%
-```
-
-#### 按 DX Score 过滤
-
-```
-b50 -dx 95              # DX score 95%+
-b50 -dx 90 95           # DX score 90-95%
-```
-
-#### 按 DX 星数过滤
-
-```
-b50 -star 3             # 精确匹配 3 颗 DX 星
-b50 -star 3 5           # 3~5 颗 DX 星
-```
-
-#### 按版本过滤
-
-```
-b50 -ver buddies                   # 仅 Buddies 版本
-b50 -ver splash splash+            # Splash 和 Splash PLUS 版本
-b50 -ver festival+ buddies         # FESTiVAL PLUS 和 Buddies 版本
-```
-
-::: tip 版本名称说明
-- 版本名称不区分大小写
-- 使用 `+` 表示 PLUS 版本（如 `splash+`）
-- 可以同时指定多个版本，用空格分隔
+::: tip 难度简写
+`bas` = BASIC，`adv` = ADVANCED，`exp` = EXPERT，`mas` = MASTER，`rem` = Re:MASTER
 :::
 
-#### 按难度过滤
-
-```
-b50 -diff mas                      # 仅 MASTER 难度
-b50 -diff mas rem                  # MASTER 和 Re:MASTER 难度
-b50 -diff bas adv exp              # BASIC、ADVANCED 和 EXPERT 难度
-```
-
-::: tip 难度简写说明
-- `bas` = BASIC
-- `adv` = ADVANCED
-- `exp` = EXPERT
-- `mas` = MASTER
-- `rem` = Re:MASTER
-- 也可以使用全名（如 `basic`、`master`）
-- 难度名称不区分大小写
-- 可以同时指定多个难度，用空格分隔
+::: tip 版本名称
+不区分大小写，使用 `+` 表示 PLUS 版本（如 `splash+`），多个版本用空格分隔。
 :::
 
-#### 按谱面类型过滤
+### 示例
 
 ```
-b50 -type dx                       # 仅 DX 谱面
-b50 -type std                      # 仅 STD 谱面
+b50 -lv 14.7                             # 定数 14.7（精确匹配）
+b50 -lv 14 14.9                          # 定数 14.0~14.9
+b50 -ra 301 312                          # Rating 301~312
+b50 -scr 100.3                           # 达成率 ≥100.3%
+b50 -dx 92 95                            # DX score 92%~95%
+b50 -ver buddies -lv 14 14.9            # Buddies 版本 14 级歌曲
+b50 -diff mas rem -scr 100.5            # MASTER/Re:MASTER 且达成率 ≥100.5%
+b50 -type dx -diff mas                   # DX 谱面 MASTER 难度
+b50 -diff mas -lv 14 14.9 -page 2       # 翻到第 2 页
 ```
 
-#### 翻页
-
-```
-b50 -page 2                        # 旧曲第 36-70 名，新曲第 16-30 名
-b100 -page 2                       # 旧曲第 71-140 名，新曲第 31-60 名
-```
-
-### 组合过滤器
-
-您可以组合多个过滤器：
-
-```
-b50 -lv 14.7 -scr 100.5                  # 定数 14.7 且达成率 100.5%+
-b50 -ra 200 -dx 95                       # 精确匹配 Rating 200 且 DX score ≥95%
-b50 -ver buddies -lv 14 14.9             # Buddies 版本的所有 14 级歌曲
-b50 -ver splash splash+ -scr 100         # Splash/Splash+ 且达成率 ≥100% 的歌曲
-b50 -diff mas -lv 14 14.9               # MASTER 难度的所有 14 级歌曲
-b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER 难度且达成率 100.5%+
-b50 -type dx -diff mas                   # DX 谱面的 MASTER 难度
-b50 -lv 14 15 -scr 99.5 -dx 90           # 复杂筛选
-b50 -diff mas -lv 14 14.9 -page 2        # 翻到第 2 页
-```
-
-## 图表类型说明
-
-### Best 50 (b50)
-
-遵循官方规则的标准排名图表：
-- 旧版本歌曲前 35 名
-- 新版本歌曲前 15 名
-- 您的实际 DX rating
-
-### Best 100 (b100)
-
-显示更多成绩的扩展版本：
-- 旧版本歌曲前 70 名
-- 新版本歌曲前 30 名
-
-### All Best 50 (ab50)
-
-忽略歌曲版本区分：
-- 不论版本的前 50 个最高分
-
-### All Perfect Best 50 (apb50)
-
-仅显示 AP 歌曲：
-- 仅 AP（All Perfect）和 AP+ 成绩
-- 按 rating 排名
-
-### Full DX Best 50 (fdxb50)
-
-仅显示 FDX 歌曲：
-- 仅 FDX（Full DX）和 FDX+ 成绩
-- 按 rating 排名
-
-### Ideal Best 50 (idlb50)
-
-理论最大 rating：
-- 模拟所有歌曲的上一梯度成绩
-- 显示潜在的 rating 增长
-
-
-## 常见问题
-
-### 为什么我的 rating 与游戏内不同？
-
-- JiETNG 仅在您运行 `maimai update` 时更新
-- 部分歌曲定数不标准
-
-### 有些成绩缺失？
-
-确保您最近玩过这些歌曲。较旧的成绩可能不会出现，如果：
-- 它们已被更好的成绩替换
-- 歌曲已从游戏中移除
-- 数据同步问题（再次尝试 `maimai update`）
-
+---
 
 ## 定数查询
 
-查看指定难度等级的所有歌曲，按照内部定数（如 13.0、13.1、13.2 等）分组显示。
+查看指定难度等级的所有歌曲，按内部定数分组显示。
 
 ### 命令格式
 
 ```
-13の定数リスト    # 日文命令（定数列表）
+13の定数リスト    # 日文命令
 13のレベルリスト  # 日文命令（等级列表）
 13 level-list   # 英文命令
 ```
 
-### 显示内容
-
-- 左侧显示内部定数（如 13.0、13.1、13.2 等）
-- 右侧显示对应定数的所有歌曲封面
-- 顶部显示总歌曲数统计
-- 定数按从高到低排序
-
-### 服务器选择
-
 定数查询自动使用绑定时设置的服务器版本（JP 或 INTL）。
+
+---
 
 ## 难度评级达成进度
 
-查看指定难度和评级的达成情况，例如查看所有 13+ 难度中达到 SSS+ 评级的谱面进度。
+查看指定难度和评级的谱面达成情况。
 
 ### 命令格式
 
 ```
-13sss+進捗        # 查看 13 难度 SSS+ 评级的达成情况
-13+sss progress   # 查看 13+ 难度 SSS 评级的达成情况（英文命令）
-14AP进度 2        # 查看 14 难度 AP 评级的达成情况（第2页）
-15fdx+ progress   # 查看 15 难度 FDX+ 评级的达成情况
+13sss+進捗        # 13 难度 SSS+ 评级进度
+13+sss progress   # 13+ 难度 SSS 评级进度（英文命令）
+14AP进度 2        # 14 难度 AP 评级进度（第 2 页）
+15fdx+ progress   # 15 难度 FDX+ 评级进度
 ```
 
 ### 支持的评级
@@ -240,10 +101,9 @@ b50 -diff mas -lv 14 14.9 -page 2        # 翻到第 2 页
 - **Full Combo**：FC、FC+、AP、AP+
 - **Full Sync**：FDX、FDX+
 
-::: tip 命令说明
-- 评级不区分大小写（SSS 等于 sss）
+::: tip
+- 评级不区分大小写
 - 支持日文（進捗）、英文（progress）和中文（进度）关键字
-- 可以在命令末尾添加页码查看更多谱面
 - 支持的难度：11、11+、12、12+、13、13+、14、14+、15
 :::
 
@@ -252,18 +112,4 @@ b50 -diff mas -lv 14 14.9 -page 2        # 翻到第 2 页
 - **已完成**：达到目标评级的谱面（每页最多 35 个）
 - **未完成**：未达到目标评级的谱面（每页最多 15 个）
 - 按达成率从高到低排序
-- 第一页显示统计信息：
-  - 已完成谱面数
-  - 未完成谱面数
-  - 未游玩谱面数
-  - 总谱面数
-
-### 示例
-
-```
-13sss進捗         # 查看 13 难度 SSS 评级进度（第1页）
-13sss進捗 2       # 查看 13 难度 SSS 评级进度（第2页）
-14+ap+ progress   # 查看 14+ 难度 AP+ 评级进度
-15fdx进度 3       # 查看 15 难度 FDX 评级进度（第3页）
-```
-
+- 第一页显示统计信息（已完成 / 未完成 / 未游玩 / 总计）
