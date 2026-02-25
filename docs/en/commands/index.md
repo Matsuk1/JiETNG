@@ -274,6 +274,25 @@ friend-rcd 1234567890123456 b50 -lv 14.7     # View friend's B50 (constant 14.7)
 
 ---
 
+## @Mention Feature
+
+In group chats, mention (@) another registered JiETNG user to view their score data.
+
+**Usage**: Mention a user + command (mention can appear anywhere before or within the command)
+
+**Examples**:
+```
+@friend b50              # View friend's B50
+@friend profile          # View friend's account info
+@friend 14 record-list   # View friend's Lv14 score list
+```
+
+**Notes**:
+- The mentioned user must be a registered JiETNG user, otherwise falls back to your own data
+- Supports all score-related commands (b50, b100, record-list, progress, etc.)
+
+---
+
 ## Admin Commands
 
 **Note**: The following commands are admin-only
