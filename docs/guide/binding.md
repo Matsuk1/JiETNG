@@ -165,7 +165,7 @@ unbind
 - URL: https://maimaidx-eng.com/maimai-mobile/
 
 :::tip 选择正确的版本
-选择与您实际游玩 『maimai でらっくす』 的地点匹配的版本。除非解除绑定并重新绑定，否则无法更改账户版本。
+选择与您实际游玩 『maimai でらっくす』 的地点匹配的版本。之后可通过 `settings` 命令修改版本，无需解绑。
 :::
 
 ## 安全最佳实践

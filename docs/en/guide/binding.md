@@ -165,7 +165,7 @@ If you play outside Japan:
 - URL: https://maimaidx-eng.com/maimai-mobile/
 
 :::tip Choose the Right Version
-Select the version that matches where you actually play 『maimai でらっくす』. You cannot change the account version without unbinding and rebinding.
+Select the version that matches where you actually play 『maimai でらっくす』. You can change the version later via the `settings` command without unbinding.
 :::
 
 ## Security Best Practices
