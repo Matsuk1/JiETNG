@@ -24,6 +24,8 @@ This document lists all available commands for the JiETNG LINE Bot.
 | Command | Aliases | Description |
 |---------|---------|-------------|
 | `donate` | `ドネーション` | Display donation information to support JiETNG's development |
+| `status` | None | Display bot status (uptime, CPU, memory, etc.) |
+| `command` | `cmd`, `コマンド` | Display the list of available score commands |
 
 ---
 
@@ -138,7 +140,7 @@ idealb50 -lv 13.5 14.0               # Ideal B50 with constant 13.5-14.0
 - **Constant List**: Enter a decimal to view all charts with specified constant
   - Example: `14.5のレコードリスト` - View all constant 14.5 chart scores
   - Example: `13.7のレコードリスト` - View all constant 13.7 chart scores
-- Maximum 20 records per page, use page parameter to navigate
+- Up to 50 records per page (up to 35 old version + up to 15 new version), use page parameter to navigate
 - Automatically sorted by Rating in descending order
 
 ---
@@ -199,16 +201,21 @@ UNiVERSEのバージョンリスト
 | Command | Aliases | Description |
 |---------|---------|-------------|
 | `friend list` | `friendlist`, `フレンドリスト` | View added friends list |
-| `friend-rcd [Code]` | None | View friend's B50 |
+| `friend-rcd [Code] [type?] [filters?]` | None | View friend's score chart |
 
 **Examples**:
 ```
-friend list                   # View friends list
-friend-rcd 1234567890123456   # View friend's B50
+friend list                                   # View friends list
+friend-rcd 1234567890123456                   # View friend's B50 (default)
+friend-rcd 1234567890123456 b100              # View friend's B100
+friend-rcd 1234567890123456 b50 -lv 14.7     # View friend's B50 (constant 14.7)
 ```
 
 **Notes**:
 - Requires SEGA account binding
+- `[type]` supports all B-series commands (b50, b100, ab50, etc.), defaults to b50
+- `[filters]` supports the same filter parameters as b50 (-lv, -ra, -scr, etc.)
+- Private chat only, not available in group chats
 
 ---
 
