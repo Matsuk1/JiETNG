@@ -22,7 +22,7 @@ ab100 / allb100           # All Best 100（忽略版本）
 apb50 / ap50              # All Perfect Best 50（仅 AP/AP+ 成绩）
 fdxb50 / fdx50            # Full DX Best 50（仅 FDX/FDX+ 成绩）
 idealb50 / idlb50         # Ideal Best 50（模拟上一梯度成绩）
-rct50 / r50 / recent50    # Recent 50（最近 50 次游玩）
+rct50 / r50               # Recent 50（最近 50 次游玩）
 unknown                   # 未识别歌曲成绩
 ```
 

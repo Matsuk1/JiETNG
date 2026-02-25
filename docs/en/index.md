@@ -15,8 +15,8 @@ hero:
       text: Get Started
       link: /en/guide/getting-started
     - theme: alt
-      text: Introduction
-      link: /en/guide/introduction
+      text: Learn More
+      link: /en/guide/getting-started
     - theme: alt
       text: GitHub
       link: https://github.com/Matsuk1/JiETNG
@@ -97,7 +97,7 @@ Get started with JiETNG in three simple steps:
 
 Need help or want to contribute?
 
-- 📖 [Read the Documentation](/en/guide/introduction)
+- 📖 [Read the Documentation](/en/guide/getting-started)
 - 💬 [Join our Discord](https://discord.gg/NXxFn9T8Xz)
 - 🐛 [Report Issues](https://github.com/Matsuk1/JiETNG/issues)
 - 💝 [Support Development](/en/more/support)

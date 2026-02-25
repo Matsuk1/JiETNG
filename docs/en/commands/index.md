@@ -68,7 +68,7 @@ This document lists all available commands for the JiETNG LINE Bot.
 | `ab100` | `allb100` | Mixed version Best 100 |
 | `apb50` | `ap50` | AP/AP+ only Best 50 |
 | `fdxb50` | `fdx50` | FDX/FDX+ only Best 50 |
-| `rct50` | `r50`, `recent50` | Recent 50 plays |
+| `rct50` | `r50` | Recent 50 plays |
 | `idealb50` | `idlb50` | Ideal Best 50 |
 
 ### Advanced Filters

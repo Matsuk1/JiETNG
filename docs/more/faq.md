@@ -25,7 +25,7 @@ JiETNG 是一个面向 『maimai でらっくす』 玩家的 LINE 机器人，�
 - 访问 maimai NET（在线成绩追踪）
 - 将账户绑定到机器人
 
-请参阅[账号绑定](/guide/binding)了解设置说明。
+请参阅[账号绑定](/guide/getting-started)了解设置说明。
 
 ## 账号绑定
 
@@ -39,7 +39,7 @@ JiETNG 是一个面向 『maimai でらっくす』 玩家的 LINE 机器人，�
 
 **重要**: 不要在聊天中输入您的凭据。绑定仅通过 Web 完成。
 
-详情请参阅[账号绑定指南](/guide/binding)。
+详情请参阅[账号绑定指南](/guide/getting-started)。
 
 ### 我可以在聊天中输入 SEGA 凭据吗？
 
@@ -92,7 +92,7 @@ maimai update
 
 **解决方案**: 使用 `bind` 命令绑定您的账户。
 
-请参阅[账号绑定](/guide/binding)。
+请参阅[账号绑定](/guide/getting-started)。
 
 ### "更新成绩失败"
 

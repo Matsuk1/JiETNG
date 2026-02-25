@@ -22,7 +22,7 @@ ab100 / allb100           # All Best 100（バージョン無視）
 apb50 / ap50              # All Perfect Best 50（AP/AP+ のみ）
 fdxb50 / fdx50            # Full DX Best 50（FDX/FDX+ のみ）
 idealb50 / idlb50         # Ideal Best 50（上位梯度スコアをシミュレート）
-rct50 / r50 / recent50    # Recent 50（最近 50 回のプレイ）
+rct50 / r50               # Recent 50（最近 50 回のプレイ）
 unknown                   # 未認識楽曲のスコア
 ```
 

@@ -15,8 +15,8 @@ hero:
       text: 开始使用
       link: /guide/getting-started
     - theme: alt
-      text: 介绍
-      link: /guide/introduction
+      text: 了解更多
+      link: /guide/getting-started
     - theme: alt
       text: GitHub
       link: https://github.com/Matsuk1/JiETNG
@@ -97,7 +97,7 @@ JiETNG 是同时支持 『maimai でらっくす』 日服和国际服的查分�
 
 需要帮助或想要贡献？
 
-- 📖 [阅读文档](/guide/introduction)
+- 📖 [阅读文档](/guide/getting-started)
 - 💬 [加入 Discord](https://discord.gg/NXxFn9T8Xz)
 - 🐛 [报告问题](https://github.com/Matsuk1/JiETNG/issues)
 - 💝 [支持开发](/more/support)

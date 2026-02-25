@@ -217,7 +217,7 @@ RANK_COMMANDS = {
     # 特殊系列
     ("apb50", "ap50"): "apb50",
     ("fdxb50", "fdx50"): "fdxb50",
-    ("rct50", "r50", "recent50"): "rct50",
+    ("rct50", "r50"): "rct50",
     ("idealb50", "idlb50"): "idlb50",
     ("unknown"): "unknown",
 }
@@ -2926,19 +2926,19 @@ IMAGE_TASK_ROUTES = {
     ],
     # B系列命令 (生成图片)
     'b_commands': {
-        "b50", "best50", "best 50", "ベスト50",
-        "b40", "best40", "best 40", "ベスト40",
-        "b100", "best100", "best 100", "ベスト100",
-        "b35", "best35", "best 35", "ベスト35",
-        "b15", "best15", "best 15", "ベスト15",
-        "ab35", "allb35", "all best 35", "オールベスト35",
-        "ab50", "allb50", "all best 50", "オールベスト50",
-        "ab100", "allb100", "all best 100", "オールベスト100",
-        "apb50", "ap50", "all perfect 50", "オールパーフェクト50",
-        "fdxb50", "fdx50", "Full DX 50", "フールでらっくす50",
-        "rct50", "r50", "recent50", "recent 50",
-        "idealb50", "idlb50", "ideal best 50", "理想的ベスト50",
-        "unknown", "unknown songs", "unknown data"
+        "b50", "best50",
+        "b40", "best40",
+        "b100", "best100",
+        "b35", "best35",
+        "b15", "best15",
+        "ab35", "allb35",
+        "ab50", "allb50",
+        "ab100", "allb100",
+        "apb50", "ap50",
+        "fdxb50", "fdx50",
+        "rct50", "r50",
+        "idealb50", "idlb50",
+        "unknown"
     }
 }
 

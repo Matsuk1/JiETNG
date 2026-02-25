@@ -25,7 +25,7 @@ Yes, to use most features you need:
 - Access to maimai NET (online score tracking)
 - Binding your account to the bot
 
-See [Account Binding](/en/guide/binding) for setup instructions.
+See [Account Binding](/en/guide/getting-started) for setup instructions.
 
 ## Account Binding
 
@@ -39,7 +39,7 @@ See [Account Binding](/en/guide/binding) for setup instructions.
 
 **Important**: Do NOT type your credentials in the chat. Binding is web-based only.
 
-See [Account Binding Guide](/en/guide/binding) for details.
+See [Account Binding Guide](/en/guide/getting-started) for details.
 
 ### Can I type my SEGA credentials in the chat?
 
@@ -92,7 +92,7 @@ Usually 2 to 3 seconds, depending on:
 
 **Solution**: Bind your account with `bind` command.
 
-See [Account Binding](/en/guide/binding).
+See [Account Binding](/en/guide/getting-started).
 
 ### "Failed to update scores"
 

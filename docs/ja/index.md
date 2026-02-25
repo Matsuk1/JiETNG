@@ -15,8 +15,8 @@ hero:
       text: 始める
       link: /ja/guide/getting-started
     - theme: alt
-      text: 紹介
-      link: /ja/guide/introduction
+      text: 詳細
+      link: /ja/guide/getting-started
     - theme: alt
       text: GitHub
       link: https://github.com/Matsuk1/JiETNG
@@ -97,7 +97,7 @@ JiETNGは 『maimai でらっくす』 の国内版と海外版の両方に対�
 
 ヘルプが必要ですか？貢献したいですか？
 
-- 📖 [ドキュメントを読む](/ja/guide/introduction)
+- 📖 [ドキュメントを読む](/ja/guide/getting-started)
 - 💬 [Discordに参加](https://discord.gg/NXxFn9T8Xz)
 - 🐛 [問題を報告](https://github.com/Matsuk1/JiETNG/issues)
 - 💝 [開発をサポート](/ja/more/support)

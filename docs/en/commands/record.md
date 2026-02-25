@@ -22,7 +22,7 @@ ab100 / allb100           # All Best 100 (ignore version)
 apb50 / ap50              # All Perfect Best 50 (AP/AP+ scores only)
 fdxb50 / fdx50            # Full DX Best 50 (FDX/FDX+ scores only)
 idealb50 / idlb50         # Ideal Best 50 (simulate previous tier scores)
-rct50 / r50 / recent50    # Recent 50 plays
+rct50 / r50               # Recent 50 plays
 unknown                   # Unrecognized song scores
 ```
 

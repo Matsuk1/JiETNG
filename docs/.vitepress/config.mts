@@ -47,9 +47,7 @@ export default withMermaid(defineConfig({
       {
         text: '开始使用',
         items: [
-          { text: '介绍', link: '/guide/introduction' },
-          { text: '快速开始', link: '/guide/getting-started' },
-          { text: '绑定账号', link: '/guide/binding' }
+          { text: '快速开始', link: '/guide/getting-started' }
         ]
       },
       {
@@ -133,9 +131,7 @@ export default withMermaid(defineConfig({
           {
             text: 'Getting Started',
             items: [
-              { text: 'Introduction', link: '/en/guide/introduction' },
-              { text: 'Quick Start', link: '/en/guide/getting-started' },
-              { text: 'Binding Account', link: '/en/guide/binding' }
+              { text: 'Quick Start', link: '/en/guide/getting-started' }
             ]
           },
           {
@@ -196,9 +192,7 @@ export default withMermaid(defineConfig({
           {
             text: '始めに',
             items: [
-              { text: '紹介', link: '/ja/guide/introduction' },
-              { text: 'クイックスタート', link: '/ja/guide/getting-started' },
-              { text: 'アカウント連携', link: '/ja/guide/binding' }
+              { text: 'クイックスタート', link: '/ja/guide/getting-started' }
             ]
           },
           {

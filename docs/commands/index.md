@@ -68,7 +68,7 @@
 | `ab100` | `allb100` | 所有版本混合的 Best 100 |
 | `apb50` | `ap50` | 仅显示 AP/AP+ 的 Best 50 |
 | `fdxb50` | `fdx50` | 仅显示 FDX/FDX+ 的 Best 50 |
-| `rct50` | `r50`, `recent50` | 最近 50 条游玩记录 |
+| `rct50` | `r50` | 最近 50 条游玩记录 |
 | `idealb50` | `idlb50` | 理想分数 Best 50 |
 
 ### 高级筛选参数
