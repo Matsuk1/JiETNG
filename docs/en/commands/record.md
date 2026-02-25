@@ -280,13 +280,14 @@ View achievement progress for a specific difficulty level and rank, such as chec
 ### Supported Ranks
 
 - **Score Ranks**: S, S+, SS, SS+, SSS, SSS+
-- **Full Combo**: AP, AP+
+- **Full Combo**: FC, FC+, AP, AP+
 - **Full Sync**: FDX, FDX+
 
 ::: tip Command Notes
 - Rank names are case-insensitive (SSS equals sss)
 - Supports both Japanese (進捗) and English (progress) keywords
 - Add page number at the end to view more charts
+- Supported difficulty levels: 11, 11+, 12, 12+, 13, 13+, 14, 14+, 15
 :::
 
 ### What's Displayed

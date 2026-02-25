@@ -280,13 +280,14 @@ b50 -diff mas -lv 14 14.9 -page 2        # 翻到第 2 页
 ### 支持的评级
 
 - **评分等级**：S、S+、SS、SS+、SSS、SSS+
-- **Full Combo**：AP、AP+
+- **Full Combo**：FC、FC+、AP、AP+
 - **Full Sync**：FDX、FDX+
 
 ::: tip 命令说明
 - 评级不区分大小写（SSS 等于 sss）
 - 支持日文（進捗）、英文（progress）和中文（进度）关键字
 - 可以在命令末尾添加页码查看更多谱面
+- 支持的难度：11、11+、12、12+、13、13+、14、14+、15
 :::
 
 ### 显示内容
