@@ -22,6 +22,12 @@ Remove your SEGA ID and delete all stored data:
 unbind
 ```
 
+The bot will ask for confirmation. Send the following to confirm:
+
+```
+unbind confirm
+```
+
 :::danger Warning
 This action is irreversible. All your data will be permanently deleted.
 :::

@@ -75,7 +75,7 @@ You can apply filters to customize b50 output:
 ```
 b50 -lv 15              # Only level 15 songs
 b50 -lv 14 15           # Level 14-15
-b50 -lv 13+             # Level 13.7+ and above
+b50 -lv 13.7            # Internal constant 13.7 and above
 ```
 
 #### Filter by Rating
