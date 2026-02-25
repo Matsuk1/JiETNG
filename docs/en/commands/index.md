@@ -298,9 +298,11 @@ friend list                # Friends list
 
 ```
 b50 -lv 13.2 13.8          # Constant 13.2-13.8
-b50 -lv 13.2               # Constant ≥13.2 (no limit)
+b50 -lv 13.7               # Exactly constant 13.7
 b50 -ra 301 312            # Rating 301-312
-b50 -ra 301                # Rating ≥301 (no limit)
+b50 -ra 301                # Exactly Rating 301
+b50 -star 3 5              # DX star count 3-5
+b50 -star 3                # Exactly 3 DX stars
 b50 -scr 100.3 100.8       # Achievement 100.3%-100.8%
 b50 -scr 100.3             # Achievement ≥100.3% (no limit)
 b50 -dx 92 95              # DX score 92%-95%
