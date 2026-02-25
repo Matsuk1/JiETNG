@@ -239,12 +239,12 @@ friend-rcd 1234567890123456 b50 -lv 14.7     # View friend's B50 (constant 14.7)
 
 | Feature | Description |
 |---------|-------------|
-| Send Location | Find nearby maimai arcades (up to 4 locations) |
+| Send Location | Find nearby maimai arcades |
 
 **Notes**:
 - In LINE, tap "+" button and select "Location"
 - Send your current location or any location
-- Bot will return nearby maimai arcade information (name, address, distance, map link)
+- Bot will return nearby maimai arcade information
 
 ### Leaderboard
 
