@@ -2919,7 +2919,7 @@ IMAGE_TASK_ROUTES = {
     # 后缀匹配规则
     'suffix': [
         ("ってどんな曲", "info", "song-info"),
-        ("の達成状況", "の達成情報", "の達成表", "achievement-list", "achievement"),
+        ("の達成状況", "achievement"),
         ("のレコード", "song-record", "record"),
         ("のバージョンリスト", "version-list", "version"),
         ("の定数リスト", "のレベルリスト", "level-list")
@@ -3461,8 +3461,8 @@ def handle_sync_text_command(event):
          lambda msg: handle_rc_command(msg, user_id)),
 
         # 版本达成情况
-        (lambda msg: msg.endswith(("の達成状況", "の達成情報", "の達成表", "achievement-list", "achievement")),
-         lambda msg: asyncio.run(generate_plate_rcd(user_id, id_use, re.sub(r"\s*(の達成状況|の達成情報|の達成表|achievement-list|achievement)$", "", msg).strip(), mai_ver_use))),
+        (lambda msg: msg.endswith(("の達成状況", "achievement")),
+         lambda msg: asyncio.run(generate_plate_rcd(user_id, id_use, re.sub(r"\s*(の達成状況|achievement)$", "", msg).strip(), mai_ver_use))),
 
         # 等级成绩列表
         (lambda msg: re.match(r".+(のレコードリスト|record-list|records)[ 　]*\d*$", msg),

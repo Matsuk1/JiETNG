@@ -143,7 +143,7 @@ idealb50 -lv 13.5 14.0               # Ideal B50 with constant 13.5-14.0
 
 **Command Format**: `[Version Nameplate]の達成状況`
 
-**Aliases**: Use `achievement-list` or `achievement` to replace `の達成状況`
+**Aliases**: Use `の達成情報`, `の達成表`, `achievement-list` or `achievement` to replace `の達成状況`
 
 | Plate Type | Example | Description |
 |------------|---------|-------------|
