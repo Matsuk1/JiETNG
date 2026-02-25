@@ -12,7 +12,7 @@ Link your SEGA ID to start using JiETNG:
 bind
 ```
 
-This will provide a web link for secure binding.
+This will provide a web link for secure binding. Private chat only.
 
 ### Unbind Account
 
@@ -41,7 +41,7 @@ settings
 rebind
 ```
 
-Sends a link to a web form where you can modify your current account settings. The SEGA ID cannot be changed.
+Sends a link to a web form where you can modify your current account settings. The SEGA ID cannot be changed. Private chat only.
 
 ### Update Scores
 
