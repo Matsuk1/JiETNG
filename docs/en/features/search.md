@@ -17,7 +17,6 @@ Fuzzy matching with 85% similarity threshold, returns up to 6 results. Case-inse
 ## Songs by Version
 
 ```
-[version name] version
 [version name] version-list
 [version name] のバージョンリスト
 ```

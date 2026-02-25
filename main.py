@@ -2921,7 +2921,7 @@ IMAGE_TASK_ROUTES = {
         ("ってどんな曲", "info", "song-info"),
         ("の達成状況", "achievement"),
         ("のレコード", "song-record", "record"),
-        ("のバージョンリスト", "version-list", "version"),
+        ("のバージョンリスト", "version-list"),
         ("の定数リスト", "のレベルリスト", "level-list")
     ],
     # B系列命令 (生成图片)
@@ -3474,8 +3474,8 @@ def handle_sync_text_command(event):
              int(re.search(r"(\d+)$", msg).group(1)) if re.search(r"(\d+)$", msg) else 1))),
 
         # 版本歌曲列表
-        (lambda msg: msg.endswith(("のバージョンリスト", "version-list", "version")),
-         lambda msg: asyncio.run(generate_version_songs(user_id, re.sub(r"\s*\+\s*", " PLUS", re.sub(r"(のバージョンリスト|version-list|version)$", "", msg)).strip(), mai_ver))),
+        (lambda msg: msg.endswith(("のバージョンリスト", "version-list")),
+         lambda msg: asyncio.run(generate_version_songs(user_id, re.sub(r"\s*\+\s*", " PLUS", re.sub(r"(のバージョンリスト|version-list)$", "", msg)).strip(), mai_ver))),
 
         # 定数查询
         (lambda msg: msg.endswith(("の定数リスト", "のレベルリスト", "level-list")),
