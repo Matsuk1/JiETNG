@@ -41,14 +41,14 @@ AMAZING MIGHTYYYY song-info
 
 每个结果包括：
 
-- 📝 **歌曲标题**（英文与日文）
-- 🎨 **封面图**
-- 🎵 **艺术家**
-- 📅 **版本信息**
-- 🎮 **可用难度**（Basic / Advanced / Expert / Master / Re:MASTER）
-- 📊 **谱面定数**
-- 🎯 **谱面类型**（Standard / DX）
-- 🎬 **分类（Genre）**
+- **歌曲标题**（英文与日文）
+- **封面图**
+- **艺术家**
+- **版本信息**
+- **可用难度**（Basic / Advanced / Expert / Master / Re:MASTER）
+- **谱面定数**
+- **谱面类型**（Standard / DX）
+- **分类（Genre）**
 
 ---
 
@@ -167,11 +167,11 @@ AMAZING MIGHTYYYY song-record
 :::
 
 **显示内容：**
-- 📊 达成率  
-- 🎵 DX 分数  
-- 🏆 完成状态（FC / FC+ / AP / AP+）  
-- 💎 同步状态（FS / FS+ / FDX / FDX+）  
-- 📈 评级贡献值  
+- 达成率
+- DX 分数
+- 完成状态（FC / FC+ / AP / AP+）
+- 同步状态（FS / FS+ / FDX / FDX+）
+- 评级贡献值
 
 若显示“未找到记录”：
 - 可能未游玩此曲  
@@ -206,74 +206,3 @@ AMAZING MIGHTYYYY song-record
 13+ のレコードリスト 3
 ```
 
----
-
-## 对比：搜索与成绩查询
-
-| 功能 | 歌曲信息搜索 | 成绩查询 |
-|------|---------------|-----------|
-| **目的** | 获取歌曲数据 | 查看个人成绩 |
-| **是否需绑定** | ❌ 否 | ✅ 是 |
-| **显示内容** | 曲目信息 | 个人数据 |
-| **用途** | 探索/了解歌曲 | 进度追踪 |
-| **响应速度** | 快 | 快（缓存） |
-
----
-
-## 故障排查
-
-### 「未找到歌曲」
-
-**可能原因：**
-- 拼写错误  
-- 歌曲不属于 『maimai でらっくす』  
-- 版本错误（JP / 国际版）
-
-**解决方案：**
-- 换关键词  
-- 查 [maimai wiki](https://maimai.fandom.com/)  
-- 尝试英文或日文名  
-
-### 随机曲重复
-
-属于正常随机概率，可通过等级筛选减少重复：
-```
-random 14+
-```
-
-### 版本列表不完整
-
-**可能原因：**
-- 名称错误  
-- 数据库待更新  
-
-**解决：**
-- 检查拼写  
-- 尝试其他写法  
-- 可在 [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues) 报告  
-
----
-
-## 快速参考
-
-```bash
-# 搜索
-[song] info          # 查歌曲信息
-[song] record        # 查个人成绩
-
-# 随机
-random               # 随机一首
-random 14            # 随机 Lv14
-
-# 版本
-FESTiVAL version     # 查看 FESTiVAL 曲目
-
-# 艺术家 / 谱师搜索
-artist DECO*27       # 搜索艺术家
-designer Jack        # 搜索谱师
-designer Jack 2      # 第 2 页
-
-# 等级成绩
-14 record-list       # Lv14 曲目成绩
-13+ records 2        # 第 2 页的 Lv13+ 成绩
-```

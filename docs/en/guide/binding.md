@@ -96,37 +96,6 @@ Unbinding will **permanently delete** all your stored data, including:
 This action cannot be undone.
 :::
 
-## Troubleshooting
-
-### Token Expired Error
-
-**Problem**: Binding URL shows "Token expired" or "Invalid token"
-
-**Solution**:
-- Send `bind` again to generate a new token
-- Complete binding within 2 minutes
-- Make sure you're using the latest URL
-
-### Invalid Credentials
-
-**Problem**: "Login failed" or "Invalid SEGA ID/Password"
-
-**Solution**:
-- Double-check your SEGA ID and password
-- Make sure you're using the correct version (jp vs intl)
-- Try logging into [maimai NET](https://maimaidx.jp/maimai-mobile/) directly to verify credentials
-- For international version, use [maimai NET DX International](https://maimaidx-eng.com/maimai-mobile/)
-
-### Web Form Won't Load
-
-**Problem**: Binding URL won't open or shows errors
-
-**Solution**:
-- Check your internet connection
-- Try opening in a different browser
-- Clear browser cache and cookies
-- If the problem persists, report it on [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues)
-
 ## Version Selection
 
 ### Japan (jp)
@@ -149,16 +118,6 @@ If you play outside Japan:
 Select the version that matches where you actually play 『maimai でらっくす』. You can change the version later via the `settings` command without unbinding.
 :::
 
-## Security Best Practices
-
-### Protecting Your Account
-
-1. **Don't share binding URLs**: Each token is unique to you and expires in 2 minutes
-2. **Use strong passwords**: Set a strong password for your SEGA account
-3. **Verify the domain**: Make sure the binding URL comes from the official JiETNG domain
-4. **Log out after use**: Remember to log out when using shared devices
-5. **Report suspicious activity**: Report any unauthorized access
-
 ## Score Updates
 
 After binding, you can manually update scores:
@@ -173,21 +132,3 @@ This will fetch your latest scores from maimai NET and update the records in the
 Score updates are queued and processed sequentially to avoid overloading SEGA servers. During peak times, your update may take a few minutes to complete.
 :::
 
-## Multi-device Usage
-
-- Binding is associated with your LINE account, not the device
-- You can use the bot on any device where you're logged in
-- No need to rebind when switching devices
-- If you change LINE accounts, you'll need to rebind
-
-## Need Help?
-
-- Check the [FAQ](/en/more/faq) for common questions
-- Report issues on [GitHub](https://github.com/Matsuk1/JiETNG/issues)
-- Contact support via the [support page](/en/more/support)
-
----
-
-**Next Steps:**
-- [Getting Started Guide](/en/guide/getting-started) - Basic usage
-- [Command Reference](/en/commands/basic) - Available commands

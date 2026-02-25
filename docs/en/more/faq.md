@@ -56,7 +56,6 @@ Binding tokens expire after **2 minutes**. Simply send `bind` again to get a new
 Send one of these commands:
 - `b50`
 - `best50`
-- `ベスト50`
 
 Bind your SEGA ID before using `b50` and similar commands.
 
@@ -73,7 +72,7 @@ This fetches your latest scores from maimai NET.
 
 ### How long does score update take?
 
-Usually 20 to 30 seconds, depending on:
+Usually 2 to 3 seconds, depending on:
 - Number of songs you've played
 - SEGA server response time
 - Queue wait time (if many users are updating)

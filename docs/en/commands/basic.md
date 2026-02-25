@@ -95,39 +95,3 @@ rank jp
 rank intl
 ```
 
-## Tips
-
-### Command Shortcuts
-
-Many commands have multiple aliases:
-
-```
-b50 = best50
-b100 = best100
-```
-
-### Case Insensitive
-
-Commands are case-insensitive:
-
-```
-B50 = b50 = Best50
-RANDOM = random
-```
-
-### Spacing
-
-Most commands ignore extra spaces:
-
-```
-ヒバナ info       # Works fine
-b50              # No space needed
-```
-
-## Next Steps
-
-- 📖 [Score Commands](/en/commands/record) - Score viewing commands
-
----
-
-Need help? Check the [FAQ](/en/more/faq) or [contact support](/en/more/support).

@@ -153,22 +153,16 @@ Standard ranking chart following official rules:
 - Top 15 from new version songs
 - Your actual DX rating
 
-**Use case**: View your official rating and progress
-
 ### Best 100 (b100)
 
 Extended version showing more scores:
 - Top 70 from old version songs
 - Top 30 from new version songs
 
-**Use case**: Find songs just below your b50 threshold
-
 ### All Best 50 (ab50)
 
 Ignores song version distinction:
 - Top 50 highest scores regardless of version
-
-**Use case**: View highest achievements without version separation
 
 ### All Perfect Best 50 (apb50)
 
@@ -176,23 +170,17 @@ Shows only AP songs:
 - Only AP (All Perfect) and AP+ scores
 - Ranked by rating
 
-**Use case**: Monitor your AP progress
-
 ### Full DX Best 50 (fdxb50)
 
 Shows only FDX songs:
 - Only FDX (Full DX) and FDX+ scores
 - Ranked by rating
 
-**Use case**: Monitor your FDX progress
-
 ### Ideal Best 50 (idlb50)
 
 Theoretical maximum rating:
 - Simulates previous tier scores for all songs
 - Shows potential rating growth
-
-**Use case**: Set goals for rating improvement
 
 
 ## FAQ
@@ -233,12 +221,6 @@ View all songs of a specified difficulty level, grouped by internal constants (e
 
 Level queries automatically use the server version set during binding (JP or INTL).
 
-### Use Cases
-
-- 📋 **View constant distribution**: Understand constant ranges for a difficulty
-- 🎯 **Find target songs**: Find songs in specific constant ranges
-- 📊 **Compare difficulties**: Compare song counts across different levels
-
 ## Level & Rank Progress
 
 View achievement progress for a specific difficulty level and rank, such as checking progress towards achieving SSS+ rank on all 13+ difficulty charts.
@@ -276,13 +258,6 @@ View achievement progress for a specific difficulty level and rank, such as chec
   - Number of unplayed charts
   - Total number of charts
 
-### Use Cases
-
-- 🎯 **Goal Tracking**: See how close you are to completing a specific rank for a difficulty
-- 📊 **Progress Statistics**: Understand overall achievement status for a difficulty rank
-- 🔍 **Find Target Charts**: Quickly find charts close to the target rank for practice
-- 📈 **Growth Tracking**: Browse through all related charts via pagination to see your progress
-
 ### Examples
 
 ```
@@ -292,10 +267,3 @@ View achievement progress for a specific difficulty level and rank, such as chec
 15fdx progress 3  # View 15 difficulty FDX rank progress (page 3)
 ```
 
-## Related Features
-
-- 🔍 [Score Search](/en/features/search) - Search for specific songs
-
----
-
-Next: [Learn about advanced score search →](/en/features/search)
