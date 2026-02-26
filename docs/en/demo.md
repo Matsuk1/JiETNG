@@ -11,6 +11,7 @@ const ver = ref('jp')
 const loading = ref(false)
 const error = ref('')
 const imageUrl = ref('')
+const timezone = -new Date().getTimezoneOffset() / 60
 
 async function generate() {
   if (!segaid.value || !password.value) return
@@ -22,6 +23,7 @@ async function generate() {
     fd.append('segaid', segaid.value)
     fd.append('password', password.value)
     fd.append('ver', ver.value)
+    fd.append('timezone', timezone)
     const res = await fetch('https://jietng-endpoint.matsuki.work/linebot/demo', { method: 'POST', body: fd })
     if (res.ok) {
       const blob = await res.blob()

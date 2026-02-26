@@ -944,6 +944,11 @@ def demo_page():
     segaid = request.form.get("segaid", "").strip()
     password = request.form.get("password", "").strip()
     ver = request.form.get("ver", "jp")
+    try:
+        tz = float(request.form.get("timezone", "9"))
+        tz = max(-12, min(14, tz))
+    except (ValueError, TypeError):
+        tz = 9
 
     if not segaid or not password:
         return _demo_cors(jsonify({"error": "Please fill in SEGA ID and password."})), 400
@@ -962,7 +967,7 @@ def demo_page():
         up_songs, down_songs, details = select_records(song_record, type="best50", command="", ver=ver)
         profile_img = generate_profile(user_info)
         records_img = generate_records_picture(up_songs, down_songs, title="BEST 50", ver=ver, details=details)
-        return compose_images([profile_img, records_img])
+        return compose_images([profile_img, records_img], spacing=0, border_width=0, timezone_offset=tz)
 
     try:
         result = asyncio.run(_pipeline())
