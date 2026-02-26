@@ -945,7 +945,7 @@ def demo_page():
     password = request.form.get("password", "").strip()
     ver = request.form.get("ver", "jp")
     try:
-        tz = float(request.form.get("timezone", "9"))
+        tz = int(request.form.get("timezone", "9"))
         tz = max(-12, min(14, tz))
     except (ValueError, TypeError):
         tz = 9
