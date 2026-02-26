@@ -927,6 +927,47 @@ Token not provided. <br />
         return render_template("bind_form.html", user_language=user_language, mode="bind")
 
 
+@app.route("/linebot/demo", methods=["POST"])
+@csrf.exempt
+def demo_page():
+    segaid = request.form.get("segaid", "").strip()
+    password = request.form.get("password", "").strip()
+    ver = request.form.get("ver", "jp")
+
+    if not segaid or not password:
+        return jsonify({"error": "Please fill in SEGA ID and password."}), 400
+    if ver not in ("jp", "intl"):
+        return jsonify({"error": "Invalid version."}), 400
+
+    async def _pipeline():
+        cookies = await login_to_maimai(segaid, password, ver=ver)
+        if not cookies or cookies == "MAINTENANCE":
+            return cookies
+        user_info, raw_records = await asyncio.gather(
+            get_maimai_info(cookies, ver=ver),
+            get_maimai_records(cookies, ver=ver)
+        )
+        song_record = get_detailed_info(raw_records, ver=ver)
+        up_songs, down_songs, details = select_records(song_record, type="best50", command="", ver=ver)
+        profile_img = generate_profile(user_info)
+        records_img = generate_records_picture(up_songs, down_songs, title="BEST 50", ver=ver, details=details)
+        return compose_images([profile_img, records_img])
+
+    try:
+        result = asyncio.run(_pipeline())
+        if result == "MAINTENANCE":
+            return jsonify({"error": "The official website is under maintenance. Please try again later."}), 503
+        if not result:
+            return jsonify({"error": "Login failed. Please check your SEGA ID and password."}), 401
+        buf = BytesIO()
+        result.save(buf, "PNG")
+        buf.seek(0)
+        return send_file(buf, mimetype="image/png")
+    except Exception as e:
+        logger.error(f"[Demo] Pipeline error: {e}", exc_info=True)
+        return jsonify({"error": "An error occurred while generating your score card."}), 500
+
+
 async def process_sega_credentials(user_id, segaid, password, ver="jp", language="ja", timezone=9, aime=0, rebind=False):
     base = (
         "https://maimaidx-eng.com/maimai-mobile"

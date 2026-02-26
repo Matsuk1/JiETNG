@@ -47,7 +47,8 @@ export default withMermaid(defineConfig({
       {
         text: '开始使用',
         items: [
-          { text: '快速开始', link: '/guide/getting-started' }
+          { text: '快速开始', link: '/guide/getting-started' },
+          { text: '在线体验', link: '/demo' }
         ]
       },
       {
@@ -131,7 +132,8 @@ export default withMermaid(defineConfig({
           {
             text: 'Getting Started',
             items: [
-              { text: 'Quick Start', link: '/en/guide/getting-started' }
+              { text: 'Quick Start', link: '/en/guide/getting-started' },
+              { text: 'Try It Online', link: '/en/demo' }
             ]
           },
           {
@@ -192,7 +194,8 @@ export default withMermaid(defineConfig({
           {
             text: '始めに',
             items: [
-              { text: 'クイックスタート', link: '/ja/guide/getting-started' }
+              { text: 'クイックスタート', link: '/ja/guide/getting-started' },
+              { text: '体験する', link: '/ja/demo' }
             ]
           },
           {
