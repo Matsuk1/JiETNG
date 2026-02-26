@@ -927,17 +927,28 @@ Token not provided. <br />
         return render_template("bind_form.html", user_language=user_language, mode="bind")
 
 
-@app.route("/linebot/demo", methods=["POST"])
+DEMO_CORS_ORIGIN = "https://jietng.matsuki.work"
+
+def _demo_cors(response):
+    response.headers["Access-Control-Allow-Origin"] = DEMO_CORS_ORIGIN
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+@app.route("/linebot/demo", methods=["POST", "OPTIONS"])
 @csrf.exempt
 def demo_page():
+    if request.method == "OPTIONS":
+        return _demo_cors(app.make_response(("", 204)))
+
     segaid = request.form.get("segaid", "").strip()
     password = request.form.get("password", "").strip()
     ver = request.form.get("ver", "jp")
 
     if not segaid or not password:
-        return jsonify({"error": "Please fill in SEGA ID and password."}), 400
+        return _demo_cors(jsonify({"error": "Please fill in SEGA ID and password."})), 400
     if ver not in ("jp", "intl"):
-        return jsonify({"error": "Invalid version."}), 400
+        return _demo_cors(jsonify({"error": "Invalid version."})), 400
 
     async def _pipeline():
         cookies = await login_to_maimai(segaid, password, ver=ver)
@@ -956,16 +967,16 @@ def demo_page():
     try:
         result = asyncio.run(_pipeline())
         if result == "MAINTENANCE":
-            return jsonify({"error": "The official website is under maintenance. Please try again later."}), 503
+            return _demo_cors(jsonify({"error": "The official website is under maintenance. Please try again later."})), 503
         if not result:
-            return jsonify({"error": "Login failed. Please check your SEGA ID and password."}), 401
+            return _demo_cors(jsonify({"error": "Login failed. Please check your SEGA ID and password."})), 401
         buf = BytesIO()
         result.save(buf, "PNG")
         buf.seek(0)
-        return send_file(buf, mimetype="image/png")
+        return _demo_cors(send_file(buf, mimetype="image/png"))
     except Exception as e:
         logger.error(f"[Demo] Pipeline error: {e}", exc_info=True)
-        return jsonify({"error": "An error occurred while generating your score card."}), 500
+        return _demo_cors(jsonify({"error": "An error occurred while generating your score card."})), 500
 
 
 async def process_sega_credentials(user_id, segaid, password, ver="jp", language="ja", timezone=9, aime=0, rebind=False):

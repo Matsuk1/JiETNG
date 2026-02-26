@@ -62,8 +62,8 @@ function reset() {
       <div class="field">
         <label for="ver">服务器</label>
         <select id="ver" v-model="ver" :disabled="loading">
-          <option value="jp">日服 — maimaidx.jp</option>
-          <option value="intl">国际服 — maimaidx-eng.com</option>
+          <option value="jp">日服 - maimaidx.jp</option>
+          <option value="intl">国际服 - maimaidx-eng.com</option>
         </select>
       </div>
       <button type="submit" :disabled="loading" class="btn-primary">
