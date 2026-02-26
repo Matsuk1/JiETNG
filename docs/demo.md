@@ -22,7 +22,7 @@ async function generate() {
     fd.append('segaid', segaid.value)
     fd.append('password', password.value)
     fd.append('ver', ver.value)
-    const res = await fetch('/linebot/demo', { method: 'POST', body: fd })
+    const res = await fetch('https://jietng-endpoint.matsuki.work/linebot/demo', { method: 'POST', body: fd })
     if (res.ok) {
       const blob = await res.blob()
       imageUrl.value = URL.createObjectURL(blob)
