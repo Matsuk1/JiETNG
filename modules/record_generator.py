@@ -158,7 +158,7 @@ def create_thumbnail(song):
             if cover_img:
                 cover_img = cover_img.resize((cover_size, cover_size), Image.Resampling.LANCZOS)
                 cover_img = round_corner(cover_img, radius=8)
-                img.paste(cover_img, (padding, padding), cover_img)
+                img.paste(cover_img, (padding - 1, padding - 2), cover_img)
         except Exception as e:
             logger.error(f"[RecordGenerator] ✗ Failed to load cover image: error={e}")
 
@@ -168,7 +168,7 @@ def create_thumbnail(song):
     paste_icon_optimized(
         img, song, key='type',
         size=(type_width, type_height),
-        position=(padding + cover_size - type_width, padding + cover_size - type_height),
+        position=(padding + cover_size - type_width - 1, padding + cover_size - type_height - 2),
         save_dir=ICON_TYPE_DIR,
         url_func=lambda value: "https://maimaidx.jp/maimai-mobile/img/music_standard.png" if value == "std" else "https://maimaidx.jp/maimai-mobile/img/music_dx.png" if value == "dx" else "https://maimaidx.jp/maimai-mobile/img/diff_utage.png"
     )
@@ -249,11 +249,25 @@ def create_thumbnail(song):
               f"{song['internalLevelValue']:.1f} → {song['ra']}",
               fill=(0, 0, 0), font=font_stadium, anchor="ra")
 
-    # --- 边框 ---
-    border_color = (220, 220, 220)
-    draw.rectangle([(0, 0), (thumb_size[0] - 1, thumb_size[1] - 1)], outline=border_color, width=3)
+    # --- 白条三边圆角矩形框（左、下、右，无上边，超采样抗锯齿）---
+    r = 8
+    lx, rx = 1, thumb_size[0] - 1
+    ty = thumb_size[1] - 45
+    by = thumb_size[1] - 1
+    bdr = (*_get_difficulty_color(song['difficulty']), 255)
+    s = 3
+    border_layer = Image.new("RGBA", (thumb_size[0] * s, thumb_size[1] * s), (0, 0, 0, 0))
+    bdraw = ImageDraw.Draw(border_layer)
+    bdraw.line([(lx*s, ty*s), (lx*s, by*s - r*s)], fill=bdr, width=2*s)
+    bdraw.arc([lx*s, by*s - 2*r*s, lx*s + 2*r*s, by*s], start=90, end=180, fill=bdr, width=2*s)
+    bdraw.line([(lx*s + r*s, by*s), (rx*s - r*s, by*s)], fill=bdr, width=2*s)
+    bdraw.arc([rx*s - 2*r*s, by*s - 2*r*s, rx*s, by*s], start=0, end=90, fill=bdr, width=2*s)
+    bdraw.line([(rx*s, by*s - r*s), (rx*s, ty*s)], fill=bdr, width=2*s)
+    border_layer = border_layer.resize(thumb_size, Image.Resampling.LANCZOS)
+    img = img.convert("RGBA")
+    img = Image.alpha_composite(img, border_layer)
 
-    final_img = img.convert("RGB")
+    final_img = round_corner(img, radius=12)
     return final_img
 
 def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp", details={}):
@@ -428,7 +442,7 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
     for i, thumb in enumerate(up_thumbnails):
         x_offset = (i % grid_size[0]) * (thumb_size[0] + spacing) + side_width
         y_offset = header_height + (i // grid_size[0]) * (thumb_size[1] + spacing)
-        combined.paste(thumb, (x_offset, y_offset))
+        combined.paste(thumb, (x_offset, y_offset), thumb)
 
     # 计算up部分最后一行的底部位置
     up_rows = math.ceil(up_num / grid_size[0])
@@ -461,7 +475,7 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
     for i, thumb in enumerate(down_thumbnails):
         x_offset = (i % grid_size[0]) * (thumb_size[0] + spacing) + side_width
         y_offset = total_up_y_offset + version_padding + (i // grid_size[0]) * (thumb_size[1] + spacing)
-        combined.paste(thumb, (x_offset, y_offset))
+        combined.paste(thumb, (x_offset, y_offset), thumb)
 
     return combined
 
