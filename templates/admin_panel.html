@@ -1051,22 +1051,21 @@
 
     <!-- DxData Tab -->
     <div id="dxdata-tab" class="tab-content">
-      <!-- DXData Status Section -->
       <div class="section">
-        <div class="section-title">DXData Status</div>
+        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>DXData Status</span>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-primary" onclick="loadDXDataStatus()" style="font-size: 12px;">Refresh</button>
+            <button class="btn btn-success" id="update-dxdata-btn" onclick="updateDXData()" style="font-size: 12px;">Update DXData</button>
+          </div>
+        </div>
 
         <div id="dxdata-status-container">
           <div style="text-align: center; padding: 40px; opacity: 0.5;">
             Loading DXData status...
           </div>
         </div>
-
-        <div style="margin-top: 12px; text-align: center; display: flex; gap: 8px; justify-content: center;">
-          <button class="btn btn-primary" onclick="loadDXDataStatus()">Refresh</button>
-          <button class="btn btn-success" id="update-dxdata-btn" onclick="updateDXData()">Update DXData</button>
-        </div>
       </div>
-
     </div>
 
     <!-- Tip/Ad Tab -->
@@ -2168,93 +2167,58 @@
         return;
       }
 
-      container.innerHTML = '';
-
+      let html = '';
       for (const notice of notices) {
-        const noticeItem = document.createElement('div');
-        noticeItem.style.cssText = 'background:var(--surface-bg); border:1px solid var(--border-color); border-radius:8px; padding:16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; gap:12px;';
+        const content = typeof notice.content === 'string' ? { zh: notice.content, ja: '', en: '' } : (notice.content || {});
 
-        // Status badge
-        const statusBadge = document.createElement('span');
-        statusBadge.style.cssText = 'padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 8px; display: inline-block;';
-        if (notice.status === 'draft') {
-          statusBadge.textContent = 'Draft';
-          statusBadge.style.backgroundColor = 'var(--warning-light)';
-          statusBadge.style.color = 'var(--warning-color)';
-        } else {
-          statusBadge.textContent = 'Published';
-          statusBadge.style.backgroundColor = 'var(--success-light)';
-          statusBadge.style.color = 'var(--success-color)';
-        }
+        const statusBadge = notice.status === 'draft'
+          ? '<span class="badge" style="color:var(--warning-color);border-color:var(--warning-color);">Draft</span>'
+          : '<span class="badge" style="color:var(--success-color);border-color:var(--success-color);">Published</span>';
+        const votingBadge = notice.voting_enabled
+          ? '<span class="badge" style="color:var(--info-color);border-color:var(--info-color);">Voting</span>'
+          : '';
 
-        // Voting badge
-        const votingBadge = document.createElement('span');
-        if (notice.voting_enabled) {
-          votingBadge.style.cssText = 'padding: 2px 8px; border-radius: 4px; font-size: 11px; background-color: var(--info-light); color: var(--info-color); margin-right: 8px; display: inline-block;';
-          votingBadge.textContent = 'Voting';
-        }
+        const actionBtns = [
+          notice.status === 'published' ? `<button class="btn btn-primary" onclick="showNoticeStats('${notice.id}')">Stats</button>` : '',
+          notice.status === 'draft'     ? `<button class="btn btn-success" onclick="publishDraft('${notice.id}')">Publish</button>` : '',
+          `<button class="btn btn-warning" onclick="editNotice('${notice.id}')">Edit</button>`,
+          `<button class="btn btn-danger"  onclick="deleteNoticeConfirm('${notice.id}')">Delete</button>`,
+        ].filter(Boolean).join('');
 
-        // Content preview (show Chinese content, truncate)
-        const contentPreview = (typeof notice.content === 'string'
-          ? notice.content
-          : notice.content.zh || notice.content.jp || notice.content.en || '').substring(0, 100) + '...';
+        const buttonRow = notice.button ? `
+          <div class="list-item">
+            <span style="color:var(--text-secondary);font-size:13px;">Button</span>
+            <span style="font-size:12px;font-family:monospace;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(notice.button.value || '')}">${escapeHtml(notice.button.type || '')} · ${escapeHtml(notice.button.value || '')}</span>
+          </div>` : '';
 
-        const taskInfo = document.createElement('div');
-        taskInfo.style.flex = '1';
-        taskInfo.style.minWidth = '0';
-
-        taskInfo.innerHTML = `
-          ${statusBadge.outerHTML}
-          ${notice.voting_enabled ? votingBadge.outerHTML : ''}
-          <div style="font-weight: 600; margin-bottom: 8px; margin-top: 4px;">
-            ${escapeHtml(contentPreview)}
-          </div>
-          <div style="font-size: 11px; opacity: 0.5;">
-            ID: ${notice.id} | Created: ${notice.date}
-          </div>
-        `;
-
-        // Actions
-        const actions = document.createElement('div');
-        actions.style.display = 'flex';
-        actions.style.gap = '8px';
-
-        // Stats button (only for published)
-        if (notice.status === 'published') {
-          const statsBtn = document.createElement('button');
-          statsBtn.className = 'btn btn-primary';
-          statsBtn.textContent = 'Stats';
-          statsBtn.onclick = () => showNoticeStats(notice.id);
-          actions.appendChild(statsBtn);
-        }
-
-        // Publish button (only for drafts)
-        if (notice.status === 'draft') {
-          const publishBtn = document.createElement('button');
-          publishBtn.className = 'btn btn-success';
-          publishBtn.textContent = 'Publish';
-          publishBtn.onclick = () => publishDraft(notice.id);
-          actions.appendChild(publishBtn);
-        }
-
-        // Edit button
-        const editBtn = document.createElement('button');
-        editBtn.className = 'btn btn-primary';
-        editBtn.textContent = 'Edit';
-        editBtn.onclick = () => editNotice(notice.id);
-        actions.appendChild(editBtn);
-
-        // Delete button
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'btn btn-danger';
-        deleteBtn.textContent = 'Delete';
-        deleteBtn.onclick = () => deleteNoticeConfirm(notice.id);
-        actions.appendChild(deleteBtn);
-
-        noticeItem.appendChild(taskInfo);
-        noticeItem.appendChild(actions);
-        container.appendChild(noticeItem);
+        html += `
+          <div class="list-panel" style="margin-bottom:12px;">
+            <div class="list-item">
+              <div class="list-item-info">
+                <span class="list-item-label">📢 Notice</span>
+                <span class="list-item-meta">${escapeHtml(notice.id)} · ${escapeHtml(notice.date)}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                ${statusBadge}${votingBadge}
+                ${actionBtns}
+              </div>
+            </div>
+            <div class="list-item" style="align-items:flex-start;gap:12px;">
+              <span style="color:var(--text-secondary);font-size:13px);white-space:nowrap;padding-top:1px;min-width:24px;">🇨🇳</span>
+              <span style="font-size:13px;color:var(--text-color);line-height:1.6;flex:1;">${escapeHtml(content.zh || '—')}</span>
+            </div>
+            <div class="list-item" style="align-items:flex-start;gap:12px;">
+              <span style="color:var(--text-secondary);font-size:13px;white-space:nowrap;padding-top:1px;min-width:24px;">🇬🇧</span>
+              <span style="font-size:13px;color:var(--text-color);line-height:1.6;flex:1;">${escapeHtml(content.en || '—')}</span>
+            </div>
+            <div class="list-item" style="align-items:flex-start;gap:12px;">
+              <span style="color:var(--text-secondary);font-size:13px;white-space:nowrap;padding-top:1px;min-width:24px;">🇯🇵</span>
+              <span style="font-size:13px;color:var(--text-color);line-height:1.6;flex:1;">${escapeHtml(content.ja || '—')}</span>
+            </div>
+            ${buttonRow}
+          </div>`;
       }
+      container.innerHTML = html;
     }
 
     function escapeHtml(text) {
@@ -2690,75 +2654,67 @@
         });
     }
 
+    function toggleVersionList() {
+      const list = document.getElementById('version-list');
+      const chevron = document.getElementById('version-chevron');
+      if (!list) return;
+      const open = list.style.display === 'none';
+      list.style.display = open ? 'block' : 'none';
+      chevron.style.transform = open ? 'rotate(90deg)' : '';
+    }
+
     function displayDXDataStatus(data) {
       const container = document.getElementById('dxdata-status-container');
 
       const html = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
-          <div style="padding: 20px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">Total Songs</div>
-            <div style="font-size: 32px; font-weight: 700; color: var(--accent-color); margin-bottom: 4px;">
-              ${data.songs.total}
+        <div class="list-panel" style="margin-bottom: 12px;">
+          <div class="list-item" onclick="toggleVersionList()" style="cursor: pointer; user-select: none;">
+            <span style="color: var(--text-secondary);">Versions</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 600; font-family: monospace;">${data.versions}</span>
+              <span id="version-chevron" style="font-size: 11px; color: var(--text-tertiary); transition: transform 0.2s;">▶</span>
             </div>
-            <div style="font-size: 13px; opacity: 0.5;">All songs in database</div>
           </div>
-
-          <div style="padding: 20px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">Standard Songs</div>
-            <div style="font-size: 32px; font-weight: 700; color: var(--accent-color); margin-bottom: 4px;">
-              ${data.songs.std}
-            </div>
-            <div style="font-size: 13px; opacity: 0.5;">STD type songs</div>
-          </div>
-
-          <div style="padding: 20px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">DX Songs</div>
-            <div style="font-size: 32px; font-weight: 700; color: var(--accent-color); margin-bottom: 4px;">
-              ${data.songs.dx}
-            </div>
-            <div style="font-size: 13px; opacity: 0.5;">DX type songs</div>
-          </div>
-
-          <div style="padding: 20px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">UTAGE Songs</div>
-            <div style="font-size: 32px; font-weight: 700; color: var(--accent-color); margin-bottom: 4px;">
-              ${data.songs.utage}
-            </div>
-            <div style="font-size: 13px; opacity: 0.5;">UTAGE type songs</div>
+          <div id="version-list" style="display: none;">
+            ${(data.version_names || []).map((v, i) => `
+              <div class="list-item" style="padding-left: 20px;">
+                <span style="color: var(--text-tertiary); font-size: 12px; font-family: monospace;">${String(i + 1).padStart(2, '0')}</span>
+                <span style="font-size: 13px; color: var(--text-secondary);">${escapeHtml(v)}</span>
+              </div>`).join('')}
           </div>
         </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
-          <div style="padding: 20px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">Total Sheets</div>
-            <div style="font-size: 32px; font-weight: 700; color: var(--accent-color); margin-bottom: 4px;">
-              ${data.sheets.total}
-            </div>
-            <div style="font-size: 13px; opacity: 0.5;">All difficulty charts</div>
+        <div class="list-panel" style="margin-bottom: 12px;">
+          <div class="list-panel-header">Songs</div>
+          <div class="list-item">
+            <span style="color: var(--text-secondary);">Total</span>
+            <span style="font-weight: 600; font-family: monospace;">${data.songs.total}</span>
           </div>
-
-          <div style="padding: 20px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">JP Sheets</div>
-            <div style="font-size: 32px; font-weight: 700; color: var(--accent-color); margin-bottom: 4px;">
-              ${data.sheets.jp}
-            </div>
-            <div style="font-size: 13px; opacity: 0.5;">Available in JP</div>
+          <div class="list-item">
+            <span style="color: var(--text-secondary);">Standard</span>
+            <span style="font-weight: 600; font-family: monospace;">${data.songs.std}</span>
           </div>
-
-          <div style="padding: 20px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">INTL Sheets</div>
-            <div style="font-size: 32px; font-weight: 700; color: var(--accent-color); margin-bottom: 4px;">
-              ${data.sheets.intl}
-            </div>
-            <div style="font-size: 13px; opacity: 0.5;">Available in INTL</div>
+          <div class="list-item">
+            <span style="color: var(--text-secondary);">DX</span>
+            <span style="font-weight: 600; font-family: monospace;">${data.songs.dx}</span>
           </div>
-
-          <div style="padding: 20px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">Versions</div>
-            <div style="font-size: 32px; font-weight: 700; color: var(--accent-color); margin-bottom: 4px;">
-              ${data.versions}
-            </div>
-            <div style="font-size: 13px; opacity: 0.5;">Game versions</div>
+          <div class="list-item">
+            <span style="color: var(--text-secondary);">UTAGE</span>
+            <span style="font-weight: 600; font-family: monospace;">${data.songs.utage}</span>
+          </div>
+        </div>
+        <div class="list-panel">
+          <div class="list-panel-header">Charts</div>
+          <div class="list-item">
+            <span style="color: var(--text-secondary);">Total</span>
+            <span style="font-weight: 600; font-family: monospace;">${data.sheets.total}</span>
+          </div>
+          <div class="list-item">
+            <span style="color: var(--text-secondary);">JP</span>
+            <span style="font-weight: 600; font-family: monospace;">${data.sheets.jp}</span>
+          </div>
+          <div class="list-item">
+            <span style="color: var(--text-secondary);">INTL</span>
+            <span style="font-weight: 600; font-family: monospace;">${data.sheets.intl}</span>
           </div>
         </div>
       `;

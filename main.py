@@ -5097,6 +5097,7 @@ def admin_dxdata_status():
                     intl_sheets += 1
 
         total_versions = len(versions)
+        version_names = [v.get('abbr', '') for v in versions]
 
         return jsonify({
             'songs': {
@@ -5110,7 +5111,8 @@ def admin_dxdata_status():
                 'jp': jp_sheets,
                 'intl': intl_sheets
             },
-            'versions': total_versions
+            'versions': total_versions,
+            'version_names': version_names
         })
 
     except Exception as e:
