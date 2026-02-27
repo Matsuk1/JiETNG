@@ -11,10 +11,10 @@
     /* 页面特定样式 - Page-specific Styles */
     body {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
-      padding: 24px;
-      padding-top: calc(24px + env(safe-area-inset-top));
+      padding: 40px 24px;
+      padding-top: calc(40px + env(safe-area-inset-top));
       min-height: 100vh;
       background: var(--surface-bg);
     }
@@ -196,12 +196,6 @@
         </div>
       </div>
 
-      <div class="hint-text {% if mode == 'rebind' %}hidden{% endif %}" id="timezone-hint">
-        <span id="hint-text-ja">💡 お使いのデバイスから自動検出されました</span>
-        <span id="hint-text-en" style="display: none;">💡 Auto-detected from your device</span>
-        <span id="hint-text-zh" style="display: none;">💡 已从您的设备自动检测</span>
-      </div>
-
       <input type="submit" id="submit-btn" value="連携" />
     </form>
 
@@ -377,7 +371,7 @@
         aimeSelect.value = '0';
       } else {
         // jp 版本：显示 Aime 容器
-        aimeContainer.style.display = 'block';
+        aimeContainer.style.display = 'flex';
       }
     }
 

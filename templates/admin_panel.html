@@ -160,7 +160,6 @@
       background-color: var(--surface-bg);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
-      padding: 16px;
       transition: all var(--transition-base);
       overflow: hidden;
       min-width: 0;
@@ -304,7 +303,7 @@
       background-color: var(--surface-bg);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
-      font-size: 14px;
+      font-size: 16px;
       color: var(--text-color);
       font-family: 'Courier New', monospace;
       transition: all var(--transition-base);
@@ -392,8 +391,7 @@
 
     .user-data {
       display: none;
-      margin-top: 16px;
-      padding-top: 16px;
+      padding: 16px;
       border-top: 1px solid var(--border-color);
     }
 
@@ -475,7 +473,7 @@
       background-color: var(--surface-bg);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
-      font-size: 14px;
+      font-size: 16px;
       color: var(--text-color);
       margin-bottom: 16px;
       font-family: inherit;
@@ -799,10 +797,10 @@
           {% if users_data %}
             {% for user_id, user_data in users_data.items() %}
             <div class="user-item" data-user-id="{{ user_id }}" data-nickname="{{ user_data.nickname|lower }}">
-              <div class="user-header" onclick="toggleUserData('{{ user_id }}')">
-                <div>
-                  <span class="user-id">{{ user_id }}</span>
-                  <span class="user-nickname">{{ user_data.nickname }}</span>
+              <div class="list-item user-header" onclick="toggleUserData('{{ user_id }}')">
+                <div class="list-item-info">
+                  <span class="list-item-label" style="font-family: 'Courier New', monospace; color: var(--accent-color);">{{ user_id }}</span>
+                  <span class="list-item-meta" style="font-family: inherit;">{{ user_data.nickname }}</span>
                 </div>
                 <div class="user-actions" onclick="event.stopPropagation()">
                   <button class="btn btn-primary" onclick="triggerUpdate('{{ user_id }}')">Update</button>
@@ -1066,12 +1064,18 @@
         <form id="tipadForm" onsubmit="saveTipAd(event)">
           <input type="hidden" id="tipad_id">
 
-          <div class="form-group">
-            <label class="form-label">Type:</label>
-            <select id="tipad_type" required class="form-input">
-              <option value="tip">💡 Tip</option>
-              <option value="ad">📢 Ad</option>
-            </select>
+          <div class="list-panel" style="margin-bottom: 20px;">
+            <div class="list-item">
+              <label for="tipad_type">Type</label>
+              <select id="tipad_type" required>
+                <option value="tip">💡 Tip</option>
+                <option value="ad">📢 Ad</option>
+              </select>
+            </div>
+            <div class="list-item">
+              <label for="tipad_enabled">Enabled</label>
+              <input type="checkbox" id="tipad_enabled" checked style="width: auto; flex-shrink: 0;">
+            </div>
           </div>
 
           <div class="form-group">
@@ -1095,40 +1099,33 @@
             </label>
           </div>
 
-          <div id="buttonFields" style="display: none; border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; margin-bottom: 20px; background-color: var(--hover-bg);">
-            <div class="form-group">
-              <label class="form-label">Button Type:</label>
-              <select id="tipad_button_type" class="form-input">
-                <option value="uri">Link (URI)</option>
-                <option value="message">Message</option>
-              </select>
+          <div id="buttonFields" style="display: none; margin-bottom: 20px;">
+            <div class="list-panel">
+              <div class="list-panel-header">Button Configuration</div>
+              <div class="list-item">
+                <label for="tipad_button_type">Type</label>
+                <select id="tipad_button_type">
+                  <option value="uri">Link (URI)</option>
+                  <option value="message">Message</option>
+                </select>
+              </div>
+              <div class="list-item">
+                <label for="tipad_button_label_zh">Label (Chinese)</label>
+                <input type="text" id="tipad_button_label_zh" placeholder="查看详情 / 尝试一下">
+              </div>
+              <div class="list-item">
+                <label for="tipad_button_label_en">Label (English)</label>
+                <input type="text" id="tipad_button_label_en" placeholder="View Details / Try it">
+              </div>
+              <div class="list-item">
+                <label for="tipad_button_label_ja">Label (Japanese)</label>
+                <input type="text" id="tipad_button_label_ja" placeholder="詳細を見る / 試してみる">
+              </div>
+              <div class="list-item">
+                <label for="tipad_button_value">Value</label>
+                <input type="text" id="tipad_button_value" placeholder="URI or message text">
+              </div>
             </div>
-
-            <div class="form-group">
-              <label class="form-label">Button Label (Chinese):</label>
-              <input type="text" id="tipad_button_label_zh" class="form-input" placeholder="查看详情 / 尝试一下">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Button Label (English):</label>
-              <input type="text" id="tipad_button_label_en" class="form-input" placeholder="View Details / Try it">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Button Label (Japanese):</label>
-              <input type="text" id="tipad_button_label_ja" class="form-input" placeholder="詳細を見る / 試してみる">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Button Value (URI or Message Text):</label>
-              <input type="text" id="tipad_button_value" class="form-input">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">
-              <input type="checkbox" id="tipad_enabled" checked> Enabled
-            </label>
           </div>
 
           <div class="form-actions">
@@ -1193,9 +1190,11 @@
       </div>
 
       <form id="editUserForm" onsubmit="saveUserData(event)">
-        <div class="form-group">
-          <label class="form-label">User ID (Read-only)</label>
-          <input type="text" id="edit-user-id" class="form-input" readonly>
+        <div class="list-panel" style="margin-bottom: 20px;">
+          <div class="list-item">
+            <label for="edit-user-id">User ID</label>
+            <input type="text" id="edit-user-id" readonly>
+          </div>
         </div>
 
         <div class="form-group">
@@ -1277,46 +1276,44 @@
           </label>
         </div>
 
-        <div id="noticeButtonFields" style="display: none; border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; margin-bottom: 20px; background-color: var(--hover-bg);">
-          <div class="form-group">
-            <label class="form-label">Button Type:</label>
-            <select id="notice-button-type" class="form-input">
-              <option value="uri">Link (URI)</option>
-              <option value="message">Message</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Button Label (Chinese):</label>
-            <input type="text" id="notice-button-label-zh" class="form-input" placeholder="查看详情 / 尝试一下">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Button Label (English):</label>
-            <input type="text" id="notice-button-label-en" class="form-input" placeholder="View Details / Try it">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Button Label (Japanese):</label>
-            <input type="text" id="notice-button-label-ja" class="form-input" placeholder="詳細を見る / 試してみる">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Button Value (URI or Message Text):</label>
-            <input type="text" id="notice-button-value" class="form-input" placeholder="https://example.com or message text">
+        <div id="noticeButtonFields" style="display: none; margin-bottom: 20px;">
+          <div class="list-panel">
+            <div class="list-panel-header">Button Configuration</div>
+            <div class="list-item">
+              <label for="notice-button-type">Type</label>
+              <select id="notice-button-type">
+                <option value="uri">Link (URI)</option>
+                <option value="message">Message</option>
+              </select>
+            </div>
+            <div class="list-item">
+              <label for="notice-button-label-zh">Label (Chinese)</label>
+              <input type="text" id="notice-button-label-zh" placeholder="查看详情 / 尝试一下">
+            </div>
+            <div class="list-item">
+              <label for="notice-button-label-en">Label (English)</label>
+              <input type="text" id="notice-button-label-en" placeholder="View Details / Try it">
+            </div>
+            <div class="list-item">
+              <label for="notice-button-label-ja">Label (Japanese)</label>
+              <input type="text" id="notice-button-label-ja" placeholder="詳細を見る / 試してみる">
+            </div>
+            <div class="list-item">
+              <label for="notice-button-value">Value</label>
+              <input type="text" id="notice-button-value" placeholder="https://example.com or message text">
+            </div>
           </div>
         </div>
 
         <!-- Publication Status -->
-        <div class="form-group">
-          <label class="form-label">Publication Status</label>
-          <select id="notice-status" class="form-input">
-            <option value="published">Publish immediately</option>
-            <option value="draft">Save as draft</option>
-          </select>
-          <small style="opacity: 0.6; font-size: 12px; display: block; margin-top: 4px;">
-            Drafts are only visible to admins and won't be pushed to users
-          </small>
+        <div class="list-panel" style="margin-bottom: 20px;">
+          <div class="list-item">
+            <label for="notice-status">Status</label>
+            <select id="notice-status">
+              <option value="published">Publish immediately</option>
+              <option value="draft">Save as draft</option>
+            </select>
+          </div>
         </div>
 
         <div class="form-actions">
