@@ -971,7 +971,7 @@
           </div>
           <div class="list-item">
             <span style="color: var(--text-secondary);">Hostname</span>
-            <span style="font-weight: 600; font-family: monospace;" title="{{ stats.hostname }}">{{ stats.hostname[:8] }}{% if stats.hostname|length > 8 %}...{% endif %}</span>
+            <span style="font-weight: 600; font-family: monospace; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ stats.hostname }}">{{ stats.hostname }}</span>
           </div>
           <div class="list-item">
             <span style="color: var(--text-secondary);">Port</span>
@@ -2828,55 +2828,43 @@
       let html = '<div style="display: grid; gap: 12px;">';
       tipads.forEach(tipad => {
         const typeIcon = tipad.type === 'ad' ? '📢' : '💡';
-        const typeColor = tipad.type === 'ad' ? '#FF9500' : '#5856D6';
-        const statusBadge = tipad.enabled
-          ? '<span class="badge badge-success">Enabled</span>'
-          : '<span class="badge badge-secondary">Disabled</span>';
+        const enabledBadge = tipad.enabled
+          ? '<span class="badge badge-success">ON</span>'
+          : '<span class="badge badge-secondary">OFF</span>';
+
+        const buttonRow = tipad.button ? `
+          <div class="list-item">
+            <span style="color: var(--text-secondary); font-size: 13px;">Button</span>
+            <span style="font-size: 12px; font-family: monospace; color: var(--text-color); max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(tipad.button.value)}">${escapeHtml(tipad.button.type)} · ${escapeHtml(tipad.button.value)}</span>
+          </div>` : '';
 
         html += `
-          <div class="user-item" style="background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-              <div>
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-                  <span style="font-size: 20px;">${typeIcon}</span>
-                  <span style="color: ${typeColor}; font-weight: 600; text-transform: uppercase; font-size: 14px;">${tipad.type}</span>
-                  ${statusBadge}
-                </div>
-                <div style="color: var(--text-tertiary); font-size: 11px; font-family: 'Courier New', monospace;">
-                  ID: ${tipad.id} | Created: ${tipad.created_at}
-                </div>
+          <div class="list-panel">
+            <div class="list-item">
+              <div class="list-item-info">
+                <span class="list-item-label">${typeIcon} ${escapeHtml(tipad.type.toUpperCase())}</span>
+                <span class="list-item-meta">${escapeHtml(tipad.id)} · ${escapeHtml(tipad.created_at)}</span>
               </div>
-              <div class="user-actions">
+              <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                ${enabledBadge}
                 <button class="btn btn-warning" onclick="editTipAd('${tipad.id}')">Edit</button>
                 <button class="btn btn-danger" onclick="deleteTipAd('${tipad.id}')">Delete</button>
               </div>
             </div>
-
-            <div style="margin-bottom: 12px;">
-              <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--text-color); opacity: 0.7;">🇨🇳 Chinese:</div>
-              <div style="padding: 8px 12px; background: var(--hover-bg); border-radius: 6px; margin-bottom: 8px; font-size: 13px; color: var(--text-color);">${tipad.text.zh || 'N/A'}</div>
-
-              <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--text-color); opacity: 0.7;">🇬🇧 English:</div>
-              <div style="padding: 8px 12px; background: var(--hover-bg); border-radius: 6px; margin-bottom: 8px; font-size: 13px; color: var(--text-color);">${tipad.text.en || 'N/A'}</div>
-
-              <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--text-color); opacity: 0.7;">🇯🇵 Japanese:</div>
-              <div style="padding: 8px 12px; background: var(--hover-bg); border-radius: 6px; font-size: 13px; color: var(--text-color);">${tipad.text.ja || 'N/A'}</div>
+            <div class="list-item" style="align-items: flex-start; gap: 12px;">
+              <span style="color: var(--text-secondary); font-size: 13px; white-space: nowrap; padding-top: 1px; min-width: 24px;">🇨🇳</span>
+              <span style="font-size: 13px; color: var(--text-color); line-height: 1.6; flex: 1;">${escapeHtml(tipad.text.zh || '—')}</span>
             </div>
-
-            ${tipad.button ? `
-              <div style="border-top: 1px solid var(--border-color); padding-top: 12px;">
-                <div style="font-size: 11px; font-weight: 600; margin-bottom: 6px; color: var(--text-color); opacity: 0.7;">Button Settings:</div>
-                <div style="background: var(--hover-bg); padding: 10px; border-radius: 6px; font-size: 12px;">
-                  <div style="margin-bottom: 4px; color: var(--text-color);"><strong>Type:</strong> ${tipad.button.type}</div>
-                  <div style="margin-bottom: 4px; color: var(--text-color);"><strong>Label (ZH):</strong> ${tipad.button.label.zh} →</div>
-                  <div style="margin-bottom: 4px; color: var(--text-color);"><strong>Label (EN):</strong> ${tipad.button.label.en} →</div>
-                  <div style="margin-bottom: 4px; color: var(--text-color);"><strong>Label (JA):</strong> ${tipad.button.label.ja} →</div>
-                  <div style="color: var(--text-color);"><strong>Value:</strong> ${tipad.button.value}</div>
-                </div>
-              </div>
-            ` : '<div style="color: var(--text-tertiary); font-style: italic; border-top: 1px solid var(--border-color); padding-top: 10px; font-size: 12px;">No button configured</div>'}
-          </div>
-        `;
+            <div class="list-item" style="align-items: flex-start; gap: 12px;">
+              <span style="color: var(--text-secondary); font-size: 13px; white-space: nowrap; padding-top: 1px; min-width: 24px;">🇬🇧</span>
+              <span style="font-size: 13px; color: var(--text-color); line-height: 1.6; flex: 1;">${escapeHtml(tipad.text.en || '—')}</span>
+            </div>
+            <div class="list-item" style="align-items: flex-start; gap: 12px;">
+              <span style="color: var(--text-secondary); font-size: 13px; white-space: nowrap; padding-top: 1px; min-width: 24px;">🇯🇵</span>
+              <span style="font-size: 13px; color: var(--text-color); line-height: 1.6; flex: 1;">${escapeHtml(tipad.text.ja || '—')}</span>
+            </div>
+            ${buttonRow}
+          </div>`;
       });
       html += '</div>';
       container.innerHTML = html;
