@@ -44,7 +44,14 @@ def send_perm_request(token_id: str, to_user_id: str, requester_name: str = None
             "message": "Token ID not found"
         }
 
-    # 检查是否已经拥有权限
+    # 检查是否已经拥有权限（owner 或 allowed_users）
+    if USERS[to_user_id].get('registered_via_token') == token_id:
+        return {
+            "success": False,
+            "error": "Permission already granted",
+            "message": f"Token is the owner of user {to_user_id} and already has full access"
+        }
+
     token_permissions = dev_tokens[token_id].get('allowed_users', [])
     if to_user_id in token_permissions:
         return {

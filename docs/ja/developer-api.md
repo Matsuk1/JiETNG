@@ -635,6 +635,131 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 }
 ```
 
+#### 14. アクセス権限の自己取り消し
+
+```
+DELETE /api/v1/users/<user_id>/permissions/self
+```
+
+**説明:** トークンが自分自身のアクセス権限を主体的に放棄します。所有者（作成者）権限の取り消しには使用できません。
+
+**必要な権限:** 承認済みアクセス権限を持つ任意のトークン（`@require_dev_token`、非所有者）
+
+**例:**
+```bash
+curl -X DELETE -H "Authorization: Bearer abc123..." \
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/self
+```
+
+**レスポンス:**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "message": "Permission revoked"
+}
+```
+
+**エラーレスポンス:**
+```json
+{
+  "error": "Forbidden",
+  "message": "Owner permission cannot be self-revoked"
+}
+```
+
+#### 15. 成績画像の生成
+
+```
+GET /api/v1/users/<user_id>/image?command=<command>
+```
+
+**説明:** ユーザーの成績画像を生成し、PNG 画像データを直接返します。
+
+**必要な権限:** 所有者または承認済みトークン（`@require_user_permission`）
+
+**クエリパラメータ:**
+
+| パラメータ | 型 | 説明 |
+|---------|------|------|
+| `command` | string | 成績タイプ（下表参照）、デフォルト `b50` |
+
+**command の選択肢:**
+
+| 値 | 説明 |
+|----|------|
+| `b50` / `best50` | Best 50 |
+| `b40` / `best40` | Best 40 |
+| `b35` / `best35` | Best 35 |
+| `b15` / `best15` | Best 15 |
+| `rct50` / `r50` | 最近 50 曲 |
+| `apb50` / `ap50` | AP Best 50 |
+| `fdxb50` / `fdx50` | FDX Best 50 |
+| `ab50` / `allb50` | All Best 50 |
+| `idealb50` / `idlb50` | Ideal Best 50 |
+
+**例:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/image?command=b50" \
+     --output b50.png
+```
+
+**レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
+
+#### 16. 段位牌画像の生成
+
+```
+GET /api/v1/users/<user_id>/plate?title=<title>
+```
+
+**説明:** ユーザーの段位牌画像を生成し、PNG 画像データを直接返します。
+
+**必要な権限:** 所有者または承認済みトークン（`@require_user_permission`）
+
+**クエリパラメータ:**
+
+| パラメータ | 型 | 説明 |
+|---------|------|------|
+| `title` | string | 段位称号（例: `覇極`、`覇将`、`覇舞舞`） |
+
+**例:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/plate?title=覇極" \
+     --output plate.png
+```
+
+**レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
+
+#### 17. 達成状況画像の生成
+
+```
+GET /api/v1/users/<user_id>/achievement?level=<level>&rank=<rank>
+```
+
+**説明:** 指定した難度レベルの達成状況画像を生成し、PNG 画像データを直接返します。
+
+**必要な権限:** 所有者または承認済みトークン（`@require_user_permission`）
+
+**クエリパラメータ:**
+
+| パラメータ | 型 | 必須 | 説明 |
+|---------|------|------|------|
+| `level` | string | ✅ | 難度レベル（例: `15`、`14+`、`13`） |
+| `rank` | string | ❌ | 達成ランクフィルター（例: `sss`、`ap+`、`fc`、未指定で全件表示） |
+
+**rank の選択肢:** `s`、`s+`、`ss`、`ss+`、`sss`、`sss+`、`fc`、`fc+`、`ap`、`ap+`、`fdx`、`fdx+`
+
+**例:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/achievement?level=15&rank=sss" \
+     --output achievement.png
+```
+
+**レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
+
 ### LINE ユーザーの権限管理
 
 LINE ユーザーは権限リクエストの FlexMessage 通知を受け取り、LINE 内で直接承認または拒否できます：
@@ -746,6 +871,15 @@ LINE ユーザーは権限リクエストの FlexMessage 通知を受け取り�
 | `/users/<user_id>/permissions/requests` | GET | 権限リクエスト一覧を表示 | **所有者のみ** |
 | `/users/<user_id>/permissions` | PATCH | 権限リクエストを承認または拒否 | **所有者のみ** |
 | `/users/<user_id>/permissions/<token_id>` | DELETE | 付与された権限を取り消し | **所有者のみ** |
+| `/users/<user_id>/permissions/self` | DELETE | アクセス権限の自己取り消し | 承認済みトークン（非所有者）|
+
+### 画像生成エンドポイント
+
+| エンドポイント | メソッド | 説明 | 必要な権限 |
+|----------------|--------------|-------------------|----------|
+| `/users/<user_id>/image` | GET | 成績画像を生成 | 所有者または承認済み |
+| `/users/<user_id>/plate` | GET | 段位牌画像を生成 | 所有者または承認済み |
+| `/users/<user_id>/achievement` | GET | 達成状況画像を生成 | 所有者または承認済み |
 
 ## セキュリティ推奨事項
 
@@ -889,7 +1023,10 @@ curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/songs/search?q=ヒバナ&ver=j
 
 ## バージョン履歴
 
-- **v1.2**（2026-02-03）：RESTful API 標準に準拠するように変更  
+- **v1.3**（2026-02-27）：自己取り消し権限と画像生成エンドポイントを追加
+  - `DELETE /permissions/self` でトークンが自主的に承認済みアクセスを放棄できる機能を追加
+  - 3つの画像生成エンドポイントを追加（成績画像・段位牌画像・達成状況画像）
+- **v1.2**（2026-02-03）：RESTful API 標準に準拠するように変更
   - すべてのフィールドを RESTful API の設計規約により適合するよう修正
 - **v1.1** (2025-12-04): 権限リクエストシステムを追加
   - 5つの権限管理APIエンドポイントを追加

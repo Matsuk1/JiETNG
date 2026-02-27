@@ -642,6 +642,131 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 }
 ```
 
+#### 14. 自撤销访问权限
+
+```
+DELETE /api/v1/users/<user_id>/permissions/self
+```
+
+**说明：** Token 主动放弃自己对某用户的已授权访问权限。不能用于撤销所有者（创建者）权限。
+
+**权限要求：** 任何持有已授权访问权限的 Token（`@require_dev_token`，非所有者）
+
+**示例:**
+```bash
+curl -X DELETE -H "Authorization: Bearer abc123..." \
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/self
+```
+
+**响应:**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "message": "Permission revoked"
+}
+```
+
+**错误响应：**
+```json
+{
+  "error": "Forbidden",
+  "message": "Owner permission cannot be self-revoked"
+}
+```
+
+#### 15. 生成成绩图
+
+```
+GET /api/v1/users/<user_id>/image?command=<command>
+```
+
+**说明：** 生成用户的成绩图片，直接返回 PNG 图像数据。
+
+**权限要求：** 所有者或被授权 Token（`@require_user_permission`）
+
+**查询参数：**
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `command` | string | 成绩类型（见下表），默认 `b50` |
+
+**command 可选值：**
+
+| 值 | 说明 |
+|----|------|
+| `b50` / `best50` | Best 50 |
+| `b40` / `best40` | Best 40 |
+| `b35` / `best35` | Best 35 |
+| `b15` / `best15` | Best 15 |
+| `rct50` / `r50` | 最近 50 首 |
+| `apb50` / `ap50` | AP Best 50 |
+| `fdxb50` / `fdx50` | FDX Best 50 |
+| `ab50` / `allb50` | All Best 50 |
+| `idealb50` / `idlb50` | Ideal Best 50 |
+
+**示例:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/image?command=b50" \
+     --output b50.png
+```
+
+**响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
+
+#### 16. 生成段位牌图
+
+```
+GET /api/v1/users/<user_id>/plate?title=<title>
+```
+
+**说明：** 生成用户的段位牌图片，直接返回 PNG 图像数据。
+
+**权限要求：** 所有者或被授权 Token（`@require_user_permission`）
+
+**查询参数：**
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `title` | string | 段位称号，如 `覇極`、`覇将`、`覇舞舞` |
+
+**示例:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/plate?title=覇極" \
+     --output plate.png
+```
+
+**响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
+
+#### 17. 生成达成情况图
+
+```
+GET /api/v1/users/<user_id>/achievement?level=<level>&rank=<rank>
+```
+
+**说明：** 生成指定难度等级的达成情况图片，直接返回 PNG 图像数据。
+
+**权限要求：** 所有者或被授权 Token（`@require_user_permission`）
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `level` | string | ✅ | 难度等级，如 `15`、`14+`、`13` |
+| `rank` | string | ❌ | 达成等级过滤，如 `sss`、`ap+`、`fc`（不传则显示全部） |
+
+**rank 可选值：** `s`、`s+`、`ss`、`ss+`、`sss`、`sss+`、`fc`、`fc+`、`ap`、`ap+`、`fdx`、`fdx+`
+
+**示例:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/achievement?level=15&rank=sss" \
+     --output achievement.png
+```
+
+**响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
+
 ### 权限请求工作流程示例
 
 ```bash
@@ -781,6 +906,15 @@ LINE 用户会收到权限请求的 FlexMessage 通知，可以直接在 LINE �
 | `/users/<user_id>/permissions/requests` | GET | 查看权限请求列表 | **仅所有者** |
 | `/users/<user_id>/permissions` | PATCH | 批准或拒绝权限请求 | **仅所有者** |
 | `/users/<user_id>/permissions/<token_id>` | DELETE | 撤销已授予的权限 | **仅所有者** |
+| `/users/<user_id>/permissions/self` | DELETE | 自撤销访问权限 | 已授权 Token（非所有者）|
+
+### 图像生成端点
+
+| 端点 | 方法 | 说明 | 权限要求 |
+|----------------|--------------|-------------------|----------|
+| `/users/<user_id>/image` | GET | 生成成绩图 | 所有者或被授权 |
+| `/users/<user_id>/plate` | GET | 生成段位牌图 | 所有者或被授权 |
+| `/users/<user_id>/achievement` | GET | 生成达成情况图 | 所有者或被授权 |
 
 ## 安全建议
 
@@ -924,6 +1058,9 @@ curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/songs/search?q=ヒバナ&ver=j
 
 ## 版本历史
 
+- **v1.3** (2026-02-27): 新增自撤销权限和图像生成端点
+  - 新增 `DELETE /permissions/self` 允许 Token 主动放弃已授权访问
+  - 新增 3 个图像生成端点（成绩图、段位牌图、达成情况图）
 - **v1.2** (2026-02-03): 修改以符合 RESTful API 标准
   - 修改所有字段以更好地贴合 RESTful API 标准
 - **v1.1** (2025-12-04): 添加权限请求系统

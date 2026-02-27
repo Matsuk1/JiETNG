@@ -630,6 +630,131 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 }
 ```
 
+#### 14. Self-Revoke Access Permission
+
+```
+DELETE /api/v1/users/<user_id>/permissions/self
+```
+
+**Description:** A token proactively surrenders its own granted access permission for a user. Cannot be used to revoke owner (creator) permission.
+
+**Permission Required:** Any token holding a granted access permission (`@require_dev_token`, non-owner)
+
+**Example:**
+```bash
+curl -X DELETE -H "Authorization: Bearer abc123..." \
+     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/self
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "message": "Permission revoked"
+}
+```
+
+**Error Response:**
+```json
+{
+  "error": "Forbidden",
+  "message": "Owner permission cannot be self-revoked"
+}
+```
+
+#### 15. Generate Score Image
+
+```
+GET /api/v1/users/<user_id>/image?command=<command>
+```
+
+**Description:** Generates a score image for the user and returns PNG image data directly.
+
+**Permission Required:** Owner or granted token (`@require_user_permission`)
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `command` | string | Score type (see table below), default `b50` |
+
+**command options:**
+
+| Value | Description |
+|-------|-------------|
+| `b50` / `best50` | Best 50 |
+| `b40` / `best40` | Best 40 |
+| `b35` / `best35` | Best 35 |
+| `b15` / `best15` | Best 15 |
+| `rct50` / `r50` | Recent 50 |
+| `apb50` / `ap50` | AP Best 50 |
+| `fdxb50` / `fdx50` | FDX Best 50 |
+| `ab50` / `allb50` | All Best 50 |
+| `idealb50` / `idlb50` | Ideal Best 50 |
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/image?command=b50" \
+     --output b50.png
+```
+
+**Response:** `Content-Type: image/png`, returns PNG image binary data directly.
+
+#### 16. Generate Plate Image
+
+```
+GET /api/v1/users/<user_id>/plate?title=<title>
+```
+
+**Description:** Generates a rating plate image for the user and returns PNG image data directly.
+
+**Permission Required:** Owner or granted token (`@require_user_permission`)
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `title` | string | Rating title (e.g., `覇極`, `覇将`, `覇舞舞`) |
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/plate?title=覇極" \
+     --output plate.png
+```
+
+**Response:** `Content-Type: image/png`, returns PNG image binary data directly.
+
+#### 17. Generate Achievement Image
+
+```
+GET /api/v1/users/<user_id>/achievement?level=<level>&rank=<rank>
+```
+
+**Description:** Generates an achievement chart image for the specified difficulty level and returns PNG image data directly.
+
+**Permission Required:** Owner or granted token (`@require_user_permission`)
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `level` | string | ✅ | Difficulty level (e.g., `15`, `14+`, `13`) |
+| `rank` | string | ❌ | Achievement rank filter (e.g., `sss`, `ap+`, `fc`; omit to show all) |
+
+**rank options:** `s`, `s+`, `ss`, `ss+`, `sss`, `sss+`, `fc`, `fc+`, `ap`, `ap+`, `fdx`, `fdx+`
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/achievement?level=15&rank=sss" \
+     --output achievement.png
+```
+
+**Response:** `Content-Type: image/png`, returns PNG image binary data directly.
+
 ### Permission Request Workflow Example
 
 ```bash
@@ -770,6 +895,15 @@ LINE users receive FlexMessage notifications for permission requests and can app
 | `/users/<user_id>/permissions/requests` | GET | View permission requests | **Owner Only** |
 | `/users/<user_id>/permissions` | PATCH | Approve or reject permission request | **Owner Only** |
 | `/users/<user_id>/permissions/<token_id>` | DELETE | Revoke granted permission | **Owner Only** |
+| `/users/<user_id>/permissions/self` | DELETE | Self-revoke access permission | Granted Token (non-owner) |
+
+### Image Generation Endpoints
+
+| Endpoint | Method | Description | Permission Required |
+|----------------|--------------|-------------------|----------|
+| `/users/<user_id>/image` | GET | Generate score image | Owner or Granted |
+| `/users/<user_id>/plate` | GET | Generate plate image | Owner or Granted |
+| `/users/<user_id>/achievement` | GET | Generate achievement image | Owner or Granted |
 
 ## Security Recommendations
 
@@ -918,7 +1052,10 @@ curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/songs/search?q=ヒバナ&ver=j
 
 ## Version History
 
-- **v1.2** (2026-02-03): Updated to comply with RESTful API standards  
+- **v1.3** (2026-02-27): Added self-revoke permission and image generation endpoints
+  - Added `DELETE /permissions/self` allowing tokens to proactively surrender granted access
+  - Added 3 image generation endpoints (score image, plate image, achievement image)
+- **v1.2** (2026-02-03): Updated to comply with RESTful API standards
   - Revised all fields to better align with RESTful API conventions
 - **v1.1** (2025-12-04): Added permission request system
   - Added 5 permission management API endpoints
