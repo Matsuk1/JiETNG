@@ -32,7 +32,8 @@ def load_dev_tokens():
                 with open(DEV_TOKENS_FILE, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 _dev_tokens = data if isinstance(data, dict) else {}
-            except Exception:
+            except Exception as e:
+                logger.error(f"[DevToken] ✗ Failed to load tokens: {e}", exc_info=True)
                 _dev_tokens = {}
         _dirty = False
     return _dev_tokens
@@ -51,16 +52,23 @@ def save_dev_tokens(tokens=None, force=False):
         _dev_tokens = tokens
         _dirty = True
 
+    # 从未加载过，不写入（避免用 null 覆盖磁盘上的有效数据）
+    if _dev_tokens is None:
+        return True
+
     if not force and not _dirty:
         return True
 
     try:
-        os.makedirs(os.path.dirname(DEV_TOKENS_FILE), exist_ok=True)
+        dir_path = os.path.dirname(os.path.abspath(DEV_TOKENS_FILE))
+        os.makedirs(dir_path, exist_ok=True)
         with open(DEV_TOKENS_FILE, 'w', encoding='utf-8') as f:
             json.dump(_dev_tokens, f, ensure_ascii=False, indent=2)
         _dirty = False
+        logger.info(f"[DevToken] Saved {len(_dev_tokens)} tokens to {DEV_TOKENS_FILE}")
         return True
-    except Exception:
+    except Exception as e:
+        logger.error(f"[DevToken] ✗ Failed to save tokens: {e}", exc_info=True)
         return False
 
 

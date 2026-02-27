@@ -5129,7 +5129,13 @@ def admin_update_dxdata():
     try:
         result = update_dxdata_with_comparison(DXDATA_URL, DXDATA_LIST)
         message = build_dxdata_update_message(result, None)
-        return jsonify({'success': True, 'message': message})
+        diff = result.get('diff', {})
+        return jsonify({
+            'success': True,
+            'message': message,
+            'sheets_added': diff.get('sheets_added', 0),
+            'songs_added': diff.get('songs_added', 0)
+        })
     except Exception as e:
         logger.error(f"[Admin] ✗ Update DXData error: error={e}", exc_info=True)
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -6579,7 +6585,7 @@ if __name__ == "__main__":
 
     finally:
         write_user(True)
-        save_dev_tokens(dev_tokens, True)
+        save_dev_tokens(force=True)
 
         # 停止内存管理器
         memory_manager.stop()

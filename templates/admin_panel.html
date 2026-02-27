@@ -357,6 +357,26 @@
       font-style: italic;
     }
 
+    /* 按钮加载中状态 */
+    .btn-spinning {
+      pointer-events: none;
+      opacity: 0.75;
+      position: relative;
+    }
+
+    .btn-spinning::after {
+      content: '';
+      display: inline-block;
+      width: 11px;
+      height: 11px;
+      margin-left: 6px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+
     .btn {
       padding: 8px 16px;
       border: 1px solid transparent;
@@ -792,7 +812,7 @@
         <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
           <span>User Management ({{ total_users }} users)</span>
           <div style="display: flex; gap: 8px;">
-            <button class="btn btn-primary" onclick="loadAllNicknames()" style="font-size: 12px;">
+            <button class="btn btn-primary" onclick="loadAllNicknames(this)" style="font-size: 12px;">
               Refresh Nicknames
             </button>
             <button class="btn btn-warning" onclick="clearNicknameCache()" style="font-size: 12px;">
@@ -816,7 +836,7 @@
               <div class="list-item user-header" onclick="toggleUserData('{{ user_id }}')">
                 <div class="list-item-info">
                   <span class="list-item-label" style="font-family: 'Courier New', monospace; color: var(--accent-color);">{{ user_id }}</span>
-                  <span class="list-item-meta" style="font-family: inherit;">{{ user_data.nickname }}</span>
+                  <span class="list-item-meta user-nickname" style="font-family: inherit;">{{ user_data.nickname }}</span>
                 </div>
                 <div class="user-actions" onclick="event.stopPropagation()">
                   <button class="btn btn-primary" onclick="triggerUpdate('{{ user_id }}')">Update</button>
@@ -1543,41 +1563,58 @@
       });
     }
 
-    // 简单的 Toast 通知
-    function showToast(message, type = 'success') {
+    // Toast 通知
+    let _toastOffset = 0;
+    function showToast(message, type) {
+      if (!type) type = message.startsWith('✗') ? 'error' : 'success';
+      const borderColor = type === 'success' ? 'var(--success-color)'
+                        : type === 'warning'  ? 'var(--warning-color)'
+                        : 'var(--danger-color)';
+      const textColor = borderColor;
+
       const toast = document.createElement('div');
+      const offset = _toastOffset;
+      _toastOffset += 56;
       toast.style.cssText = `
         position: fixed;
-        top: 20px;
+        bottom: ${24 + offset}px;
         right: 20px;
-        background: ${type === 'success' ? 'var(--success-color)' : 'var(--danger-color)'};
-        color: white;
-        padding: 16px 24px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-left: 3px solid ${borderColor};
+        color: ${textColor};
+        padding: 10px 16px;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-lg);
         z-index: 10000;
+        font-size: 13px;
         font-weight: 600;
-        animation: slideIn 0.3s ease;
+        max-width: 280px;
+        line-height: 1.5;
+        animation: toastIn 0.25s ease;
       `;
       toast.textContent = message;
       document.body.appendChild(toast);
 
       setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
+        toast.style.animation = 'toastOut 0.25s ease forwards';
+        setTimeout(() => {
+          toast.remove();
+          _toastOffset = Math.max(0, _toastOffset - 56);
+        }, 250);
       }, 3000);
     }
 
     // 添加动画样式
     const style = document.createElement('style');
     style.textContent = `
-      @keyframes slideIn {
-        from { transform: translateX(400px); opacity: 0; }
+      @keyframes toastIn {
+        from { transform: translateX(60px); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
       }
-      @keyframes slideOut {
+      @keyframes toastOut {
         from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(400px); opacity: 0; }
+        to { transform: translateX(60px); opacity: 0; }
       }
     `;
     document.head.appendChild(style);
@@ -1994,27 +2031,28 @@
 
     function updateDXData() {
       const btn = document.getElementById('update-dxdata-btn');
+      btn.classList.add('btn-spinning');
       btn.disabled = true;
-      btn.textContent = 'Updating...';
       fetch('/admin/update_dxdata', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'}
       })
       .then(res => res.json())
       .then(data => {
+        btn.classList.remove('btn-spinning');
         btn.disabled = false;
-        btn.textContent = 'Update DXData';
         if (data.success) {
-          showToast('✓ ' + (data.message || 'DXData updated'));
+          const added = data.sheets_added || 0;
+          showToast(added > 0 ? `✓ +${added} charts` : '✓ DXData up to date');
           loadDXDataStatus();
         } else {
-          showToast('✗ ' + (data.message || 'Failed to update DXData'));
+          showToast('✗ ' + (data.message || 'Failed to update DXData'), 'error');
         }
       })
       .catch(err => {
+        btn.classList.remove('btn-spinning');
         btn.disabled = false;
-        btn.textContent = 'Update DXData';
-        showToast('✗ Network error: ' + err);
+        showToast('✗ Network error: ' + err, 'error');
       });
     }
 
@@ -2042,13 +2080,21 @@
     });
 
 
-    function loadAllNicknames() {
+    function loadAllNicknames(btn) {
+      if (btn) {
+        btn.classList.add('btn-spinning');
+        btn.disabled = true;
+      }
       fetch('/admin/load_nicknames', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'}
       })
       .then(res => res.json())
       .then(data => {
+        if (btn) {
+          btn.classList.remove('btn-spinning');
+          btn.disabled = false;
+        }
         if (data.success) {
           // 隐藏加载指示器
           const loadingIndicator = document.getElementById('nickname-loading');
@@ -2069,9 +2115,9 @@
             if (userItem) {
               userItem.setAttribute('data-nickname', nicknames[userId].toLowerCase());
             }
-
           }
 
+          if (btn) showToast('✓ Loaded ' + data.count + ' nicknames');
           console.log('Loaded ' + data.count + ' nicknames');
         } else {
           console.error('Failed to load nicknames:', data.message);
@@ -2080,14 +2126,20 @@
           if (loadingIndicator) {
             loadingIndicator.innerHTML = '<span style="color: var(--danger-color);">⚠️ Failed to load nicknames</span>';
           }
+          if (btn) showToast('✗ Failed to load nicknames', 'error');
         }
       })
       .catch(err => {
+        if (btn) {
+          btn.classList.remove('btn-spinning');
+          btn.disabled = false;
+        }
         console.error('Error loading nicknames:', err);
         const loadingIndicator = document.getElementById('nickname-loading');
         if (loadingIndicator) {
           loadingIndicator.innerHTML = '<span style="color: var(--danger-color);">⚠️ Network error</span>';
         }
+        if (btn) showToast('✗ Network error', 'error');
       });
     }
 
