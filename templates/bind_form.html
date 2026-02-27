@@ -211,6 +211,97 @@
         font-size: 12px;
       }
     }
+
+    /* 权限管理面板 */
+    .perm-panel {
+      margin-top: 28px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .perm-panel-header {
+      padding: 12px 16px;
+      background: var(--surface-bg);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .perm-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      gap: 12px;
+    }
+
+    .perm-item:last-child {
+      border-bottom: none;
+    }
+
+    .perm-item-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .perm-item-note {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .perm-item-note.owner {
+      color: var(--text-tertiary);
+    }
+
+    .perm-item-id {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-family: monospace;
+    }
+
+    .perm-owner-badge {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      background: var(--surface-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 3px 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .perm-revoke-btn {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--error-color, #ef4444);
+      background: transparent;
+      border: 1px solid var(--error-color, #ef4444);
+      border-radius: var(--radius-sm, 6px);
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: all var(--transition-base);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .perm-revoke-btn:hover {
+      background: var(--error-color, #ef4444);
+      color: #fff;
+    }
+
+    .perm-revoke-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -286,6 +377,27 @@
 
       <input type="submit" id="submit-btn" value="連携" />
     </form>
+
+    {% if perm_list is defined and perm_list %}
+    <div class="perm-panel">
+      <div class="perm-panel-header" id="perm-panel-title">アクセス権限の管理</div>
+      {% for item in perm_list %}
+      <div class="perm-item" id="perm-item-{{ item.token_id }}">
+        <div class="perm-item-info">
+          <span class="perm-item-note {% if item.is_owner %}owner{% endif %}">{{ item.note }}</span>
+          <span class="perm-item-id">{{ item.token_id }}</span>
+        </div>
+        {% if item.is_owner %}
+        <span class="perm-owner-badge" id="perm-owner-label">作成者</span>
+        {% else %}
+        <button class="perm-revoke-btn"
+                onclick="revokePermission('{{ item.token_id }}', this)"
+                id="perm-btn-{{ item.token_id }}">撤销</button>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
 
     <div class="notice">
       <strong id="notice-title">ご利用に関するご注意</strong><br>
@@ -396,6 +508,9 @@
       document.getElementById('notice-en').style.display = lang === 'en' ? 'block' : 'none';
       document.getElementById('notice-zh').style.display = lang === 'zh' ? 'block' : 'none';
 
+      // Update permission panel labels
+      updatePermPanel(lang);
+
       // Toggle timezone hint text (only in bind mode)
       if (mode === 'bind') {
         const hintJa = document.getElementById('hint-text-ja');
@@ -456,6 +571,71 @@
         document.getElementById('loading-overlay').classList.remove('active');
       }
     });
+
+    const permTranslations = {
+      ja: {
+        panelTitle: 'アクセス権限の管理',
+        ownerLabel: '作成者',
+        revokeBtn: '撤廃',
+        revokeConfirm: 'このサービスのアクセス権限を取り消しますか？',
+        revokeSuccess: '権限を取り消しました',
+        revokeError: '取り消しに失敗しました。もう一度お試しください。',
+      },
+      en: {
+        panelTitle: 'Manage Access Permissions',
+        ownerLabel: 'Creator',
+        revokeBtn: 'Revoke',
+        revokeConfirm: 'Revoke access for this service?',
+        revokeSuccess: 'Permission revoked',
+        revokeError: 'Failed to revoke. Please try again.',
+      },
+      zh: {
+        panelTitle: '访问权限管理',
+        ownerLabel: '创建者',
+        revokeBtn: '撤销',
+        revokeConfirm: '确定撤销该服务的访问权限吗？',
+        revokeSuccess: '已撤销权限',
+        revokeError: '撤销失败，请重试',
+      },
+    };
+
+    function updatePermPanel(lang) {
+      const pt = permTranslations[lang] || permTranslations.ja;
+      const panelTitle = document.getElementById('perm-panel-title');
+      if (panelTitle) panelTitle.textContent = pt.panelTitle;
+      document.querySelectorAll('.perm-owner-badge').forEach(el => el.textContent = pt.ownerLabel);
+      document.querySelectorAll('.perm-revoke-btn').forEach(el => {
+        if (!el.disabled) el.textContent = pt.revokeBtn;
+      });
+    }
+
+    async function revokePermission(tokenId, btn) {
+      const lang = document.getElementById('language').value || 'ja';
+      const pt = permTranslations[lang] || permTranslations.ja;
+      if (!confirm(pt.revokeConfirm)) return;
+
+      btn.disabled = true;
+      try {
+        const res = await fetch('/linebot/perms/revoke', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            perm_token: '{{ perm_token | default("") }}',
+            token_id: tokenId,
+          }),
+        });
+        if (res.ok) {
+          const item = document.getElementById('perm-item-' + tokenId);
+          if (item) item.remove();
+        } else {
+          alert(pt.revokeError);
+          btn.disabled = false;
+        }
+      } catch (e) {
+        alert(pt.revokeError);
+        btn.disabled = false;
+      }
+    }
 
     // 页面加载时自动设置用户语言和预填充数据
     window.addEventListener('DOMContentLoaded', function() {

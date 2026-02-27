@@ -142,13 +142,14 @@ def generate_perm_request_message(requests: list, user_id: str = None) -> FlexMe
                     "margin": "sm"
                 }
             ],
-            "paddingAll": "16px"
+            "paddingAll": "16px",
+            "paddingBottom": "0px"
         },
         "body": {
             "type": "box",
             "layout": "vertical",
             "contents": request_rows,
-            "paddingAll": "16px"
+            "paddingAll": "16px",
         }
     }
 

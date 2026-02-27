@@ -311,7 +311,7 @@ GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rat
 ```
 
 **パラメータ:**
-- `type`: レコードタイプ (best50/best100/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idlb50、オプション、デフォルトはbest50)
+- `type`: レコードタイプ (best50/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idlb50、オプション、デフォルトはbest50)
 - `level`: 譜面定数でフィルター (単一値または "min,max" 範囲、オプション)
 - `rating`: 単曲Ratingでフィルター (単一値または "min,max" 範囲、オプション)
 - `version`: ゲームバージョンでフィルター (複数のバージョンをカンマ区切り、例: "buddies,prism"、オプション)

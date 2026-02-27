@@ -9,8 +9,7 @@
 ```
 b50          # Best 50（旧曲 35 + 新曲 15）
 b40          # Best 40（旧 Rating 計算方式、旧曲 25 + 新曲 15）
-b100         # Best 100（旧曲 70 + 新曲 30）
-best50 / best40 / best100   # 上記の代替コマンド
+best50 / best40   # 上記の代替コマンド
 ```
 
 ### バリエーション
@@ -20,12 +19,10 @@ b35 / best35              # 旧曲 Best 35 のみ
 b15 / best15              # 新曲 Best 15 のみ
 ab35 / allb35             # All Best 35（バージョン無視）
 ab50 / allb50             # All Best 50（バージョン無視）
-ab100 / allb100           # All Best 100（バージョン無視）
 apb50 / ap50              # All Perfect Best 50（AP/AP+ のみ）
 fdxb50 / fdx50            # Full DX Best 50（FDX/FDX+ のみ）
 idealb50 / idlb50         # Ideal Best 50（上位梯度スコアをシミュレート）
 rct50 / r50               # Recent 50（最近 50 回のプレイ）
-unknown                   # 未認識楽曲のスコア
 ```
 
 ## フィルター

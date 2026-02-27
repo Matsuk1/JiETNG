@@ -313,7 +313,7 @@ GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rat
 ```
 
 **Parameters:**
-- `type`: Record type (best50/best100/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idlb50, optional, defaults to best50)
+- `type`: Record type (best50/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idlb50, optional, defaults to best50)
 - `level`: Filter by chart constant (single value or "min,max" range, optional)
 - `rating`: Filter by single song rating (single value or "min,max" range, optional)
 - `version`: Filter by game version (supports multiple versions, comma-separated, e.g., "buddies,prism", optional)

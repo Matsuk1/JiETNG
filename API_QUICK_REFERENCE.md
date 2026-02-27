@@ -173,7 +173,7 @@ Response: 200 OK
 {
   "success": true,
   "task_id": "api_sync_abc123",
-  "status": "running",  // running, queued, completed, cancelled
+  "status": "running",  // running, queued, completed
   "start_time": "2026-02-03T10:00:00",
   "task_type": "maimai_update"
 }
@@ -213,7 +213,7 @@ Response: 200 OK
 - `action`: 操作类型（"accept" 或 "reject"）
 
 ### 成绩查询
-- `type`: best50, best40, best100, best35, best15, allb50, allb100, allb200, allb35, apb50, rct50, idlb50, UNKNOWN
+- `type`: best50, best40, best35, best15, allb50, allb35, apb50, rct50, idlb50, unknown
 - `level`: 定数范围，如 "14,15" 或 "14.0-15.0"
 - `rating`: rating范围，如 "100-200"
 - `version`: 版本过滤

@@ -84,7 +84,7 @@ def edit_user_value(user_id: str, key: str, word: Any, operation: int = 0) -> No
         del USERS[user_id][key]
 
     mark_user_dirty()
-    write_user(force=True)
+    write_user()
 
 
 def get_user_timezone(user_id: str) -> int:
@@ -196,7 +196,7 @@ def record_notice_read(user_id: str, notice_id: str) -> None:
     USERS[user_id]['notice_interactions'][notice_id]['read_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     mark_user_dirty()
-    write_user(force=True)
+    write_user()
 
 
 def record_notice_vote(user_id: str, notice_id: str, vote_type: str) -> bool:
@@ -234,7 +234,7 @@ def record_notice_vote(user_id: str, notice_id: str, vote_type: str) -> bool:
         USERS[user_id]['notice_interactions'][notice_id]['read_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     mark_user_dirty()
-    write_user(force=True)
+    write_user()
 
     return True
 

@@ -9,8 +9,7 @@
 ```
 b50          # Best 50 图表（旧曲 35 + 新曲 15）
 b40          # Best 40 图表（过去的 Rating 计算方案，旧曲 25 + 新曲 15）
-b100         # Best 100 图表（旧曲 70 + 新曲 30）
-best50 / best40 / best100   # 同上，替代命令
+best50 / best40   # 同上，替代命令
 ```
 
 ### 变体
@@ -20,12 +19,10 @@ b35 / best35              # 仅旧曲 Best 35
 b15 / best15              # 仅新曲 Best 15
 ab35 / allb35             # All Best 35（忽略版本）
 ab50 / allb50             # All Best 50（忽略版本）
-ab100 / allb100           # All Best 100（忽略版本）
 apb50 / ap50              # All Perfect Best 50（仅 AP/AP+ 成绩）
 fdxb50 / fdx50            # Full DX Best 50（仅 FDX/FDX+ 成绩）
 idealb50 / idlb50         # Ideal Best 50（模拟上一梯度成绩）
 rct50 / r50               # Recent 50（最近 50 次游玩）
-unknown                   # 未识别歌曲成绩
 ```
 
 ## 过滤参数

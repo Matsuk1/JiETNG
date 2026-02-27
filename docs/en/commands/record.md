@@ -9,8 +9,7 @@
 ```
 b50          # Best 50 (old ver. 35 + new ver. 15)
 b40          # Best 40 (legacy Rating calculation, old ver. 25 + new ver. 15)
-b100         # Best 100 (old ver. 70 + new ver. 30)
-best50 / best40 / best100   # Aliases for the above
+best50 / best40   # Aliases for the above
 ```
 
 ### Variations
@@ -20,12 +19,10 @@ b35 / best35              # Old version Best 35 only
 b15 / best15              # New version Best 15 only
 ab35 / allb35             # All Best 35 (ignore version)
 ab50 / allb50             # All Best 50 (ignore version)
-ab100 / allb100           # All Best 100 (ignore version)
 apb50 / ap50              # All Perfect Best 50 (AP/AP+ scores only)
 fdxb50 / fdx50            # Full DX Best 50 (FDX/FDX+ scores only)
 idealb50 / idlb50         # Ideal Best 50 (simulate previous tier scores)
 rct50 / r50               # Recent 50 plays
-unknown                   # Unrecognized song scores
 ```
 
 ## Filters

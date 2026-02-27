@@ -310,7 +310,7 @@ GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rat
 ```
 
 **参数:**
-- `type`: 记录类型 (best50/best100/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idlb50，可选，默认 best50)
+- `type`: 记录类型 (best50/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idlb50，可选，默认 best50)
 - `level`: 按谱面定数筛选 (单个值或 "min,max" 范围，可选)
 - `rating`: 按单曲 Rating 筛选 (单个值或 "min,max" 范围，可选)
 - `version`: 按游戏版本筛选 (支持多个版本，逗号分隔，如 "buddies,prism"，可选)

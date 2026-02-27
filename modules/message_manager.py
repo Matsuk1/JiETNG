@@ -1904,7 +1904,6 @@ def generate_command_list_flex(user_id):
         ("All Best", [
             ("ab50",  "All Best 50"),
             ("ab35",  "All Best 35"),
-            ("ab100", "All Best 100"),
         ]),
         ("Others", [
             ("apb50",  "AP Best 50"),

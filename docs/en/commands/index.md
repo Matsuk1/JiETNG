@@ -55,7 +55,6 @@ This document lists all available commands for the JiETNG LINE Bot.
 |---------|---------|-------------|
 | `b50` | `best50` | Best 35 (old ver.) + Best 15 (new ver.) |
 | `b40` | `best40` | Best 25 (old ver.) + Best 15 (new ver.) - Legacy Rating calculation |
-| `b100` | `best100` | Best 70 (old ver.) + Best 30 (new ver.) |
 | `b35` | `best35` | Old version Best 35 only |
 | `b15` | `best15` | New version Best 15 only |
 
@@ -65,7 +64,6 @@ This document lists all available commands for the JiETNG LINE Bot.
 |---------|---------|-------------|
 | `ab35` | `allb35` | Mixed version Best 35 |
 | `ab50` | `allb50` | Mixed version Best 50 |
-| `ab100` | `allb100` | Mixed version Best 100 |
 | `apb50` | `ap50` | AP/AP+ only Best 50 |
 | `fdxb50` | `fdx50` | FDX/FDX+ only Best 50 |
 | `rct50` | `r50` | Recent 50 plays |

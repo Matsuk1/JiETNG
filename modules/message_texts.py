@@ -183,6 +183,12 @@ perm_request_reject_success_text = {
     "zh": "✅ 已拒绝访问权限请求。\n\nToken ID: {token_id}\n申请者: {requester_name}"
 }
 
+perm_request_already_processed_text = {
+    "ja": "このリクエストはすでに処理されています。",
+    "en": "This request has already been processed.",
+    "zh": "该请求已经处理过了。",
+}
+
 
 # ============================================================
 # 管理者通知 / Admin Notifications

@@ -76,7 +76,10 @@ from modules.record_generator import *
 
 # User and data managers
 from modules.user_manager import *
-from modules.bindtoken_manager import generate_bind_token, get_user_id_from_token
+from modules.bindtoken_manager import (
+    generate_bind_token, get_user_id_from_token,
+    generate_perm_token, get_user_id_from_perm_token,
+)
 from modules.notice_manager import *
 from modules.notice_stats import *
 from modules.tip_ad_manager import (
@@ -125,6 +128,7 @@ from modules.image_manager import *
 from modules.system_checker import run_system_check, clean_unbound_users
 from modules.rate_limiter import check_rate_limit
 from modules.line_messenger import smart_reply, smart_push, notify_admins_error, notify_on_error
+from modules.perm_request_generator import generate_perm_request_message
 from modules import notification_manager
 from modules.config_loader import VAPID_PUBLIC_KEY
 from modules.song_matcher import find_matching_songs, is_exact_song_match, normalize_text
@@ -205,21 +209,19 @@ RANK_COMMANDS = {
     # Best 系列
     ("b50", "best50"): "best50",
     ("b40", "best40"): "best40",
-    ("b100", "best100"): "best100",
     ("b35", "best35"): "best35",
     ("b15", "best15"): "best15",
 
     # All Best 系列
     ("ab35", "allb35"): "allb35",
     ("ab50", "allb50"): "allb50",
-    ("ab100", "allb100"): "allb100",
 
     # 特殊系列
     ("apb50", "ap50"): "apb50",
     ("fdxb50", "fdx50"): "fdxb50",
     ("rct50", "r50"): "rct50",
     ("idealb50", "idlb50"): "idlb50",
-    ("unknown"): "unknown",
+    ("unknown", "unkn"): "unknown",
 }
 
 # 启用 CSRF 保护
@@ -286,16 +288,6 @@ def run_task_with_limit(func: callable, args: tuple, sem: threading.Semaphore,
         is_web_task: 是否是 web 任务
     """
     start_time = datetime.now()
-
-    # 检查任务是否已被取消
-    if task_id:
-        with task_tracking_lock:
-            if task_id in task_tracking['cancelled']:
-                # 任务已取消，从取消列表中移除并从排队中移除
-                task_tracking['cancelled'].discard(task_id)
-                task_tracking['queued'] = [t for t in task_tracking['queued'] if t.get('id') != task_id]
-                logger.info(f"[Task] ⚠ Cancelled: task_id={task_id}")
-                return
 
     # 添加到运行中的任务
     if task_id:
@@ -911,8 +903,26 @@ Token not provided. <br />
         except Exception:
             user_language = 'en'
 
-    # 在 rebind 模式下，传递现有数据到模板
+    # 在 rebind 模式下，传递现有数据和权限列表到模板
     if mode == "rebind":
+        dev_tokens = load_dev_tokens()
+        owner_token_id = user_data.get('registered_via_token', '')
+        perm_list = []
+        # 先加 owner token
+        if owner_token_id and owner_token_id in dev_tokens:
+            perm_list.append({
+                'token_id': owner_token_id,
+                'note': dev_tokens[owner_token_id].get('note', owner_token_id),
+                'is_owner': True,
+            })
+        # 再加已授权 token
+        for tid, tdata in dev_tokens.items():
+            if user_id in tdata.get('allowed_users', []):
+                perm_list.append({
+                    'token_id': tid,
+                    'note': tdata.get('note', tid),
+                    'is_owner': False,
+                })
         return render_template(
             "bind_form.html",
             user_language=user_language,
@@ -921,10 +931,53 @@ Token not provided. <br />
             password=user_data.get('sega_pwd', ''),
             version=user_data.get('version', 'jp'),
             aime=user_data.get('aime', 0),
-            timezone=user_data.get('timezone', 9)
+            timezone=user_data.get('timezone', 9),
+            perm_token=generate_perm_token(user_id),
+            perm_list=perm_list,
         )
     else:
         return render_template("bind_form.html", user_language=user_language, mode="bind")
+
+
+@app.route("/linebot/perms/revoke", methods=["POST"])
+@csrf.exempt
+def linebot_perms_revoke():
+    """
+    用户通过 bind_form 权限管理面板撤销某 token 的访问权限
+
+    请求体 (JSON):
+    - perm_token: 权限管理 Token（页面加载时生成，10分钟有效）
+    - token_id: 要撤销的 token ID
+    """
+    data = request.get_json() or {}
+    perm_token = data.get('perm_token', '')
+    token_id_to_revoke = data.get('token_id', '')
+
+    try:
+        user_id = get_user_id_from_perm_token(perm_token)
+    except ValueError:
+        return jsonify({"error": "Invalid or expired token"}), 401
+
+    if user_id not in USERS:
+        return jsonify({"error": "User not found"}), 404
+
+    if USERS[user_id].get('registered_via_token') == token_id_to_revoke:
+        return jsonify({"error": "Cannot revoke owner permission"}), 403
+
+    dev_tokens = load_dev_tokens()
+    if token_id_to_revoke not in dev_tokens:
+        return jsonify({"error": "Token not found"}), 404
+
+    allowed_users = dev_tokens[token_id_to_revoke].get('allowed_users', [])
+    if user_id not in allowed_users:
+        return jsonify({"error": "Permission not found"}), 404
+
+    allowed_users.remove(user_id)
+    dev_tokens[token_id_to_revoke]['allowed_users'] = allowed_users
+    save_dev_tokens(dev_tokens)
+
+    logger.info(f"[Permission] Web revoke: token_id={token_id_to_revoke}, user_id={user_id}")
+    return jsonify({"success": True})
 
 
 DEMO_CORS_ORIGIN = "https://jietng.matsuki.work"
@@ -2534,10 +2587,6 @@ def select_records(song_record, type="best50", command="", ver="jp"):
         up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*25 : page*25]
         down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
 
-    elif type == "best100":
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*70 : page*70]
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*30 : page*30]
-
     elif type == "best35":
         up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
 
@@ -2549,12 +2598,6 @@ def select_records(song_record, type="best50", command="", ver="jp"):
 
     elif type == "allb50":
         up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*50 : page*50]
-
-    elif type == "allb100":
-        up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*100 : page*100]
-
-    elif type == "allb200":
-        up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*200 : page*200]
 
     elif type == "apb50":
         up_songs_data = [x for x in up_songs_data if x.get("combo_icon") in ("ap", "app")]
@@ -2597,6 +2640,9 @@ def select_records(song_record, type="best50", command="", ver="jp"):
 
         up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
         down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
+
+    else:
+        return select_records(song_record, "best50", command, ver)
 
     return up_songs, down_songs, details
 
@@ -2985,12 +3031,10 @@ IMAGE_TASK_ROUTES = {
     'b_commands': {
         "b50", "best50",
         "b40", "best40",
-        "b100", "best100",
         "b35", "best35",
         "b15", "best15",
         "ab35", "allb35",
         "ab50", "allb50",
-        "ab100", "allb100",
         "apb50", "ap50",
         "fdxb50", "fdx50",
         "rct50", "r50",
@@ -3158,6 +3202,8 @@ def handle_accept_perm_request(user_id: str, request_id: str) -> TextMessage:
             token_id=result['token_id'],
             requester_name=result.get('requester_name', result['token_id'])
         )
+    elif result.get('error') == 'Request not found':
+        text = get_multilingual_text(perm_request_already_processed_text, user_id)
     else:
         notify_admins_error(
             error_title="Permission Request Accept Error",
@@ -3192,6 +3238,8 @@ def handle_reject_perm_request(user_id: str, request_id: str) -> TextMessage:
             token_id=result['token_id'],
             requester_name=result.get('requester_name', result['token_id'])
         )
+    elif result.get('error') == 'Request not found':
+        text = get_multilingual_text(perm_request_already_processed_text, user_id)
     else:
         notify_admins_error(
             error_title="Permission Request Reject Error",
@@ -4012,7 +4060,6 @@ def handle_default(event):
 task_tracking = {
     'running': [],
     'queued': [],
-    'cancelled': set(),  # 存储已取消的任务ID
     'completed': []  # 存储已完成的任务 (最多保留20个)
 }
 task_tracking_lock = threading.Lock()
@@ -4716,7 +4763,6 @@ def admin_edit_user():
         # 更新用户数据
         USERS[user_id] = user_data
         mark_user_dirty()
-        write_user()
 
         logger.info(f"[Admin] ✓ User data edited: user_id={user_id}")
 
@@ -5216,7 +5262,6 @@ def api_create_user():
     请求体 (JSON):
     - user_id: 必需，用户ID
     - nickname: 必需，用户昵称
-    - language: 可选，语言设置 (ja/en/zh)，默认为 en
 
     返回:
     - bind_url: 绑定页面链接
@@ -5228,7 +5273,6 @@ def api_create_user():
         data = request.get_json() or {}
         user_id = data.get('user_id', '')
         nickname = data.get('nickname', '')
-        language = data.get('language', 'en')
 
         # user_id 是必需参数
         if not user_id:
@@ -5244,16 +5288,9 @@ def api_create_user():
                 "message": "Parameter 'nickname' is required"
             }), 400
 
-        # 验证 language 参数
-        if language not in ['ja', 'en', 'zh']:
-            return jsonify({
-                "error": "Invalid parameter",
-                "message": "Parameter 'language' must be 'ja', 'en', or 'zh'"
-            }), 400
-
         # 记录 API 访问日志
         token_info = request.token_info
-        logger.info(f"[API] Create user: user_id={user_id}, nickname={nickname}, language={language}, token_id={token_info['token_id']}, note={token_info['note']}")
+        logger.info(f"[API] Create user: user_id={user_id}, nickname={nickname}, token_id={token_info['token_id']}, note={token_info['note']}")
 
         # 读取用户数据
         if user_id in USERS:
@@ -5270,7 +5307,6 @@ def api_create_user():
 
         # 初始化用户数据
         add_user(user_id)
-        edit_user_value(user_id, "language", language)
         edit_user_value(user_id, "nickname", nickname)
         edit_user_value(user_id, "registered_via_token", token_info['token_id'])
         edit_user_value(user_id, "registered_at", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
@@ -5439,7 +5475,7 @@ def api_get_user_records(user_id):
 
     参数:
     - type: 可选，记录类型，默认为 best50
-      可选值: best50, best100, best35, best15, allb50, allb100, allb200, allb35, apb50, rct50, idlb50, unknown
+      可选值: best50, best35, best15, allb50, allb35, apb50, rct50, idlb50, unknown
     - level: 可选，定数范围，如 "14,15" 或 "14.0-15.0"
     - rating: 可选，rating范围，如 "100-200"
     - version: 可选，版本过滤
@@ -5487,14 +5523,6 @@ def api_get_user_records(user_id):
         # 记录 API 访问日志
         token_info = request.token_info
         logger.info(f"[API] Get user records: user_id={user_id}, type={record_type}, token_id={token_info['token_id']}, note={token_info['note']}")
-
-        # 验证 record_type
-        valid_types = ["best50", "best40", "best100", "best35", "best15", "allb50", "allb100", "allb200", "allb35", "apb50", "rct50", "idlb50", "unknown"]
-        if record_type not in valid_types:
-            return jsonify({
-                "error": "Invalid type",
-                "message": f"Invalid record type: {record_type}. Valid types: {', '.join(valid_types)}"
-            }), 400
 
         # 检查是否有个人信息
         if "personal_info" not in USERS[user_id]:
@@ -5587,6 +5615,15 @@ def api_request_user_permission(user_id):
         result = send_perm_request(token_id, user_id, requester_name)
 
         if result['success']:
+            # 通过 LINE 推送权限请求通知
+            try:
+                perm_requests = get_pending_perm_requests(user_id)
+                perm_msg = generate_perm_request_message(perm_requests, user_id)
+                if perm_msg:
+                    smart_push(user_id, [perm_msg], configuration)
+            except Exception as e:
+                logger.warning(f"[API] ⚠ Failed to push permission request notification: user_id={user_id}, error={e}")
+
             return jsonify({
                 "success": True,
                 "request_id": result['request_id'],
@@ -5725,6 +5762,43 @@ def api_manage_user_permission(user_id):
         }), 500
 
 
+@app.route("/api/v1/users/<user_id>/permissions/self", methods=["DELETE"])
+@csrf.exempt
+@require_dev_token
+def api_revoke_own_permission(user_id):
+    """
+    放弃自己对某用户的访问权限（自撤销）
+
+    需要 Bearer Token 认证，只能撤销已授权（allowed_users）的权限，
+    不能撤销 owner（创建者）权限。
+    """
+    try:
+        if user_id not in USERS:
+            return jsonify({"error": "User not found", "message": f"User {user_id} does not exist"}), 404
+
+        token_info = request.token_info
+        token_id = token_info['token_id']
+
+        if USERS[user_id].get('registered_via_token') == token_id:
+            return jsonify({"error": "Forbidden", "message": "Owner permission cannot be self-revoked"}), 403
+
+        dev_tokens = load_dev_tokens()
+        allowed_users = dev_tokens.get(token_id, {}).get('allowed_users', [])
+        if user_id not in allowed_users:
+            return jsonify({"error": "Permission not found", "message": f"Token does not have granted permission for user {user_id}"}), 404
+
+        allowed_users.remove(user_id)
+        dev_tokens[token_id]['allowed_users'] = allowed_users
+        save_dev_tokens(dev_tokens)
+
+        logger.info(f"[API] Self-revoke permission: token_id={token_id}, user_id={user_id}")
+        return jsonify({"success": True, "user_id": user_id, "message": "Permission revoked"})
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Self-revoke permission error: user_id={user_id}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
 @app.route("/api/v1/users/<user_id>/permissions/<token_id>", methods=["DELETE"])
 @csrf.exempt
 @require_dev_token
@@ -5791,7 +5865,7 @@ def api_get_task(task_id):
 
     需要 Bearer Token 认证
 
-    返回指定任务的状态信息（running, queued, completed, cancelled 或 not_found）
+    返回指定任务的状态信息（running, queued, completed 或 not_found）
     """
     try:
         with task_tracking_lock:
@@ -5831,14 +5905,6 @@ def api_get_task(task_id):
                         "task_type": task.get('type', 'unknown'),
                         "result": task.get('result', 'success')
                     })
-
-            # 检查任务是否已被取消
-            if task_id in task_tracking['cancelled']:
-                return jsonify({
-                    "success": True,
-                    "task_id": task_id,
-                    "status": "cancelled"
-                })
 
         # 任务不存在
         return jsonify({
@@ -6021,6 +6087,383 @@ def api_get_versions():
             "message": str(e)
         }), 500
 
+@app.route("/api/v1/users/<user_id>/image", methods=["GET"])
+@csrf.exempt
+@require_dev_token
+def api_generate_image(user_id):
+    """
+    生成用户成绩图片 API
+
+    需要 Bearer Token 认证
+
+    参数:
+    - command: 命令字符串，如 b50, rct50, apb50 等（默认 b50）
+
+    返回: image/png
+    """
+    try:
+        token_info = request.token_info
+
+        has_permission, error_response = check_user_permission(user_id, token_info['token_id'])
+        if not has_permission:
+            return error_response
+
+        if user_id not in USERS:
+            return jsonify({"error": "User not found"}), 404
+
+        if "personal_info" not in USERS[user_id]:
+            return jsonify({"error": "User info not found, please sync first"}), 404
+
+        command = request.args.get('command', 'b50').strip().lower()
+        parts = re.split(r"[ \n]", command, 1)
+        first_word = parts[0]
+        rest_text = parts[1] if len(parts) > 1 else ""
+
+        ver = USERS[user_id].get("version", "jp")
+
+        record_type = None
+        for aliases, mode in RANK_COMMANDS.items():
+            if isinstance(aliases, tuple):
+                if first_word in aliases:
+                    record_type = mode
+                    break
+            else:
+                if first_word == aliases:
+                    record_type = mode
+                    break
+
+        if not record_type:
+            return jsonify({"error": f"Unknown command: {command}",
+                            "available": [a for aliases in RANK_COMMANDS for a in (aliases if isinstance(aliases, tuple) else (aliases,))]}), 400
+
+        recent = (record_type == "rct50")
+        recent_type = (record_type == "best40")
+        song_record = read_record(user_id, recent, recent_type)
+        if not song_record:
+            return jsonify({"error": "No records found, please sync first"}), 404
+
+        up_songs, down_songs, details = select_records(song_record, record_type, rest_text, ver)
+        if not up_songs and not down_songs:
+            return jsonify({"error": "No matching records for this command"}), 404
+
+        display_type = "未だ知らず" if record_type == "unknown" else record_type
+        record_img = generate_records_picture(up_songs, down_songs, display_type.upper(), ver, details)
+        user_info = USERS[user_id].get('personal_info')
+        profile_img = generate_profile(user_info, user_id=user_id)
+        user_tz = get_user_timezone(user_id)
+        img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz)
+        del profile_img, record_img
+        gc.collect(0)
+
+        buf = BytesIO()
+        img.save(buf, "PNG")
+        buf.seek(0)
+        del img
+        gc.collect(0)
+
+        logger.info(f"[API] Image generated: user_id={user_id}, command={command}, token_id={token_info['token_id']}")
+        return send_file(buf, mimetype="image/png")
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Generate image error: user_id={user_id}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
+@app.route("/api/v1/users/<user_id>/plate", methods=["GET"])
+@csrf.exempt
+@require_dev_token
+def api_generate_plate(user_id):
+    """
+    生成段位牌图片 API
+
+    需要 Bearer Token 认证
+
+    参数:
+    - title: 牌子名称
+
+    返回: image/png
+    """
+    try:
+        token_info = request.token_info
+        has_permission, error_response = check_user_permission(user_id, token_info['token_id'])
+        if not has_permission:
+            return error_response
+
+        if user_id not in USERS:
+            return jsonify({"error": "User not found"}), 404
+        if "personal_info" not in USERS[user_id]:
+            return jsonify({"error": "User info not found, please sync first"}), 404
+
+        title = request.args.get('title', '').strip()
+        if not title:
+            return jsonify({"error": "title parameter is required"}), 400
+        if not (len(title) == 2 or len(title) == 3):
+            return jsonify({"error": "Invalid title length, must be 2 or 3 characters"}), 400
+
+        ver = USERS[user_id].get("version", "jp")
+        song_record = read_record(user_id)
+        if not song_record:
+            return jsonify({"error": "No records found, please sync first"}), 404
+
+        version_name = title[0]
+        plate_type = title[1:].replace("极", "極")
+
+        songs, versions = read_dxdata(ver)
+        target_version = []
+        if version_name in TEMP_VERSION["abbr"]:
+            target_version.append(TEMP_VERSION["title"])
+        for version in versions:
+            if version_name in version['abbr']:
+                target_version.append(version['version'])
+
+        if not target_version:
+            return jsonify({"error": "Version not found"}), 404
+
+        if plate_type == "極":
+            target_type, target_icon = "combo", ["fc", "fcp", "ap", "app"]
+        elif plate_type == "将":
+            target_type, target_icon = "score", ["sss", "sssp"]
+        elif plate_type == "神":
+            target_type, target_icon = "combo", ["ap", "app"]
+        elif plate_type == "舞舞":
+            target_type, target_icon = "sync", ["fdx", "fdxp"]
+        else:
+            return jsonify({"error": "Invalid plate type, must be 極/将/神/舞舞"}), 400
+
+        version_rcd_data = list(filter(lambda x: x['version'] in target_version, song_record))
+        if not version_rcd_data:
+            return jsonify({"error": "No version records found"}), 404
+
+        target_data = []
+        target_num = {d: {'all': 0, 'clear': 0} for d in ['basic', 'advanced', 'expert', 'master']}
+
+        rcd_map = {}
+        for rcd in version_rcd_data:
+            key1 = (rcd['name'], rcd['difficulty'], rcd['type'])
+            rcd_map[key1] = rcd
+            key2 = (normalize_text(rcd['name']), rcd['difficulty'], rcd['type'])
+            rcd_map[key2] = rcd
+
+        for song in songs:
+            if song['version'] not in target_version or song['type'] == 'utage':
+                continue
+            for sheet in song['sheets']:
+                if not sheet['regions'].get(ver, False) or sheet['difficulty'] not in target_num:
+                    continue
+                icon = "back"
+                achieved = False
+                achievement_rate = 0.0
+                target_num[sheet['difficulty']]['all'] += 1
+                song_title = song['title']
+                difficulty = sheet['difficulty']
+                song_type = song['type']
+
+                rcd = rcd_map.get((song_title, difficulty, song_type)) or \
+                      rcd_map.get((normalize_text(song_title), difficulty, song_type))
+                if rcd:
+                    icon = rcd[f'{target_type}_icon']
+                    score_str = rcd.get('score', '0.0000%')
+                    achievement_rate = float(score_str[:-1]) if score_str.endswith('%') else 0.0
+                    if icon in target_icon:
+                        target_num[difficulty]['clear'] += 1
+                        achieved = True
+
+                if difficulty == "master":
+                    complete_info = {}
+                    for diff in ["basic", "advanced", "expert", "master"]:
+                        d_rcd = rcd_map.get((song_title, diff, song_type)) or \
+                                rcd_map.get((normalize_text(song_title), diff, song_type))
+                        complete_info[diff] = d_rcd is not None and d_rcd[f'{target_type}_icon'] in target_icon
+
+                    target_data.append({
+                        "img": generate_cover(song['cover_url'], song_type, icon, target_type,
+                                              cover_name=song.get('cover_name'), complete_info=complete_info, achieved=achieved),
+                        "level": sheet['level'],
+                        "achieved": achieved,
+                        "achievement_rate": achievement_rate
+                    })
+
+        plate_img = generate_plate_image(target_data, title, headers=target_num)
+        user_info = USERS[user_id].get('personal_info')
+        profile_img = generate_profile(user_info, user_id=user_id)
+        user_tz = get_user_timezone(user_id)
+        img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz)
+        del profile_img, plate_img
+        gc.collect(0)
+
+        buf = BytesIO()
+        img.save(buf, "PNG")
+        buf.seek(0)
+        del img
+        gc.collect(0)
+
+        logger.info(f"[API] Plate generated: user_id={user_id}, title={title}, token_id={token_info['token_id']}")
+        return send_file(buf, mimetype="image/png")
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Generate plate error: user_id={user_id}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
+@app.route("/api/v1/users/<user_id>/achievement", methods=["GET"])
+@csrf.exempt
+@require_dev_token
+def api_generate_achievement(user_id):
+    """
+    生成达成状况图片 API
+
+    需要 Bearer Token 认证
+
+    参数:
+    - level: 等级，如 11, 12+, 13, 14+, 15
+    - rank: 可选，评级，如 sss, sss+, ap, ap+, fdx, fc 等
+
+    返回: image/png
+    """
+    try:
+        token_info = request.token_info
+        has_permission, error_response = check_user_permission(user_id, token_info['token_id'])
+        if not has_permission:
+            return error_response
+
+        if user_id not in USERS:
+            return jsonify({"error": "User not found"}), 404
+        if "personal_info" not in USERS[user_id]:
+            return jsonify({"error": "User info not found, please sync first"}), 404
+
+        level = request.args.get('level', '').strip()
+        rank = request.args.get('rank', None)
+        if rank:
+            rank = rank.strip().lower()
+
+        supported_levels = ["11", "11+", "12", "12+", "13", "13+", "14", "14+", "15"]
+        if level not in supported_levels:
+            return jsonify({"error": f"Invalid level, supported: {supported_levels}"}), 400
+
+        rank_mapping = {
+            "s":    ("score", ["s", "sp", "ss", "ssp", "sss", "sssp"]),
+            "s+":   ("score", ["sp", "ss", "ssp", "sss", "sssp"]),
+            "ss":   ("score", ["ss", "ssp", "sss", "sssp"]),
+            "ss+":  ("score", ["ssp", "sss", "sssp"]),
+            "sss":  ("score", ["sss", "sssp"]),
+            "sss+": ("score", ["sssp"]),
+            "fc":   ("combo", ["fc", "fcp", "ap", "app"]),
+            "fc+":  ("combo", ["fcp", "ap", "app"]),
+            "ap":   ("combo", ["ap", "app"]),
+            "ap+":  ("combo", ["app"]),
+            "fdx":  ("sync", ["fdx", "fdxp"]),
+            "fdx+": ("sync", ["fdxp"])
+        }
+
+        if rank is not None and rank not in rank_mapping:
+            return jsonify({"error": f"Invalid rank, supported: {list(rank_mapping.keys())}"}), 400
+
+        ver = USERS[user_id].get("version", "jp")
+        target_type, target_icons = rank_mapping[rank] if rank else (None, None)
+
+        song_record = read_record(user_id)
+        if not song_record:
+            return jsonify({"error": "No records found, please sync first"}), 404
+
+        rcd_map = {}
+        for rcd in song_record:
+            key1 = (rcd['name'], rcd['difficulty'], rcd['type'])
+            rcd_map[key1] = rcd
+            key2 = (normalize_text(rcd['name']), rcd['difficulty'], rcd['type'])
+            rcd_map[key2] = rcd
+
+        target_data = []
+        total_charts = achieved_count = unachieved_count = unplayed_count = 0
+
+        songs, _ = read_dxdata(ver)
+        for song in songs:
+            if song['type'] == 'utage':
+                continue
+            for sheet in song['sheets']:
+                if not sheet['regions'].get(ver, False):
+                    continue
+                if level == "14+":
+                    if sheet['level'] not in ["14+", "15"]:
+                        continue
+                else:
+                    if sheet['level'] != level:
+                        continue
+
+                difficulty = sheet['difficulty']
+                total_charts += 1
+                song_title = song['title']
+                song_type = song['type']
+                icon = "back"
+                achieved = False
+                has_record = False
+                achievement_rate = 0.0
+
+                rcd = rcd_map.get((song_title, difficulty, song_type)) or \
+                      rcd_map.get((normalize_text(song_title), difficulty, song_type))
+                if rcd:
+                    has_record = True
+                    score_str = rcd.get('score', '0.0000%')
+                    achievement_rate = float(score_str[:-1]) if score_str.endswith('%') else 0.0
+                    if rank is not None:
+                        user_icon = rcd.get(f'{target_type}_icon', "back")
+                        icon = user_icon
+                        if user_icon in target_icons:
+                            achieved = True
+                            achieved_count += 1
+                        else:
+                            unachieved_count += 1
+                    else:
+                        achieved = True
+                        achieved_count += 1
+
+                if not has_record:
+                    unplayed_count += 1
+
+                target_data.append({
+                    "img": generate_cover(song['cover_url'], song_type, icon if rank else None,
+                                          target_type if rank else None, size=150,
+                                          cover_name=song.get('cover_name'), difficulty=difficulty,
+                                          achieved=achieved if rank else None),
+                    "internal_level": sheet['internalLevelValue'],
+                    "achieved": achieved,
+                    "difficulty": difficulty,
+                    "achievement_rate": achievement_rate
+                })
+
+        if not target_data:
+            return jsonify({"error": "No matching data"}), 404
+
+        level_display = level.replace("+", "⁺")
+        rank_display = rank.upper().replace("+", "⁺") if rank else ""
+        stats = {
+            "achieved": achieved_count,
+            "unachieved": unachieved_count,
+            "unplayed": unplayed_count,
+            "total": total_charts
+        }
+
+        record_img = generate_level_rank_progress_image(target_data, level_display, rank_display, stats)
+        user_info = USERS[user_id].get('personal_info')
+        profile_img = generate_profile(user_info, scale=1.5, user_id=user_id)
+        user_tz = get_user_timezone(user_id)
+        img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz)
+        del profile_img, record_img
+        gc.collect(0)
+
+        buf = BytesIO()
+        img.save(buf, "PNG")
+        buf.seek(0)
+        del img
+        gc.collect(0)
+
+        logger.info(f"[API] Achievement generated: user_id={user_id}, level={level}, rank={rank}, token_id={token_info['token_id']}")
+        return send_file(buf, mimetype="image/png")
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Generate achievement error: user_id={user_id}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
 if __name__ == "__main__":
     # ==================== 系统启动自检 ====================
     # 在启动 worker 线程之前执行系统自检
@@ -6105,7 +6548,11 @@ if __name__ == "__main__":
 
     try:
         app.run(host=HOST, port=PORT)
+
     finally:
+        write_user(True)
+        save_dev_tokens(dev_tokens, True)
+
         # 停止内存管理器
         memory_manager.stop()
         logger.info("[System] Memory manager stopped")
