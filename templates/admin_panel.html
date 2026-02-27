@@ -357,7 +357,7 @@
 
     .btn {
       padding: 8px 16px;
-      border: none;
+      border: 1px solid transparent;
       border-radius: var(--radius-md);
       font-size: 13px;
       font-weight: 600;
@@ -366,28 +366,38 @@
     }
 
     .btn-primary {
-      background: var(--info-color);
-      color: white;
+      background: transparent;
+      color: var(--info-color);
+      border: 1px solid var(--info-color);
     }
 
     .btn-success {
-      background: var(--success-color);
-      color: white;
+      background: transparent;
+      color: var(--success-color);
+      border: 1px solid var(--success-color);
     }
 
     .btn-danger {
-      background: var(--danger-color);
-      color: white;
+      background: transparent;
+      color: var(--danger-color);
+      border: 1px solid var(--danger-color);
     }
 
     .btn-warning {
-      background: var(--warning-color);
-      color: white;
+      background: transparent;
+      color: var(--warning-color);
+      border: 1px solid var(--warning-color);
     }
 
     .btn:hover {
-      opacity: 0.85;
+      opacity: 1;
+      filter: brightness(1.1);
     }
+
+    .btn-primary:hover { background: var(--info-color); color: white; }
+    .btn-success:hover { background: var(--success-color); color: white; }
+    .btn-danger:hover  { background: var(--danger-color); color: white; }
+    .btn-warning:hover { background: var(--warning-color); color: white; }
 
     .user-data {
       display: none;
