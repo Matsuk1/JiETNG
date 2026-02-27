@@ -69,17 +69,18 @@
     }
 
     .logout-btn {
-      padding: 8px 18px;
+      padding: 4px 14px;
       background: transparent;
       color: var(--danger-color);
       border: 1px solid var(--danger-color);
-      border-radius: var(--radius-md);
+      border-radius: 20px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       transition: all var(--transition-base);
       text-decoration: none;
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
     }
 
     .logout-btn:hover {
@@ -766,9 +767,9 @@
       <div style="display:flex; align-items:center; gap:10px;">
         <button id="notif-toggle-btn" onclick="toggleBrowserNotifications()"
                 title="Enable/Disable browser notifications"
-                style="background:none; border:1px solid var(--border-color); border-radius:20px; padding:4px 12px; cursor:pointer; font-size:14px; color:var(--text-color); display:flex; align-items:center; gap:5px;">
+                style="background:none; border:1px solid var(--border-color); border-radius:20px; padding:4px 12px; cursor:pointer; font-size:13px; color:var(--text-color); display:flex; align-items:center; gap:5px;">
           <span id="notif-toggle-icon">✕</span>
-          <span id="notif-toggle-label" style="font-size:12px;">Notifications</span>
+          <span id="notif-toggle-label" style="font-size:13px;">Notifications</span>
         </button>
         <a href="/admin/logout" class="logout-btn">Logout</a>
       </div>
