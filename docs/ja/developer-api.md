@@ -857,10 +857,10 @@ LINE ユーザーは権限リクエストの FlexMessage 通知を受け取り�
 | `/users` | POST | ユーザーを登録し連携URLを生成 | 任意のトークン |
 | `/users/<user_id>` | GET | ユーザー情報を取得 | 所有者または承認済み |
 | `/users/<user_id>` | DELETE | ユーザーを削除 | **所有者のみ** |
-| `/users/<user_id>/sync` | POST | 非同期でユーザーデータを同期 (202 Accepted) | 所有者または承認済み |
+| `/users/<user_id>/tasks` | POST | 同期タスクを作成 (202 Accepted) | 所有者または承認済み |
 | `/tasks/<task_id>` | GET | タスク状態確認 | 任意のトークン |
 | `/users/<user_id>/records` | GET | ユーザーレコードを取得 | 所有者または承認済み |
-| `/songs/search` | GET | 楽曲を検索 | 任意のトークン |
+| `/songs` | GET | 楽曲を検索 | 任意のトークン |
 | `/versions` | GET | バージョン一覧を取得 | 任意のトークン |
 
 ### 権限管理エンドポイント
@@ -869,7 +869,7 @@ LINE ユーザーは権限リクエストの FlexMessage 通知を受け取り�
 |----------------|--------------|-------------------|----------|
 | `/users/<user_id>/permissions` | POST | アクセス権限をリクエスト | 任意のトークン |
 | `/users/<user_id>/permissions/requests` | GET | 権限リクエスト一覧を表示 | **所有者のみ** |
-| `/users/<user_id>/permissions` | PATCH | 権限リクエストを承認または拒否 | **所有者のみ** |
+| `/users/<user_id>/permissions/requests/<request_id>` | PATCH | 権限リクエストを承認または拒否 | **所有者のみ** |
 | `/users/<user_id>/permissions/<token_id>` | DELETE | 付与された権限を取り消し | **所有者のみ** |
 | `/users/<user_id>/permissions/self` | DELETE | アクセス権限の自己取り消し | 承認済みトークン（非所有者）|
 

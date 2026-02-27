@@ -5402,7 +5402,44 @@ def api_delete_user(user_id):
         }), 500
 
 
-@app.route("/api/v1/users/<user_id>/sync", methods=["POST"])
+@app.route("/api/v1/users/<user_id>/bind-url", methods=["POST"])
+@csrf.exempt
+@require_dev_token
+@require_user_permission
+def api_create_bind_url(user_id):
+    """
+    生成绑定/换绑 URL API
+
+    需要 Bearer Token 认证并拥有该用户的访问权限
+
+    返回:
+    - bind_url: 绑定页面链接（2分钟有效）
+    - expires_in: token 过期时间（秒）
+    """
+    try:
+        token_info = request.token_info
+        logger.info(f"[API] Create bind URL: user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
+
+        bind_token = generate_bind_token(user_id)
+        bind_url = f"https://{DOMAIN}/linebot/sega_bind?token={bind_token}&mode=rebind"
+
+        return jsonify({
+            "success": True,
+            "user_id": user_id,
+            "bind_url": bind_url,
+            "expires_in": 120,
+            "message": "Bind URL generated successfully. Token expires in 2 minutes."
+        }), 201
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Create bind URL error: user_id={user_id}, error={e}", exc_info=True)
+        return jsonify({
+            "error": "Internal server error",
+            "message": str(e)
+        }), 500
+
+
+@app.route("/api/v1/users/<user_id>/tasks", methods=["POST"])
 @csrf.exempt
 @require_dev_token
 @require_user_permission
@@ -5683,18 +5720,17 @@ def api_get_user_permission_requests(user_id):
         }), 500
 
 
-@app.route("/api/v1/users/<user_id>/permissions", methods=["PATCH"])
+@app.route("/api/v1/users/<user_id>/permissions/requests/<request_id>", methods=["PATCH"])
 @csrf.exempt
 @require_dev_token
 @require_owner_permission
-def api_manage_user_permission(user_id):
+def api_manage_user_permission(user_id, request_id):
     """
     管理用户权限请求 API (RESTful)
 
     需要 Bearer Token 认证（该 token 必须是用户的所有者 token）
 
     请求体 (JSON):
-    - request_id: 必需，要处理的权限请求ID
     - action: 必需，操作类型 ("accept" 或 "reject")
 
     返回:
@@ -5705,15 +5741,7 @@ def api_manage_user_permission(user_id):
     try:
         # 获取 JSON 数据
         data = request.get_json() or {}
-        request_id = data.get('request_id', '')
         action = data.get('action', '')
-
-        # 验证必需参数
-        if not request_id:
-            return jsonify({
-                "error": "Missing parameter",
-                "message": "Parameter 'request_id' is required"
-            }), 400
 
         if action not in ['accept', 'reject']:
             return jsonify({
@@ -5924,7 +5952,7 @@ def api_get_task(task_id):
 
 # ==================== Song Search API (RESTful) ====================
 
-@app.route("/api/v1/songs/search", methods=["GET"])
+@app.route("/api/v1/songs", methods=["GET"])
 @csrf.exempt
 @require_dev_token
 def api_search_songs_restful():

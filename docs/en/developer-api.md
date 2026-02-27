@@ -881,10 +881,10 @@ LINE users receive FlexMessage notifications for permission requests and can app
 | `/users` | POST | Register user and generate bind URL | Any Token |
 | `/users/<user_id>` | GET | Get user info | Owner or Granted |
 | `/users/<user_id>` | DELETE | Delete user | **Owner Only** |
-| `/users/<user_id>/sync` | POST | Async sync user data (202 Accepted) | Owner or Granted |
+| `/users/<user_id>/tasks` | POST | Create sync task (202 Accepted) | Owner or Granted |
 | `/tasks/<task_id>` | GET | Query task status | Any Token |
 | `/users/<user_id>/records` | GET | Get user records | Owner or Granted |
-| `/songs/search` | GET | Search songs | Any Token |
+| `/songs` | GET | Search songs | Any Token |
 | `/versions` | GET | Get version list | Any Token |
 
 ### Permission Management Endpoints
@@ -893,7 +893,7 @@ LINE users receive FlexMessage notifications for permission requests and can app
 |----------------|--------------|-------------------|----------|
 | `/users/<user_id>/permissions` | POST | Request access permission | Any Token |
 | `/users/<user_id>/permissions/requests` | GET | View permission requests | **Owner Only** |
-| `/users/<user_id>/permissions` | PATCH | Approve or reject permission request | **Owner Only** |
+| `/users/<user_id>/permissions/requests/<request_id>` | PATCH | Approve or reject permission request | **Owner Only** |
 | `/users/<user_id>/permissions/<token_id>` | DELETE | Revoke granted permission | **Owner Only** |
 | `/users/<user_id>/permissions/self` | DELETE | Self-revoke access permission | Granted Token (non-owner) |
 

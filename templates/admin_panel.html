@@ -962,30 +962,30 @@
           </span>
         </div>
 
-        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-          <div style="display: flex; justify-content: space-between; padding: 12px 16px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px;">
-            <span style="opacity: 0.7;">Python</span>
-            <span style="font-weight: 600;">{{ stats.python_version }}</span>
+        <div class="list-panel">
+          <div class="list-item">
+            <span style="color: var(--text-secondary);">Python</span>
+            <span style="font-weight: 600; font-family: monospace;">{{ stats.python_version }}</span>
           </div>
-          <div style="display: flex; justify-content: space-between; padding: 12px 16px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px;">
-            <span style="opacity: 0.7;">Platform</span>
-            <span style="font-weight: 600;">{{ stats.platform_short }}</span>
+          <div class="list-item">
+            <span style="color: var(--text-secondary);">Platform</span>
+            <span style="font-weight: 600; font-family: monospace;">{{ stats.platform_short }}</span>
           </div>
-          <div style="display: flex; justify-content: space-between; padding: 12px 16px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px;">
-            <span style="opacity: 0.7;">Hostname</span>
-            <span style="font-weight: 600;" title="{{ stats.hostname }}">{{ stats.hostname[:8] }}{% if stats.hostname|length > 8 %}...{% endif %}</span>
+          <div class="list-item">
+            <span style="color: var(--text-secondary);">Hostname</span>
+            <span style="font-weight: 600; font-family: monospace;" title="{{ stats.hostname }}">{{ stats.hostname[:8] }}{% if stats.hostname|length > 8 %}...{% endif %}</span>
           </div>
-          <div style="display: flex; justify-content: space-between; padding: 12px 16px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px;">
-            <span style="opacity: 0.7;">Port</span>
-            <span style="font-weight: 600;">{{ stats.port }}</span>
+          <div class="list-item">
+            <span style="color: var(--text-secondary);">Port</span>
+            <span style="font-weight: 600; font-family: monospace;">{{ stats.port }}</span>
           </div>
-          <div style="display: flex; justify-content: space-between; padding: 12px 16px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px;">
-            <span style="opacity: 0.7;">Total Tasks</span>
-            <span style="font-weight: 600;">{{ stats.total_tasks_processed }}</span>
+          <div class="list-item">
+            <span style="color: var(--text-secondary);">Total Tasks</span>
+            <span style="font-weight: 600; font-family: monospace;">{{ stats.total_tasks_processed }}</span>
           </div>
-          <div style="display: flex; justify-content: space-between; padding: 12px 16px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px;">
-            <span style="opacity: 0.7;">Avg Response</span>
-            <span style="font-weight: 600;">{{ stats.avg_response_time }}ms</span>
+          <div class="list-item">
+            <span style="color: var(--text-secondary);">Avg Response</span>
+            <span style="font-weight: 600; font-family: monospace;">{{ stats.avg_response_time }}ms</span>
           </div>
         </div>
 

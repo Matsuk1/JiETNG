@@ -892,10 +892,10 @@ LINE 用户会收到权限请求的 FlexMessage 通知，可以直接在 LINE �
 | `/users` | POST | 注册用户并生成绑定链接 | 任何 Token |
 | `/users/<user_id>` | GET | 获取用户信息 | 所有者或被授权 |
 | `/users/<user_id>` | DELETE | 删除用户 | **仅所有者** |
-| `/users/<user_id>/sync` | POST | 异步同步用户数据 (202 Accepted) | 所有者或被授权 |
+| `/users/<user_id>/tasks` | POST | 创建同步任务 (202 Accepted) | 所有者或被授权 |
 | `/tasks/<task_id>` | GET | 查询任务状态 | 任何 Token |
 | `/users/<user_id>/records` | GET | 获取用户成绩记录 | 所有者或被授权 |
-| `/songs/search` | GET | 搜索歌曲 | 任何 Token |
+| `/songs` | GET | 搜索歌曲 | 任何 Token |
 | `/versions` | GET | 获取版本列表 | 任何 Token |
 
 ### 权限管理端点
@@ -904,7 +904,7 @@ LINE 用户会收到权限请求的 FlexMessage 通知，可以直接在 LINE �
 |----------------|--------------|-------------------|----------|
 | `/users/<user_id>/permissions` | POST | 请求访问权限 | 任何 Token |
 | `/users/<user_id>/permissions/requests` | GET | 查看权限请求列表 | **仅所有者** |
-| `/users/<user_id>/permissions` | PATCH | 批准或拒绝权限请求 | **仅所有者** |
+| `/users/<user_id>/permissions/requests/<request_id>` | PATCH | 批准或拒绝权限请求 | **仅所有者** |
 | `/users/<user_id>/permissions/<token_id>` | DELETE | 撤销已授予的权限 | **仅所有者** |
 | `/users/<user_id>/permissions/self` | DELETE | 自撤销访问权限 | 已授权 Token（非所有者）|
 
