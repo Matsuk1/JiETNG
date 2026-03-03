@@ -3,7 +3,7 @@ layout: page
 ---
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 const segaid = ref('')
 const password = ref('')
@@ -111,6 +111,7 @@ async function generate() {
     fd.append('timezone', timezone)
     fd.append('cmd_type', cmdType.value)
     fd.append('params', paramsString.value)
+    writeCookie()
     const res = await fetch('https://jietng-endpoint.matsuki.work/linebot/demo', { method: 'POST', body: fd })
     if (res.ok) {
       const blob = await res.blob()
@@ -129,6 +130,36 @@ async function generate() {
 function reset() {
   if (imageUrl.value) { URL.revokeObjectURL(imageUrl.value); imageUrl.value = '' }
   error.value = ''
+}
+
+const saveCreds = ref(false)
+
+// Load from cookie on mount
+onMounted(() => {
+  const m = document.cookie.match(/(?:^|;\s*)demo_creds=([^;]+)/)
+  if (m) {
+    try {
+      const d = JSON.parse(decodeURIComponent(m[1]))
+      if (d.segaid) segaid.value = d.segaid
+      if (d.password) password.value = d.password
+      if (d.ver) ver.value = d.ver
+      saveCreds.value = true
+    } catch {}
+  }
+})
+
+function onSaveCredsChange() {
+  if (saveCreds.value) {
+    writeCookie()
+  } else {
+    document.cookie = 'demo_creds=; max-age=0; path=/'
+  }
+}
+
+function writeCookie() {
+  if (!saveCreds.value) return
+  const d = JSON.stringify({ segaid: segaid.value, password: password.value, ver: ver.value })
+  document.cookie = 'demo_creds=' + encodeURIComponent(d) + '; max-age=7776000; path=/; SameSite=Strict'
 }
 </script>
 
@@ -243,7 +274,8 @@ function reset() {
       </button>
       <p v-if="error" class="error-msg">{{ error }}</p>
     </form>
-    <p class="notice">入力した情報はこのリクエストにのみ使用され、保存されることはありません。本サービスは個人が運営しており、SEGAとは一切関係ありません。</p>
+    <label class="save-creds"><input type="checkbox" v-model="saveCreds" @change="onSaveCredsChange" />アカウント情報を記憶する</label>
+    <p class="notice">{{ saveCreds ? 'アカウント情報はブラウザの Cookie に保存され、お使いの端末にのみ保持されます。サーバーには送信されません。本サービスは個人が運営しており、SEGAとは一切関係ありません。' : '入力した情報はこのリクエストにのみ使用され、保存されることはありません。本サービスは個人が運営しており、SEGAとは一切関係ありません。' }}</p>
   </div>
 
   <div class="demo-card result-card" v-if="imageUrl">
@@ -633,6 +665,25 @@ function reset() {
   font-size: 14px;
   color: var(--vp-c-danger-1, #f43f5e);
   line-height: 1.5;
+}
+
+.save-creds {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.save-creds input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--vp-c-brand-1);
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .notice {
