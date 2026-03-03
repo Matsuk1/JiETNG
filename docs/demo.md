@@ -14,15 +14,15 @@ const imageUrl = ref('')
 const timezone = -new Date().getTimezoneOffset() / 60
 
 const CMD_INFO = {
-  best50: { cmd: 'b50',      label: 'b50 — Best 50（旧曲 35 + 新曲 15）',    title: 'BEST 50' },
-  best40: { cmd: 'b40',      label: 'b40 — Best 40（旧曲 25 + 新曲 15）',    title: 'BEST 40' },
-  best35: { cmd: 'b35',      label: 'b35 — Best 35（仅旧曲）',               title: 'BEST 35' },
-  best15: { cmd: 'b15',      label: 'b15 — Best 15（仅新曲）',               title: 'BEST 15' },
-  allb35: { cmd: 'ab35',     label: 'ab35 — All Best 35（忽略版本）',        title: 'ALL BEST 35' },
-  allb50: { cmd: 'ab50',     label: 'ab50 — All Best 50（忽略版本）',        title: 'ALL BEST 50' },
-  apb50:  { cmd: 'apb50',    label: 'apb50 — AP Best 50（仅 AP / AP+）',     title: 'AP BEST 50' },
-  fdxb50: { cmd: 'fdxb50',   label: 'fdxb50 — FDX Best 50（仅 FDX / FDX+）', title: 'FDX BEST 50' },
-  idlb50: { cmd: 'idealb50', label: 'idealb50 — Ideal Best 50',              title: 'IDEAL BEST 50' },
+  best50: { cmd: 'b50',      label: 'b50 — Best 50',            title: 'BEST 50' },
+  best40: { cmd: 'b40',      label: 'b40 — Best 40',            title: 'BEST 40' },
+  best35: { cmd: 'b35',      label: 'b35 — Best 35',            title: 'BEST 35' },
+  best15: { cmd: 'b15',      label: 'b15 — Best 15',            title: 'BEST 15' },
+  allb35: { cmd: 'ab35',     label: 'ab35 — All Best 35',       title: 'ALL BEST 35' },
+  allb50: { cmd: 'ab50',     label: 'ab50 — All Best 50',       title: 'ALL BEST 50' },
+  apb50:  { cmd: 'apb50',    label: 'apb50 — AP Best 50 ',      title: 'AP BEST 50' },
+  fdxb50: { cmd: 'fdxb50',   label: 'fdxb50 — FDX Best 50',     title: 'FDX BEST 50' },
+  idlb50: { cmd: 'idealb50', label: 'idealb50 — Ideal Best 50', title: 'IDEAL BEST 50' },
 }
 
 const cmdType = ref('best50')
