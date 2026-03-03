@@ -1013,13 +1013,7 @@ def demo_page():
     _VALID_CMD_TYPES = {"best50", "best40", "best35", "best15", "allb35", "allb50", "apb50", "fdxb50", "idlb50", "rct50"}
     if cmd_type not in _VALID_CMD_TYPES:
         cmd_type = "best50"
-    _TITLE_MAP = {
-        "best50": "BEST 50",    "best40": "BEST 40",    "best35": "BEST 35",
-        "best15": "BEST 15",    "allb35": "ALL BEST 35","allb50": "ALL BEST 50",
-        "apb50":  "AP BEST 50", "fdxb50": "FDX BEST 50","idlb50": "IDEAL BEST 50",
-        "rct50":  "RECENT 50",
-    }
-    title = _TITLE_MAP.get(cmd_type, "BEST 50")
+    title = cmd_type.upper()
 
     async def _pipeline():
         cookies = await login_to_maimai(segaid, password, ver=ver)
@@ -5976,9 +5970,9 @@ def api_get_task(task_id):
 @app.route("/api/v1/songs", methods=["GET"])
 @csrf.exempt
 @require_dev_token
-def api_search_songs_restful():
+def api_search_songs():
     """
-    搜索歌曲 API (RESTful)
+    搜索歌曲 API
 
     需要 Bearer Token 认证
 
