@@ -3,7 +3,7 @@ layout: page
 ---
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const segaid = ref('')
 const password = ref('')
@@ -12,6 +12,90 @@ const loading = ref(false)
 const error = ref('')
 const imageUrl = ref('')
 const timezone = -new Date().getTimezoneOffset() / 60
+
+const CMD_INFO = {
+  best50: { cmd: 'b50',      label: 'b50 — Best 50（旧曲 35 + 新曲 15）',    title: 'BEST 50' },
+  best40: { cmd: 'b40',      label: 'b40 — Best 40（旧曲 25 + 新曲 15）',    title: 'BEST 40' },
+  best35: { cmd: 'b35',      label: 'b35 — Best 35（旧曲のみ）',             title: 'BEST 35' },
+  best15: { cmd: 'b15',      label: 'b15 — Best 15（新曲のみ）',             title: 'BEST 15' },
+  allb35: { cmd: 'ab35',     label: 'ab35 — All Best 35（バージョン無視）',  title: 'ALL BEST 35' },
+  allb50: { cmd: 'ab50',     label: 'ab50 — All Best 50（バージョン無視）',  title: 'ALL BEST 50' },
+  apb50:  { cmd: 'apb50',    label: 'apb50 — AP Best 50（AP / AP+ のみ）',   title: 'AP BEST 50' },
+  fdxb50: { cmd: 'fdxb50',   label: 'fdxb50 — FDX Best 50（FDX / FDX+ のみ）', title: 'FDX BEST 50' },
+  idlb50: { cmd: 'idealb50', label: 'idealb50 — Ideal Best 50',             title: 'IDEAL BEST 50' },
+  rct50:  { cmd: 'rct50',    label: 'rct50 — Recent 50（直近 50 回）',       title: 'RECENT 50' },
+}
+
+const cmdType = ref('best50')
+
+const paramLvMin   = ref('')
+const paramLvMax   = ref('')
+const paramRaMin   = ref('')
+const paramRaMax   = ref('')
+const paramStarMin = ref('')
+const paramStarMax = ref('')
+const paramScrMin  = ref('')
+const paramScrMax  = ref('')
+const paramDxMin   = ref('')
+const paramDxMax   = ref('')
+const paramDiff    = ref([])
+const paramType    = ref('')
+const paramVer     = ref('')
+const paramPage    = ref('')
+
+const DIFFS = ['bas', 'adv', 'exp', 'mas', 'rem']
+
+const paramsString = computed(() => {
+  const parts = []
+  const lvMin = paramLvMin.value.trim()
+  const lvMax = paramLvMax.value.trim()
+  if (lvMin) parts.push(lvMax ? `-lv ${lvMin} ${lvMax}` : `-lv ${lvMin}`)
+
+  const raMin = paramRaMin.value.trim()
+  const raMax = paramRaMax.value.trim()
+  if (raMin) parts.push(raMax ? `-ra ${raMin} ${raMax}` : `-ra ${raMin}`)
+
+  const starMin = paramStarMin.value.trim()
+  const starMax = paramStarMax.value.trim()
+  if (starMin) parts.push(starMax ? `-star ${starMin} ${starMax}` : `-star ${starMin}`)
+
+  const scrMin = paramScrMin.value.trim()
+  const scrMax = paramScrMax.value.trim()
+  if (scrMin) parts.push(scrMax ? `-scr ${scrMin} ${scrMax}` : `-scr ${scrMin}`)
+
+  const dxMin = paramDxMin.value.trim()
+  const dxMax = paramDxMax.value.trim()
+  if (dxMin) parts.push(dxMax ? `-dx ${dxMin} ${dxMax}` : `-dx ${dxMin}`)
+
+  if (paramDiff.value.length > 0) parts.push(`-diff ${paramDiff.value.join(' ')}`)
+
+  if (paramType.value) parts.push(`-type ${paramType.value}`)
+
+  const ver = paramVer.value.trim()
+  if (ver) parts.push(`-ver ${ver}`)
+
+  const page = parseInt(paramPage.value)
+  if (page > 1) parts.push(`-page ${page}`)
+
+  return parts.join(' ')
+})
+
+const commandPreview = computed(() => {
+  const info = CMD_INFO[cmdType.value] || CMD_INFO.best50
+  return paramsString.value ? `${info.cmd} ${paramsString.value}` : info.cmd
+})
+
+const btnLabel = computed(() => {
+  const info = CMD_INFO[cmdType.value] || CMD_INFO.best50
+  return `${info.title} を生成`
+})
+
+function toggleDiff(d) {
+  if (loading.value) return
+  const idx = paramDiff.value.indexOf(d)
+  if (idx === -1) paramDiff.value.push(d)
+  else paramDiff.value.splice(idx, 1)
+}
 
 async function generate() {
   if (!segaid.value || !password.value) return
@@ -24,6 +108,8 @@ async function generate() {
     fd.append('password', password.value)
     fd.append('ver', ver.value)
     fd.append('timezone', timezone)
+    fd.append('cmd_type', cmdType.value)
+    fd.append('params', paramsString.value)
     const res = await fetch('https://jietng-endpoint.matsuki.work/linebot/demo', { method: 'POST', body: fd })
     if (res.ok) {
       const blob = await res.blob()
@@ -48,7 +134,7 @@ function reset() {
 <div class="demo-page">
   <div class="demo-hero">
     <h1>オンライン体験</h1>
-    <p>LINE 不要。SEGAアカウントを入力するだけで Best 50 成績図を生成できます。</p>
+    <p>LINE 不要。SEGAアカウントを入力するだけで Best シリーズ成績図を生成できます。</p>
   </div>
 
   <div class="demo-card" v-if="!imageUrl">
@@ -68,9 +154,102 @@ function reset() {
           <option value="intl">海外版 - maimaidx-eng.com</option>
         </select>
       </div>
+
+      <div class="field">
+        <label for="cmd-type">コマンド</label>
+        <select id="cmd-type" v-model="cmdType" :disabled="loading">
+          <option v-for="(info, key) in CMD_INFO" :key="key" :value="key">{{ info.label }}</option>
+        </select>
+      </div>
+
+      <div class="params-section">
+        <div class="params-header">フィルターパラメーター（任意）</div>
+
+        <div class="param-field">
+          <label>難易度</label>
+          <div class="diff-group" :class="{ 'diff-group--disabled': loading }">
+            <button
+              v-for="d in DIFFS" :key="d"
+              type="button"
+              class="diff-chip"
+              :class="{ 'diff-chip--active': paramDiff.includes(d) }"
+              @click="toggleDiff(d)"
+            >{{ d.toUpperCase() }}</button>
+          </div>
+        </div>
+
+        <div class="param-field">
+          <label>内部定数</label>
+          <div class="range-inputs">
+            <input type="number" v-model="paramLvMin" placeholder="最小（例：14）" step="0.1" min="1" max="15" :disabled="loading" />
+            <span class="range-sep">~</span>
+            <input type="number" v-model="paramLvMax" placeholder="最大（例：14.9）" step="0.1" min="1" max="15" :disabled="loading" />
+          </div>
+        </div>
+
+        <div class="param-field">
+          <label>Rating</label>
+          <div class="range-inputs">
+            <input type="number" v-model="paramRaMin" placeholder="最小（例：301）" step="1" min="0" :disabled="loading" />
+            <span class="range-sep">~</span>
+            <input type="number" v-model="paramRaMax" placeholder="最大（例：312）" step="1" min="0" :disabled="loading" />
+          </div>
+        </div>
+
+        <div class="param-field">
+          <label>DX スター数</label>
+          <div class="range-inputs">
+            <input type="number" v-model="paramStarMin" placeholder="最小（1〜5）" step="1" min="1" max="5" :disabled="loading" />
+            <span class="range-sep">~</span>
+            <input type="number" v-model="paramStarMax" placeholder="最大（省略可）" step="1" min="1" max="5" :disabled="loading" />
+          </div>
+        </div>
+
+        <div class="param-field">
+          <label>達成率 %</label>
+          <div class="range-inputs">
+            <input type="number" v-model="paramScrMin" placeholder="最小（例：99）" step="0.0001" min="0" max="101" :disabled="loading" />
+            <span class="range-sep">~</span>
+            <input type="number" v-model="paramScrMax" placeholder="最大（省略可）" step="0.0001" min="0" max="101" :disabled="loading" />
+          </div>
+        </div>
+
+        <div class="param-field">
+          <label>DX Score %</label>
+          <div class="range-inputs">
+            <input type="number" v-model="paramDxMin" placeholder="最小（例：90）" step="1" min="0" max="100" :disabled="loading" />
+            <span class="range-sep">~</span>
+            <input type="number" v-model="paramDxMax" placeholder="最大（省略可）" step="1" min="0" max="100" :disabled="loading" />
+          </div>
+        </div>
+
+        <div class="param-field param-field--inline">
+          <label>譜面タイプ</label>
+          <select class="type-select" v-model="paramType" :disabled="loading">
+            <option value="">すべて</option>
+            <option value="dx">DX 譜面</option>
+            <option value="std">スタンダード</option>
+          </select>
+        </div>
+
+        <div class="param-field">
+          <label>バージョン名</label>
+          <input class="ver-input" type="text" v-model="paramVer" placeholder="例：buddies または splash splash+" :disabled="loading" />
+        </div>
+
+        <div class="param-field param-field--inline">
+          <label>ページ</label>
+          <input class="page-input" type="number" v-model="paramPage" placeholder="デフォルト：1ページ目" min="1" max="99" :disabled="loading" />
+        </div>
+      </div>
+
+      <div class="cmd-preview">
+        <span class="cmd-prefix">コマンドプレビュー：</span><code>{{ commandPreview }}</code>
+      </div>
+
       <button type="submit" :disabled="loading" class="btn-primary">
         <span v-if="loading" class="spinner"></span>
-        <span>{{ loading ? '生成中、しばらくお待ちください…' : 'Best 50 を生成' }}</span>
+        <span>{{ loading ? '生成中、しばらくお待ちください…' : btnLabel }}</span>
       </button>
       <p v-if="error" class="error-msg">{{ error }}</p>
     </form>
@@ -78,9 +257,9 @@ function reset() {
   </div>
 
   <div class="demo-card result-card" v-if="imageUrl">
-    <img :src="imageUrl" alt="Best 50 成績図" class="result-img" />
+    <img :src="imageUrl" alt="成績図" class="result-img" />
     <div class="result-actions">
-      <a :href="imageUrl" download="best50.png" class="btn-primary">画像を保存</a>
+      <a :href="imageUrl" download="result.png" class="btn-primary">画像を保存</a>
       <button @click="reset" class="btn-secondary">もう一度生成</button>
     </div>
   </div>
@@ -153,6 +332,200 @@ function reset() {
 .field select:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* ── パラメーターパネル ── */
+.params-section {
+  background: var(--vp-c-bg);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.params-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--vp-c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 14px;
+}
+
+.param-field {
+  margin-bottom: 12px;
+}
+
+.param-field:last-child {
+  margin-bottom: 0;
+}
+
+.param-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vp-c-text-2);
+  margin-bottom: 6px;
+}
+
+.param-field--inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.param-field--inline label {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+.diff-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.diff-group--disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.diff-chip {
+  padding: 4px 11px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--vp-c-text-2);
+  background: transparent;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  line-height: 1.6;
+}
+
+.diff-chip:hover {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+}
+
+.diff-chip--active {
+  background: var(--vp-c-brand-1);
+  border-color: var(--vp-c-brand-1);
+  color: #fff;
+}
+
+.range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-inputs input,
+.page-input {
+  padding: 8px 10px;
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--vp-c-text-1);
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.range-inputs input {
+  flex: 1;
+  min-width: 0;
+}
+
+.range-inputs input:focus,
+.page-input:focus {
+  outline: none;
+  border-color: var(--vp-c-brand-1);
+}
+
+.range-inputs input:disabled,
+.page-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.page-input {
+  width: 130px;
+}
+
+.type-select {
+  padding: 8px 10px;
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--vp-c-text-1);
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+
+.type-select:focus {
+  outline: none;
+  border-color: var(--vp-c-brand-1);
+}
+
+.type-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ver-input {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--vp-c-text-1);
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.ver-input:focus {
+  outline: none;
+  border-color: var(--vp-c-brand-1);
+}
+
+.ver-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.range-sep {
+  color: var(--vp-c-text-3);
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.cmd-preview {
+  padding: 9px 14px;
+  background: var(--vp-c-bg);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+  word-break: break-all;
+}
+
+.cmd-prefix {
+  color: var(--vp-c-text-3);
+}
+
+.cmd-preview code {
+  color: var(--vp-c-brand-1);
+  font-family: monospace;
+  font-weight: 600;
 }
 
 .btn-primary {

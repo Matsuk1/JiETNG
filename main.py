@@ -997,6 +997,8 @@ def demo_page():
     segaid = request.form.get("segaid", "").strip()
     password = request.form.get("password", "").strip()
     ver = request.form.get("ver", "jp")
+    cmd_type = request.form.get("cmd_type", "best50").strip()
+    params = request.form.get("params", "").strip()
     try:
         tz = int(request.form.get("timezone", "9"))
         tz = max(-12, min(14, tz))
@@ -1008,6 +1010,17 @@ def demo_page():
     if ver not in ("jp", "intl"):
         return _demo_cors(jsonify({"error": "Invalid version."})), 400
 
+    _VALID_CMD_TYPES = {"best50", "best40", "best35", "best15", "allb35", "allb50", "apb50", "fdxb50", "idlb50", "rct50"}
+    if cmd_type not in _VALID_CMD_TYPES:
+        cmd_type = "best50"
+    _TITLE_MAP = {
+        "best50": "BEST 50",    "best40": "BEST 40",    "best35": "BEST 35",
+        "best15": "BEST 15",    "allb35": "ALL BEST 35","allb50": "ALL BEST 50",
+        "apb50":  "AP BEST 50", "fdxb50": "FDX BEST 50","idlb50": "IDEAL BEST 50",
+        "rct50":  "RECENT 50",
+    }
+    title = _TITLE_MAP.get(cmd_type, "BEST 50")
+
     async def _pipeline():
         cookies = await login_to_maimai(segaid, password, ver=ver)
         if not cookies or cookies == "MAINTENANCE":
@@ -1017,9 +1030,9 @@ def demo_page():
             get_maimai_records(cookies, ver=ver)
         )
         song_record = get_detailed_info(raw_records, ver=ver)
-        up_songs, down_songs, details = select_records(song_record, type="best50", command="", ver=ver)
+        up_songs, down_songs, details = select_records(song_record, type=cmd_type, command=params, ver=ver)
         profile_img = generate_profile(user_info)
-        records_img = generate_records_picture(up_songs, down_songs, title="BEST 50", ver=ver, details=details)
+        records_img = generate_records_picture(up_songs, down_songs, title=title, ver=ver, details=details)
         return compose_images([profile_img, records_img], spacing=0, border_width=0, timezone_offset=tz)
 
     try:
