@@ -305,7 +305,7 @@ function reset() {
   background: var(--vp-c-bg);
   border: 1px solid var(--vp-c-divider);
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 16px;
   color: var(--vp-c-text-1);
   font-family: inherit;
   box-sizing: border-box;
@@ -448,7 +448,7 @@ function reset() {
   background: var(--vp-c-bg-soft);
   border: 1px solid var(--vp-c-divider);
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 16px;
   color: var(--vp-c-text-1);
   font-family: inherit;
   box-sizing: border-box;
@@ -481,7 +481,7 @@ function reset() {
   background: var(--vp-c-bg-soft);
   border: 1px solid var(--vp-c-divider);
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 16px;
   color: var(--vp-c-text-1);
   font-family: inherit;
   box-sizing: border-box;
@@ -505,7 +505,7 @@ function reset() {
   background: var(--vp-c-bg-soft);
   border: 1px solid var(--vp-c-divider);
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 16px;
   color: var(--vp-c-text-1);
   font-family: inherit;
   box-sizing: border-box;
