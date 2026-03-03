@@ -47,34 +47,34 @@ const DIFFS = ['bas', 'adv', 'exp', 'mas', 'rem']
 
 const paramsString = computed(() => {
   const parts = []
-  const lvMin = paramLvMin.value.trim()
-  const lvMax = paramLvMax.value.trim()
+  const lvMin = String(paramLvMin.value).trim()
+  const lvMax = String(paramLvMax.value).trim()
   if (lvMin) parts.push(lvMax ? `-lv ${lvMin} ${lvMax}` : `-lv ${lvMin}`)
 
-  const raMin = paramRaMin.value.trim()
-  const raMax = paramRaMax.value.trim()
+  const raMin = String(paramRaMin.value).trim()
+  const raMax = String(paramRaMax.value).trim()
   if (raMin) parts.push(raMax ? `-ra ${raMin} ${raMax}` : `-ra ${raMin}`)
 
-  const starMin = paramStarMin.value.trim()
-  const starMax = paramStarMax.value.trim()
+  const starMin = String(paramStarMin.value).trim()
+  const starMax = String(paramStarMax.value).trim()
   if (starMin) parts.push(starMax ? `-star ${starMin} ${starMax}` : `-star ${starMin}`)
 
-  const scrMin = paramScrMin.value.trim()
-  const scrMax = paramScrMax.value.trim()
+  const scrMin = String(paramScrMin.value).trim()
+  const scrMax = String(paramScrMax.value).trim()
   if (scrMin) parts.push(scrMax ? `-scr ${scrMin} ${scrMax}` : `-scr ${scrMin}`)
 
-  const dxMin = paramDxMin.value.trim()
-  const dxMax = paramDxMax.value.trim()
+  const dxMin = String(paramDxMin.value).trim()
+  const dxMax = String(paramDxMax.value).trim()
   if (dxMin) parts.push(dxMax ? `-dx ${dxMin} ${dxMax}` : `-dx ${dxMin}`)
 
   if (paramDiff.value.length > 0) parts.push(`-diff ${paramDiff.value.join(' ')}`)
 
   if (paramType.value) parts.push(`-type ${paramType.value}`)
 
-  const ver = paramVer.value.trim()
+  const ver = String(paramVer.value).trim()
   if (ver) parts.push(`-ver ${ver}`)
 
-  const page = parseInt(paramPage.value)
+  const page = parseInt(String(paramPage.value))
   if (page > 1) parts.push(`-page ${page}`)
 
   return parts.join(' ')
