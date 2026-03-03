@@ -5,8 +5,31 @@
 """
 
 import difflib
+import functools
 import re
 import unicodedata
+
+import pykakasi
+
+# 模块级初始化 pykakasi converter（只创建一次）
+_kakasi = pykakasi.kakasi()
+
+
+@functools.lru_cache(maxsize=1024)
+def to_romaji(text: str) -> str:
+    """
+    将日文（假名+汉字）转换为罗马音
+
+    非日文字符保留原样，结果小写无空格
+
+    Args:
+        text: 原始文本
+
+    Returns:
+        罗马音文本（小写无空格）
+    """
+    result = _kakasi.convert(text)
+    return ''.join(item['hepburn'] for item in result).lower().replace(' ', '')
 
 
 def remove_special_chars(text: str) -> str:
@@ -59,7 +82,7 @@ def normalize_text(text: str) -> str:
     return text
 
 
-def is_song_match(query: str, song: dict, threshold: float = 0.85, min_query_length: int = 3) -> bool:
+def is_song_match(query: str, song: dict, threshold: float = 0.75, min_query_length: int = 3) -> bool:
     """
     判断查询是否匹配歌曲
 
@@ -71,7 +94,7 @@ def is_song_match(query: str, song: dict, threshold: float = 0.85, min_query_len
     Args:
         query: 搜索关键词
         song: 歌曲数据字典
-        threshold: 相似度阈值 (0-1), 默认0.85
+        threshold: 相似度阈值 (0-1), 默认0.75
         min_query_length: 子串匹配的最小查询长度, 默认3
 
     Returns:
@@ -97,7 +120,22 @@ def is_song_match(query: str, song: dict, threshold: float = 0.85, min_query_len
     if normalized_query in normalized_title:
         return True
 
-    # 策略3: 歌名相似度匹配
+    # 策略3: 罗马音匹配
+    query_romaji = to_romaji(query.lower())
+    title_romaji = to_romaji(song['title'].lower())
+
+    # 罗马音子串匹配
+    if len(query_romaji) >= min_query_length and query_romaji in title_romaji:
+        return True
+
+    # 罗马音相似度匹配
+    romaji_similarity = difflib.SequenceMatcher(
+        None, query_romaji, title_romaji
+    ).ratio()
+    if romaji_similarity >= threshold:
+        return True
+
+    # 策略4: 歌名相似度匹配
     # 使用原始文本的小写版本进行相似度计算
     similarity = difflib.SequenceMatcher(
         None,
@@ -121,7 +159,7 @@ def is_song_match(query: str, song: dict, threshold: float = 0.85, min_query_len
     return False
 
 
-def find_matching_songs(query: str, SONGS: list, max_results: int = 6, threshold: float = 0.85) -> list:
+def find_matching_songs(query: str, SONGS: list, max_results: int = 6, threshold: float = 0.75) -> list:
     """
     查找匹配的歌曲列表
 

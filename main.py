@@ -1477,7 +1477,7 @@ async def search_song(user_id, acronym, ver="jp"):
     songs, _ = read_dxdata(ver)
 
     # 使用优化的歌曲匹配函数
-    matching_songs = find_matching_songs(acronym, songs, max_results=MAX_SEARCH_RESULTS, threshold=0.85)
+    matching_songs = find_matching_songs(acronym, songs, max_results=MAX_SEARCH_RESULTS, )
 
     # 没有匹配结果
     if not matching_songs:
@@ -1840,7 +1840,7 @@ async def get_song_record(user_id, id_use, acronym, ver="jp"):
         
     # 使用优化的歌曲匹配函数
     songs, _ = read_dxdata(ver)
-    matching_songs = find_matching_songs(acronym, songs, max_results=MAX_SEARCH_RESULTS, threshold=0.85)
+    matching_songs = find_matching_songs(acronym, songs, max_results=MAX_SEARCH_RESULTS, )
 
     if not matching_songs:
         return song_error(user_id)
@@ -6024,7 +6024,7 @@ def api_search_songs():
         songs, _ = read_dxdata(ver)
 
         # 使用优化的歌曲匹配函数
-        matching_songs = find_matching_songs(query, songs, max_results=max_results, threshold=0.85)
+        matching_songs = find_matching_songs(query, songs, max_results=max_results, )
 
         # 检查结果
         if not matching_songs:
