@@ -155,17 +155,14 @@ function reset() {
           <option value="intl">国际服 - maimaidx-eng.com</option>
         </select>
       </div>
-
       <div class="field">
         <label for="cmd-type">命令</label>
         <select id="cmd-type" v-model="cmdType" :disabled="loading">
           <option v-for="(info, key) in CMD_INFO" :key="key" :value="key">{{ info.label }}</option>
         </select>
       </div>
-
       <div class="params-section">
         <div class="params-header">过滤参数（可选）</div>
-
         <div class="param-field">
           <label>难度</label>
           <div class="diff-group" :class="{ 'diff-group--disabled': loading }">
@@ -178,7 +175,6 @@ function reset() {
             >{{ d.toUpperCase() }}</button>
           </div>
         </div>
-
         <div class="param-field">
           <label>定数</label>
           <div class="range-inputs">
@@ -187,7 +183,6 @@ function reset() {
             <input type="number" v-model="paramLvMax" placeholder="最大（如 14.9）" step="0.1" min="1" max="15" :disabled="loading" />
           </div>
         </div>
-
         <div class="param-field">
           <label>Rating</label>
           <div class="range-inputs">
@@ -196,7 +191,6 @@ function reset() {
             <input type="number" v-model="paramRaMax" placeholder="最大（如 312）" step="1" min="0" :disabled="loading" />
           </div>
         </div>
-
         <div class="param-field">
           <label>DX 星数</label>
           <div class="range-inputs">
@@ -205,7 +199,6 @@ function reset() {
             <input type="number" v-model="paramStarMax" placeholder="最大（可选）" step="1" min="1" max="5" :disabled="loading" />
           </div>
         </div>
-
         <div class="param-field">
           <label>达成率 %</label>
           <div class="range-inputs">
@@ -214,7 +207,6 @@ function reset() {
             <input type="number" v-model="paramScrMax" placeholder="最大（可选）" step="0.0001" min="0" max="101" :disabled="loading" />
           </div>
         </div>
-
         <div class="param-field">
           <label>DX Score %</label>
           <div class="range-inputs">
@@ -223,7 +215,6 @@ function reset() {
             <input type="number" v-model="paramDxMax" placeholder="最大（可选）" step="1" min="0" max="100" :disabled="loading" />
           </div>
         </div>
-
         <div class="param-field param-field--inline">
           <label>谱面类型</label>
           <select class="type-select" v-model="paramType" :disabled="loading">
@@ -232,22 +223,18 @@ function reset() {
             <option value="std">标准谱面</option>
           </select>
         </div>
-
         <div class="param-field">
           <label>版本</label>
           <input class="ver-input" type="text" v-model="paramVer" placeholder="如 buddies 或 splash splash+" :disabled="loading" />
         </div>
-
         <div class="param-field param-field--inline">
           <label>页码</label>
           <input class="page-input" type="number" v-model="paramPage" placeholder="默认第 1 页" min="1" max="99" :disabled="loading" />
         </div>
       </div>
-
       <div class="cmd-preview">
         <span class="cmd-prefix">命令预览：</span><code>{{ commandPreview }}</code>
       </div>
-
       <button type="submit" :disabled="loading" class="btn-primary">
         <span v-if="loading" class="spinner"></span>
         <span>{{ loading ? '生成中，请稍候…' : btnLabel }}</span>

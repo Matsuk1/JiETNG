@@ -154,17 +154,14 @@ function reset() {
           <option value="intl">Intl - maimaidx-eng.com</option>
         </select>
       </div>
-
       <div class="field">
         <label for="cmd-type">Command</label>
         <select id="cmd-type" v-model="cmdType" :disabled="loading">
           <option v-for="(info, key) in CMD_INFO" :key="key" :value="key">{{ info.label }}</option>
         </select>
       </div>
-
       <div class="params-section">
         <div class="params-header">Filter Parameters (Optional)</div>
-
         <div class="param-field">
           <label>Difficulty</label>
           <div class="diff-group" :class="{ 'diff-group--disabled': loading }">
@@ -177,7 +174,6 @@ function reset() {
             >{{ d.toUpperCase() }}</button>
           </div>
         </div>
-
         <div class="param-field">
           <label>Constant</label>
           <div class="range-inputs">
@@ -186,7 +182,6 @@ function reset() {
             <input type="number" v-model="paramLvMax" placeholder="Max (e.g. 14.9)" step="0.1" min="1" max="15" :disabled="loading" />
           </div>
         </div>
-
         <div class="param-field">
           <label>Rating</label>
           <div class="range-inputs">
@@ -195,7 +190,6 @@ function reset() {
             <input type="number" v-model="paramRaMax" placeholder="Max (e.g. 312)" step="1" min="0" :disabled="loading" />
           </div>
         </div>
-
         <div class="param-field">
           <label>DX Stars</label>
           <div class="range-inputs">
@@ -204,7 +198,6 @@ function reset() {
             <input type="number" v-model="paramStarMax" placeholder="Max (optional)" step="1" min="1" max="5" :disabled="loading" />
           </div>
         </div>
-
         <div class="param-field">
           <label>Achievement Rate %</label>
           <div class="range-inputs">
@@ -213,7 +206,6 @@ function reset() {
             <input type="number" v-model="paramScrMax" placeholder="Max (optional)" step="0.0001" min="0" max="101" :disabled="loading" />
           </div>
         </div>
-
         <div class="param-field">
           <label>DX Score %</label>
           <div class="range-inputs">
@@ -222,7 +214,6 @@ function reset() {
             <input type="number" v-model="paramDxMax" placeholder="Max (optional)" step="1" min="0" max="100" :disabled="loading" />
           </div>
         </div>
-
         <div class="param-field param-field--inline">
           <label>Chart Type</label>
           <select class="type-select" v-model="paramType" :disabled="loading">
@@ -231,22 +222,18 @@ function reset() {
             <option value="std">Standard</option>
           </select>
         </div>
-
         <div class="param-field">
           <label>Version</label>
           <input class="ver-input" type="text" v-model="paramVer" placeholder="e.g. buddies or splash splash+" :disabled="loading" />
         </div>
-
         <div class="param-field param-field--inline">
           <label>Page</label>
           <input class="page-input" type="number" v-model="paramPage" placeholder="Default: page 1" min="1" max="99" :disabled="loading" />
         </div>
       </div>
-
       <div class="cmd-preview">
         <span class="cmd-prefix">Preview: </span><code>{{ commandPreview }}</code>
       </div>
-
       <button type="submit" :disabled="loading" class="btn-primary">
         <span v-if="loading" class="spinner"></span>
         <span>{{ loading ? 'Generating, please wait…' : btnLabel }}</span>
