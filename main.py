@@ -1010,7 +1010,7 @@ def demo_page():
     if ver not in ("jp", "intl"):
         return _demo_cors(jsonify({"error": "Invalid version."})), 400
 
-    _VALID_CMD_TYPES = {"best50", "best40", "best35", "best15", "allb35", "allb50", "apb50", "fdxb50", "idlb50", "rct50"}
+    _VALID_CMD_TYPES = {"best50", "best40", "best35", "best15", "allb35", "allb50", "apb50", "fdxb50", "idlb50"}
     if cmd_type not in _VALID_CMD_TYPES:
         cmd_type = "best50"
     title = cmd_type.upper()

@@ -23,7 +23,6 @@ const CMD_INFO = {
   apb50:  { cmd: 'apb50',    label: 'apb50 — AP Best 50 (AP / AP+ only)',    title: 'AP BEST 50' },
   fdxb50: { cmd: 'fdxb50',   label: 'fdxb50 — FDX Best 50 (FDX / FDX+ only)', title: 'FDX BEST 50' },
   idlb50: { cmd: 'idealb50', label: 'idealb50 — Ideal Best 50',             title: 'IDEAL BEST 50' },
-  rct50:  { cmd: 'rct50',    label: 'rct50 — Recent 50 (last 50 plays)',     title: 'RECENT 50' },
 }
 
 const cmdType = ref('best50')
