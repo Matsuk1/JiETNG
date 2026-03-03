@@ -171,7 +171,7 @@ function reset() {
               v-for="d in DIFFS" :key="d"
               type="button"
               class="diff-chip"
-              :class="{ 'diff-chip--active': paramDiff.includes(d) }"
+              :class="paramDiff.includes(d) ? 'diff-chip--' + d : ''"
               @click="toggleDiff(d)"
             >{{ d.toUpperCase() }}</button>
           </div>
@@ -426,15 +426,29 @@ function reset() {
 }
 
 .diff-chip:hover {
-  border-color: var(--vp-c-brand-1);
-  color: var(--vp-c-brand-1);
+  border-color: var(--vp-c-text-3);
+  color: var(--vp-c-text-1);
 }
 
-.diff-chip--active {
-  background: var(--vp-c-brand-1);
-  border-color: var(--vp-c-brand-1);
-  color: #fff;
+.diff-chip:focus {
+  outline: none;
 }
+
+.diff-chip:active {
+  transform: scale(0.95);
+}
+
+.diff-chip--bas { background: #75b520; border-color: #75b520; color: #fff; }
+.diff-chip--adv { background: #efa508; border-color: #efa508; color: #fff; }
+.diff-chip--exp { background: #cc4d59; border-color: #cc4d59; color: #fff; }
+.diff-chip--mas { background: #9f51dc; border-color: #9f51dc; color: #fff; }
+.diff-chip--rem { background: #e9d4f3; border-color: #e9d4f3; color: #72148d; }
+
+.diff-chip--bas:hover { background: #689e1c; border-color: #689e1c; }
+.diff-chip--adv:hover { background: #d99407; border-color: #d99407; }
+.diff-chip--exp:hover { background: #b8444f; border-color: #b8444f; }
+.diff-chip--mas:hover { background: #8e48c5; border-color: #8e48c5; }
+.diff-chip--rem:hover { background: #d4bedb; border-color: #d4bedb; }
 
 .range-inputs {
   display: flex;
