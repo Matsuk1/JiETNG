@@ -27,6 +27,7 @@ const CMD_INFO = {
 }
 
 const cmdType = ref('best50')
+const showParams = ref(false)
 
 // Parameters
 const paramLvMin   = ref('')
@@ -162,7 +163,8 @@ function reset() {
         </select>
       </div>
       <div class="params-section">
-        <div class="params-header">过滤参数（可选）</div>
+        <button type="button" class="params-toggle" @click="showParams = !showParams" :disabled="loading"><span>过滤参数（可选）</span><span class="params-arrow" :class="{ 'params-arrow--open': showParams }">&#9656;</span></button>
+        <div v-show="showParams" class="params-body">
         <div class="param-field">
           <label>难度</label>
           <div class="diff-group" :class="{ 'diff-group--disabled': loading }">
@@ -230,6 +232,7 @@ function reset() {
         <div class="param-field param-field--inline">
           <label>页码</label>
           <input class="page-input" type="number" v-model="paramPage" placeholder="默认第 1 页" min="1" max="99" :disabled="loading" />
+        </div>
         </div>
       </div>
       <div class="cmd-preview">
@@ -331,13 +334,44 @@ function reset() {
   margin-bottom: 16px;
 }
 
-.params-header {
+.params-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
   font-size: 11px;
   font-weight: 700;
   color: var(--vp-c-text-3);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 14px;
+  font-family: inherit;
+  line-height: 1;
+}
+
+.params-toggle:hover {
+  color: var(--vp-c-text-2);
+}
+
+.params-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.params-arrow {
+  transition: transform 0.2s;
+  font-size: 12px;
+}
+
+.params-arrow--open {
+  transform: rotate(90deg);
+}
+
+.params-body {
+  margin-top: 14px;
 }
 
 .param-field {
