@@ -17,7 +17,6 @@ CONFIG_PATH = "./config.json"
 
 # 默认配置
 default_config = {
-    "admin_id": [],
     "admin_password": "",
     "maimai_version": {
         "jp": [],
@@ -158,7 +157,6 @@ with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
     json.dump(_config, f, indent=4, ensure_ascii=False)
 
 # 顶层字段
-ADMIN_ID = _config["admin_id"]
 ADMIN_PASSWORD = _config["admin_password"]
 MAIMAI_VERSION = _config["maimai_version"]
 TEMP_VERSION = _config["temp_version"]

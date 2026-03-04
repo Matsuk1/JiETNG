@@ -155,7 +155,6 @@ Edit `config.json` (see [Configuration Reference](#complete-configjson) for full
 
 ```json
 {
-    "admin_id": ["U0123456789abcdef"],
     "admin_password": "your_admin_password",
     "domain": "your-domain.com",
     "host": "0.0.0.0",
@@ -484,7 +483,6 @@ POST     /admin/trigger_cleanup    # Manual memory cleanup
 
 ```json
 {
-    "admin_id": ["U0123..."],              // LINE admin user IDs
     "admin_password": "secure_pwd",        // Admin panel password
     "maimai_version": {
         "jp": ["PRiSM PLUS", "CiRCLE"],    // JP server current/previous versions

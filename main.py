@@ -1218,22 +1218,12 @@ def async_admin_maimai_update_task(event):
     """管理员触发的maimai更新任务 - 在webtask_queue中执行"""
     user_id = event.source.user_id
 
-    # 获取用户版本
     ver = "jp"
     if user_id in USERS and 'version' in USERS[user_id]:
         ver = USERS[user_id]['version']
 
-    # 执行更新
-    messages = asyncio.run(maimai_update(user_id, ver))
+    asyncio.run(maimai_update(user_id, ver))
 
-    # 推送通知给管理员
-    for admin_user_id in ADMIN_ID:
-        try:
-            smart_push(admin_user_id, TextMessage(
-                text=f"✅ Admin triggered update completed\nUser: {user_id}\nStatus: Success"
-            ), configuration)
-        except Exception as e:
-            logger.error(f"[Notification] ✗ Failed to notify admin: admin_id={admin_user_id}, error={e}")
 
 # ==================== 主程序入口 ====================
 
@@ -3725,138 +3715,6 @@ def handle_sync_text_command(event):
         return tracked_reply(user_id, event.reply_token, reply_message)
 
     # ========================================
-    # 7. 管理员命令
-    # ========================================
-    if user_id in ADMIN_ID:
-        if user_message == "dxdata update":
-            result = update_dxdata_with_comparison(DXDATA_URL, DXDATA_LIST)
-
-            message_text = build_dxdata_update_message(result, user_id)
-            reply_message = TextMessage(text=message_text)
-
-            smart_reply(user_id, event.reply_token, reply_message, configuration, addition=False)
-
-            return
-
-        if user_message.startswith("devtoken"):
-            parts = user_message.split(maxsplit=2)
-
-            if len(parts) < 2:
-                # Show usage
-                reply_message = TextMessage(text=get_multilingual_text(devtoken_usage_text, user_id))
-                return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
-
-            subcommand = parts[1]
-
-            if subcommand == "create" and len(parts) >= 3:
-                note = parts[2]
-                result = create_dev_token(note, user_id)
-                if result:
-                    text = get_multilingual_text(devtoken_create_success_text, user_id)
-                    text = text.format(
-                        token_id=result["token_id"],
-                        note=result["note"],
-                        token=result["token"],
-                        created_at=result["created_at"]
-                    )
-                    reply_message = TextMessage(text=text)
-                else:
-                    reply_message = TextMessage(text=get_multilingual_text(devtoken_create_failed_text, user_id))
-                return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
-
-            elif subcommand == "list":
-                tokens = list_dev_tokens()
-                if not tokens:
-                    text = get_multilingual_text(devtoken_list_empty_text, user_id)
-                else:
-                    header = get_multilingual_text(devtoken_list_header_text, user_id)
-                    token_lines = []
-                    for t in tokens:
-                        status = "❌ Revoked" if t["revoked"] else "✅ Active"
-                        token_lines.append(
-                            f"• {t['token_id']}\n"
-                            f"  Note: {t['note']}\n"
-                            f"  Status: {status}\n"
-                            f"  Created: {t['created_at']}\n"
-                            f"  Last used: {t['last_used']}"
-                        )
-                    text = header + "\n\n" + "\n\n".join(token_lines)
-                reply_message = TextMessage(text=text)
-                return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
-
-            elif subcommand == "revoke" and len(parts) >= 3:
-                token_id = parts[2]
-                success = revoke_dev_token(token_id)
-                if success:
-                    text = get_multilingual_text(devtoken_revoke_success_text, user_id)
-                    text = text.format(token_id=token_id)
-                    reply_message = TextMessage(text=text)
-                else:
-                    reply_message = TextMessage(text=get_multilingual_text(devtoken_revoke_failed_text, user_id))
-                return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
-
-            elif subcommand == "info" and len(parts) >= 3:
-                token_id = parts[2]
-                info = get_token_info(token_id=token_id)
-                if info:
-                    text = get_multilingual_text(devtoken_info_text, user_id)
-                    status = "❌ Revoked" if info["revoked"] else "✅ Active"
-                    text = text.format(
-                        token_id=info["token_id"],
-                        note=info["note"],
-                        status=status,
-                        created_at=info["created_at"],
-                        created_by=info["created_by"],
-                        last_used=info["last_used"],
-                        token=info["token"]
-                    )
-                    reply_message = TextMessage(text=text)
-                else:
-                    reply_message = TextMessage(text=get_multilingual_text(devtoken_info_not_found_text, user_id))
-                return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
-
-            else:
-                # Invalid subcommand or missing arguments
-                reply_message = TextMessage(text=get_multilingual_text(devtoken_usage_text, user_id))
-                return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
-
-        if user_message == "backup":
-            # 创建系统备份
-            try:
-                # 准备数据库配置
-                db_config = {
-                    'host': DB_HOST,
-                    'user': DB_USER,
-                    'password': DB_PASSWORD,
-                    'database': DB_NAME
-                }
-
-                # 读取当前配置
-                with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
-                    config_data = json.load(f)
-
-                # 创建备份
-                success, message, backup_path = create_backup(
-                    users_data=USERS,  # 未加密的用户数据
-                    config_data=config_data,
-                    db_config=db_config,
-                    backup_password=ADMIN_PASSWORD,
-                    output_dir=BACKUP_DIR
-                )
-
-                # 发送结果消息
-                result_message = TextMessage(text=message)
-                smart_reply(user_id, event.reply_token, result_message, configuration, addition=False)
-
-                return
-
-            except Exception as e:
-                logger.error(f"[Backup] ✗ Backup command error: user_id={user_id}, error={e}", exc_info=True)
-                error_message = TextMessage(text=f"❌ Backup failed\nError: {str(e)}")
-                smart_reply(user_id, event.reply_token, error_message, configuration, addition=False)
-                return
-
-    # ========================================
     # 默认：未匹配任何命令
     # ========================================
     return
@@ -4926,6 +4784,37 @@ def admin_load_nicknames():
             'message': str(e)
         }), 500
 
+@app.route("/admin/backups", methods=["POST"])
+def admin_create_backup():
+    """从管理面板创建系统备份"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        db_config = {
+            'host': DB_HOST,
+            'user': DB_USER,
+            'password': DB_PASSWORD,
+            'database': DB_NAME
+        }
+
+        with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+            config_data = json.load(f)
+
+        success, message, backup_path = create_backup(
+            users_data=USERS,
+            config_data=config_data,
+            db_config=db_config,
+            backup_password=ADMIN_PASSWORD,
+            output_dir=BACKUP_DIR
+        )
+
+        return jsonify({'success': success, 'message': message})
+    except Exception as e:
+        logger.error(f"[Admin] ✗ Create backup error: error={e}", exc_info=True)
+        return jsonify({'success': False, 'message': str(e)})
+
+
 @app.route("/admin/get_backups", methods=["GET"])
 def admin_get_backups():
     """获取所有备份文件列表"""
@@ -5203,6 +5092,77 @@ def admin_remove_push_subscription():
         return jsonify({'error': 'Missing endpoint'}), 400
 
     notification_manager.remove_push_subscription(endpoint)
+    return jsonify({'success': True})
+
+
+# ==================== Admin DevToken Management ====================
+
+@app.route("/admin/devtokens", methods=["GET"])
+def admin_list_devtokens():
+    """获取所有开发者 token 列表"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        tokens = list_dev_tokens()
+        # 补充 allowed_users 数量
+        all_tokens = load_dev_tokens()
+        for t in tokens:
+            token_data = all_tokens.get(t['token_id'], {})
+            t['allowed_users_count'] = len(token_data.get('allowed_users', []))
+        return jsonify({'success': True, 'tokens': tokens})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@app.route("/admin/devtokens", methods=["POST"])
+def admin_create_devtoken():
+    """创建新的开发者 token"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    note = data.get('note', '').strip() if data else ''
+    if not note:
+        return jsonify({'success': False, 'message': 'Note is required'})
+
+    result = create_dev_token(note, created_by='admin')
+    if result:
+        return jsonify({
+            'success': True,
+            'token_id': result['token_id'],
+            'token': result['token']
+        })
+    return jsonify({'success': False, 'message': 'Failed to create token'})
+
+
+@app.route("/admin/devtokens/<token_id>", methods=["PATCH"])
+def admin_update_devtoken(token_id):
+    """更新开发者 token 状态（如撤销）"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    if data and data.get('revoked'):
+        if revoke_dev_token(token_id):
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'message': 'Token not found'})
+
+    return jsonify({'success': False, 'message': 'No valid fields to update'})
+
+
+@app.route("/admin/devtokens/<token_id>", methods=["DELETE"])
+def admin_delete_devtoken(token_id):
+    """删除开发者 token"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    tokens = load_dev_tokens()
+    if token_id not in tokens:
+        return jsonify({'success': False, 'message': 'Token not found'})
+
+    del tokens[token_id]
+    save_dev_tokens(tokens, force=True)
     return jsonify({'success': True})
 
 

@@ -170,7 +170,6 @@ mysql -u jietng -p maimai_records < records_db.sql
 
 ```json
 {
-    "admin_id": ["U0123456789abcdef"],
     "admin_password": "your_admin_password",
     "domain": "your-domain.com",
     "host": "0.0.0.0",
@@ -499,7 +498,6 @@ POST     /admin/trigger_cleanup    # 手動メモリクリーンアップ
 
 ```json
 {
-    "admin_id": ["U0123..."],              // LINE 管理者ユーザー ID リスト
     "admin_password": "secure_pwd",        // 管理パネルパスワード
     "maimai_version": {
         "jp": ["PRiSM PLUS", "CiRCLE"],    // 日本版 現行/前バージョン

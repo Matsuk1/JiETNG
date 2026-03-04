@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"/>
   <title>Admin Panel | JiETNG</title>
   <link rel="icon" type="image/png" href="/static/pics/logo.png">
   <link rel="manifest" href="/static/manifest.json">
@@ -803,6 +803,7 @@
       <button class="tab" onclick="switchTab('tipad')">Tip/Ad</button>
       <button class="tab" onclick="switchTab('backups')">Backups</button>
       <button class="tab" onclick="switchTab('logs')">Logs</button>
+      <button class="tab" onclick="switchTab('devtoken')">DevToken</button>
       <button class="tab" id="notifications-tab-btn" onclick="switchTab('notifications')">Notifications <span id="notification-badge" style="display:none; background:#e74c3c; color:#fff; border-radius:10px; padding:1px 6px; font-size:11px; margin-left:4px;"></span></button>
     </div>
 
@@ -1176,7 +1177,10 @@
       <div class="section">
         <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
           <span>Backup Management</span>
-          <button class="btn btn-primary" onclick="loadBackups()">Refresh</button>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary" onclick="loadBackups()">Refresh</button>
+            <button class="btn btn-success" id="create-backup-btn" onclick="createBackup()">Create Backup</button>
+          </div>
         </div>
 
         <div id="backups-list">
@@ -1194,6 +1198,64 @@
         <div class="log-viewer" id="log-viewer">{{ logs }}</div>
         <div style="margin-top: 12px; text-align: center;">
           <button class="btn btn-primary" onclick="refreshLogs()">Refresh Logs</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DevToken Tab -->
+    <div id="devtoken-tab" class="tab-content">
+      <div class="section">
+        <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Developer Token Management</span>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary" onclick="loadDevTokens()">Refresh</button>
+            <button class="btn btn-success" onclick="showCreateTokenModal()">Create Token</button>
+          </div>
+        </div>
+
+        <div id="devtoken-list">
+          <div style="text-align:center; padding:40px; color:var(--text-color); opacity:0.5;">
+            Click "Refresh" to load tokens
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Token Modal -->
+    <div id="createTokenModal" class="modal">
+      <div class="modal-content" style="max-width:360px; width:calc(100% - 32px); max-height:none; padding:16px;">
+        <div class="modal-header" style="margin-bottom:10px; padding-bottom:10px;">
+          <h2 class="modal-title" style="font-size:16px;">Create Developer Token</h2>
+          <button class="close-btn" onclick="closeCreateTokenModal()">&times;</button>
+        </div>
+        <label style="display:block; margin-bottom:6px; font-size:13px; font-weight:600;">Note</label>
+        <input type="text" id="create-token-note" placeholder="e.g. MyApp API"
+               style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-color); color:var(--text-color); box-sizing:border-box; font-size:13px;">
+        <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end;">
+          <button class="btn" onclick="closeCreateTokenModal()">Cancel</button>
+          <button class="btn btn-success" onclick="createDevToken()">Create</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Token Created Modal -->
+    <div id="tokenCreatedModal" class="modal">
+      <div class="modal-content" style="max-width:420px; width:calc(100% - 32px); max-height:none; padding:16px;">
+        <div class="modal-header" style="margin-bottom:10px; padding-bottom:10px;">
+          <h2 class="modal-title" style="font-size:16px;">Token Created</h2>
+          <button class="close-btn" onclick="closeTokenCreatedModal()">&times;</button>
+        </div>
+        <div style="background:var(--bg-color); border:1px solid var(--border-color); border-radius:6px; padding:10px 12px; margin-bottom:8px;">
+          <div style="font-size:11px; opacity:0.6; margin-bottom:2px;">Token ID</div>
+          <div id="created-token-id" style="font-family:monospace; font-size:12px; word-break:break-all;"></div>
+        </div>
+        <div style="background:var(--bg-color); border:1px solid var(--border-color); border-radius:6px; padding:10px 12px; margin-bottom:10px;">
+          <div style="font-size:11px; opacity:0.6; margin-bottom:2px;">Token (copy now — won't be shown again)</div>
+          <div id="created-token-value" style="font-family:monospace; font-size:12px; word-break:break-all; color:var(--success-color);"></div>
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button class="btn btn-primary" onclick="copyCreatedToken()">Copy Token</button>
+          <button class="btn" onclick="closeTokenCreatedModal()">Close</button>
         </div>
       </div>
     </div>
@@ -1427,6 +1489,11 @@
       // 如果切换到dxdata标签，加载DXData状态
       if (tabName === 'dxdata') {
         loadDXDataStatus();
+      }
+
+      // 如果切换到devtoken标签，加载token列表
+      if (tabName === 'devtoken') {
+        loadDevTokens();
       }
     }
 
@@ -1869,6 +1936,149 @@
       return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
+    // ===== DevToken Management =====
+    function loadDevTokens() {
+      const listEl = document.getElementById('devtoken-list');
+      listEl.innerHTML = '<div style="text-align:center; padding:40px; opacity:0.5;">Loading tokens...</div>';
+
+      fetch('/admin/devtokens')
+        .then(res => res.json())
+        .then(data => {
+          if (!data.success) {
+            listEl.innerHTML = `<div style="text-align:center; padding:40px; color:var(--danger-color);">Error: ${escapeHtml(data.message)}</div>`;
+            return;
+          }
+
+          if (data.tokens.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center; padding:40px; opacity:0.5;">No developer tokens found</div>';
+            return;
+          }
+
+          listEl.innerHTML = `
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border-color); text-align:left;">
+                  <th style="padding:10px 8px;">Token ID</th>
+                  <th style="padding:10px 8px;">Note</th>
+                  <th style="padding:10px 8px;">Created</th>
+                  <th style="padding:10px 8px;">Last Used</th>
+                  <th style="padding:10px 8px;">Users</th>
+                  <th style="padding:10px 8px;">Status</th>
+                  <th style="padding:10px 8px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.tokens.map(t => `
+                  <tr style="border-bottom:1px solid var(--border-color);">
+                    <td style="padding:8px; font-family:monospace; font-size:12px;">${escapeHtml(t.token_id)}</td>
+                    <td style="padding:8px;">${escapeHtml(t.note)}</td>
+                    <td style="padding:8px; font-size:12px;">${escapeHtml(t.created_at)}</td>
+                    <td style="padding:8px; font-size:12px;">${escapeHtml(t.last_used || 'Never')}</td>
+                    <td style="padding:8px; font-size:12px;">${t.allowed_users_count}</td>
+                    <td style="padding:8px;">
+                      ${t.revoked
+                        ? '<span style="color:var(--danger-color); font-weight:600;">Revoked</span>'
+                        : '<span style="color:var(--success-color); font-weight:600;">Active</span>'}
+                    </td>
+                    <td style="padding:8px;">
+                      ${!t.revoked
+                        ? `<button class="btn btn-danger" style="font-size:11px; padding:4px 10px;" onclick="revokeDevToken('${escapeHtml(t.token_id)}')">Revoke</button>`
+                        : `<button class="btn btn-danger" style="font-size:11px; padding:4px 10px;" onclick="deleteDevToken('${escapeHtml(t.token_id)}')">Delete</button>`}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>`;
+        })
+        .catch(err => {
+          listEl.innerHTML = `<div style="text-align:center; padding:40px; color:var(--danger-color);">Network error: ${err}</div>`;
+        });
+    }
+
+    function showCreateTokenModal() {
+      document.getElementById('create-token-note').value = '';
+      document.getElementById('createTokenModal').classList.add('show');
+    }
+
+    function closeCreateTokenModal() {
+      document.getElementById('createTokenModal').classList.remove('show');
+    }
+
+    function closeTokenCreatedModal() {
+      document.getElementById('tokenCreatedModal').classList.remove('show');
+    }
+
+    function createDevToken() {
+      const note = document.getElementById('create-token-note').value.trim();
+      if (!note) {
+        alert('Please enter a note/description');
+        return;
+      }
+
+      fetch('/admin/devtokens', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify({ note: note })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.success) {
+            alert('Failed to create token: ' + (data.message || 'Unknown error'));
+            return;
+          }
+          closeCreateTokenModal();
+          document.getElementById('created-token-id').textContent = data.token_id;
+          document.getElementById('created-token-value').textContent = data.token;
+          document.getElementById('tokenCreatedModal').classList.add('show');
+          loadDevTokens();
+        })
+        .catch(err => alert('Network error: ' + err));
+    }
+
+    function copyCreatedToken() {
+      const token = document.getElementById('created-token-value').textContent;
+      navigator.clipboard.writeText(token).then(() => {
+        alert('Token copied to clipboard');
+      });
+    }
+
+    function revokeDevToken(tokenId) {
+      if (!confirm('Revoke token ' + tokenId + '? This will disable API access.')) return;
+
+      fetch('/admin/devtokens/' + tokenId, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify({ revoked: true })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            loadDevTokens();
+          } else {
+            alert('Failed to revoke: ' + (data.message || 'Unknown error'));
+          }
+        })
+        .catch(err => alert('Network error: ' + err));
+    }
+
+    function deleteDevToken(tokenId) {
+      if (!confirm('Permanently delete token ' + tokenId + '?')) return;
+
+      fetch('/admin/devtokens/' + tokenId, {
+        method: 'DELETE',
+        headers: {'X-CSRFToken': '{{ csrf_token() }}'}
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            loadDevTokens();
+          } else {
+            alert('Failed to delete: ' + (data.message || 'Unknown error'));
+          }
+        })
+        .catch(err => alert('Network error: ' + err));
+    }
+
     // ===== Service Worker 注册（PWA 支持） =====
     let _swRegistration = null;
     if ('serviceWorker' in navigator) {
@@ -2248,7 +2458,7 @@
       document.getElementById('notice-button-label-en').value = '';
       document.getElementById('notice-button-value').value = '';
       document.getElementById('notice-save-btn').textContent = 'Create';
-      document.getElementById('noticeModal').style.display = 'block';
+      document.getElementById('noticeModal').classList.add('show');
     }
 
     function editNotice(noticeId) {
@@ -2292,7 +2502,7 @@
               }
 
               document.getElementById('notice-save-btn').textContent = 'Update';
-              document.getElementById('noticeModal').style.display = 'block';
+              document.getElementById('noticeModal').classList.add('show');
             }
           }
         });
@@ -2393,7 +2603,7 @@
     }
 
     function closeNoticeModal() {
-      document.getElementById('noticeModal').style.display = 'none';
+      document.getElementById('noticeModal').classList.remove('show');
       document.getElementById('noticeForm').reset();
     }
 
@@ -2403,7 +2613,7 @@
         .then(data => {
           if (data.success) {
             displayNoticeStats(data.stats);
-            document.getElementById('noticeStatsModal').style.display = 'block';
+            document.getElementById('noticeStatsModal').classList.add('show');
           } else {
             showToast('✗ Failed to load statistics');
           }
@@ -2478,7 +2688,7 @@
     }
 
     function closeStatsModal() {
-      document.getElementById('noticeStatsModal').style.display = 'none';
+      document.getElementById('noticeStatsModal').classList.remove('show');
     }
 
     function publishDraft(noticeId) {
@@ -2723,6 +2933,33 @@
     }
 
     // ========== Backup Management ==========
+    function createBackup() {
+      const btn = document.getElementById('create-backup-btn');
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+
+      fetch('/admin/backups', {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token() }}'}
+      })
+        .then(res => res.json())
+        .then(data => {
+          btn.disabled = false;
+          btn.textContent = 'Create Backup';
+          if (data.success) {
+            alert(data.message || 'Backup created successfully');
+            loadBackups();
+          } else {
+            alert('Failed: ' + (data.message || 'Unknown error'));
+          }
+        })
+        .catch(err => {
+          btn.disabled = false;
+          btn.textContent = 'Create Backup';
+          alert('Network error: ' + err);
+        });
+    }
+
     function loadBackups() {
       const listEl = document.getElementById('backups-list');
       listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-tertiary);">Loading backups...</div>';
@@ -2755,44 +2992,34 @@
         return;
       }
 
-      let html = '<div style="overflow-x: auto; -webkit-overflow-scrolling: touch;"><table style="width: 100%; border-collapse: collapse; min-width: 500px;">';
-      html += `
-        <thead>
-          <tr style="border-bottom: 2px solid var(--border-color);">
-            <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--text-color);">Filename</th>
-            <th style="padding: 12px; text-align: right; font-weight: 600; color: var(--text-color);">Size</th>
-            <th style="padding: 12px; text-align: right; font-weight: 600; color: var(--text-color);">Created At</th>
-            <th style="padding: 12px; text-align: right; font-weight: 600; color: var(--text-color);">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
+      let html = `
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border-color); text-align:left;">
+              <th style="padding:10px 8px;">Filename</th>
+              <th style="padding:10px 8px;">Size</th>
+              <th style="padding:10px 8px;">Created At</th>
+              <th style="padding:10px 8px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
       `;
 
       backups.forEach(backup => {
         html += `
-          <tr style="border-bottom: 1px solid var(--border-color); transition: background-color 0.2s;">
-            <td style="padding: 12px;">
-              <div style="font-family: 'Courier New', monospace; font-size: 13px; color: var(--accent-color); font-weight: 500;">${backup.filename}</div>
-            </td>
-            <td style="padding: 12px; text-align: right;">
-              <span style="color: var(--text-tertiary); font-size: 13px;">${backup.size_mb} MB</span>
-            </td>
-            <td style="padding: 12px; text-align: right;">
-              <span style="color: var(--text-tertiary); font-size: 13px;">${backup.created_at}</span>
-            </td>
-            <td style="padding: 12px; text-align: right;">
-              <button onclick="downloadBackup('${backup.filename}')" class="btn btn-primary" style="margin-right: 8px;">
-                Download
-              </button>
-              <button onclick="deleteBackup('${backup.filename}')" class="btn btn-danger">
-                Delete
-              </button>
+          <tr style="border-bottom:1px solid var(--border-color);">
+            <td style="padding:8px; font-family:monospace; font-size:12px;">${backup.filename}</td>
+            <td style="padding:8px; font-size:12px;">${backup.size_mb} MB</td>
+            <td style="padding:8px; font-size:12px;">${backup.created_at}</td>
+            <td style="padding:8px;">
+              <button onclick="downloadBackup('${backup.filename}')" class="btn btn-primary" style="font-size:11px; padding:4px 10px;">Download</button>
+              <button onclick="deleteBackup('${backup.filename}')" class="btn btn-danger" style="font-size:11px; padding:4px 10px;">Delete</button>
             </td>
           </tr>
         `;
       });
 
-      html += '</tbody></table></div>';
+      html += '</tbody></table>';
       listEl.innerHTML = html;
     }
 
