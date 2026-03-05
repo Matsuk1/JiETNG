@@ -75,8 +75,8 @@ def _draw_detail_line(draw, x, y, key, value, font, max_w, lh):
 
 def create_thumbnail_in_line(song):
     thumb_size=(600, 225)
-    bg_color = (255, 255, 255)
-    img = Image.new("RGB", thumb_size, bg_color)
+    bg_color = (255, 255, 255, 255)
+    img = Image.new("RGBA", thumb_size, bg_color)
     draw = ImageDraw.Draw(img)
 
     text_color = (0, 0, 0)
@@ -134,9 +134,7 @@ def create_thumbnail_in_line(song):
     border_color = _get_difficulty_color(song['difficulty'])
     draw.rectangle([(0, 0), (thumb_size[0] - 1, thumb_size[1] - 1)], outline=border_color, width=7)
 
-    final_img = img.convert("RGB")
-
-    return final_img
+    return img
 
 def create_thumbnail(song):
     thumb_size=(300, 150)
@@ -255,13 +253,14 @@ def create_thumbnail(song):
     ty = thumb_size[1] - 45
     by = thumb_size[1] - 1
     bdr = (*_get_difficulty_color(song['difficulty']), 255)
-    s = 3
+    s = 6
     border_layer = Image.new("RGBA", (thumb_size[0] * s, thumb_size[1] * s), (0, 0, 0, 0))
     bdraw = ImageDraw.Draw(border_layer)
     bdraw.line([(lx*s, ty*s), (lx*s, by*s - r*s)], fill=bdr, width=2*s)
-    bdraw.arc([lx*s, by*s - 2*r*s, lx*s + 2*r*s, by*s], start=90, end=180, fill=bdr, width=2*s)
-    bdraw.line([(lx*s + r*s, by*s), (rx*s - r*s, by*s)], fill=bdr, width=2*s)
-    bdraw.arc([rx*s - 2*r*s, by*s - 2*r*s, rx*s, by*s], start=0, end=90, fill=bdr, width=2*s)
+    h = s // 2  # 0.5px 偏移量（超采样空间）
+    bdraw.arc([lx*s, by*s - 2*r*s + h, lx*s + 2*r*s, by*s + h], start=90, end=180, fill=bdr, width=2*s)
+    bdraw.line([(lx*s + r*s, by*s + h), (rx*s - r*s, by*s + h)], fill=bdr, width=2*s)
+    bdraw.arc([rx*s - 2*r*s + h, by*s - 2*r*s + h, rx*s + h, by*s + h], start=0, end=90, fill=bdr, width=2*s)
     bdraw.line([(rx*s, by*s - r*s), (rx*s, ty*s)], fill=bdr, width=2*s)
     border_layer = border_layer.resize(thumb_size, Image.Resampling.LANCZOS)
     img = img.convert("RGBA")
@@ -307,7 +306,7 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
 
     img_width = grid_size[0] * (thumb_size[0] + spacing) - spacing + side_width * 2
     img_height = header_height + grid_size[1] * (thumb_size[1] + spacing) + version_padding + 13
-    combined = Image.new("RGB", (img_width, img_height), (255, 255, 255))
+    combined = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(combined)
 
     if ver == "jp":
@@ -361,8 +360,8 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
     draw.rounded_rectangle(
         [card_x, card_y, card_x + card_width, card_y + card_height],
         radius=12,
-        fill=(245, 248, 252),  # 淡蓝灰色背景
-        outline=(200, 210, 225),  # 浅蓝灰色边框
+        fill=(255, 255, 255),
+        outline=(200, 210, 225),
         width=2
     )
 
@@ -372,7 +371,7 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
         top_left=(card_x + card_padding, card_y + card_padding - 5),
         font=font_large,
         spacing=7,
-        fill=(40, 40, 40)  # 深灰色文字
+        fill=(40, 40, 40)
     )
 
     # 绘制标题/详情（右侧）
@@ -419,7 +418,7 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
         draw.rounded_rectangle(
             [details_card_x, card_y, details_card_x2, card_y + card_height],
             radius=12,
-            fill=(245, 248, 252),
+            fill=(255, 255, 255),
             outline=(200, 210, 225),
             width=2
         )
@@ -451,7 +450,7 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
     # 在上下部分中间绘制分隔线 (----·----) - 仅当同时有上下部分时显示
     if up_songs and down_songs:
         divider_y = total_up_y_offset + version_padding // 3 + 2
-        divider_color = (100, 100, 100)
+        divider_color = (0, 0, 0)
 
         # 计算中心点和线条长度
         center_x = img_width // 2
@@ -507,7 +506,7 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
         difficulty_color = _get_difficulty_color(difficulty)
         record_img = Image.new("RGB", (img_width, img_height), difficulty_color)
     else:
-        record_img = Image.new("RGB", (img_width, img_height), (255, 255, 255))
+        record_img = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
 
     # 加载封面图片
     cover_img = get_cover_image(cover_url=cover_url, cover_name=cover_name)
@@ -670,7 +669,7 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
 
     total_height = rows_num * row_height + margin + 170 + 40
 
-    final_img = Image.new("RGB", (img_width, total_height), "white")
+    final_img = Image.new("RGBA", (img_width, total_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(final_img)
 
     # 绘制左侧信息栏：卡片式容器（2列布局）
@@ -751,7 +750,6 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
         data_x = card_x + card_width - data_text_width - 15
         draw.text((data_x, text_y), data_text, fill=(40, 40, 40), font=font_large)
 
-    final_img = final_img.convert("RGB")
     draw = ImageDraw.Draw(final_img)
 
     # 添加右侧标题（称号图片）
@@ -855,7 +853,7 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
     # 总高度 = 顶部边距 + 卡片区域 + 卡片到内容间距 + 内容高度 + 底部边距
     total_height = margin + 15 + cards_total_height + 60 + total_rows * row_height + margin
 
-    final_img = Image.new("RGB", (img_width, total_height), "white")
+    final_img = Image.new("RGBA", (img_width, total_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(final_img)
 
     # 绘制统计卡片
@@ -932,7 +930,7 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
         data_x = card_x + card_width - data_text_width - 15
         card_draw.text((data_x, text_y), data_text, fill=(40, 40, 40), font=font_large)
 
-    final_img = final_img_rgba.convert("RGB")
+    final_img = final_img_rgba
     draw = ImageDraw.Draw(final_img)
 
     # 绘制右侧标题

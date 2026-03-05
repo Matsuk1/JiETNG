@@ -1,8 +1,10 @@
+import os
+import random
 import qrcode
 import logging
 from datetime import datetime, timezone, timedelta, date
-from PIL import Image, ImageDraw, ImageFont
-from modules.config_loader import FONT_PATH, LOGO_PATH, QR_CODE
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from modules.config_loader import FONT_PATH, LOGO_PATH, QR_CODE, BG_DIR
 
 # 全局字体对象（一次性加载）
 font_large  = ImageFont.truetype(FONT_PATH, 28)
@@ -80,7 +82,7 @@ def resize_by_width(img, target_width):
     return resized_img
 
 def wrap_in_rounded_background(content_img, padding=20, radius=30,
-                               bg_color=(255, 255, 255, 255), border_color=(220, 220, 220, 255), border_width=5):
+                               bg_color=(0, 0, 0, 0), border_color=(0, 0, 0, 0), border_width=5):
     """
     将图像放入圆角白底框中（支持灰色边框，去除透明通道）
 
@@ -116,7 +118,7 @@ def wrap_in_rounded_background(content_img, padding=20, radius=30,
 
     return bg
 
-def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_color=(255, 255, 255, 255), inner_bg=(255, 255, 255, 255), border_width=5, timezone_offset=9):
+def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_color=(0, 0, 0, 0), inner_bg=(0, 0, 0, 0), border_width=5, timezone_offset=9, bg_filter=None):
     """
     将多张图片垂直拼接，并添加页脚（RGB / RGBA 自适应）。
 
@@ -129,6 +131,7 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
         inner_bg: 内部背景颜色（RGB 或 RGBA）
         border_width: 边框宽度
         timezone_offset: 时区偏移（小时数），默认 9（UTC+9）
+        bg_filter: 可选的背景图文件名列表，非空时只从该列表中随机选择
 
     返回：
         组合后的 PIL.Image 对象（RGB 或 RGBA）
@@ -216,7 +219,9 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
             (dynamic_left_margin, text_y),
             text,
             fill=(0, 0, 0, 255),
-            font=dynamic_font
+            font=dynamic_font,
+            stroke_width=2,
+            stroke_fill=(255, 255, 255, 255)
         )
 
     # QR Code 和 Logo
@@ -232,6 +237,7 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
                 Image.Resampling.LANCZOS
             )
         )
+        qr_img = round_corner(qr_img, radius=15)
         # QR Code 放在 logo 左边
         qr_x = inner_width - dynamic_right_margin - dynamic_logo_size - qr_logo_spacing
         combined.paste(qr_img, (qr_x, qr_logo_y), qr_img)
@@ -252,15 +258,47 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
     except Exception as e:
         logger.error(f"[ImageManager] ✗ Failed to load logo: error={e}")
 
-    # 7. 外层背景
+    # 7. 外层背景（模糊背景图 or fallback 纯色）
     final_width = combined.width + 2 * outer_margin
     final_height = combined.height + 2 * outer_margin
 
-    final_img = Image.new("RGBA", (final_width, final_height), bg_color_rgba)
+    has_bg_image = False
+    try:
+        all_bg_files = [f for f in os.listdir(BG_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
+        if not all_bg_files:
+            raise FileNotFoundError("No background images found")
+        # 如果提供了 bg_filter 且有效，则只从过滤列表中选择
+        if bg_filter:
+            filtered = [f for f in bg_filter if f in all_bg_files]
+            candidate_files = filtered if filtered else all_bg_files
+        else:
+            candidate_files = all_bg_files
+        bg_path = os.path.join(BG_DIR, random.choice(candidate_files))
+        bg_img = Image.open(bg_path).convert("RGB")
+        # Cover 裁剪：等比缩放使短边覆盖目标尺寸，居中裁剪
+        bg_w, bg_h = bg_img.size
+        scale = max(final_width / bg_w, final_height / bg_h)
+        new_bg_w = int(bg_w * scale)
+        new_bg_h = int(bg_h * scale)
+        bg_img = bg_img.resize((new_bg_w, new_bg_h), Image.Resampling.LANCZOS)
+        left = (new_bg_w - final_width) // 2
+        top = (new_bg_h - final_height) // 2
+        bg_img = bg_img.crop((left, top, left + final_width, top + final_height))
+        # 高斯模糊（在 RGB 上操作避免 alpha 边缘伪影）
+        bg_img = bg_img.filter(ImageFilter.GaussianBlur(radius=20))
+        # 转回 RGBA 后叠加半透明白色遮罩
+        bg_img = bg_img.convert("RGBA")
+        overlay = Image.new("RGBA", (final_width, final_height), (255, 255, 255, 40))
+        bg_img = Image.alpha_composite(bg_img, overlay)
+        final_img = bg_img
+        has_bg_image = True
+    except Exception:
+        final_img = Image.new("RGBA", (final_width, final_height), bg_color_rgba)
+
     final_img.paste(combined, (outer_margin, outer_margin), combined)
 
-    # 8. 自动降级为 RGB
-    if not output_rgba:
+    # 8. 有背景图时输出 RGB（完全不透明）；无背景图时按原逻辑判断
+    if has_bg_image or not output_rgba:
         final_img = final_img.convert("RGB")
 
     return final_img

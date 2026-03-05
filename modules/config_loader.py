@@ -52,7 +52,8 @@ default_config = {
         "icon_sync": "./assets/icon/sync",
         "icon_combo_rcd": "./assets/icon/combo_rcd",
         "icon_sync_rcd": "./assets/icon/sync_rcd",
-        "icon_base": "./assets/icon"
+        "icon_base": "./assets/icon",
+        "bg_dir": "./assets/pics/bg"
     },
     "record_database": {
         "host": "localhost",
@@ -193,6 +194,7 @@ ICON_COMBO_RCD_DIR = FILE_PATH["icon_combo_rcd"]
 ICON_SYNC_RCD_DIR = FILE_PATH["icon_sync_rcd"]
 ICON_BASE_DIR = FILE_PATH["icon_base"]
 IMG_DIR = FILE_PATH["img_dir"]
+BG_DIR = FILE_PATH["bg_dir"]
 
 # 数据库配置字段
 RECORD_DATABASE = _config["record_database"]

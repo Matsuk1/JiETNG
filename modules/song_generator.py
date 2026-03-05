@@ -1,5 +1,5 @@
 from PIL import Image, ImageDraw
-from modules.record_generator import create_thumbnail_in_line
+from modules.record_generator import create_thumbnail_in_line, _get_difficulty_color
 from modules.image_manager import *
 from modules.image_cache import paste_icon_optimized, get_cover_image
 from modules.config_loader import ICON_TYPE_DIR
@@ -37,7 +37,7 @@ def _render_basic_info_image(song_json, cover_img, ver="jp"):
     text_gap = 35
 
     # 创建画布
-    img = Image.new("RGBA", (canvas_width, canvas_height), (255, 255, 255, 255))
+    img = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
     # 封面图处理
@@ -107,42 +107,42 @@ def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0, ver
     base_col_widths = [160, 90, 300, 90, 80, 80, 90, 90, 95, 70, 70, 70]
     col_widths = [int(w * scale_width) for w in base_col_widths]
     row_height = int(48 * scale_height)
-    col_offsets = [sum(col_widths[:i]) for i in range(len(col_widths))]  # 缓存列起始坐标
+    col_offsets = [sum(col_widths[:i]) for i in range(len(col_widths))]
 
     total_width = sum(col_widths)
-    total_height = (len(song_json["sheets"]) + 1) * row_height
+    row_gap = 10
+    radius = 16
+    border_width = 4
+    num_rows = len(song_json["sheets"]) + 1  # +1 for header
+    total_height = num_rows * row_height + (num_rows - 1) * row_gap
 
-    image = Image.new("RGB", (total_width, total_height), (255, 255, 255))
+    image = Image.new("RGBA", (total_width, total_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
-    block_colors = {
-        "info": (220, 240, 255),
-        "notes": (240, 255, 240),
-        "regions": (255, 240, 240)
-    }
-
-    block_ranges = {
-        "info": range(0, 3),
-        "notes": range(3, 9),
-        "regions": range(9, 12)
-    }
-
-    # 绘制表头
+    # 绘制表头（灰色边框圆角矩形，白色填充）
+    header_y = 0
+    draw.rounded_rectangle(
+        [0, header_y, total_width, header_y + row_height],
+        radius=radius, fill=(255, 255, 255), outline=(180, 180, 180), width=border_width
+    )
     for i, header in enumerate(headers):
         x = col_offsets[i]
-        fill = (
-            block_colors["info"] if i in block_ranges["info"] else
-            block_colors["notes"] if i in block_ranges["notes"] else
-            block_colors["regions"]
-        )
-        draw.rectangle([x, 0, x + col_widths[i], row_height], fill=fill)
         w = draw.textlength(header, font=font_large)
-        draw.text((x + (col_widths[i] - w) // 2, row_height // 4), header, font=font_large, fill=(0, 0, 0))
+        draw.text((x + (col_widths[i] - w) // 2, header_y + row_height // 4), header, font=font_large, fill=(0, 0, 0))
 
+    # 绘制数据行（难度颜色边框圆角矩形，白色填充）
     for row_idx, sheet in enumerate(song_json["sheets"]):
-        y = (row_idx + 1) * row_height
+        y = (row_idx + 1) * (row_height + row_gap)
+        difficulty = sheet.get("difficulty", "")
+        diff_color = _get_difficulty_color(difficulty)
         notes = sheet.get("noteCounts", {})
         regions = sheet.get("regions", {})
+
+        # 圆角矩形：白色填充 + 难度颜色边框
+        draw.rounded_rectangle(
+            [0, y, total_width, y + row_height],
+            radius=radius, fill=(255, 255, 255), outline=diff_color, width=border_width
+        )
 
         data = [
             sheet["difficulty"].capitalize(),
@@ -161,14 +161,6 @@ def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0, ver
 
         for col_idx, cell in enumerate(data):
             x = col_offsets[col_idx]
-            if col_idx in block_ranges["info"]:
-                fill = (240, 250, 255)
-            elif col_idx in block_ranges["notes"]:
-                fill = (250, 255, 250)
-            else:
-                fill = (255, 250, 250)
-            draw.rectangle([x, y, x + col_widths[col_idx], y + row_height], fill=fill)
-
             text = str(cell)
             w = draw.textlength(text, font=font_large)
             draw.text((x + (col_widths[col_idx] - w) // 2, y + row_height // 4), text, font=font_large, fill=(0, 0, 0))
@@ -186,7 +178,7 @@ def _makeup_played_data(played_data, gap=10):
     max_width = max(widths)
     total_height = sum(heights) + gap * (len(rcd_imgs) - 1)
 
-    new_img = Image.new("RGB", (max_width, total_height), color=(255, 255, 255))
+    new_img = Image.new("RGBA", (max_width, total_height), color=(0, 0, 0, 0))
 
     current_y = 0
     for img in rcd_imgs:
@@ -204,7 +196,7 @@ def _render_song_info_small_img(song_json, cover_img):
     text_gap = 35
 
     # 创建画布
-    img = Image.new("RGB", (canvas_width, canvas_height), (255, 255, 255))
+    img = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
     # 封面图处理
@@ -272,7 +264,7 @@ def generate_version_list(songs_json):
 
     return _concat_images_grid(song_imgs)
 
-def _concat_images_grid(image_list, cols=4, margin=20, inner_gap=10, bg_color=(255, 255, 255)):
+def _concat_images_grid(image_list, cols=4, margin=20, inner_gap=10, bg_color=(0, 0, 0, 0)):
     """
     将图像以网格形式拼接（默认每行4张），每块之间空出间距。
     
@@ -301,7 +293,7 @@ def _concat_images_grid(image_list, cols=4, margin=20, inner_gap=10, bg_color=(2
 
     # 加上外边距
     final_image = Image.new(
-        "RGB",
+        "RGBA",
         (total_width + 2*margin, total_height + 2*margin),
         bg_color
     )

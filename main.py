@@ -801,13 +801,17 @@ Token not provided. <br />
         password = request.form.get("password")
         user_version = request.form.get("ver", "jp")
         aime = request.form.get("aime", "0")
-        user_timezone = request.form.get("timezone", "9")
 
         # 获取用户数据
         user_data = USERS.get(user_id, {})
 
-        # 从表单获取语言
-        user_language = request.form.get("language", user_data.get("language", "ja"))
+        if mode == "rebind":
+            # rebind 模式下保持现有 timezone 和 language 不变
+            user_timezone = str(user_data.get("timezone", 9))
+            user_language = user_data.get("language", "ja")
+        else:
+            user_timezone = request.form.get("timezone", "9")
+            user_language = request.form.get("language", user_data.get("language", "ja"))
 
         # 检查用户是否已经绑定账号（仅在 bind 模式下检查）
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
@@ -903,26 +907,8 @@ Token not provided. <br />
         except Exception:
             user_language = 'en'
 
-    # 在 rebind 模式下，传递现有数据和权限列表到模板
+    # 在 rebind 模式下，传递现有账号数据到模板（不含 timezone/language/权限）
     if mode == "rebind":
-        dev_tokens = load_dev_tokens()
-        owner_token_id = user_data.get('registered_via_token', '')
-        perm_list = []
-        # 先加 owner token
-        if owner_token_id and owner_token_id in dev_tokens:
-            perm_list.append({
-                'token_id': owner_token_id,
-                'note': dev_tokens[owner_token_id].get('note', owner_token_id),
-                'is_owner': True,
-            })
-        # 再加已授权 token
-        for tid, tdata in dev_tokens.items():
-            if user_id in tdata.get('allowed_users', []):
-                perm_list.append({
-                    'token_id': tid,
-                    'note': tdata.get('note', tid),
-                    'is_owner': False,
-                })
         return render_template(
             "bind_form.html",
             user_language=user_language,
@@ -931,12 +917,119 @@ Token not provided. <br />
             password=user_data.get('sega_pwd', ''),
             version=user_data.get('version', 'jp'),
             aime=user_data.get('aime', 0),
-            timezone=user_data.get('timezone', 9),
-            perm_token=generate_perm_token(user_id),
-            perm_list=perm_list,
         )
     else:
         return render_template("bind_form.html", user_language=user_language, mode="bind")
+
+
+@app.route("/linebot/settings", methods=["GET", "POST"])
+def website_settings():
+    """
+    个人偏好设置页面
+
+    GET: 显示设置表单（timezone, language, 背景图, 权限管理）
+    POST: 保存设置
+
+    Query Args:
+        token: 绑定Token
+
+    Form Data (POST):
+        timezone: 时区
+        language: 语言
+        bg_files: 逗号分隔的背景图文件名列表
+    """
+    token = request.args.get("token")
+    if not token:
+        token_missing_message = """トークンが提供されていません。<br />
+Token not provided. <br />
+未提供令牌。"""
+        return render_template("error.html", message=token_missing_message, language="ja"), 400
+
+    try:
+        user_id = get_user_id_from_token(token)
+        if user_id not in USERS:
+            token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
+            return render_template("error.html", message=token_invalid_message, language="ja"), 400
+    except Exception as e:
+        logger.error(f"[Auth] ✗ Token verification failed: error={e}")
+        token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
+        return render_template("error.html", message=token_invalid_message, language="ja"), 400
+
+    user_data = USERS.get(user_id, {})
+
+    # 检查用户是否已绑定账号
+    has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
+    if not has_account:
+        error_messages = {
+            "ja": "アカウントが連携されていません。",
+            "en": "No account is linked.",
+            "zh": "未绑定账号。"
+        }
+        user_language = user_data.get("language", "ja")
+        return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
+
+    if request.method == "POST":
+        user_language = request.form.get("language", user_data.get("language", "ja"))
+        user_timezone = request.form.get("timezone", "9")
+        bg_files_str = request.form.get("bg_files", "")
+
+        # 转换时区为整数
+        try:
+            timezone_int = int(user_timezone)
+        except (ValueError, TypeError):
+            timezone_int = 9
+
+        # 解析背景图列表
+        if bg_files_str.strip():
+            bg_files_list = [f.strip() for f in bg_files_str.split(",") if f.strip()]
+        else:
+            bg_files_list = []
+
+        # 保存设置
+        edit_user_value(user_id, "language", user_language)
+        edit_user_value(user_id, "timezone", timezone_int)
+        edit_user_value(user_id, "bg_files", bg_files_list)
+
+        return render_template("success.html", language=user_language, mode="settings")
+
+    # GET: 准备数据
+    user_language = user_data.get("language", "ja")
+
+    # 扫描背景图目录
+    try:
+        all_bg_files = sorted([f for f in os.listdir(BG_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))])
+    except Exception:
+        all_bg_files = []
+
+    user_bg_files = user_data.get("bg_files", [])
+
+    # 权限列表
+    dev_tokens = load_dev_tokens()
+    owner_token_id = user_data.get('registered_via_token', '')
+    perm_list = []
+    if owner_token_id and owner_token_id in dev_tokens:
+        perm_list.append({
+            'token_id': owner_token_id,
+            'note': dev_tokens[owner_token_id].get('note', owner_token_id),
+            'is_owner': True,
+        })
+    for tid, tdata in dev_tokens.items():
+        if user_id in tdata.get('allowed_users', []):
+            perm_list.append({
+                'token_id': tid,
+                'note': tdata.get('note', tid),
+                'is_owner': False,
+            })
+
+    return render_template(
+        "settings.html",
+        user_language=user_language,
+        timezone=user_data.get('timezone', 9),
+        bg_files=all_bg_files,
+        user_bg_files=user_bg_files,
+        perm_token=generate_perm_token(user_id),
+        perm_list=perm_list,
+    )
 
 
 @app.route("/linebot/perms/revoke", methods=["POST"])
@@ -2105,7 +2198,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz)
+    img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(id_use, {}).get('bg_files', []))
 
     # 清理中间图片对象
     del profile_img, plate_img
@@ -2316,7 +2409,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, scale=1.5, user_id=id_use)
     user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz)
+    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(id_use, {}).get('bg_files', []))
 
     del profile_img, record_img
     gc.collect(0)
@@ -2345,7 +2438,7 @@ def generate_profile(user_info, scale=1, user_id=None):
 
     img_width = 1363
     img_height = 218
-    info_img = Image.new("RGBA", (img_width, img_height), (255, 255, 255))
+    info_img = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(info_img)
 
     def paste_image(key, position, size, round=False):
@@ -2669,7 +2762,7 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz)
+    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(id_use, {}).get('bg_files', []))
 
     # 清理中间图片对象
     del profile_img, record_img
@@ -2741,7 +2834,7 @@ async def generate_friend_record(user_id, friend_code, type="best50", cmd="", ve
     user_info_img = generate_profile(friend_info)
     rcd_img = generate_records_picture(up_songs, down_songs, type.upper(), ver, details)
     user_tz = get_user_timezone(user_id)
-    img = compose_images([user_info_img, rcd_img], spacing=0, border_width=0, timezone_offset=user_tz)
+    img = compose_images([user_info_img, rcd_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(user_id, {}).get('bg_files', []))
 
     # 清理中间图片对象
     del user_info_img, rcd_img
@@ -2792,7 +2885,7 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz)
+    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(id_use, {}).get('bg_files', []))
 
     # 清理中间图片对象
     del profile_img, record_img
@@ -2839,10 +2932,11 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
     version_list_img = generate_version_list(songs_data)
 
     user_tz = get_user_timezone(user_id)
+    user_bg_filter = USERS.get(user_id, {}).get('bg_files', [])
     if version_img is None:
-        img = compose_images([version_list_img], border_width=0, timezone_offset=user_tz)
+        img = compose_images([version_list_img], border_width=0, timezone_offset=user_tz, bg_filter=user_bg_filter)
     else:
-        img = compose_images([version_img, version_list_img], border_width=0, timezone_offset=user_tz)
+        img = compose_images([version_img, version_list_img], border_width=0, timezone_offset=user_tz, bg_filter=user_bg_filter)
 
     # 清理中间图片对象
     if version_img is not None:
@@ -3660,12 +3754,11 @@ def handle_sync_text_command(event):
     # ========================================
     # 5 账号重新绑定 (rebind)
     # ========================================
-    REBIND_COMMANDS = ["settings", "rebind"]
+    REBIND_COMMANDS = ["rebind"]
     if user_message.lower() in REBIND_COMMANDS:
         # 检查是否在群聊中发送
         source_type = getattr(event.source, 'type', 'user')
         if source_type != 'user':
-            # 在群聊中，返回警告消息
             reply_message = TextMessage(text=get_multilingual_text(rebind_group_warning_text, user_id))
             return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
 
@@ -3674,14 +3767,11 @@ def handle_sync_text_command(event):
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
 
         if not has_account:
-            # 未绑定账号，提示先绑定
             reply_message = TextMessage(text=get_multilingual_text(rebind_not_bound_text, user_id))
             return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
 
-        # 用户已绑定账号，显示 rebind 按钮
         rebind_url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(user_id)}&mode=rebind"
 
-        # 使用多语言文本
         buttons_template = ButtonsTemplate(
             title=get_multilingual_text(rebind_title_alt_text, user_id),
             text=get_multilingual_text(rebind_description_text, user_id),
@@ -3692,6 +3782,42 @@ def handle_sync_text_command(event):
         )
         reply_message = TemplateMessage(
             alt_text=get_multilingual_text(rebind_title_alt_text, user_id),
+            template=buttons_template
+        )
+
+        return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+
+    # ========================================
+    # 5b 个人设置 (settings)
+    # ========================================
+    SETTINGS_COMMANDS = ["settings"]
+    if user_message.lower() in SETTINGS_COMMANDS:
+        # 检查是否在群聊中发送
+        source_type = getattr(event.source, 'type', 'user')
+        if source_type != 'user':
+            reply_message = TextMessage(text=get_multilingual_text(settings_group_warning_text, user_id))
+            return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+
+        # 检查用户是否已绑定账号
+        user_data = USERS.get(user_id, {})
+        has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
+
+        if not has_account:
+            reply_message = TextMessage(text=get_multilingual_text(rebind_not_bound_text, user_id))
+            return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+
+        settings_url = f"https://{DOMAIN}/linebot/settings?token={generate_bind_token(user_id)}"
+
+        buttons_template = ButtonsTemplate(
+            title=get_multilingual_text(settings_title_alt_text, user_id),
+            text=get_multilingual_text(settings_description_text, user_id),
+            actions=[URIAction(
+                label=get_multilingual_text(settings_button_text, user_id),
+                uri=settings_url
+            )]
+        )
+        reply_message = TemplateMessage(
+            alt_text=get_multilingual_text(settings_title_alt_text, user_id),
             template=buttons_template
         )
 
@@ -6154,7 +6280,7 @@ def api_generate_image(user_id):
         user_info = USERS[user_id].get('personal_info')
         profile_img = generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz)
+        img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(user_id, {}).get('bg_files', []))
         del profile_img, record_img
         gc.collect(0)
 
@@ -6290,7 +6416,7 @@ def api_generate_plate(user_id):
         user_info = USERS[user_id].get('personal_info')
         profile_img = generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz)
+        img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(user_id, {}).get('bg_files', []))
         del profile_img, plate_img
         gc.collect(0)
 
@@ -6449,7 +6575,7 @@ def api_generate_achievement(user_id):
         user_info = USERS[user_id].get('personal_info')
         profile_img = generate_profile(user_info, scale=1.5, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz)
+        img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(user_id, {}).get('bg_files', []))
         del profile_img, record_img
         gc.collect(0)
 

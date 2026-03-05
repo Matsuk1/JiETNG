@@ -343,9 +343,9 @@ language_set_success_text = {
 
 # 已绑定账号的提示
 already_bound_text = {
-    "ja": "⚠️ すでに SEGA アカウントが連携されています。\n再度連携する場合は、先に unbind コマンドで連携を解除してください。\n\n💡 パスワード、バージョン、タイムゾーン、言語のみを変更したい場合は、settings コマンドまたは rebind コマンドを使用してください。",
-    "en": "⚠️ A SEGA account is already linked.\nTo rebind, please use the unbind command first to unlink your account.\n\n💡 If you only want to change password, version, timezone, or language, please use the settings or rebind command.",
-    "zh": "⚠️ 已绑定 SEGA 账号。\n如需重新绑定，请先使用 unbind 命令解除绑定。\n\n💡 如果只想修改密码、版本、时区或语言，请使用 settings 或 rebind 命令。"
+    "ja": "⚠️ すでに SEGA アカウントが連携されています。\n再度連携する場合は、先に unbind コマンドで連携を解除してください。\n\n💡 パスワードやバージョンを変更したい場合は rebind コマンド、タイムゾーンや言語などの設定は settings コマンドを使用してください。",
+    "en": "⚠️ A SEGA account is already linked.\nTo rebind, please use the unbind command first to unlink your account.\n\n💡 Use rebind to change password or version, and settings for timezone, language, and other preferences.",
+    "zh": "⚠️ 已绑定 SEGA 账号。\n如需重新绑定，请先使用 unbind 命令解除绑定。\n\n💡 修改密码或版本请使用 rebind 命令，修改时区、语言等设置请使用 settings 命令。"
 }
 
 # Unbind 确认消息
@@ -362,11 +362,18 @@ bind_group_warning_text = {
     "zh": "⚠️ 出于安全考虑，bind 命令只能在私聊中使用。请直接向机器人发送消息。"
 }
 
-# Rebind/Settings 命令群聊警告
+# Rebind 命令群聊警告
 rebind_group_warning_text = {
-    "ja": "⚠️ セキュリティのため、rebind / settings コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
-    "en": "⚠️ For security reasons, the rebind / settings command can only be used in private chat. Please message the bot directly.",
-    "zh": "⚠️ 出于安全考虑，rebind / settings 命令只能在私聊中使用。请直接向机器人发送消息。"
+    "ja": "⚠️ セキュリティのため、rebind コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
+    "en": "⚠️ For security reasons, the rebind command can only be used in private chat. Please message the bot directly.",
+    "zh": "⚠️ 出于安全考虑，rebind 命令只能在私聊中使用。请直接向机器人发送消息。"
+}
+
+# Settings 命令群聊警告
+settings_group_warning_text = {
+    "ja": "⚠️ セキュリティのため、settings コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
+    "en": "⚠️ For security reasons, the settings command can only be used in private chat. Please message the bot directly.",
+    "zh": "⚠️ 出于安全考虑，settings 命令只能在私聊中使用。请直接向机器人发送消息。"
 }
 
 private_info_group_warning_text = {
@@ -423,16 +430,37 @@ rebind_title_alt_text = {
 
 # Rebind 按钮模板 - 描述
 rebind_description_text = {
-    "ja": "パスワード、バージョン、タイムゾーン、言語を変更できます。",
-    "en": "You can change password, version, timezone, and language.",
-    "zh": "您可以更改密码、版本、时区和语言。"
+    "ja": "パスワード、バージョン、Aimeを変更できます。",
+    "en": "You can change password, version, and Aime.",
+    "zh": "您可以更改密码、版本和 Aime。"
 }
 
 # Rebind 按钮模板 - 按钮标签
 rebind_button_text = {
-    "ja": "設定を編集",
-    "en": "Edit Settings",
-    "zh": "编辑设置"
+    "ja": "アカウントを編集",
+    "en": "Edit Account",
+    "zh": "编辑账号"
+}
+
+# Settings 按钮模板 - 标题 / Alt
+settings_title_alt_text = {
+    "ja": "個人設定",
+    "en": "Personal Settings",
+    "zh": "个人设置"
+}
+
+# Settings 按钮模板 - 描述
+settings_description_text = {
+    "ja": "タイムゾーン、言語、背景画像を変更できます。",
+    "en": "You can change timezone, language, and background image.",
+    "zh": "您可以更改时区、语言和背景图片。"
+}
+
+# Settings 按钮模板 - 按钮标签
+settings_button_text = {
+    "ja": "設定を開く",
+    "en": "Open Settings",
+    "zh": "打开设置"
 }
 
 # 公告标题

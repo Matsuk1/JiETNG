@@ -126,6 +126,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
       <div class="list-panel" style="margin-bottom: 20px;">
+        {% if mode != 'rebind' %}
         <div class="list-item">
           <label for="language" id="label-language">言語</label>
           <select id="language" name="language" required>
@@ -134,6 +135,7 @@
             <option value="zh" id="opt-lang-zh">简体中文</option>
           </select>
         </div>
+        {% endif %}
 
         <div class="list-item">
           <label for="segaid" id="label-segaid">セガID</label>
@@ -162,6 +164,7 @@
           </select>
         </div>
 
+        {% if mode != 'rebind' %}
         <div class="list-item">
           <label for="timezone" id="label-timezone">タイムゾーン</label>
           <select id="timezone" name="timezone" required>
@@ -194,31 +197,11 @@
             <option value="14">UTC+14</option>
           </select>
         </div>
+        {% endif %}
       </div>
 
       <input type="submit" id="submit-btn" value="連携" />
     </form>
-
-    {% if perm_list is defined and perm_list %}
-    <div class="list-panel" style="margin-top: 28px;">
-      <div class="list-panel-header" id="perm-panel-title">アクセス権限の管理</div>
-      {% for item in perm_list %}
-      <div class="list-item" id="perm-item-{{ item.token_id }}">
-        <div class="list-item-info">
-          <span class="list-item-label {% if item.is_owner %}dim{% endif %}">{{ item.note }}</span>
-          <span class="list-item-meta">{{ item.token_id }}</span>
-        </div>
-        {% if item.is_owner %}
-        <span class="badge" id="perm-owner-label">作成者</span>
-        {% else %}
-        <button class="btn-danger"
-                onclick="revokePermission('{{ item.token_id }}', this)"
-                id="perm-btn-{{ item.token_id }}">撤廃</button>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-    {% endif %}
 
     <div class="notice" style="margin-top: 24px;">
       <strong id="notice-title">ご利用に関するご注意</strong><br>
@@ -309,10 +292,12 @@
       document.getElementById('label-password').textContent = t.labelPassword;
       document.getElementById('label-version').textContent = t.labelVersion;
       document.getElementById('label-aime').textContent = t.labelAime;
-      document.getElementById('label-timezone').textContent = t.labelTimezone;
 
-      // Update language label
-      document.getElementById('label-language').textContent = t.labelLanguage;
+      const labelTimezone = document.getElementById('label-timezone');
+      if (labelTimezone) labelTimezone.textContent = t.labelTimezone;
+
+      const labelLanguage = document.getElementById('label-language');
+      if (labelLanguage) labelLanguage.textContent = t.labelLanguage;
 
       // Update version options
       document.getElementById('opt-jp').textContent = t.optJp;
@@ -328,9 +313,6 @@
       document.getElementById('notice-ja').style.display = lang === 'ja' ? 'block' : 'none';
       document.getElementById('notice-en').style.display = lang === 'en' ? 'block' : 'none';
       document.getElementById('notice-zh').style.display = lang === 'zh' ? 'block' : 'none';
-
-      // Update permission panel labels
-      updatePermPanel(lang);
 
       // Toggle timezone hint text (only in bind mode)
       if (mode === 'bind') {
@@ -393,71 +375,6 @@
       }
     });
 
-    const permTranslations = {
-      ja: {
-        panelTitle: 'アクセス権限の管理',
-        ownerLabel: '作成者',
-        revokeBtn: '撤廃',
-        revokeConfirm: 'このサービスのアクセス権限を取り消しますか？',
-        revokeSuccess: '権限を取り消しました',
-        revokeError: '取り消しに失敗しました。もう一度お試しください。',
-      },
-      en: {
-        panelTitle: 'Manage Access Permissions',
-        ownerLabel: 'Creator',
-        revokeBtn: 'Revoke',
-        revokeConfirm: 'Revoke access for this service?',
-        revokeSuccess: 'Permission revoked',
-        revokeError: 'Failed to revoke. Please try again.',
-      },
-      zh: {
-        panelTitle: '访问权限管理',
-        ownerLabel: '创建者',
-        revokeBtn: '撤销',
-        revokeConfirm: '确定撤销该服务的访问权限吗？',
-        revokeSuccess: '已撤销权限',
-        revokeError: '撤销失败，请重试',
-      },
-    };
-
-    function updatePermPanel(lang) {
-      const pt = permTranslations[lang] || permTranslations.ja;
-      const panelTitle = document.getElementById('perm-panel-title');
-      if (panelTitle) panelTitle.textContent = pt.panelTitle;
-      document.querySelectorAll('.badge').forEach(el => el.textContent = pt.ownerLabel);
-      document.querySelectorAll('.btn-danger').forEach(el => {
-        if (!el.disabled) el.textContent = pt.revokeBtn;
-      });
-    }
-
-    async function revokePermission(tokenId, btn) {
-      const lang = document.getElementById('language').value || 'ja';
-      const pt = permTranslations[lang] || permTranslations.ja;
-      if (!confirm(pt.revokeConfirm)) return;
-
-      btn.disabled = true;
-      try {
-        const res = await fetch('/linebot/perms/revoke', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            perm_token: '{{ perm_token | default("") }}',
-            token_id: tokenId,
-          }),
-        });
-        if (res.ok) {
-          const item = document.getElementById('perm-item-' + tokenId);
-          if (item) item.remove();
-        } else {
-          alert(pt.revokeError);
-          btn.disabled = false;
-        }
-      } catch (e) {
-        alert(pt.revokeError);
-        btn.disabled = false;
-      }
-    }
-
     // 页面加载时自动设置用户语言和预填充数据
     window.addEventListener('DOMContentLoaded', function() {
       const userLanguage = '{{ user_language }}' || 'ja';
@@ -481,22 +398,17 @@
         });
       }
 
-      // 在 rebind 模式下，设置预填充的 timezone
-      if (mode === 'rebind') {
-        const timezone = '{{ timezone }}';
-        if (timezone) {
-          const timezoneSelect = document.getElementById('timezone');
-          timezoneSelect.value = timezone;
-        }
-      } else {
-        // bind 模式下自动检测用户时区
+      // bind 模式下自动检测用户时区
+      if (mode !== 'rebind') {
         const timezoneSelect = document.getElementById('timezone');
-        const detectedTimezone = detectUserTimezone();
-        timezoneSelect.value = detectedTimezone.toString();
+        if (timezoneSelect) {
+          const detectedTimezone = detectUserTimezone();
+          timezoneSelect.value = detectedTimezone.toString();
 
-        // 如果检测到的时区在选项中不存在，则使用 UTC+9
-        if (!timezoneSelect.value) {
-          timezoneSelect.value = '9';
+          // 如果检测到的时区在选项中不存在，则使用 UTC+9
+          if (!timezoneSelect.value) {
+            timezoneSelect.value = '9';
+          }
         }
       }
     });

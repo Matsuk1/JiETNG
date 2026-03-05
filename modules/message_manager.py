@@ -330,9 +330,9 @@ def generate_notice_flex(notice_json, user_id=None):
             }
         else:  # message
             action = {
-                "type": "uri",
+                "type": "message",
                 "label": button_label_with_arrow,
-                "uri": f"https://line.me/R/oaMessage/{LINE_ACCOUNT_ID}/?{quote(button_value)}"
+                "text": button_value
             }
 
         # 添加按钮卡片
@@ -550,10 +550,7 @@ def generate_song_info_flex(song_id, image_url, image_width, image_height, user_
             "type": "box",
             "layout": "vertical",
             "contents": buttons,
-            "paddingStart": "12px",
-            "paddingEnd": "12px",
-            "paddingBottom": "12px",
-            "paddingTop": "0px"
+            "paddingAll": "12px"
         }
     }
 
@@ -1257,9 +1254,9 @@ def generate_tip_ad_box(tip_ad, lang):
             }
         else:  # message
             action = {
-                "type": "uri",
+                "type": "message",
                 "label": button_label_with_arrow,
-                "uri": f"https://line.me/R/oaMessage/{LINE_ACCOUNT_ID}/?{quote(button_value)}"
+                "text": button_value
             }
 
         # 添加按钮

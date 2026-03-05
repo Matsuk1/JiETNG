@@ -4,7 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
   <title>
-    {% if mode == 'rebind' %}
+    {% if mode == 'settings' %}
+      {% if language == 'en' %}
+      Settings Saved | JiETNG
+      {% elif language == 'zh' %}
+      设置已保存 | JiETNG
+      {% else %}
+      設定保存完了 | JiETNG
+      {% endif %}
+    {% elif mode == 'rebind' %}
       {% if language == 'en' %}
       Update Successful | JiETNG
       {% elif language == 'zh' %}
@@ -106,7 +114,15 @@
     <div class="success-icon">✓</div>
 
     <h1>
-      {% if mode == 'rebind' %}
+      {% if mode == 'settings' %}
+        {% if language == 'en' %}
+        Settings Saved
+        {% elif language == 'zh' %}
+        设置已保存
+        {% else %}
+        設定保存完了
+        {% endif %}
+      {% elif mode == 'rebind' %}
         {% if language == 'en' %}
         Update Successful
         {% elif language == 'zh' %}
@@ -126,7 +142,15 @@
     </h1>
 
     <p>
-      {% if mode == 'rebind' %}
+      {% if mode == 'settings' %}
+        {% if language == 'en' %}
+        Your settings have been saved successfully.
+        {% elif language == 'zh' %}
+        您的设置已成功保存。
+        {% else %}
+        設定が正常に保存されました。
+        {% endif %}
+      {% elif mode == 'rebind' %}
         {% if language == 'en' %}
         Your account settings have been successfully updated.
         {% elif language == 'zh' %}
