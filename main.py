@@ -22,6 +22,7 @@ import urllib3
 import time
 import subprocess
 import gc
+import base64 as b64mod
 
 from functools import wraps
 from datetime import datetime
@@ -79,6 +80,7 @@ from modules.user_manager import *
 from modules.bindtoken_manager import (
     generate_bind_token, get_user_id_from_token,
     generate_perm_token, get_user_id_from_perm_token,
+    generate_settings_token, get_user_id_from_settings_token,
 )
 from modules.notice_manager import *
 from modules.notice_stats import *
@@ -937,6 +939,8 @@ def website_settings():
         timezone: 时区
         language: 语言
         bg_files: 逗号分隔的背景图文件名列表
+        custom_bg: 上传的自定义背景图（可选，仅一张）
+        delete_custom_bg: 是否删除已上传的自定义背景图
     """
     token = request.args.get("token")
     if not token:
@@ -946,12 +950,12 @@ Token not provided. <br />
         return render_template("error.html", message=token_missing_message, language="ja"), 400
 
     try:
-        user_id = get_user_id_from_token(token)
+        user_id = get_user_id_from_settings_token(token)
         if user_id not in USERS:
             token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
             return render_template("error.html", message=token_invalid_message, language="ja"), 400
     except Exception as e:
-        logger.error(f"[Auth] ✗ Token verification failed: error={e}")
+        logger.error(f"[Auth] ✗ Settings token verification failed: error={e}")
         token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
         return render_template("error.html", message=token_invalid_message, language="ja"), 400
 
@@ -967,6 +971,8 @@ Token not provided. <br />
         }
         user_language = user_data.get("language", "ja")
         return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
+
+    custom_bg_filename = f"jietnguser_{user_id}.webp"
 
     if request.method == "POST":
         user_language = request.form.get("language", user_data.get("language", "ja"))
@@ -985,23 +991,39 @@ Token not provided. <br />
         else:
             bg_files_list = []
 
+        # 处理背景图开关
+        bg_enabled = request.form.get("bg_enabled_hidden", "0") == "1"
+
         # 保存设置
         edit_user_value(user_id, "language", user_language)
         edit_user_value(user_id, "timezone", timezone_int)
         edit_user_value(user_id, "bg_files", bg_files_list)
+        edit_user_value(user_id, "bg_enabled", bg_enabled)
 
         return render_template("success.html", language=user_language, mode="settings")
 
     # GET: 准备数据
     user_language = user_data.get("language", "ja")
 
-    # 扫描背景图目录
+    # 扫描背景图目录（排除 0.webp 和其他用户的自定义背景图，自定义背景排最前）
     try:
-        all_bg_files = sorted([f for f in os.listdir(BG_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))])
+        other_bg_files = sorted([
+            f for f in os.listdir(BG_DIR)
+            if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
+            and f != '0.webp'
+            and not _is_user_custom_bg(f)
+        ])
+        # 自定义背景排在最前
+        if os.path.exists(os.path.join(BG_DIR, custom_bg_filename)):
+            all_bg_files = [custom_bg_filename] + other_bg_files
+        else:
+            all_bg_files = other_bg_files
     except Exception:
         all_bg_files = []
 
     user_bg_files = user_data.get("bg_files", [])
+    has_custom_bg = os.path.exists(os.path.join(BG_DIR, custom_bg_filename))
+    bg_enabled = user_data.get("bg_enabled", False)
 
     # 权限列表
     dev_tokens = load_dev_tokens()
@@ -1027,9 +1049,105 @@ Token not provided. <br />
         timezone=user_data.get('timezone', 9),
         bg_files=all_bg_files,
         user_bg_files=user_bg_files,
+        bg_enabled=bg_enabled,
+        has_custom_bg=has_custom_bg,
+        custom_bg_filename=custom_bg_filename,
         perm_token=generate_perm_token(user_id),
         perm_list=perm_list,
     )
+
+
+@app.route("/linebot/settings/custom_bg", methods=["POST", "DELETE"])
+@csrf.exempt
+def manage_custom_bg():
+    """上传或删除用户自定义背景图"""
+    token = request.args.get("token")
+    if not token:
+        return jsonify({"success": False, "message": "Token not provided"}), 400
+
+    try:
+        user_id = get_user_id_from_settings_token(token)
+        if user_id not in USERS:
+            return jsonify({"success": False, "message": "Invalid token"}), 400
+    except Exception:
+        return jsonify({"success": False, "message": "Invalid token"}), 400
+
+    ALLOWED_BG_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif'}
+    MAX_BG_SIZE = 5 * 1024 * 1024
+    custom_bg_filename = f"jietnguser_{user_id}.webp"
+    custom_bg_path = os.path.join(BG_DIR, custom_bg_filename)
+
+    if request.method == "DELETE":
+        if os.path.exists(custom_bg_path):
+            try:
+                os.remove(custom_bg_path)
+                logger.info(f"[Settings] ✓ Deleted custom bg: user_id={user_id}")
+            except Exception as e:
+                logger.error(f"[Settings] ✗ Failed to delete custom bg: user_id={user_id}, error={e}")
+                return jsonify({"success": False, "message": "Failed to delete"}), 500
+
+        bg_files = USERS[user_id].get("bg_files", [])
+        if custom_bg_filename in bg_files:
+            bg_files.remove(custom_bg_filename)
+            edit_user_value(user_id, "bg_files", bg_files)
+
+        return jsonify({"success": True}), 200
+
+    # POST: 上传（接收 base64 JSON）
+
+    body = request.get_json(silent=True)
+    if not body or 'data' not in body or 'filename' not in body:
+        return jsonify({"success": False, "message": "No file provided"}), 400
+
+    original_ext = os.path.splitext(body['filename'])[1].lower()
+    if original_ext not in ALLOWED_BG_EXTENSIONS:
+        return jsonify({"success": False, "message": "Unsupported format"}), 400
+
+    try:
+        file_data = b64mod.b64decode(body['data'])
+    except Exception:
+        return jsonify({"success": False, "message": "Invalid data"}), 400
+
+    if len(file_data) > MAX_BG_SIZE:
+        return jsonify({"success": False, "message": "File too large"}), 400
+
+    try:
+        from PIL import Image as PILImage
+        from io import BytesIO as BIO
+        try:
+            from pillow_heif import register_heif_opener
+            register_heif_opener()
+        except ImportError:
+            pass
+        img = PILImage.open(BIO(file_data))
+        img.load()
+        img = img.convert("RGB")
+        img.save(custom_bg_path, "WEBP", quality=85)
+        logger.info(f"[Settings] ✓ Uploaded custom bg: user_id={user_id}, ext={original_ext}, size={len(file_data)}")
+    except Exception as e:
+        logger.error(f"[Settings] ✗ Failed to process uploaded bg: user_id={user_id}, ext={original_ext}, error={e}")
+        return jsonify({"success": False, "message": "Invalid image"}), 400
+
+    return jsonify({"success": True, "filename": custom_bg_filename}), 201
+
+
+def _is_user_custom_bg(filename):
+    """判断文件名是否为用户自定义背景图（格式: jietnguser_{user_id}.webp）"""
+    return filename.startswith('jietnguser_')
+
+
+def _get_user_bg_filter(user_id):
+    """
+    根据用户设置返回 compose_images 的 bg_filter 参数
+    - bg_enabled=False → [] (0.webp)
+    - bg_enabled=True, bg_files 非空 → bg_files
+    - bg_enabled=True, bg_files 为空 → None (全部随机)
+    """
+    udata = USERS.get(user_id, {})
+    if not udata.get('bg_enabled', False):
+        return []
+    bg_files = udata.get('bg_files', [])
+    return bg_files if bg_files else None
 
 
 @app.route("/linebot/perms/revoke", methods=["POST"])
@@ -2198,7 +2316,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(id_use, {}).get('bg_files', []))
+    img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(id_use))
 
     # 清理中间图片对象
     del profile_img, plate_img
@@ -2409,7 +2527,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, scale=1.5, user_id=id_use)
     user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(id_use, {}).get('bg_files', []))
+    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(id_use))
 
     del profile_img, record_img
     gc.collect(0)
@@ -2762,7 +2880,7 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(id_use, {}).get('bg_files', []))
+    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(id_use))
 
     # 清理中间图片对象
     del profile_img, record_img
@@ -2834,7 +2952,7 @@ async def generate_friend_record(user_id, friend_code, type="best50", cmd="", ve
     user_info_img = generate_profile(friend_info)
     rcd_img = generate_records_picture(up_songs, down_songs, type.upper(), ver, details)
     user_tz = get_user_timezone(user_id)
-    img = compose_images([user_info_img, rcd_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(user_id, {}).get('bg_files', []))
+    img = compose_images([user_info_img, rcd_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
 
     # 清理中间图片对象
     del user_info_img, rcd_img
@@ -2885,7 +3003,7 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(id_use, {}).get('bg_files', []))
+    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(id_use))
 
     # 清理中间图片对象
     del profile_img, record_img
@@ -2932,7 +3050,7 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
     version_list_img = generate_version_list(songs_data)
 
     user_tz = get_user_timezone(user_id)
-    user_bg_filter = USERS.get(user_id, {}).get('bg_files', [])
+    user_bg_filter = _get_user_bg_filter(user_id)
     if version_img is None:
         img = compose_images([version_list_img], border_width=0, timezone_offset=user_tz, bg_filter=user_bg_filter)
     else:
@@ -3806,7 +3924,7 @@ def handle_sync_text_command(event):
             reply_message = TextMessage(text=get_multilingual_text(rebind_not_bound_text, user_id))
             return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
 
-        settings_url = f"https://{DOMAIN}/linebot/settings?token={generate_bind_token(user_id)}"
+        settings_url = f"https://{DOMAIN}/linebot/settings?token={generate_settings_token(user_id)}"
 
         buttons_template = ButtonsTemplate(
             title=get_multilingual_text(settings_title_alt_text, user_id),
@@ -4724,6 +4842,111 @@ def admin_delete_tip_ads(tip_ad_id):
     except Exception as e:
         logger.error(f"[Admin] ✗ Delete tip/ad error: error={e}", exc_info=True)
         return jsonify({'success': False, 'message': str(e)}), 500
+
+# ==================== 背景图管理 API ====================
+
+@app.route("/admin/backgrounds", methods=["GET", "POST"])
+@csrf.exempt
+def admin_backgrounds():
+    """
+    背景图资源
+
+    GET:  列出所有背景图
+    POST: 上传新背景图（multipart/form-data, field: file）
+    """
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    if request.method == "GET":
+        try:
+            files = []
+            for f in sorted(os.listdir(BG_DIR)):
+                if not f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                    continue
+                filepath = os.path.join(BG_DIR, f)
+                size_bytes = os.path.getsize(filepath)
+                if size_bytes < 1024:
+                    size_str = f"{size_bytes}B"
+                elif size_bytes < 1024 * 1024:
+                    size_str = f"{size_bytes / 1024:.1f}KB"
+                else:
+                    size_str = f"{size_bytes / (1024 * 1024):.1f}MB"
+                files.append({
+                    'name': f,
+                    'size': size_str,
+                    'is_user': _is_user_custom_bg(f),
+                })
+            return jsonify({'success': True, 'files': files})
+        except Exception as e:
+            logger.error(f"[Admin] ✗ List backgrounds error: {e}")
+            return jsonify({'success': False, 'message': str(e)}), 500
+
+    # POST: 上传
+    uploaded = request.files.get('file')
+    if not uploaded or not uploaded.filename:
+        return jsonify({'success': False, 'message': 'No file provided'}), 400
+
+    original_name = uploaded.filename
+    ext = os.path.splitext(original_name)[1].lower()
+    if ext not in {'.png', '.jpg', '.jpeg', '.webp'}:
+        return jsonify({'success': False, 'message': 'Unsupported format. Only PNG/JPG/WebP.'}), 400
+
+    file_data = uploaded.read()
+    if len(file_data) > 10 * 1024 * 1024:
+        return jsonify({'success': False, 'message': 'File too large (max 10MB)'}), 400
+
+    try:
+        from PIL import Image as PILImage
+        from io import BytesIO
+        img = PILImage.open(BytesIO(file_data))
+        img.verify()
+    except Exception:
+        return jsonify({'success': False, 'message': 'Invalid or corrupted image file'}), 400
+
+    safe_name = os.path.basename(original_name)
+    if not safe_name or safe_name.startswith('.'):
+        return jsonify({'success': False, 'message': 'Invalid filename'}), 400
+
+    save_path = os.path.join(BG_DIR, safe_name)
+    try:
+        with open(save_path, 'wb') as f:
+            f.write(file_data)
+        logger.info(f"[Admin] ✓ Uploaded background: {safe_name}")
+        return jsonify({'success': True, 'filename': safe_name}), 201
+    except Exception as e:
+        logger.error(f"[Admin] ✗ Upload background error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route("/admin/backgrounds/<filename>", methods=["DELETE"])
+@csrf.exempt
+def admin_delete_background(filename):
+    """删除指定背景图"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    safe_name = os.path.basename(filename)
+    filepath = os.path.join(BG_DIR, safe_name)
+
+    if not os.path.exists(filepath):
+        return jsonify({'success': False, 'message': 'File not found'}), 404
+
+    try:
+        os.remove(filepath)
+        logger.info(f"[Admin] ✓ Deleted background: {safe_name}")
+
+        if _is_user_custom_bg(safe_name):
+            for uid, udata in USERS.items():
+                user_bg_list = udata.get('bg_files', [])
+                if safe_name in user_bg_list:
+                    user_bg_list.remove(safe_name)
+                    edit_user_value(uid, 'bg_files', user_bg_list)
+
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"[Admin] ✗ Delete background error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 # ==================== 用户管理 API ====================
 
@@ -6280,7 +6503,7 @@ def api_generate_image(user_id):
         user_info = USERS[user_id].get('personal_info')
         profile_img = generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(user_id, {}).get('bg_files', []))
+        img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
         del profile_img, record_img
         gc.collect(0)
 
@@ -6416,7 +6639,7 @@ def api_generate_plate(user_id):
         user_info = USERS[user_id].get('personal_info')
         profile_img = generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(user_id, {}).get('bg_files', []))
+        img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
         del profile_img, plate_img
         gc.collect(0)
 
@@ -6575,7 +6798,7 @@ def api_generate_achievement(user_id):
         user_info = USERS[user_id].get('personal_info')
         profile_img = generate_profile(user_info, scale=1.5, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=USERS.get(user_id, {}).get('bg_files', []))
+        img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
         del profile_img, record_img
         gc.collect(0)
 

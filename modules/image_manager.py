@@ -267,12 +267,16 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
         all_bg_files = [f for f in os.listdir(BG_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
         if not all_bg_files:
             raise FileNotFoundError("No background images found")
-        # 如果提供了 bg_filter 且有效，则只从过滤列表中选择
-        if bg_filter:
+        # bg_filter=None → 全部随机, bg_filter=[] → 纯白(0.webp), bg_filter=[items] → 指定列表
+        if bg_filter is None:
+            candidate_files = [f for f in all_bg_files if f != '0.webp' and not f.startswith('jietnguser_')]
+            if not candidate_files:
+                candidate_files = ['0.webp']
+        elif bg_filter:
             filtered = [f for f in bg_filter if f in all_bg_files]
-            candidate_files = filtered if filtered else all_bg_files
+            candidate_files = filtered if filtered else ['0.webp']
         else:
-            candidate_files = all_bg_files
+            candidate_files = ['0.webp']
         bg_path = os.path.join(BG_DIR, random.choice(candidate_files))
         bg_img = Image.open(bg_path).convert("RGB")
         # Cover 裁剪：等比缩放使短边覆盖目标尺寸，居中裁剪

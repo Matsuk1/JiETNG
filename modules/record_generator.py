@@ -384,16 +384,14 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
         # 将 title 渲染到临时 RGBA 图，逆时针旋转 45°，缩放至 card_height
         tb = draw.textbbox((0, 0), title, font=font_record_detail_title)
         tmp = Image.new("RGBA", (tb[2] + 4, tb[3] + 4), (0, 0, 0, 0))
-        ImageDraw.Draw(tmp).text((2, 2), title, fill=(255, 255, 255, 255), font=font_record_detail_title, stroke_width=2, stroke_fill=(50, 50, 50))
+        ImageDraw.Draw(tmp).text((2, 2), title, fill=(255, 255, 255, 255), font=font_record_detail_title, stroke_width=2, stroke_fill=(50, 50, 50, 255))
         tmp_rot = tmp.rotate(45, expand=True, resample=Image.Resampling.BICUBIC)
         rot_h = card_height
         rot_w = max(1, int(tmp_rot.width * rot_h / tmp_rot.height))
         tmp_rot = tmp_rot.resize((rot_w, rot_h), Image.Resampling.LANCZOS)
 
         title_paste_x = card_x + card_width + 15
-        combined = combined.convert("RGBA")
         combined.paste(tmp_rot, (title_paste_x, card_y), tmp_rot)
-        combined = combined.convert("RGB")
         draw = ImageDraw.Draw(combined)
 
         # 计算列数：每列最多 4 条，最多 2 列

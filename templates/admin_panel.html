@@ -804,6 +804,7 @@
       <button class="tab" onclick="switchTab('backups')">Backups</button>
       <button class="tab" onclick="switchTab('logs')">Logs</button>
       <button class="tab" onclick="switchTab('devtoken')">DevToken</button>
+      <button class="tab" onclick="switchTab('backgrounds')">Backgrounds</button>
       <button class="tab" id="notifications-tab-btn" onclick="switchTab('notifications')">Notifications <span id="notification-badge" style="display:none; background:#e74c3c; color:#fff; border-radius:10px; padding:1px 6px; font-size:11px; margin-left:4px;"></span></button>
     </div>
 
@@ -1261,6 +1262,34 @@
     </div>
 
     <!-- Notifications Tab -->
+    <!-- Backgrounds Tab -->
+    <div id="backgrounds-tab" class="tab-content">
+      <div class="section">
+        <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Background Image Management</span>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary" onclick="loadBackgrounds()">Refresh</button>
+          </div>
+        </div>
+
+        <!-- Upload -->
+        <div style="margin-bottom: 16px; padding: 16px; background: var(--surface-bg); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <input type="file" id="bg-upload-input" accept="image/png,image/jpeg,image/webp" style="flex:1; min-width:200px; font-size:14px; color:var(--text-color);">
+            <button class="btn btn-success" onclick="uploadBackground()">Upload</button>
+          </div>
+          <div style="font-size:12px; color:var(--text-tertiary); margin-top:6px;">PNG / JPG / WebP, max 10MB. Uploaded file name will be preserved.</div>
+        </div>
+
+        <!-- Image Grid -->
+        <div id="bg-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:12px;">
+          <div style="text-align:center; padding:40px; color:var(--text-tertiary); grid-column:1/-1;">
+            Click "Refresh" to load backgrounds
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="notifications-tab" class="tab-content">
       <div class="section">
         <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
@@ -1495,6 +1524,11 @@
       if (tabName === 'devtoken') {
         loadDevTokens();
       }
+
+      // 如果切换到backgrounds标签，加载背景图列表
+      if (tabName === 'backgrounds') {
+        loadBackgrounds();
+      }
     }
 
     // Restore tab on page load
@@ -1532,6 +1566,8 @@
           refreshNotifications();
         } else if (savedTab === 'stats') {
           loadMemoryStats();
+        } else if (savedTab === 'backgrounds') {
+          loadBackgrounds();
         }
       }
 
@@ -3245,6 +3281,111 @@
             loadTipAds();
           } else {
             showToast('✗ ' + data.message);
+          }
+        })
+        .catch(err => {
+          showToast('✗ Network error: ' + err);
+        });
+    }
+
+    // ==================== Background Management Functions ====================
+
+    function loadBackgrounds() {
+      const grid = document.getElementById('bg-grid');
+      grid.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-tertiary); grid-column:1/-1;">Loading...</div>';
+
+      fetch('/admin/backgrounds')
+        .then(res => res.json())
+        .then(data => {
+          if (!data.success) {
+            grid.innerHTML = `<div style="text-align:center; padding:40px; color:var(--danger-color); grid-column:1/-1;">Error: ${data.message}</div>`;
+            return;
+          }
+          displayBackgrounds(data.files);
+        })
+        .catch(err => {
+          grid.innerHTML = `<div style="text-align:center; padding:40px; color:var(--danger-color); grid-column:1/-1;">Network error: ${err}</div>`;
+        });
+    }
+
+    function displayBackgrounds(files) {
+      const grid = document.getElementById('bg-grid');
+      if (!files.length) {
+        grid.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-tertiary); grid-column:1/-1;">No background images found</div>';
+        return;
+      }
+
+      grid.innerHTML = files.map(f => `
+        <div style="background:var(--surface-bg); border:1px solid var(--border-color); border-radius:var(--radius-md); overflow:hidden;">
+          <div style="aspect-ratio:16/9; overflow:hidden;">
+            <img src="/static/pics/bg/${f.name}?t=${Date.now()}" alt="${f.name}"
+                 style="width:100%; height:100%; object-fit:cover; display:block;"
+                 loading="lazy">
+          </div>
+          <div style="padding:8px 10px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+            <div style="min-width:0;">
+              <div style="font-size:12px; font-weight:600; color:var(--text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${f.name}">${f.name}</div>
+              <div style="font-size:11px; color:var(--text-tertiary);">${f.size}${f.is_user ? ' · User' : ''}</div>
+            </div>
+            <button class="btn btn-danger" style="padding:3px 10px; font-size:11px;" onclick="deleteBackground('${f.name}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function uploadBackground() {
+      const input = document.getElementById('bg-upload-input');
+      if (!input.files.length) {
+        showToast('✗ Please select an image file');
+        return;
+      }
+
+      const file = input.files[0];
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
+        showToast('✗ Only PNG, JPG, WebP are supported');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('✗ File too large (max 10MB)');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      fetch('/admin/backgrounds', {
+        method: 'POST',
+        body: formData
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            showToast('✓ Uploaded: ' + data.filename);
+            input.value = '';
+            loadBackgrounds();
+          } else {
+            showToast('✗ ' + (data.message || 'Upload failed'));
+          }
+        })
+        .catch(err => {
+          showToast('✗ Network error: ' + err);
+        });
+    }
+
+    function deleteBackground(filename) {
+      if (!confirm(`Delete "${filename}"?`)) return;
+
+      fetch('/admin/backgrounds/' + encodeURIComponent(filename), {
+        method: 'DELETE'
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            showToast('✓ Deleted: ' + filename);
+            loadBackgrounds();
+          } else {
+            showToast('✗ ' + (data.message || 'Delete failed'));
           }
         })
         .catch(err => {

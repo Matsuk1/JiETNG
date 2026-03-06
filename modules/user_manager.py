@@ -5,11 +5,12 @@
 """
 
 from typing import Any, Optional, Dict
+import os
 import logging
 import threading
 from datetime import datetime
 from modules.record_manager import delete_record
-from modules.config_loader import write_user, mark_user_dirty, USERS
+from modules.config_loader import write_user, mark_user_dirty, USERS, BG_DIR
 from modules.notice_manager import get_latest_published_notice
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,15 @@ def delete_user(user_id: str) -> None:
     # 删除数据库中的记录
     delete_record(user_id, recent=True)
     delete_record(user_id, recent=False)
+
+    # 删除用户上传的背景图
+    user_bg_path = os.path.join(BG_DIR, f"jietnguser_{user_id}.webp")
+    if os.path.exists(user_bg_path):
+        try:
+            os.remove(user_bg_path)
+            logger.info(f"[UserManager] ✓ Deleted custom bg: user_id={user_id}")
+        except Exception as e:
+            logger.error(f"[UserManager] ✗ Failed to delete custom bg: user_id={user_id}, error={e}")
 
 
 def edit_user_value(user_id: str, key: str, word: Any, operation: int = 0) -> None:

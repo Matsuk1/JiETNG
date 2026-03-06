@@ -13,6 +13,7 @@ from modules.config_loader import BIND_TOKEN_KEY
 # Token有效期 (秒)
 TOKEN_EXPIRE_SECONDS = 120
 PERM_TOKEN_EXPIRE_SECONDS = 600  # 权限管理 Token 有效期：10 分钟
+SETTINGS_TOKEN_EXPIRE_SECONDS = 1800  # 设置页面 Token 有效期：30 分钟
 
 
 def generate_bind_token(user_id: str) -> str:
@@ -72,6 +73,48 @@ def get_user_id_from_token(token: str) -> str:
 
     except Exception as e:
         raise ValueError("Invalid token") from e
+
+
+def generate_settings_token(user_id: str) -> str:
+    """
+    生成设置页面 Token（30 分钟有效）
+    payload 前缀 "settings." 以区分
+    """
+    timestamp = str(int(time.time()))
+    raw = f"settings.{user_id}.{timestamp}".encode('utf-8')
+    signature = hmac.new(BIND_TOKEN_KEY, raw, hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(raw + b"." + signature).decode('utf-8')
+
+
+def get_user_id_from_settings_token(token: str) -> str:
+    """
+    验证设置页面 Token 并提取用户ID
+    """
+    try:
+        decoded = base64.urlsafe_b64decode(token.encode('utf-8'))
+        if len(decoded) < 34:
+            raise ValueError("Invalid token format")
+        raw_bytes = decoded[:-33]
+        sig_bytes = decoded[-32:]
+
+        expected = hmac.new(BIND_TOKEN_KEY, raw_bytes, hashlib.sha256).digest()
+        if not hmac.compare_digest(sig_bytes, expected):
+            raise ValueError("Invalid token signature")
+
+        parts = raw_bytes.decode('utf-8').split('.')
+        if len(parts) < 3 or parts[0] != "settings":
+            raise ValueError("Invalid settings token format")
+
+        timestamp = int(parts[-1])
+        user_id = '.'.join(parts[1:-1])
+
+        if abs(int(time.time()) - timestamp) > SETTINGS_TOKEN_EXPIRE_SECONDS:
+            raise ValueError("Token expired")
+
+        return user_id
+
+    except Exception as e:
+        raise ValueError("Invalid settings token") from e
 
 
 def generate_perm_token(user_id: str) -> str:
