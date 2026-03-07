@@ -164,13 +164,12 @@ UNiVERSEのバージョンリスト
 ```
 friend list                                   # View friends list
 friend-rcd 1234567890123456                   # View friend's B50 (default)
-friend-rcd 1234567890123456 b100              # View friend's B100
 friend-rcd 1234567890123456 b50 -lv 14.7     # View friend's B50 (constant 14.7)
 ```
 
 **Notes**:
 - Requires SEGA account binding
-- `[type]` supports all B-series commands (b50, b100, ab50, etc.), defaults to b50
+- `[type]` supports all B-series commands (b50, ab50, etc.), defaults to b50
 - `[filters]` supports the same filter parameters as b50 (-lv, -ra, -scr, etc.)
 - Private chat only, not available in group chats
 
@@ -215,9 +214,9 @@ friend-rcd 1234567890123456 b50 -lv 14.7     # View friend's B50 (constant 14.7)
 
 | Command | Aliases | Description |
 |---------|---------|-------------|
-| `rank` | `ranking`, `ランキング` | View DX Rating leaderboard for your current version |
-| `rank jp` | `ranking jp`, `ランキング jp` | View JP server DX Rating leaderboard |
-| `rank intl` | `ranking intl`, `ランキング intl` | View International server DX Rating leaderboard |
+| `rank` | `ranking` | View DX Rating leaderboard for your current version |
+| `rank jp` | `ranking jp` | View JP server DX Rating leaderboard |
+| `rank intl` | `ranking intl` | View International server DX Rating leaderboard |
 
 ---
 
@@ -236,5 +235,5 @@ In group chats, mention (@) another registered JiETNG user to view their score d
 
 **Notes**:
 - The mentioned user must be a registered JiETNG user, otherwise falls back to your own data
-- Supports all score-related commands (b50, b100, record-list, progress, etc.)
+- Supports all score-related commands (b50, record-list, progress, etc.)
 

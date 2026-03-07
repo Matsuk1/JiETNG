@@ -1263,29 +1263,156 @@
 
     <!-- Notifications Tab -->
     <!-- Backgrounds Tab -->
+    <style>
+      .admin-bg-grid {
+        display: flex;
+        gap: 8px;
+        padding: 12px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+      }
+      .admin-bg-grid::-webkit-scrollbar { height: 4px; }
+      .admin-bg-grid::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+
+      .admin-bg-option {
+        position: relative;
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        border: 2px solid var(--border-color);
+        aspect-ratio: 9 / 16;
+        flex: 0 0 100px;
+      }
+      .admin-bg-option img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .admin-bg-option .bg-label {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0,0,0,0.55);
+        color: #fff;
+        font-size: 9px;
+        text-align: center;
+        padding: 2px 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .admin-bg-option .bg-size {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0,0,0,0.45);
+        color: #fff;
+        font-size: 9px;
+        text-align: center;
+        padding: 1px 0;
+      }
+      .admin-bg-option .bg-delete-btn {
+        position: absolute;
+        top: 16px;
+        right: 4px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: rgba(255,59,48,0.85);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 22px;
+        text-align: center;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      .admin-bg-option:hover .bg-delete-btn { opacity: 1; }
+      @media (hover: none) {
+        .admin-bg-option .bg-delete-btn { opacity: 0.8; }
+      }
+      .admin-bg-option .bg-user-badge {
+        position: absolute;
+        top: 16px;
+        left: 4px;
+        font-size: 8px;
+        background: var(--accent-color);
+        color: #fff;
+        padding: 1px 5px;
+        border-radius: 4px;
+        opacity: 0.9;
+      }
+
+      .admin-upload-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 20px 16px;
+        border: 2px dashed var(--border-color);
+        border-radius: var(--radius-md);
+        margin: 12px;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+      }
+      .admin-upload-area:hover {
+        border-color: var(--accent-color);
+        background: rgba(0, 122, 255, 0.03);
+      }
+      .admin-upload-area .upload-icon { font-size: 28px; color: var(--text-tertiary); }
+      .admin-upload-area .upload-text { font-size: 13px; color: var(--text-secondary); text-align: center; }
+      .admin-upload-area .upload-text-sub { font-size: 11px; color: var(--text-tertiary); }
+      .admin-upload-area.has-file {
+        border-color: var(--success-color);
+        background: rgba(52, 199, 89, 0.05);
+      }
+      .admin-upload-area.has-file .upload-icon { color: var(--success-color); }
+      .admin-upload-area input[type="file"] { display: none; }
+
+      .admin-upload-btn {
+        display: none;
+        width: calc(100% - 24px);
+        margin: 0 12px 12px;
+        padding: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        background: var(--accent-color);
+        border: none;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: opacity 0.2s;
+      }
+      .admin-upload-btn:hover { opacity: 0.85; }
+      .admin-upload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+
     <div id="backgrounds-tab" class="tab-content">
       <div class="section">
         <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
-          <span>Background Image Management</span>
-          <div style="display:flex; gap:8px;">
-            <button class="btn btn-primary" onclick="loadBackgrounds()">Refresh</button>
+          <span>Background Images</span>
+          <span id="admin-bg-count" style="font-size:12px; color:var(--text-tertiary);"></span>
+        </div>
+
+        <div style="background:var(--surface-bg); border:1px solid var(--border-color); border-radius:var(--radius-md); margin-bottom:16px;">
+          <div id="admin-bg-grid" class="admin-bg-grid">
+            <div style="text-align:center; padding:30px 40px; color:var(--text-tertiary); white-space:nowrap;">Loading...</div>
           </div>
         </div>
 
-        <!-- Upload -->
-        <div style="margin-bottom: 16px; padding: 16px; background: var(--surface-bg); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
-          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <input type="file" id="bg-upload-input" accept="image/png,image/jpeg,image/webp" style="flex:1; min-width:200px; font-size:14px; color:var(--text-color);">
-            <button class="btn btn-success" onclick="uploadBackground()">Upload</button>
+        <div class="section-title">Upload</div>
+        <div style="background:var(--surface-bg); border:1px solid var(--border-color); border-radius:var(--radius-md);">
+          <div class="admin-upload-area" id="admin-upload-area" onclick="document.getElementById('bg-upload-input').click()">
+            <div class="upload-icon" id="admin-upload-icon">+</div>
+            <div class="upload-text" id="admin-upload-text">Choose Image</div>
+            <div class="upload-text-sub">PNG / JPG / WebP / HEIC (max 10MB)</div>
+            <input type="file" id="bg-upload-input" accept="image/*" onchange="onAdminFileSelected(this)">
           </div>
-          <div style="font-size:12px; color:var(--text-tertiary); margin-top:6px;">PNG / JPG / WebP, max 10MB. Uploaded file name will be preserved.</div>
-        </div>
-
-        <!-- Image Grid -->
-        <div id="bg-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:12px;">
-          <div style="text-align:center; padding:40px; color:var(--text-tertiary); grid-column:1/-1;">
-            Click "Refresh" to load backgrounds
-          </div>
+          <button class="admin-upload-btn" id="admin-upload-btn" onclick="uploadBackground()">Upload</button>
         </div>
       </div>
     </div>
@@ -3291,65 +3418,79 @@
     // ==================== Background Management Functions ====================
 
     function loadBackgrounds() {
-      const grid = document.getElementById('bg-grid');
-      grid.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-tertiary); grid-column:1/-1;">Loading...</div>';
+      const grid = document.getElementById('admin-bg-grid');
+      grid.innerHTML = '<div style="text-align:center; padding:30px 40px; color:var(--text-tertiary); white-space:nowrap;">Loading...</div>';
 
       fetch('/admin/backgrounds')
         .then(res => res.json())
         .then(data => {
           if (!data.success) {
-            grid.innerHTML = `<div style="text-align:center; padding:40px; color:var(--danger-color); grid-column:1/-1;">Error: ${data.message}</div>`;
+            grid.innerHTML = `<div style="text-align:center; padding:30px 40px; color:var(--danger-color); white-space:nowrap;">Error: ${data.message}</div>`;
             return;
           }
           displayBackgrounds(data.files);
         })
         .catch(err => {
-          grid.innerHTML = `<div style="text-align:center; padding:40px; color:var(--danger-color); grid-column:1/-1;">Network error: ${err}</div>`;
+          grid.innerHTML = `<div style="text-align:center; padding:30px 40px; color:var(--danger-color); white-space:nowrap;">Network error: ${err}</div>`;
         });
     }
 
     function displayBackgrounds(files) {
-      const grid = document.getElementById('bg-grid');
+      const grid = document.getElementById('admin-bg-grid');
+      const countEl = document.getElementById('admin-bg-count');
+      countEl.textContent = files.length + ' images';
+
       if (!files.length) {
-        grid.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-tertiary); grid-column:1/-1;">No background images found</div>';
+        grid.innerHTML = '<div style="text-align:center; padding:30px 40px; color:var(--text-tertiary); white-space:nowrap;">No background images found</div>';
         return;
       }
 
       grid.innerHTML = files.map(f => `
-        <div style="background:var(--surface-bg); border:1px solid var(--border-color); border-radius:var(--radius-md); overflow:hidden;">
-          <div style="aspect-ratio:16/9; overflow:hidden;">
-            <img src="/static/pics/bg/${f.name}?t=${Date.now()}" alt="${f.name}"
-                 style="width:100%; height:100%; object-fit:cover; display:block;"
-                 loading="lazy">
-          </div>
-          <div style="padding:8px 10px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
-            <div style="min-width:0;">
-              <div style="font-size:12px; font-weight:600; color:var(--text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${f.name}">${f.name}</div>
-              <div style="font-size:11px; color:var(--text-tertiary);">${f.size}${f.is_user ? ' · User' : ''}</div>
-            </div>
-            <button class="btn btn-danger" style="padding:3px 10px; font-size:11px;" onclick="deleteBackground('${f.name}')">Delete</button>
-          </div>
+        <div class="admin-bg-option">
+          <img src="/static/pics/bg/${f.name}?t=${Date.now()}" alt="${f.name}" loading="lazy" />
+          <div class="bg-size">${f.size}</div>
+          <div class="bg-label" title="${f.name}">${f.name}</div>
+          <button class="bg-delete-btn" onclick="event.stopPropagation(); deleteBackground('${f.name}')">×</button>
+          ${f.is_user ? '<span class="bg-user-badge">User</span>' : ''}
         </div>
       `).join('');
     }
 
+    function onAdminFileSelected(input) {
+      const area = document.getElementById('admin-upload-area');
+      const icon = document.getElementById('admin-upload-icon');
+      const text = document.getElementById('admin-upload-text');
+      const btn = document.getElementById('admin-upload-btn');
+      if (input.files && input.files.length > 0) {
+        area.classList.add('has-file');
+        icon.textContent = '✓';
+        text.textContent = input.files[0].name;
+        btn.style.display = 'block';
+      } else {
+        area.classList.remove('has-file');
+        icon.textContent = '+';
+        text.textContent = 'Choose Image';
+        btn.style.display = 'none';
+      }
+    }
+
     function uploadBackground() {
       const input = document.getElementById('bg-upload-input');
-      if (!input.files.length) {
-        showToast('✗ Please select an image file');
-        return;
-      }
+      if (!input.files.length) return;
 
       const file = input.files[0];
       const ext = file.name.split('.').pop().toLowerCase();
-      if (!['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
-        showToast('✗ Only PNG, JPG, WebP are supported');
+      if (!['png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'].includes(ext)) {
+        showToast('✗ Only PNG, JPG, WebP, HEIC are supported');
         return;
       }
       if (file.size > 10 * 1024 * 1024) {
         showToast('✗ File too large (max 10MB)');
         return;
       }
+
+      const btn = document.getElementById('admin-upload-btn');
+      btn.disabled = true;
 
       const formData = new FormData();
       formData.append('file', file);
@@ -3363,13 +3504,22 @@
           if (data.success) {
             showToast('✓ Uploaded: ' + data.filename);
             input.value = '';
+            // 重置上传区域
+            const area = document.getElementById('admin-upload-area');
+            area.classList.remove('has-file');
+            document.getElementById('admin-upload-icon').textContent = '+';
+            document.getElementById('admin-upload-text').textContent = 'Choose Image';
+            btn.style.display = 'none';
+            btn.disabled = false;
             loadBackgrounds();
           } else {
             showToast('✗ ' + (data.message || 'Upload failed'));
+            btn.disabled = false;
           }
         })
         .catch(err => {
           showToast('✗ Network error: ' + err);
+          btn.disabled = false;
         });
     }
 

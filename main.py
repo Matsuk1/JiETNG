@@ -939,8 +939,7 @@ def website_settings():
         timezone: 时区
         language: 语言
         bg_files: 逗号分隔的背景图文件名列表
-        custom_bg: 上传的自定义背景图（可选，仅一张）
-        delete_custom_bg: 是否删除已上传的自定义背景图
+        bg_enabled_hidden: 背景图开关（"1" 或 "0"）
     """
     token = request.args.get("token")
     if not token:
@@ -1005,12 +1004,11 @@ Token not provided. <br />
     # GET: 准备数据
     user_language = user_data.get("language", "ja")
 
-    # 扫描背景图目录（排除 0.webp 和其他用户的自定义背景图，自定义背景排最前）
+    # 扫描背景图目录
     try:
         other_bg_files = sorted([
             f for f in os.listdir(BG_DIR)
             if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
-            and f != '0.webp'
             and not _is_user_custom_bg(f)
         ])
         # 自定义背景排在最前
@@ -1094,7 +1092,6 @@ def manage_custom_bg():
         return jsonify({"success": True}), 200
 
     # POST: 上传（接收 base64 JSON）
-
     body = request.get_json(silent=True)
     if not body or 'data' not in body or 'filename' not in body:
         return jsonify({"success": False, "message": "No file provided"}), 400
@@ -1139,7 +1136,7 @@ def _is_user_custom_bg(filename):
 def _get_user_bg_filter(user_id):
     """
     根据用户设置返回 compose_images 的 bg_filter 参数
-    - bg_enabled=False → [] (0.webp)
+    - bg_enabled=False → []
     - bg_enabled=True, bg_files 非空 → bg_files
     - bg_enabled=True, bg_files 为空 → None (全部随机)
     """
@@ -1658,7 +1655,7 @@ async def random_song(user_id, key="", ver="jp"):
     song_id = song.get('id')
 
     user_tz = get_user_timezone(user_id)
-    song_img = song_info_generate(song, timezone_offset=user_tz, ver=ver)
+    song_img = song_info_generate(song, timezone_offset=user_tz, ver=ver, bg_filter=_get_user_bg_filter(user_id))
     img_w, img_h = song_img.size
     original_url, preview_url = await smart_upload(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='info')
@@ -1718,9 +1715,8 @@ async def search_song_by_id(user_id, song_id, ver="jp"):
     if not matching_song:
         return song_error(user_id)
 
-    # 返回图片 + 按钮（合并为一个 Flex Message）
     user_tz = get_user_timezone(user_id)
-    song_img = song_info_generate(matching_song, timezone_offset=user_tz, ver=ver)
+    song_img = song_info_generate(matching_song, timezone_offset=user_tz, ver=ver, bg_filter=_get_user_bg_filter(user_id))
     img_w, img_h = song_img.size
     original_url, preview_url = await smart_upload(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='info')
@@ -2151,8 +2147,8 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
         logger.exception(f"[Song Record] Failed to get detailed record for {matching_song.get('title', 'unknown')}: {e}")
 
     # 生成歌曲信息图片
-    user_tz = get_user_timezone(id_use)
-    song_img = song_info_generate(matching_song, played_data, timezone_offset=user_tz, ver=ver)
+    user_tz = get_user_timezone(user_id)
+    song_img = song_info_generate(matching_song, played_data, timezone_offset=user_tz, ver=ver, bg_filter=_get_user_bg_filter(user_id))
     img_w, img_h = song_img.size
     original_url, preview_url = await smart_upload(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='record')
@@ -2315,8 +2311,8 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
-    user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(id_use))
+    user_tz = get_user_timezone(user_id)
+    img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
 
     # 清理中间图片对象
     del profile_img, plate_img
@@ -2526,8 +2522,8 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, scale=1.5, user_id=id_use)
-    user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(id_use))
+    user_tz = get_user_timezone(user_id)
+    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
 
     del profile_img, record_img
     gc.collect(0)
@@ -2879,8 +2875,8 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
-    user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(id_use))
+    user_tz = get_user_timezone(user_id)
+    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
 
     # 清理中间图片对象
     del profile_img, record_img
@@ -3002,8 +2998,8 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
-    user_tz = get_user_timezone(id_use)
-    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(id_use))
+    user_tz = get_user_timezone(user_id)
+    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
 
     # 清理中间图片对象
     del profile_img, record_img
@@ -3645,7 +3641,7 @@ def handle_sync_text_command(event):
     命令分类：
     1. 基础命令 - donate, unbind, profile, friend list
     2. 模糊匹配命令 - 歌曲查询、Rating 对照、达成情况等
-    3. B 系列命令 - b50, b100, rct50, apb50 等
+    3. B 系列命令 - b50, rct50, apb50 等
     4. 特殊命令 - bind, language, calc
     5. 管理员命令 - dxdata update, devtoken
     """
@@ -3718,10 +3714,6 @@ def handle_sync_text_command(event):
 
         # 系统状态
         "status": lambda: get_bot_status(user_id),
-
-        # 命令列表
-        "command": lambda: generate_command_list_flex(user_id),
-        "cmd": lambda: generate_command_list_flex(user_id)
     }
 
     if user_message in COMMAND_MAP:
@@ -3732,9 +3724,9 @@ def handle_sync_text_command(event):
     # 2. 模糊匹配命令 - 规则匹配
     # ========================================
     SPECIAL_RULES = [
-        # 排行榜（rank/ranking/ランキング [jp/intl]）
-        (lambda msg: re.match(r"^(rank|ranking|ランキング)(\s+(jp|intl))?$", msg),
-         lambda msg: get_ranking(user_id, id_use, re.match(r"^(rank|ranking|ランキング)(\s+(jp|intl))?$", msg).group(3))),
+        # 排行榜（rank/ranking [jp/intl]）
+        (lambda msg: re.match(r"^(rank|ranking)(\s+(jp|intl))?$", msg),
+         lambda msg: get_ranking(user_id, id_use, re.match(r"^(rank|ranking)(\s+(jp|intl))?$", msg).group(3))),
 
         # 歌曲搜索（通过ID）
         (lambda msg: msg.startswith("search ") and len(msg.split()) == 2 and len(msg.split()[1]) == 6,
@@ -3795,9 +3787,7 @@ def handle_sync_text_command(event):
         (lambda msg: msg.endswith(("の定数リスト", "のレベルリスト", "level-list")),
          lambda msg: asyncio.run(generate_level_rank_progress(user_id, user_id, re.sub(r"\s*(の定数リスト|のレベルリスト|level-list)$", "", msg), ver=mai_ver))),
 
-        # 难度+评级达成情况（如 "13sss+進捗", "14ap progress"）
         # 难度+评级达成情况（如 "13sss+進捗", "14AP progress", "15SSS進捗"）
-        # 支持大小写，长的评级放在前面避免被短的提前匹配
         (lambda msg: re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)$", msg.lower()),
          lambda msg: asyncio.run(generate_level_rank_progress(
              user_id,
@@ -4888,8 +4878,8 @@ def admin_backgrounds():
 
     original_name = uploaded.filename
     ext = os.path.splitext(original_name)[1].lower()
-    if ext not in {'.png', '.jpg', '.jpeg', '.webp'}:
-        return jsonify({'success': False, 'message': 'Unsupported format. Only PNG/JPG/WebP.'}), 400
+    if ext not in {'.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif'}:
+        return jsonify({'success': False, 'message': 'Unsupported format. Only PNG/JPG/WebP/HEIC.'}), 400
 
     file_data = uploaded.read()
     if len(file_data) > 10 * 1024 * 1024:
@@ -4898,24 +4888,41 @@ def admin_backgrounds():
     try:
         from PIL import Image as PILImage
         from io import BytesIO
+        try:
+            from pillow_heif import register_heif_opener
+            register_heif_opener()
+        except ImportError:
+            pass
         img = PILImage.open(BytesIO(file_data))
-        img.verify()
+        img.load()
     except Exception:
         return jsonify({'success': False, 'message': 'Invalid or corrupted image file'}), 400
 
-    safe_name = os.path.basename(original_name)
+    safe_name = os.path.splitext(os.path.basename(original_name))[0] + ext
     if not safe_name or safe_name.startswith('.'):
         return jsonify({'success': False, 'message': 'Invalid filename'}), 400
 
-    save_path = os.path.join(BG_DIR, safe_name)
-    try:
-        with open(save_path, 'wb') as f:
-            f.write(file_data)
-        logger.info(f"[Admin] ✓ Uploaded background: {safe_name}")
-        return jsonify({'success': True, 'filename': safe_name}), 201
-    except Exception as e:
-        logger.error(f"[Admin] ✗ Upload background error: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+    # HEIC/HEIF 转换为 WebP 保存
+    if ext in {'.heic', '.heif'}:
+        safe_name = os.path.splitext(safe_name)[0] + '.webp'
+        save_path = os.path.join(BG_DIR, safe_name)
+        try:
+            img = img.convert("RGB")
+            img.save(save_path, "WEBP", quality=85)
+        except Exception as e:
+            logger.error(f"[Admin] ✗ HEIC conversion error: {e}")
+            return jsonify({'success': False, 'message': 'Failed to convert HEIC'}), 500
+    else:
+        save_path = os.path.join(BG_DIR, safe_name)
+        try:
+            with open(save_path, 'wb') as f:
+                f.write(file_data)
+        except Exception as e:
+            logger.error(f"[Admin] ✗ Upload background error: {e}")
+            return jsonify({'success': False, 'message': str(e)}), 500
+
+    logger.info(f"[Admin] ✓ Uploaded background: {safe_name}")
+    return jsonify({'success': True, 'filename': safe_name}), 201
 
 
 @app.route("/admin/backgrounds/<filename>", methods=["DELETE"])
@@ -4935,12 +4942,11 @@ def admin_delete_background(filename):
         os.remove(filepath)
         logger.info(f"[Admin] ✓ Deleted background: {safe_name}")
 
-        if _is_user_custom_bg(safe_name):
-            for uid, udata in USERS.items():
-                user_bg_list = udata.get('bg_files', [])
-                if safe_name in user_bg_list:
-                    user_bg_list.remove(safe_name)
-                    edit_user_value(uid, 'bg_files', user_bg_list)
+        for uid, udata in USERS.items():
+            user_bg_list = udata.get('bg_files', [])
+            if safe_name in user_bg_list:
+                user_bg_list.remove(safe_name)
+                edit_user_value(uid, 'bg_files', user_bg_list)
 
         return jsonify({'success': True})
     except Exception as e:

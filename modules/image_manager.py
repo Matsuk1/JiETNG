@@ -265,18 +265,15 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
     has_bg_image = False
     try:
         all_bg_files = [f for f in os.listdir(BG_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
-        if not all_bg_files:
-            raise FileNotFoundError("No background images found")
-        # bg_filter=None → 全部随机, bg_filter=[] → 纯白(0.webp), bg_filter=[items] → 指定列表
+        # bg_filter=None → 全部随机, bg_filter=[] → 白色背景, bg_filter=[items] → 指定列表
         if bg_filter is None:
-            candidate_files = [f for f in all_bg_files if f != '0.webp' and not f.startswith('jietnguser_')]
-            if not candidate_files:
-                candidate_files = ['0.webp']
+            candidate_files = [f for f in all_bg_files if not f.startswith('jietnguser_')]
         elif bg_filter:
-            filtered = [f for f in bg_filter if f in all_bg_files]
-            candidate_files = filtered if filtered else ['0.webp']
+            candidate_files = [f for f in bg_filter if f in all_bg_files]
         else:
-            candidate_files = ['0.webp']
+            candidate_files = []
+        if not candidate_files:
+            raise FileNotFoundError("No candidate backgrounds")
         bg_path = os.path.join(BG_DIR, random.choice(candidate_files))
         bg_img = Image.open(bg_path).convert("RGB")
         # Cover 裁剪：等比缩放使短边覆盖目标尺寸，居中裁剪
@@ -297,11 +294,11 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
         final_img = bg_img
         has_bg_image = True
     except Exception:
-        final_img = Image.new("RGBA", (final_width, final_height), bg_color_rgba)
+        final_img = Image.new("RGB", (final_width, final_height), (255, 255, 255))
 
     final_img.paste(combined, (outer_margin, outer_margin), combined)
 
-    # 8. 有背景图时输出 RGB（完全不透明）；无背景图时按原逻辑判断
+    # 有背景图或纯白 fallback 时输出 RGB；否则按原逻辑判断
     if has_bg_image or not output_rgba:
         final_img = final_img.convert("RGB")
 

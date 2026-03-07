@@ -162,13 +162,12 @@ UNiVERSEのバージョンリスト
 ```
 friend list                          # 查看好友列表
 friend-rcd 1234567890123456          # 查看好友 B50（默认）
-friend-rcd 1234567890123456 b100     # 查看好友 B100
 friend-rcd 1234567890123456 b50 -lv 14.7   # 查看好友 B50（定数 14.7）
 ```
 
 **说明**：
 - 需要先绑定 SEGA 账户才能使用好友功能
-- `[图表类型]` 支持所有 B 系命令（b50、b100、ab50 等），默认为 b50
+- `[图表类型]` 支持所有 B 系命令（b50、ab50 等），默认为 b50
 - `[过滤器]` 支持与 b50 相同的过滤参数（-lv、-ra、-scr 等）
 - 仅限私聊使用，不支持群聊
 
@@ -213,9 +212,9 @@ friend-rcd 1234567890123456 b50 -lv 14.7   # 查看好友 B50（定数 14.7）
 
 | 命令 | 别名 | 说明 |
 |------|------|------|
-| `rank` | `ranking`, `ランキング` | 查看当前版本的用户 DX Rating 排行榜 |
-| `rank jp` | `ranking jp`, `ランキング jp` | 查看日服 DX Rating 排行榜 |
-| `rank intl` | `ranking intl`, `ランキング intl` | 查看国际服 DX Rating 排行榜 |
+| `rank` | `ranking` | 查看当前版本的用户 DX Rating 排行榜 |
+| `rank jp` | `ranking jp` | 查看日服 DX Rating 排行榜 |
+| `rank intl` | `ranking intl` | 查看国际服 DX Rating 排行榜 |
 
 ---
 
@@ -234,5 +233,5 @@ friend-rcd 1234567890123456 b50 -lv 14.7   # 查看好友 B50（定数 14.7）
 
 **说明**：
 - 被提及的用户需已注册 JiETNG 账户，否则回退为查看自己的数据
-- 支持成绩查询相关的所有命令（b50、b100、record-list、progress 等）
+- 支持成绩查询相关的所有命令（b50、record-list、progress 等）
 

@@ -204,13 +204,6 @@ dxdata_update_text = {
 # その他 / Others
 # ============================================================
 
-# 成绩命令列表
-record_cmd_list_text = {
-    "zh": "成绩命令列表",
-    "en": "Record Command List",
-    "ja": "レコードコマンドリスト"
-}
-
 # 指定レベルのレコードなし
 level_record_not_found_text = {
     "ja": "指定されたレベル「{level}」の{page}ページ目の譜面記録は存在しないかも...",

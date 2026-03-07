@@ -4,7 +4,7 @@ from modules.image_manager import *
 from modules.image_cache import paste_icon_optimized, get_cover_image
 from modules.config_loader import ICON_TYPE_DIR
 
-def song_info_generate(song_json, played_data = [], timezone_offset=9, ver="jp"):
+def song_info_generate(song_json, played_data = [], timezone_offset=9, ver="jp", bg_filter=None):
     cover_url = song_json.get("cover_url")
     cover_name = song_json.get("cover_name")
 
@@ -24,7 +24,7 @@ def song_info_generate(song_json, played_data = [], timezone_offset=9, ver="jp")
     else:
         img2 = resize_by_width(_generate_song_table_image(song_json, ver=ver), 1200)
 
-    song_img = compose_images([img1, img2], timezone_offset=timezone_offset)
+    song_img = compose_images([img1, img2], timezone_offset=timezone_offset, bg_filter=bg_filter)
 
     return song_img
 

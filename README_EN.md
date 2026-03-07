@@ -28,7 +28,7 @@ Supports Japanese and International servers
 ### Key Features
 
 - **Score Tracking**: Automatic synchronization and storage of Best/Recent game records
-- **Data Visualization**: Generate detailed B50/B100 score charts with customizable filters
+- **Data Visualization**: Generate detailed B50 score charts with customizable filters
 - **Friend System**: View friend scores and manage friend requests
 - **Leaderboard**: DX Rating user rankings with separate JP/INTL server views
 - **Version Progress**: Track completion status for version-specific achievements

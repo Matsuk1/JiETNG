@@ -85,7 +85,6 @@ Enter a constant (1.0~15.0, one decimal place max) to view the Rating value for 
 ```
 rank
 ranking
-ランキング
 rank jp       # JP server leaderboard
 rank intl     # International server leaderboard
 ```

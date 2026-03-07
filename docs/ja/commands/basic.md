@@ -85,7 +85,6 @@ Rc 14.7
 ```
 rank
 ranking
-ランキング
 rank jp       # 日本版ランキング
 rank intl     # 海外版ランキング
 ```

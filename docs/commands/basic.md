@@ -85,7 +85,6 @@ Rc 14.7
 ```
 rank
 ranking
-ランキング
 rank jp       # 日服排行榜
 rank intl     # 国际服排行榜
 ```
