@@ -9,6 +9,7 @@ import gc
 from io import BytesIO
 
 from modules.record_manager import get_detailed_info
+from modules.maimai_manager import get_rating_image_path
 from main import select_records, generate_profile
 from modules.record_generator import generate_records_picture
 from modules.image_manager import compose_images
@@ -267,29 +268,16 @@ def get_divingfish_data(username=None, qq=None):
         "https://maimaidx.jp/maimai-mobile/img/NamePlate/85b6d4655374b56c.png"
     ]
 
-    rating = raw_data.get('rating')
-    rating_block_url = "https://maimaidx.jp/maimai-mobile/img/rating_base_"
-    if rating < 12000:
-        rating_block_url += "purple.png"
-    elif 12000 <= rating < 13000:
-        rating_block_url += "bronze.png"
-    elif 13000 <= rating < 14000:
-        rating_block_url += "silver.png"
-    elif 14000 <= rating < 14500:
-        rating_block_url += "gold.png"
-    elif 14500 <= rating < 15000:
-        rating_block_url += "platinum.png"
-    elif rating >= 15000:
-        rating_block_url += "rainbow.png"
+    rating = raw_data.get('rating', 0)
 
     user_data = {
         "name": raw_data.get("nickname"),
-        "rating": f"{raw_data.get('rating')}",
+        "rating": f"{rating}",
         "trophy_content": "JiETNG・カヰテー",
         "trophy_url": "https://maimaidx.jp/maimai-mobile/img/trophy_rainbow.png",
         "nameplate_url": random.choice(nameplate_urls),
         "icon_url": random.choice(icon_urls),
-        "rating_block_url": rating_block_url
+        "rating_block_path": get_rating_image_path(rating)
     }
     return user_data, charts
 

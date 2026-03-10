@@ -2615,12 +2615,23 @@ def generate_profile(user_info, scale=1, user_id=None):
 
     paste_image("icon_url", (26, 24), (170, 170), round)
 
-    paste_image("rating_block_url", (219, 24), (223, 58))
+    # rating block: 优先使用本地图片，兼容旧版 URL
+    if "rating_block_path" in user_info and user_info["rating_block_path"]:
+        try:
+            rb_img = Image.open(user_info["rating_block_path"])
+            if rb_img.mode != "RGBA":
+                rb_img = rb_img.convert("RGBA")
+            rb_img = rb_img.resize((296, 58), Image.LANCZOS)
+            info_img.paste(rb_img, (219, 24), rb_img)
+        except Exception as e:
+            logger.error(f"[Image] ✗ Failed to load rating block: {e}")
+    else:
+        paste_image("rating_block_url", (219, 24), (223, 58))
 
     # 使用等宽方式绘制 rating 数字
     rating_text = user_info['rating'].rjust(5)
     char_width = 23  # 每个字符的固定宽度
-    start_x = 314
+    start_x = 359
     for i, char in enumerate(rating_text):
         # 计算字符的实际宽度
         char_bbox = draw.textbbox((0, 0), char, font=font_profile)
@@ -2633,7 +2644,7 @@ def generate_profile(user_info, scale=1, user_id=None):
     draw.rounded_rectangle([219, 89, 671, 145], radius=10, fill=(255, 255, 255), outline=(180, 180, 180), width=2)
     draw.text((235, 94), user_info['name'], fill=(0, 0, 0), font=font_profile)
 
-    paste_image("class_rank_url", (490, 6), (148, 85))
+    paste_image("class_rank_url", (530, 6), (148, 85))
     paste_image("cource_rank_url", (550, 93), (117, 48))
     paste_image("trophy_url", (219, 158), (452, 36))
 

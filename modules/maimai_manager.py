@@ -7,10 +7,42 @@ import unicodedata
 import re
 from urllib.parse import quote
 from lxml import etree
+import os
 from modules.record_manager import get_detailed_info
-from modules.config_loader import DOMAIN
+from modules.config_loader import DOMAIN, RATING_DIR
 
 logger = logging.getLogger(__name__)
+
+# Rating → 本地图片映射（阈值从高到低）
+RATING_TIERS = [
+    (16750, "rainbow_extreme_4.png"),
+    (16500, "rainbow_extreme_3.png"),
+    (16250, "rainbow_extreme_2.png"),
+    (16000, "rainbow_extreme_1.png"),
+    (15750, "rainbow_4.png"),
+    (15500, "rainbow_3.png"),
+    (15250, "rainbow_2.png"),
+    (15000, "rainbow_1.png"),
+    (14750, "platinum_2.png"),
+    (14500, "platinum_1.png"),
+    (14250, "gold_2.png"),
+    (14000, "gold_1.png"),
+    (13000, "silver.png"),
+    (12000, "bronze.png"),
+    (10000, "purple.png"),
+    (7000,  "red.png"),
+    (4000,  "yellow.png"),
+    (2000,  "green.png"),
+    (1000,  "blue.png"),
+    (0,     "white.png"),
+]
+
+
+def get_rating_image_path(rating: int) -> str:
+    for threshold, filename in RATING_TIERS:
+        if rating >= threshold:
+            return os.path.join(RATING_DIR, filename)
+    return os.path.join(RATING_DIR, "white.png")
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -339,7 +371,7 @@ async def get_maimai_info(cookies: dict, ver="jp"):
 
         # 解析主信息
         user_name = player_dom.xpath('//div[contains(@class, "name_block")]/text()')
-        rating_block_url = player_dom.xpath('//img[contains(@class, "h_30") and contains(@class, "f_r")]/@src')
+        # rating_block_url = player_dom.xpath('//img[contains(@class, "h_30") and contains(@class, "f_r")]/@src')
         rating = player_dom.xpath('//div[@class="rating_block"]/text()')
         cource_rank_url = player_dom.xpath('//img[contains(@class, "h_35") and contains(@class, "f_l")]/@src')
         class_rank_url = player_dom.xpath('//img[contains(@class, "w_160") and contains(@class, "p_15") and contains(@class, "m_r_10")]/@src')
@@ -362,10 +394,18 @@ async def get_maimai_info(cookies: dict, ver="jp"):
         else:
             trophy_content = "ERROR"
 
+        # 根据 rating 数值选择本地 rating block 图片
+        rating_str = rating[0].strip() if rating else "0"
+        try:
+            rating_int = int(rating_str)
+        except ValueError:
+            rating_int = 0
+        rating_block_path = get_rating_image_path(rating_int)
+
         user_info = {
             "name": user_name[0] if user_name else "NAME_ERROR",
-            "rating_block_url": rating_block_url[0] if rating_block_url else "N/A",
-            "rating": rating[0].strip() if rating else "ERROR",
+            "rating_block_path": rating_block_path,
+            "rating": rating_str,
             "cource_rank_url": cource_rank_url[0] if cource_rank_url else "N/A",
             "class_rank_url": class_rank_url[0] if class_rank_url else "N/A",
             "icon_url": icon_url[0] if icon_url else "N/A",
@@ -848,7 +888,7 @@ async def get_friend_info(cookies: dict, friend_id: str, ver="jp"):
 
         # 解析主信息
         user_name = dom.xpath('//div[contains(@class, "name_block")]/text()')
-        rating_block_url = dom.xpath('//img[contains(@class, "h_30") and contains(@class, "f_r")]/@src')
+        # rating_block_url = dom.xpath('//img[contains(@class, "h_30") and contains(@class, "f_r")]/@src')
         rating = dom.xpath('//div[@class="rating_block"]/text()')
         cource_rank_url = dom.xpath('//img[contains(@class, "h_35") and contains(@class, "f_l")]/@src')
         class_rank_url = dom.xpath('//img[contains(@class, "p_l_10") and contains(@class, "h_35") and contains(@class, "f_l")]/@src')
@@ -889,10 +929,16 @@ async def get_friend_info(cookies: dict, friend_id: str, ver="jp"):
         else:
             trophy_content = "ERROR"
 
+        rating_str = rating[0].strip() if rating else "17000"
+        try:
+            rating_int = int(rating_str)
+        except ValueError:
+            rating_int = 0
+
         friend_info = {
             "name": user_name[0].strip() if user_name else "NAME_ERROR",
-            "rating_block_url": rating_block_url[0] if rating_block_url else "https://maimaidx.jp/maimai-mobile/img/rating_base_rainbow.png",
-            "rating": rating[0].strip() if rating else "17000",
+            "rating_block_path": get_rating_image_path(rating_int),
+            "rating": rating_str,
             "cource_rank_url": cource_rank_url[0] if cource_rank_url else "https://maimaidx.jp/maimai-mobile/img/course/course_rank_13KOI1uBwE.png",
             "class_rank_url": class_rank_url[0] if class_rank_url else "https://maimaidx.jp/maimai-mobile/img/class/class_rank_s_01VFe8gl5z.png",
             "icon_url": icon_url[0] if icon_url else "https://maimaidx.jp/maimai-mobile/img/Icon/c22d52b387e3f829.png",
