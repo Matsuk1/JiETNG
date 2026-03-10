@@ -24,14 +24,13 @@ _image_cleanup_tasks = {}
 _cleanup_lock = threading.Lock()
 _periodic_cleanup_thread = None
 
-def cleanup_expired_images():
+def cleanup_expired_images(expiry_seconds = 7200):
     """清理所有过期的图片（基于文件修改时间）"""
     try:
         if not os.path.exists(IMG_DIR):
             return
 
         current_time = time.time()
-        expiry_seconds = 1800  # 30分钟
 
         deleted_count = 0
         skipped_count = 0
@@ -50,7 +49,7 @@ def cleanup_expired_images():
                 file_mtime = os.path.getmtime(file_path)
                 age = current_time - file_mtime
 
-                # 如果文件超过30分钟，删除
+                # 如果文件超过时间，删除
                 if age > expiry_seconds:
                     os.remove(file_path)
                     deleted_count += 1
