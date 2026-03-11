@@ -87,8 +87,7 @@ JiETNGは 『maimai でらっくす』 の国内版と海外版の両方に対�
 
 3つの簡単なステップでJiETNGを始めましょう：
 
-1. **ボットを追加** - LINEアカウントにJiETNGを追加
-2. **アカウント連携** - SEGA IDを安全にリンク
+1. **ボットを追加** - LINEアカウントにJiETNGを追加2. **アカウント連携** - SEGA IDを安全にリンク
 3. **追跡開始** - `maimai update`でスコアを同期
 
 [今すぐ始める →](/ja/guide/getting-started)

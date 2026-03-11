@@ -15,6 +15,8 @@
 
 简体中文 | [English](README_EN.md) | [日本語](README_JP.md)
 
+<a href="https://lin.ee/Q6O7aI8"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="添加好友" height="36" border="0"></a>
+
 [功能特性](#功能特性) • [命令列表](https://jietng.matsuki.work/commands/) • [在线文档](https://jietng.matsuki.work/) • [快速开始](#快速开始) • [管理后台](#管理后台) • [部署指南](#部署指南) • [开发文档](#开发文档)
 
 </div>

@@ -87,8 +87,7 @@ JiETNG is a『maimai でらっくす』score management bot supporting both Japa
 
 Get started with JiETNG in three simple steps:
 
-1. **Add the Bot** - Add JiETNG to your LINE account
-2. **Bind Your Account** - Link your SEGA ID securely
+1. **Add the Bot** - Add JiETNG to your LINE account2. **Bind Your Account** - Link your SEGA ID securely
 3. **Start Tracking** - Use `maimai update` to sync your scores
 
 [Get Started Now →](/en/guide/getting-started)

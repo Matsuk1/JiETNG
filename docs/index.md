@@ -87,8 +87,7 @@ JiETNG 是同时支持 『maimai でらっくす』 日服和国际服的查分�
 
 只需三个简单步骤即可开始使用 JiETNG：
 
-1. **添加机器人** - 将 JiETNG 添加到您的 LINE 账号
-2. **绑定账号** - 安全地关联您的 SEGA ID
+1. **添加机器人** - 将 JiETNG 添加到您的 LINE 账号2. **绑定账号** - 安全地关联您的 SEGA ID
 3. **开始追踪** - 使用 `maimai update` 同步您的成绩
 
 [立即开始 →](/guide/getting-started)

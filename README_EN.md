@@ -15,6 +15,8 @@ Supports Japanese and International servers
 
 [简体中文](README.md) | English | [日本語](README_JP.md)
 
+<a href="https://lin.ee/Q6O7aI8"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="Add Friend" height="36" border="0"></a>
+
 [Features](#features) • [Command List](https://jietng.matsuki.work/en/commands/) • [Online Docs](https://jietng.matsuki.work/en/) • [Quick Start](#quick-start) • [Admin Panel](#admin-panel) • [Deployment](#deployment) • [Documentation](#documentation)
 
 </div>
