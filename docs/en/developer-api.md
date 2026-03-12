@@ -237,7 +237,59 @@ curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.mats
 }
 ```
 
-#### 5. Sync User Data
+#### 5. Get Rebind URL
+
+```http
+POST /api/v1/users/<user_id>/rebind-url
+```
+
+**Description:** Generates a rebind page URL for modifying SEGA ID password, version, and other account information.
+
+**Permission Required:** Owner or granted Token
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/rebind-url
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "rebind_url": "https://jietng-endpoint.matsuki.work/linebot/sega_bind?token=xxx&mode=rebind",
+  "expires_in": 120,
+  "message": "Rebind URL generated successfully."
+}
+```
+
+#### 6. Get Settings URL
+
+```http
+POST /api/v1/users/<user_id>/settings-url
+```
+
+**Description:** Generates a settings page URL for modifying language, timezone, background images, and other personal preferences.
+
+**Permission Required:** Owner or granted Token
+
+**Example:**
+```bash
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/settings-url
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "settings_url": "https://jietng-endpoint.matsuki.work/linebot/settings?token=xxx",
+  "expires_in": 1800,
+  "message": "Settings URL generated successfully."
+}
+```
+
+#### 7. Sync User Data
 
 ```http
 POST /api/v1/users/<user_id>/sync
@@ -261,7 +313,7 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk
 }
 ```
 
-#### 6. Query Task Status
+#### 8. Query Task Status
 
 ```http
 GET /api/v1/tasks/<task_id>
@@ -309,7 +361,7 @@ curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/a
 }
 ```
 
-#### 7. Get User Records
+#### 9. Get User Records
 
 ```http
 GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rating>&version=<version>&difficulty=<difficulty>
@@ -362,7 +414,7 @@ curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/
 }
 ```
 
-#### 8. Search Songs
+#### 10. Search Songs
 
 ```http
 GET /api/v1/songs/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<limit>
@@ -420,7 +472,7 @@ curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/
 }
 ```
 
-#### 9. Get Version List
+#### 11. Get Version List
 
 ```http
 GET /api/v1/versions
@@ -467,7 +519,7 @@ The API uses two decorators to control access permissions:
 - **`@require_user_permission`**: Allows both owners and authorized tokens (for read operations)
 - **`@require_owner_permission`**: Only allows owners (for sensitive operations)
 
-#### 10. Request Access Permission
+#### 12. Request Access Permission
 
 ```http
 POST /api/v1/users/<user_id>/permissions
@@ -513,7 +565,7 @@ curl -X POST -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 11. View Permission Requests
+#### 13. View Permission Requests
 
 ```http
 GET /api/v1/users/<user_id>/permissions/requests
@@ -547,7 +599,7 @@ curl -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 12. Approve or Reject Permission Request
+#### 14. Approve or Reject Permission Request
 
 ```http
 PATCH /api/v1/users/<user_id>/permissions
@@ -607,7 +659,7 @@ curl -X PATCH -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 13. Revoke Granted Permission
+#### 15. Revoke Granted Permission
 
 ```http
 DELETE /api/v1/users/<user_id>/permissions/<token_id>
@@ -633,7 +685,7 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 14. Self-Revoke Access Permission
+#### 16. Self-Revoke Access Permission
 
 ```
 DELETE /api/v1/users/<user_id>/permissions/self
@@ -670,7 +722,7 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 
 All endpoints below are under the `/api/v2/` path and return `image/png` data.
 
-#### 15. Generate Song Info Image
+#### 17. Generate Song Info Image
 
 ```
 GET /api/v2/songs/<song_id>/image?ver=<version>
@@ -695,7 +747,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **Response:** `Content-Type: image/png`, returns PNG image binary data directly.
 
-#### 16. Generate User Song Record Image
+#### 18. Generate User Song Record Image
 
 ```
 GET /api/v2/users/<user_id>/songs/<song_id>/image
@@ -721,7 +773,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **Response:** `Content-Type: image/png`, returns PNG image binary data directly.
 
-#### 17. Generate Score Image
+#### 19. Generate Score Image
 
 ```
 GET /api/v2/users/<user_id>/image?command=<command>
@@ -760,7 +812,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **Response:** `Content-Type: image/png`, returns PNG image binary data directly.
 
-#### 18. Generate Plate Image
+#### 20. Generate Plate Image
 
 ```
 GET /api/v2/users/<user_id>/plate?title=<title>
@@ -785,7 +837,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **Response:** `Content-Type: image/png`, returns PNG image binary data directly.
 
-#### 19. Generate Achievement Image
+#### 21. Generate Achievement Image
 
 ```
 GET /api/v2/users/<user_id>/achievement?level=<level>&rank=<rank>
@@ -939,6 +991,8 @@ LINE users receive FlexMessage notifications for permission requests and can app
 | `/users` | POST | Register user and generate bind URL | Any Token |
 | `/users/<user_id>` | GET | Get user info | Owner or Granted |
 | `/users/<user_id>` | DELETE | Delete user | **Owner Only** |
+| `/users/<user_id>/rebind-url` | POST | Get rebind URL | Owner or Granted |
+| `/users/<user_id>/settings-url` | POST | Get settings URL | Owner or Granted |
 | `/users/<user_id>/tasks` | POST | Create sync task (202 Accepted) | Owner or Granted |
 | `/tasks/<task_id>` | GET | Query task status | Any Token |
 | `/users/<user_id>/records` | GET | Get user records | Owner or Granted |

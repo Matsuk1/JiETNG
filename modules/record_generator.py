@@ -671,7 +671,7 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
     draw = ImageDraw.Draw(final_img)
 
     # 绘制左侧信息栏：卡片式容器（2列布局）
-    card_start_x = margin - 10
+    card_start_x = margin - 20
     card_y = margin + 15
     card_width = 325
     card_height = 65
@@ -762,7 +762,7 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
             plate_img = plate_img.resize((target_width, target_height), Image.Resampling.LANCZOS)
 
             # 位置：右上角，横向中轴线不变
-            plate_x = img_width - margin - target_width + 10
+            plate_x = img_width - margin - target_width + 20
             original_center_y = margin + 90
             plate_y = original_center_y - target_height // 2
 

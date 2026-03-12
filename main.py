@@ -5662,7 +5662,7 @@ def api_create_user():
             "bind_url": bind_url,
             "token": bind_token,
             "expires_in": 120,
-            "message": "Bind URL generated successfully. Token expires in 2 minutes."
+            "message": "Bind URL generated successfully."
         }), 201
 
     except Exception as e:
@@ -5745,37 +5745,74 @@ def api_delete_user(user_id):
         }), 500
 
 
-@app.route("/api/v1/users/<user_id>/bind-url", methods=["POST"])
+@app.route("/api/v1/users/<user_id>/rebind-url", methods=["POST"])
 @csrf.exempt
 @require_dev_token
 @require_user_permission
-def api_create_bind_url(user_id):
+def api_create_rebind_url(user_id):
     """
-    生成绑定/换绑 URL API
+    生成换绑 URL API
 
     需要 Bearer Token 认证并拥有该用户的访问权限
 
     返回:
-    - bind_url: 绑定页面链接（2分钟有效）
+    - rebind_url: 绑定页面链接（2分钟有效）
     - expires_in: token 过期时间（秒）
     """
     try:
         token_info = request.token_info
-        logger.info(f"[API] Create bind URL: user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
+        logger.info(f"[API] Create rebind URL: user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
 
-        bind_token = generate_bind_token(user_id)
-        bind_url = f"https://{DOMAIN}/linebot/sega_bind?token={bind_token}&mode=rebind"
+        rebind_token = generate_bind_token(user_id)
+        rebind_url = f"https://{DOMAIN}/linebot/sega_bind?token={rebind_token}&mode=rebind"
 
         return jsonify({
             "success": True,
             "user_id": user_id,
-            "bind_url": bind_url,
+            "rebind_url": rebind_url,
             "expires_in": 120,
-            "message": "Bind URL generated successfully. Token expires in 2 minutes."
+            "message": "Rebind URL generated successfully."
         }), 201
 
     except Exception as e:
-        logger.error(f"[API] ✗ Create bind URL error: user_id={user_id}, error={e}", exc_info=True)
+        logger.error(f"[API] ✗ Create rebind URL error: user_id={user_id}, error={e}", exc_info=True)
+        return jsonify({
+            "error": "Internal server error",
+            "message": str(e)
+        }), 500
+
+
+@app.route("/api/v1/users/<user_id>/settings-url", methods=["POST"])
+@csrf.exempt
+@require_dev_token
+@require_user_permission
+def api_create_settings_url(user_id):
+    """
+    生成设置 URL API
+
+    需要 Bearer Token 认证并拥有该用户的访问权限
+
+    返回:
+    - settings_url: 绑定页面链接（2分钟有效）
+    - expires_in: token 过期时间（秒）
+    """
+    try:
+        token_info = request.token_info
+        logger.info(f"[API] Create settings URL: user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
+
+        settings_token = generate_settings_token(user_id)
+        settings_url = f"https://{DOMAIN}/linebot/settings?token={settings_token}"
+
+        return jsonify({
+            "success": True,
+            "user_id": user_id,
+            "settings_url": settings_url,
+            "expires_in": 1800,
+            "message": "Settings URL generated successfully."
+        }), 201
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Create settings URL error: user_id={user_id}, error={e}", exc_info=True)
         return jsonify({
             "error": "Internal server error",
             "message": str(e)

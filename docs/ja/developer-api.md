@@ -235,7 +235,59 @@ curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.mats
 ```
 
 
-#### 5. ユーザーデータ同期
+#### 5. 再連携URLの取得
+
+```http
+POST /api/v1/users/<user_id>/rebind-url
+```
+
+**説明:** 再連携ページのURLを生成します。SEGA IDのパスワード、バージョンなどのアカウント情報の変更に使用します。
+
+**必要な権限:** 所有者または承認済みトークン
+
+**例:**
+```bash
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/rebind-url
+```
+
+**レスポンス (201 Created):**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "rebind_url": "https://jietng-endpoint.matsuki.work/linebot/sega_bind?token=xxx&mode=rebind",
+  "expires_in": 120,
+  "message": "Rebind URL generated successfully."
+}
+```
+
+#### 6. 設定URLの取得
+
+```http
+POST /api/v1/users/<user_id>/settings-url
+```
+
+**説明:** 設定ページのURLを生成します。言語、タイムゾーン、背景画像などの個人設定の変更に使用します。
+
+**必要な権限:** 所有者または承認済みトークン
+
+**例:**
+```bash
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/settings-url
+```
+
+**レスポンス (201 Created):**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "settings_url": "https://jietng-endpoint.matsuki.work/linebot/settings?token=xxx",
+  "expires_in": 1800,
+  "message": "Settings URL generated successfully."
+}
+```
+
+#### 7. ユーザーデータ同期
 
 ```http
 POST /api/v1/users/<user_id>/sync
@@ -259,7 +311,7 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk
 }
 ```
 
-#### 6. タスク状態確認
+#### 8. タスク状態確認
 
 ```http
 GET /api/v1/tasks/<task_id>
@@ -307,7 +359,7 @@ curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/a
 }
 ```
 
-#### 7. ユーザーレコード取得
+#### 9. ユーザーレコード取得
 
 ```http
 GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rating>&version=<version>&difficulty=<difficulty>
@@ -360,7 +412,7 @@ curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/
 }
 ```
 
-#### 8. 楽曲検索
+#### 10. 楽曲検索
 
 ```http
 GET /api/v1/songs/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<limit>
@@ -418,7 +470,7 @@ curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/
 }
 ```
 
-#### 9. バージョン一覧取得
+#### 11. バージョン一覧取得
 
 ```http
 GET /api/v1/versions
@@ -465,7 +517,7 @@ API は2種類のデコレーターを使用してアクセス権限を制御し
 - **`@require_user_permission`**: 所有者と承認された両方のトークンを許可（読み取り操作用）
 - **`@require_owner_permission`**: 所有者のみを許可（機密操作用）
 
-#### 10. アクセス権限のリクエスト
+#### 12. アクセス権限のリクエスト
 
 ```http
 POST /api/v1/users/<user_id>/permissions
@@ -511,7 +563,7 @@ curl -X POST -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 11. 権限リクエスト一覧の表示
+#### 13. 権限リクエスト一覧の表示
 
 ```http
 GET /api/v1/users/<user_id>/permissions/requests
@@ -552,7 +604,7 @@ curl -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 12. 権限リクエストの承認または拒否
+#### 14. 権限リクエストの承認または拒否
 
 ```http
 PATCH /api/v1/users/<user_id>/permissions
@@ -612,7 +664,7 @@ curl -X PATCH -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 13. 付与された権限の取り消し
+#### 15. 付与された権限の取り消し
 
 ```http
 DELETE /api/v1/users/<user_id>/permissions/<token_id>
@@ -638,7 +690,7 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 14. アクセス権限の自己取り消し
+#### 16. アクセス権限の自己取り消し
 
 ```
 DELETE /api/v1/users/<user_id>/permissions/self
@@ -675,7 +727,7 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 
 以下のエンドポイントはすべて `/api/v2/` パス配下にあり、`image/png` 形式の画像データを返します。
 
-#### 15. 楽曲情報画像の生成
+#### 17. 楽曲情報画像の生成
 
 ```
 GET /api/v2/songs/<song_id>/image?ver=<version>
@@ -700,7 +752,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
 
-#### 16. ユーザー楽曲記録画像の生成
+#### 18. ユーザー楽曲記録画像の生成
 
 ```
 GET /api/v2/users/<user_id>/songs/<song_id>/image
@@ -726,7 +778,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
 
-#### 17. 成績画像の生成
+#### 19. 成績画像の生成
 
 ```
 GET /api/v2/users/<user_id>/image?command=<command>
@@ -765,7 +817,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
 
-#### 18. 段位牌画像の生成
+#### 20. 段位牌画像の生成
 
 ```
 GET /api/v2/users/<user_id>/plate?title=<title>
@@ -790,7 +842,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
 
-#### 19. 達成状況画像の生成
+#### 21. 達成状況画像の生成
 
 ```
 GET /api/v2/users/<user_id>/achievement?level=<level>&rank=<rank>
@@ -915,6 +967,8 @@ LINE ユーザーは権限リクエストの FlexMessage 通知を受け取り�
 | `/users` | POST | ユーザーを登録し連携URLを生成 | 任意のトークン |
 | `/users/<user_id>` | GET | ユーザー情報を取得 | 所有者または承認済み |
 | `/users/<user_id>` | DELETE | ユーザーを削除 | **所有者のみ** |
+| `/users/<user_id>/rebind-url` | POST | 再連携URLを生成 | 所有者または承認済み |
+| `/users/<user_id>/settings-url` | POST | 設定URLを生成 | 所有者または承認済み |
 | `/users/<user_id>/tasks` | POST | 同期タスクを作成 (202 Accepted) | 所有者または承認済み |
 | `/tasks/<task_id>` | GET | タスク状態確認 | 任意のトークン |
 | `/users/<user_id>/records` | GET | ユーザーレコードを取得 | 所有者または承認済み |

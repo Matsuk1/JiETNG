@@ -234,7 +234,59 @@ curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.mats
 }
 ```
 
-#### 5. 同步用户数据
+#### 5. 获取换绑链接
+
+```http
+POST /api/v1/users/<user_id>/rebind-url
+```
+
+**说明:** 生成换绑页面链接，用于修改 SEGA ID 密码、版本等账号信息。
+
+**权限要求：** 所有者或被授权 Token
+
+**示例:**
+```bash
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/rebind-url
+```
+
+**响应 (201 Created):**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "rebind_url": "https://jietng-endpoint.matsuki.work/linebot/sega_bind?token=xxx&mode=rebind",
+  "expires_in": 120,
+  "message": "Rebind URL generated successfully."
+}
+```
+
+#### 6. 获取设置链接
+
+```http
+POST /api/v1/users/<user_id>/settings-url
+```
+
+**说明:** 生成设置页面链接，用于修改语言、时区、背景图等个人偏好。
+
+**权限要求：** 所有者或被授权 Token
+
+**示例:**
+```bash
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/settings-url
+```
+
+**响应 (201 Created):**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "settings_url": "https://jietng-endpoint.matsuki.work/linebot/settings?token=xxx",
+  "expires_in": 1800,
+  "message": "Settings URL generated successfully."
+}
+```
+
+#### 7. 同步用户数据
 
 ```http
 POST /api/v1/users/<user_id>/sync
@@ -258,7 +310,7 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk
 }
 ```
 
-#### 6. 查询任务状态
+#### 8. 查询任务状态
 
 ```http
 GET /api/v1/tasks/<task_id>
@@ -306,7 +358,7 @@ curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/a
 }
 ```
 
-#### 7. 获取用户记录
+#### 9. 获取用户记录
 
 ```http
 GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rating>&version=<version>&difficulty=<difficulty>
@@ -359,7 +411,7 @@ curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/
 }
 ```
 
-#### 8. 搜索歌曲
+#### 10. 搜索歌曲
 
 ```http
 GET /api/v1/songs/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<limit>
@@ -417,7 +469,7 @@ curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/
 }
 ```
 
-#### 9. 获取版本列表
+#### 11. 获取版本列表
 
 ```http
 GET /api/v1/versions
@@ -464,7 +516,7 @@ API 使用两种装饰器来控制访问权限：
 - **`@require_user_permission`**：允许所有者和被授权者访问（用于读取操作）
 - **`@require_owner_permission`**：只允许所有者访问（用于敏感操作）
 
-#### 10. 请求访问权限
+#### 12. 请求访问权限
 
 ```http
 POST /api/v1/users/<user_id>/permissions
@@ -510,7 +562,7 @@ curl -X POST -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 11. 查看权限请求列表
+#### 13. 查看权限请求列表
 
 ```http
 GET /api/v1/users/<user_id>/permissions/requests
@@ -551,7 +603,7 @@ curl -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 12. 批准或拒绝权限请求
+#### 14. 批准或拒绝权限请求
 
 ```http
 PATCH /api/v1/users/<user_id>/permissions
@@ -611,7 +663,7 @@ curl -X PATCH -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 13. 撤销已授予的权限
+#### 15. 撤销已授予的权限
 
 ```http
 DELETE /api/v1/users/<user_id>/permissions/<token_id>
@@ -645,7 +697,7 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 14. 自撤销访问权限
+#### 16. 自撤销访问权限
 
 ```
 DELETE /api/v1/users/<user_id>/permissions/self
@@ -682,7 +734,7 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 
 以下端点均位于 `/api/v2/` 路径下，返回 `image/png` 格式的图像数据。
 
-#### 15. 生成歌曲信息图
+#### 17. 生成歌曲信息图
 
 ```
 GET /api/v2/songs/<song_id>/image?ver=<version>
@@ -707,7 +759,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
 
-#### 16. 生成用户歌曲记录图
+#### 18. 生成用户歌曲记录图
 
 ```
 GET /api/v2/users/<user_id>/songs/<song_id>/image
@@ -733,7 +785,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
 
-#### 17. 生成成绩图
+#### 19. 生成成绩图
 
 ```
 GET /api/v2/users/<user_id>/image?command=<command>
@@ -772,7 +824,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
 
-#### 18. 生成段位牌图
+#### 20. 生成段位牌图
 
 ```
 GET /api/v2/users/<user_id>/plate?title=<title>
@@ -797,7 +849,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
 
-#### 19. 生成达成情况图
+#### 21. 生成达成情况图
 
 ```
 GET /api/v2/users/<user_id>/achievement?level=<level>&rank=<rank>
@@ -950,6 +1002,8 @@ LINE 用户会收到权限请求的 FlexMessage 通知，可以直接在 LINE �
 | `/users` | POST | 注册用户并生成绑定链接 | 任何 Token |
 | `/users/<user_id>` | GET | 获取用户信息 | 所有者或被授权 |
 | `/users/<user_id>` | DELETE | 删除用户 | **仅所有者** |
+| `/users/<user_id>/rebind-url` | POST | 获取换绑链接 | 所有者或被授权 |
+| `/users/<user_id>/settings-url` | POST | 获取设置链接 | 所有者或被授权 |
 | `/users/<user_id>/tasks` | POST | 创建同步任务 (202 Accepted) | 所有者或被授权 |
 | `/tasks/<task_id>` | GET | 查询任务状态 | 任何 Token |
 | `/users/<user_id>/records` | GET | 获取用户成绩记录 | 所有者或被授权 |
