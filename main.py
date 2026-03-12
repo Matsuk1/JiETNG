@@ -2168,8 +2168,10 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     if not len(song_record):
         return record_error(user_id)
 
-    version_name = title[0].replace("晓", "暁")
-    plate_type = title[1:].replace("极", "極")
+    title = title.replace("晓", "暁").replace("极", "極")
+
+    version_name = title[0]
+    plate_type = title[1:]
 
     songs, versions = read_dxdata(ver)
 
@@ -6523,8 +6525,10 @@ def api_v2_generate_plate(user_id):
         if not song_record:
             return jsonify({"error": "No records found, please sync first"}), 404
 
-        version_name = title[0].replace("晓", "暁")
-        plate_type = title[1:].replace("极", "極")
+        title = title.replace("晓", "暁").replace("极", "極")
+
+        version_name = title[0]
+        plate_type = title[1:]
 
         songs, versions = read_dxdata(ver)
         target_version = []
