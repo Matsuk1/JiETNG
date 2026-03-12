@@ -15,8 +15,8 @@ hero:
       text: 开始使用
       link: /guide/getting-started
     - theme: alt
-      text: 了解更多
-      link: /guide/getting-started
+      text: 在线体验
+      link: /demo
     - theme: alt
       text: GitHub
       link: https://github.com/Matsuk1/JiETNG

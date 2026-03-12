@@ -15,8 +15,8 @@ hero:
       text: 始める
       link: /ja/guide/getting-started
     - theme: alt
-      text: 詳細
-      link: /ja/guide/getting-started
+      text: オンラインデモ
+      link: /ja/demo
     - theme: alt
       text: GitHub
       link: https://github.com/Matsuk1/JiETNG
