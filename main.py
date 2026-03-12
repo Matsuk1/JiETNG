@@ -2168,7 +2168,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     if not len(song_record):
         return record_error(user_id)
 
-    version_name = title[0]
+    version_name = title[0].replace("晓", "暁")
     plate_type = title[1:].replace("极", "極")
 
     songs, versions = read_dxdata(ver)
@@ -5532,7 +5532,7 @@ def admin_delete_devtoken(token_id):
     return jsonify({'success': True})
 
 
-# ==================== 开发者 API ====================
+# ==================== 开发者 API v1 ====================
 
 @app.route("/api/v1/users", methods=["GET"])
 @csrf.exempt
@@ -5840,116 +5840,6 @@ def api_sync_user_data(user_id):
             "error": "Internal server error",
             "message": str(e)
         }), 500
-
-@app.route("/api/v1/users/<user_id>/records", methods=["GET"])
-@csrf.exempt
-@require_dev_token
-@require_user_permission
-def api_get_user_records(user_id):
-    """
-    获取用户成绩记录 API (RESTful)
-
-    需要 Bearer Token 认证并拥有该用户的访问权限
-
-    参数:
-    - type: 可选，记录类型，默认为 best50
-      可选值: best50, best35, best15, allb50, allb35, apb50, rct50, idlb50, unknown
-    - level: 可选，定数范围，如 "14,15" 或 "14.0-15.0"
-    - rating: 可选，rating范围，如 "100-200"
-    - version: 可选，版本过滤
-    - difficulty: 可选，难度过滤
-    """
-    try:
-        # 获取查询参数
-        record_type = request.args.get('type', 'best50')
-
-        # 支持新的查询参数格式，但向后兼容command参数
-        command = request.args.get('command', '')
-        if not command:
-            # 构建command from new parameters
-            level = request.args.get('level', '')
-            rating = request.args.get('rating', '')
-            version = request.args.get('version', '')
-            difficulty = request.args.get('difficulty', '')
-
-            command_parts = []
-            if level:
-                if '-' in level:
-                    min_lv, max_lv = level.split('-')
-                    command_parts.append(f"-lv {min_lv} {max_lv}")
-                elif ',' in level:
-                    levels = level.replace(',', ' ')
-                    command_parts.append(f"-lv {levels}")
-                else:
-                    command_parts.append(f"-lv {level}")
-
-            if rating:
-                if '-' in rating:
-                    min_ra, max_ra = rating.split('-')
-                    command_parts.append(f"-ra {min_ra} {max_ra}")
-                else:
-                    command_parts.append(f"-ra {rating}")
-
-            if version:
-                command_parts.append(f"-ver {version}")
-
-            if difficulty:
-                command_parts.append(f"-diff {difficulty}")
-
-            command = ' '.join(command_parts)
-
-        # 记录 API 访问日志
-        token_info = request.token_info
-        logger.info(f"[API] Get user records: user_id={user_id}, type={record_type}, token_id={token_info['token_id']}, note={token_info['note']}")
-
-        # 检查是否有个人信息
-        if "personal_info" not in USERS[user_id]:
-            return jsonify({
-                "error": "User info not found",
-                "message": f"User {user_id} has no personal info, please update first"
-            }), 400
-
-        # 获取用户版本
-        ver = USERS[user_id].get('version', 'jp')
-
-        # 读取用户记录
-        recent = (record_type == "rct50")
-        recent_type = (record_type == "best40")
-        song_record = read_record(user_id, recent, recent_type)
-        if not len(song_record):
-            return jsonify({
-                "error": "No records found",
-                "message": f"User {user_id} has no score records"
-            }), 404
-
-        # 调用 select_records 函数获取筛选后的记录
-        up_songs, down_songs = select_records(song_record, record_type, command, ver)
-
-        if not up_songs and not down_songs:
-            return jsonify({
-                "success": True,
-                "count": 0,
-                "old_songs": [],
-                "new_songs": [],
-                "message": "No records match the criteria"
-            })
-
-        return jsonify({
-            "success": True,
-            "user_id": user_id,
-            "type": record_type,
-            "count": len(up_songs) + len(down_songs),
-            "old_songs": up_songs,
-            "new_songs": down_songs
-        })
-
-    except Exception as e:
-        logger.error(f"[API] ✗ Get user records error: user_id={user_id}, error={e}", exc_info=True)
-        return jsonify({
-            "error": "Internal server error",
-            "message": str(e)
-        }), 500
-
 
 
 # ==================== Permission Management APIs (RESTful) ====================
@@ -6293,10 +6183,10 @@ def api_get_task(task_id):
 
 # ==================== Song Search API (RESTful) ====================
 
-@app.route("/api/v1/songs", methods=["GET"])
+@app.route("/api/v2/songs/search", methods=["GET"])
 @csrf.exempt
 @require_dev_token
-def api_search_songs():
+def api_v2_search_songs():
     """
     搜索歌曲 API
 
@@ -6306,36 +6196,16 @@ def api_search_songs():
     - q: 可选，搜索关键词，如果不提供或使用 __empty__ 则搜索空字符串
     - ver: 可选，服务器版本 (jp/intl)，默认为 jp
     - max_results: 可选，最大结果数，默认为 6
-    - user_id: 可选，用户ID，提供时返回用户对应歌曲的游玩记录
+
+    返回匹配歌曲的 id 和基本信息，调用方可使用 id 进一步查询 info 或 record 图片
     """
     try:
-        # 获取查询参数，允许空字符串
         query = request.args.get('q', '')
-        user_id = request.args.get('user_id')
+        ver = request.args.get('ver', 'jp')
         max_results = request.args.get('max_results', MAX_SEARCH_RESULTS, type=int)
 
-        # 处理特殊占位符
         if query == '__empty__':
             query = ''
-        
-        token_info = request.token_info
-
-        if not user_id:
-            ver = request.args.get('ver', 'jp')
-        else:
-            # 使用辅助函数检查权限
-            has_permission, error_response = check_user_permission(user_id, token_info['token_id'])
-            if not has_permission:
-                return error_response
-
-            # 检查是否有个人信息
-            if "personal_info" not in USERS[user_id]:
-                return jsonify({
-                    "error": "User info not found",
-                    "message": f"User {user_id} has no personal info, please update first"
-                }), 400
-
-            ver = USERS[user_id].get('version', "jp")
 
         if ver not in ['jp', 'intl']:
             return jsonify({
@@ -6343,16 +6213,12 @@ def api_search_songs():
                 "message": "Parameter 'ver' must be 'jp' or 'intl'"
             }), 400
 
-        # 记录 API 访问日志
+        token_info = request.token_info
         logger.info(f"[API] Search songs: query='{query}', token_id={token_info['token_id']}, note={token_info['note']}")
 
-        # 读取歌曲数据
         songs, _ = read_dxdata(ver)
+        matching_songs = find_matching_songs(query, songs, max_results=max_results)
 
-        # 使用优化的歌曲匹配函数
-        matching_songs = find_matching_songs(query, songs, max_results=max_results, )
-
-        # 检查结果
         if not matching_songs:
             return jsonify({
                 "success": True,
@@ -6368,51 +6234,23 @@ def api_search_songs():
                 "count": len(matching_songs)
             }), 400
 
-        if not user_id:
-            return jsonify({
-                "success": True,
-                "count": len(matching_songs),
-                "query": query,
-                "ver": ver,
-                "songs": matching_songs
-            })
-
-        song_record = read_record(user_id)
+        # 只返回 id 和基本信息
         result = []
-        
-        # 对每首匹配的歌曲,查找用户的游玩记录
         for song in matching_songs:
-            played_data = []
-
-            # 使用优化的精确匹配函数
-            for rcd in song_record:
-                if is_exact_song_match(rcd['cover_name'], song['cover_name']) and rcd['type'] == song['type']:
-                    played_data.append(rcd)
-
-            if played_data:
-                result.append(played_data)
-                
-        if not result:
-            return jsonify({
-                "success": True,
-                "count": 0,
-                "records": [],
-                "message": "No records found"
+            result.append({
+                "id": song.get("id"),
+                "title": song.get("title"),
+                "artist": song.get("artist"),
+                "type": song.get("type"),
+                "version": song.get("version"),
             })
-
-        if len(result) > max_results:
-            return jsonify({
-                "error": "Too many results",
-                "message": f"Found {len(result)} songs, please refine your search (max: {max_results})",
-                "count": len(result)
-            }), 400
 
         return jsonify({
             "success": True,
             "count": len(result),
             "query": query,
             "ver": ver,
-            "records": result
+            "songs": result
         })
 
     except Exception as e:
@@ -6456,12 +6294,123 @@ def api_get_versions():
             "message": str(e)
         }), 500
 
-@app.route("/api/v1/users/<user_id>/image", methods=["GET"])
+
+# ==================== API v2 ====================
+
+@app.route("/api/v2/songs/<song_id>/image", methods=["GET"])
 @csrf.exempt
 @require_dev_token
-def api_generate_image(user_id):
+def api_v2_song_info(song_id):
     """
-    生成用户成绩图片 API
+    生成歌曲信息图片 API
+
+    需要 Bearer Token 认证
+
+    参数:
+    - ver: 服务器版本 jp/intl (默认 jp)
+
+    返回: image/png
+    """
+    try:
+        ver = request.args.get('ver', 'jp').strip().lower()
+        if ver not in ('jp', 'intl'):
+            return jsonify({"error": "Invalid ver, must be jp or intl"}), 400
+
+        songs, _ = read_dxdata(ver)
+        matching_song = None
+        for song in songs:
+            if song.get('id') == song_id:
+                matching_song = song
+                break
+
+        if not matching_song:
+            return jsonify({"error": "Song not found"}), 404
+
+        song_img = song_info_generate(matching_song, ver=ver)
+
+        buf = BytesIO()
+        song_img.save(buf, "PNG")
+        buf.seek(0)
+        del song_img
+        gc.collect(0)
+
+        token_info = request.token_info
+        logger.info(f"[API] Song info generated: song_id={song_id}, ver={ver}, token_id={token_info['token_id']}")
+        return send_file(buf, mimetype="image/png")
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Song info error: song_id={song_id}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
+@app.route("/api/v2/users/<user_id>/songs/<song_id>/image", methods=["GET"])
+@csrf.exempt
+@require_dev_token
+def api_v2_song_record(user_id, song_id):
+    """
+    生成用户歌曲记录图片 API
+
+    需要 Bearer Token 认证
+
+    返回: image/png（包含用户在该歌曲各难度的游玩记录）
+    """
+    try:
+        token_info = request.token_info
+        has_permission, error_response = check_user_permission(user_id, token_info['token_id'])
+        if not has_permission:
+            return error_response
+
+        if user_id not in USERS:
+            return jsonify({"error": "User not found"}), 404
+        if "personal_info" not in USERS[user_id]:
+            return jsonify({"error": "User info not found, please sync first"}), 404
+
+        ver = USERS[user_id].get("version", "jp")
+        songs, _ = read_dxdata(ver)
+        matching_song = None
+        for song in songs:
+            if song.get('id') == song_id:
+                matching_song = song
+                break
+
+        if not matching_song:
+            return jsonify({"error": "Song not found"}), 404
+
+        song_record = read_record(user_id)
+        if not song_record:
+            return jsonify({"error": "No records found, please sync first"}), 404
+
+        played_data = []
+        for rcd in song_record:
+            if is_exact_song_match(rcd['cover_name'], matching_song['cover_name']) and rcd['type'] == matching_song['type']:
+                played_data.append(rcd)
+
+        if not played_data:
+            return jsonify({"error": "No record for this song"}), 404
+
+        user_tz = get_user_timezone(user_id)
+        song_img = song_info_generate(matching_song, played_data, timezone_offset=user_tz, ver=ver, bg_filter=_get_user_bg_filter(user_id))
+
+        buf = BytesIO()
+        song_img.save(buf, "PNG")
+        buf.seek(0)
+        del song_img
+        gc.collect(0)
+
+        logger.info(f"[API] Song record generated: user_id={user_id}, song_id={song_id}, token_id={token_info['token_id']}")
+        return send_file(buf, mimetype="image/png")
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Song record error: user_id={user_id}, song_id={song_id}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
+@app.route("/api/v2/users/<user_id>/image", methods=["GET"])
+@csrf.exempt
+@require_dev_token
+def api_v2_generate_record_image(user_id):
+    """
+    生成用户成绩图片 API (v2)
 
     需要 Bearer Token 认证
 
@@ -6530,18 +6479,18 @@ def api_generate_image(user_id):
         del img
         gc.collect(0)
 
-        logger.info(f"[API] Image generated: user_id={user_id}, command={command}, token_id={token_info['token_id']}")
+        logger.info(f"[API] v2 Image generated: user_id={user_id}, command={command}, token_id={token_info['token_id']}")
         return send_file(buf, mimetype="image/png")
 
     except Exception as e:
-        logger.error(f"[API] ✗ Generate image error: user_id={user_id}, error={e}", exc_info=True)
+        logger.error(f"[API] ✗ v2 Generate image error: user_id={user_id}, error={e}", exc_info=True)
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
 
-@app.route("/api/v1/users/<user_id>/plate", methods=["GET"])
+@app.route("/api/v2/users/<user_id>/plate", methods=["GET"])
 @csrf.exempt
 @require_dev_token
-def api_generate_plate(user_id):
+def api_v2_generate_plate(user_id):
     """
     生成段位牌图片 API
 
@@ -6574,7 +6523,7 @@ def api_generate_plate(user_id):
         if not song_record:
             return jsonify({"error": "No records found, please sync first"}), 404
 
-        version_name = title[0]
+        version_name = title[0].replace("晓", "暁")
         plate_type = title[1:].replace("极", "極")
 
         songs, versions = read_dxdata(ver)
@@ -6674,10 +6623,10 @@ def api_generate_plate(user_id):
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
 
-@app.route("/api/v1/users/<user_id>/achievement", methods=["GET"])
+@app.route("/api/v2/users/<user_id>/achievement", methods=["GET"])
 @csrf.exempt
 @require_dev_token
-def api_generate_achievement(user_id):
+def api_v2_generate_achievement(user_id):
     """
     生成达成状况图片 API
 

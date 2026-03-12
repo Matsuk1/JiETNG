@@ -265,10 +265,8 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
     has_bg_image = False
     try:
         all_bg_files = [f for f in os.listdir(BG_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
-        # bg_filter=None → 全部随机, bg_filter=[] → 白色背景, bg_filter=[items] → 指定列表
-        if bg_filter is None:
-            candidate_files = [f for f in all_bg_files if not f.startswith('jietnguser_')]
-        elif bg_filter:
+        # bg_filter=None → 白色背景, bg_filter=[] → 白色背景, bg_filter=[items] → 指定列表
+        if bg_filter:
             candidate_files = [f for f in bg_filter if f in all_bg_files]
         else:
             candidate_files = []

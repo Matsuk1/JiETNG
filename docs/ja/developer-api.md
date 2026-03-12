@@ -27,9 +27,10 @@ JiETNG APIを使用したい場合は、以下の手順でアクセストーク�
 
 ### API 基本情報
 
-- **Base URL**: `https://jietng-endpoint.matsuki.work/api/v1/`
+- **Base URL (v1)**: `https://jietng-endpoint.matsuki.work/api/v1/`
+- **Base URL (v2)**: `https://jietng-endpoint.matsuki.work/api/v2/`
 - **認証方式**: Bearer Token
-- **レスポンス形式**: JSON
+- **レスポンス形式**: JSON（画像生成エンドポイントは `image/png` を返します）
 
 ### 使用例
 
@@ -118,7 +119,9 @@ curl -H "Authorization: Bearer <your_token>" https://jietng-endpoint.matsuki.wor
 
 ### 利用可能なエンドポイント
 
-以下のすべてのエンドポイントは `https://jietng-endpoint.matsuki.work/api/v1/` をプレフィックスとして使用します。
+v1 エンドポイントは `https://jietng-endpoint.matsuki.work/api/v1/` をプレフィックスとして使用します。
+
+v2 エンドポイントは `https://jietng-endpoint.matsuki.work/api/v2/` をプレフィックスとして使用します。
 
 #### 1. ユーザー一覧取得
 
@@ -668,15 +671,70 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 15. 成績画像の生成
+### API v2 エンドポイント（画像生成）
+
+以下のエンドポイントはすべて `/api/v2/` パス配下にあり、`image/png` 形式の画像データを返します。
+
+#### 15. 楽曲情報画像の生成
 
 ```
-GET /api/v1/users/<user_id>/image?command=<command>
+GET /api/v2/songs/<song_id>/image?ver=<version>
+```
+
+**説明:** 指定した楽曲の詳細情報画像を生成します。カバー、難易度、譜面定数などの情報を含みます。
+
+**必要な権限:** 任意の有効なトークン
+
+**クエリパラメータ:**
+
+| パラメータ | 型 | 必須 | 説明 |
+|---------|------|------|------|
+| `ver` | string | ❌ | サーバーバージョン、`jp` または `intl`、デフォルト `jp` |
+
+**例:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v2/songs/834/image?ver=jp" \
+     --output song_info.png
+```
+
+**レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
+
+#### 16. ユーザー楽曲記録画像の生成
+
+```
+GET /api/v2/users/<user_id>/songs/<song_id>/image
+```
+
+**説明:** ユーザーの指定楽曲における各難易度のプレイ記録画像を生成します。
+
+**必要な権限:** 所有者または承認済みトークン
+
+**パスパラメータ:**
+
+| パラメータ | 型 | 説明 |
+|---------|------|------|
+| `user_id` | string | ユーザー ID |
+| `song_id` | string | 楽曲 ID |
+
+**例:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/songs/834/image" \
+     --output song_record.png
+```
+
+**レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
+
+#### 17. 成績画像の生成
+
+```
+GET /api/v2/users/<user_id>/image?command=<command>
 ```
 
 **説明:** ユーザーの成績画像を生成し、PNG 画像データを直接返します。
 
-**必要な権限:** 所有者または承認済みトークン（`@require_user_permission`）
+**必要な権限:** 所有者または承認済みトークン
 
 **クエリパラメータ:**
 
@@ -701,21 +759,21 @@ GET /api/v1/users/<user_id>/image?command=<command>
 **例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/image?command=b50" \
+     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/image?command=b50" \
      --output b50.png
 ```
 
 **レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
 
-#### 16. 段位牌画像の生成
+#### 18. 段位牌画像の生成
 
 ```
-GET /api/v1/users/<user_id>/plate?title=<title>
+GET /api/v2/users/<user_id>/plate?title=<title>
 ```
 
 **説明:** ユーザーの段位牌画像を生成し、PNG 画像データを直接返します。
 
-**必要な権限:** 所有者または承認済みトークン（`@require_user_permission`）
+**必要な権限:** 所有者または承認済みトークン
 
 **クエリパラメータ:**
 
@@ -726,21 +784,21 @@ GET /api/v1/users/<user_id>/plate?title=<title>
 **例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/plate?title=覇極" \
+     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/plate?title=覇極" \
      --output plate.png
 ```
 
 **レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
 
-#### 17. 達成状況画像の生成
+#### 19. 達成状況画像の生成
 
 ```
-GET /api/v1/users/<user_id>/achievement?level=<level>&rank=<rank>
+GET /api/v2/users/<user_id>/achievement?level=<level>&rank=<rank>
 ```
 
 **説明:** 指定した難度レベルの達成状況画像を生成し、PNG 画像データを直接返します。
 
-**必要な権限:** 所有者または承認済みトークン（`@require_user_permission`）
+**必要な権限:** 所有者または承認済みトークン
 
 **クエリパラメータ:**
 
@@ -754,7 +812,7 @@ GET /api/v1/users/<user_id>/achievement?level=<level>&rank=<rank>
 **例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/achievement?level=15&rank=sss" \
+     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/achievement?level=15&rank=sss" \
      --output achievement.png
 ```
 
@@ -873,13 +931,15 @@ LINE ユーザーは権限リクエストの FlexMessage 通知を受け取り�
 | `/users/<user_id>/permissions/<token_id>` | DELETE | 付与された権限を取り消し | **所有者のみ** |
 | `/users/<user_id>/permissions/self` | DELETE | アクセス権限の自己取り消し | 承認済みトークン（非所有者）|
 
-### 画像生成エンドポイント
+### 画像生成エンドポイント（v2）
 
 | エンドポイント | メソッド | 説明 | 必要な権限 |
 |----------------|--------------|-------------------|----------|
-| `/users/<user_id>/image` | GET | 成績画像を生成 | 所有者または承認済み |
-| `/users/<user_id>/plate` | GET | 段位牌画像を生成 | 所有者または承認済み |
-| `/users/<user_id>/achievement` | GET | 達成状況画像を生成 | 所有者または承認済み |
+| `/api/v2/songs/<song_id>/image` | GET | 楽曲情報画像を生成 | 任意のトークン |
+| `/api/v2/users/<user_id>/songs/<song_id>/image` | GET | ユーザー楽曲記録画像を生成 | 所有者または承認済み |
+| `/api/v2/users/<user_id>/image` | GET | 成績画像を生成 | 所有者または承認済み |
+| `/api/v2/users/<user_id>/plate` | GET | 段位牌画像を生成 | 所有者または承認済み |
+| `/api/v2/users/<user_id>/achievement` | GET | 達成状況画像を生成 | 所有者または承認済み |
 
 ## セキュリティ推奨事項
 
@@ -1023,9 +1083,14 @@ curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/songs/search?q=ヒバナ&ver=j
 
 ## バージョン履歴
 
+- **v2.0**（2026-03-12）：API v2 画像生成エンドポイントを追加
+  - 画像生成エンドポイントを `/api/v2/` パスに移行
+  - 楽曲情報画像生成を追加（`GET /api/v2/songs/<song_id>/image`）
+  - ユーザー楽曲記録画像生成を追加（`GET /api/v2/users/<user_id>/songs/<song_id>/image`）
+  - 成績画像・段位牌画像・達成状況画像を v2 に移行
 - **v1.3**（2026-02-27）：自己取り消し権限と画像生成エンドポイントを追加
   - `DELETE /permissions/self` でトークンが自主的に承認済みアクセスを放棄できる機能を追加
-  - 3つの画像生成エンドポイントを追加（成績画像・段位牌画像・達成状況画像）
+  - 3つの画像生成エンドポイントを追加（成績画像・段位牌画像・達成状況画像）（v2 に移行済み）
 - **v1.2**（2026-02-03）：RESTful API 標準に準拠するように変更
   - すべてのフィールドを RESTful API の設計規約により適合するよう修正
 - **v1.1** (2025-12-04): 権限リクエストシステムを追加

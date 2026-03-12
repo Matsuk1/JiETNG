@@ -28,9 +28,10 @@ If you want to use the JiETNG API, follow these steps to get an access token:
 
 ### API Base Information
 
-- **Base URL**: `https://jietng-endpoint.matsuki.work/api/v1/`
+- **Base URL (v1)**: `https://jietng-endpoint.matsuki.work/api/v1/`
+- **Base URL (v2)**: `https://jietng-endpoint.matsuki.work/api/v2/`
 - **Authentication**: Bearer Token
-- **Response Format**: JSON
+- **Response Format**: JSON (image generation endpoints return `image/png`)
 
 ### Usage Example
 
@@ -121,7 +122,9 @@ curl -H "Authorization: Bearer <your_token>" https://jietng-endpoint.matsuki.wor
 
 ### Available Endpoints
 
-All endpoints below should be prefixed with `https://jietng-endpoint.matsuki.work/api/v1/`.
+v1 endpoints should be prefixed with `https://jietng-endpoint.matsuki.work/api/v1/`.
+
+v2 endpoints should be prefixed with `https://jietng-endpoint.matsuki.work/api/v2/`.
 
 #### 1. Get User List
 
@@ -663,15 +666,70 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 15. Generate Score Image
+### API v2 Endpoints (Image Generation)
+
+All endpoints below are under the `/api/v2/` path and return `image/png` data.
+
+#### 15. Generate Song Info Image
 
 ```
-GET /api/v1/users/<user_id>/image?command=<command>
+GET /api/v2/songs/<song_id>/image?ver=<version>
+```
+
+**Description:** Generates a detailed song information image including cover, difficulty, and chart constants.
+
+**Permission Required:** Any valid Token
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `ver` | string | ❌ | Server version, `jp` or `intl`, default `jp` |
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v2/songs/834/image?ver=jp" \
+     --output song_info.png
+```
+
+**Response:** `Content-Type: image/png`, returns PNG image binary data directly.
+
+#### 16. Generate User Song Record Image
+
+```
+GET /api/v2/users/<user_id>/songs/<song_id>/image
+```
+
+**Description:** Generates an image of the user's play records for a specific song across all difficulties.
+
+**Permission Required:** Owner or granted Token
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `user_id` | string | User ID |
+| `song_id` | string | Song ID |
+
+**Example:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/songs/834/image" \
+     --output song_record.png
+```
+
+**Response:** `Content-Type: image/png`, returns PNG image binary data directly.
+
+#### 17. Generate Score Image
+
+```
+GET /api/v2/users/<user_id>/image?command=<command>
 ```
 
 **Description:** Generates a score image for the user and returns PNG image data directly.
 
-**Permission Required:** Owner or granted token (`@require_user_permission`)
+**Permission Required:** Owner or granted Token
 
 **Query Parameters:**
 
@@ -696,21 +754,21 @@ GET /api/v1/users/<user_id>/image?command=<command>
 **Example:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/image?command=b50" \
+     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/image?command=b50" \
      --output b50.png
 ```
 
 **Response:** `Content-Type: image/png`, returns PNG image binary data directly.
 
-#### 16. Generate Plate Image
+#### 18. Generate Plate Image
 
 ```
-GET /api/v1/users/<user_id>/plate?title=<title>
+GET /api/v2/users/<user_id>/plate?title=<title>
 ```
 
 **Description:** Generates a rating plate image for the user and returns PNG image data directly.
 
-**Permission Required:** Owner or granted token (`@require_user_permission`)
+**Permission Required:** Owner or granted Token
 
 **Query Parameters:**
 
@@ -721,21 +779,21 @@ GET /api/v1/users/<user_id>/plate?title=<title>
 **Example:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/plate?title=覇極" \
+     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/plate?title=覇極" \
      --output plate.png
 ```
 
 **Response:** `Content-Type: image/png`, returns PNG image binary data directly.
 
-#### 17. Generate Achievement Image
+#### 19. Generate Achievement Image
 
 ```
-GET /api/v1/users/<user_id>/achievement?level=<level>&rank=<rank>
+GET /api/v2/users/<user_id>/achievement?level=<level>&rank=<rank>
 ```
 
 **Description:** Generates an achievement chart image for the specified difficulty level and returns PNG image data directly.
 
-**Permission Required:** Owner or granted token (`@require_user_permission`)
+**Permission Required:** Owner or granted Token
 
 **Query Parameters:**
 
@@ -749,7 +807,7 @@ GET /api/v1/users/<user_id>/achievement?level=<level>&rank=<rank>
 **Example:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/achievement?level=15&rank=sss" \
+     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/achievement?level=15&rank=sss" \
      --output achievement.png
 ```
 
@@ -897,13 +955,15 @@ LINE users receive FlexMessage notifications for permission requests and can app
 | `/users/<user_id>/permissions/<token_id>` | DELETE | Revoke granted permission | **Owner Only** |
 | `/users/<user_id>/permissions/self` | DELETE | Self-revoke access permission | Granted Token (non-owner) |
 
-### Image Generation Endpoints
+### Image Generation Endpoints (v2)
 
 | Endpoint | Method | Description | Permission Required |
 |----------------|--------------|-------------------|----------|
-| `/users/<user_id>/image` | GET | Generate score image | Owner or Granted |
-| `/users/<user_id>/plate` | GET | Generate plate image | Owner or Granted |
-| `/users/<user_id>/achievement` | GET | Generate achievement image | Owner or Granted |
+| `/api/v2/songs/<song_id>/image` | GET | Generate song info image | Any Token |
+| `/api/v2/users/<user_id>/songs/<song_id>/image` | GET | Generate user song record image | Owner or Granted |
+| `/api/v2/users/<user_id>/image` | GET | Generate score image | Owner or Granted |
+| `/api/v2/users/<user_id>/plate` | GET | Generate plate image | Owner or Granted |
+| `/api/v2/users/<user_id>/achievement` | GET | Generate achievement image | Owner or Granted |
 
 ## Security Recommendations
 
@@ -1052,9 +1112,14 @@ curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/songs/search?q=ヒバナ&ver=j
 
 ## Version History
 
+- **v2.0** (2026-03-12): Added API v2 image generation endpoints
+  - Migrated image generation endpoints to `/api/v2/` path
+  - Added song info image generation (`GET /api/v2/songs/<song_id>/image`)
+  - Added user song record image generation (`GET /api/v2/users/<user_id>/songs/<song_id>/image`)
+  - Score image, plate image, and achievement image migrated to v2
 - **v1.3** (2026-02-27): Added self-revoke permission and image generation endpoints
   - Added `DELETE /permissions/self` allowing tokens to proactively surrender granted access
-  - Added 3 image generation endpoints (score image, plate image, achievement image)
+  - Added 3 image generation endpoints (score image, plate image, achievement image) (migrated to v2)
 - **v1.2** (2026-02-03): Updated to comply with RESTful API standards
   - Revised all fields to better align with RESTful API conventions
 - **v1.1** (2025-12-04): Added permission request system

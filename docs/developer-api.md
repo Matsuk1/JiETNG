@@ -27,9 +27,10 @@
 
 ### API 基础信息
 
-- **Base URL**: `https://jietng-endpoint.matsuki.work/api/v1/`
+- **Base URL (v1)**: `https://jietng-endpoint.matsuki.work/api/v1/`
+- **Base URL (v2)**: `https://jietng-endpoint.matsuki.work/api/v2/`
 - **认证方式**: Bearer Token
-- **响应格式**: JSON
+- **响应格式**: JSON（图像生成端点返回 `image/png`）
 
 ### 使用示例
 
@@ -118,7 +119,9 @@ curl -H "Authorization: Bearer <your_token>" https://jietng-endpoint.matsuki.wor
 
 ### 可用端点
 
-以下所有端点的完整 URL 为 `https://jietng-endpoint.matsuki.work/api/v1/` + 端点路径。
+v1 端点的完整 URL 为 `https://jietng-endpoint.matsuki.work/api/v1/` + 端点路径。
+
+v2 端点的完整 URL 为 `https://jietng-endpoint.matsuki.work/api/v2/` + 端点路径。
 
 #### 1. 获取用户列表
 
@@ -675,15 +678,70 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 15. 生成成绩图
+### API v2 端点（图像生成）
+
+以下端点均位于 `/api/v2/` 路径下，返回 `image/png` 格式的图像数据。
+
+#### 15. 生成歌曲信息图
 
 ```
-GET /api/v1/users/<user_id>/image?command=<command>
+GET /api/v2/songs/<song_id>/image?ver=<version>
+```
+
+**说明：** 生成指定歌曲的详细信息图片，包含封面、难度、谱面定数等信息。
+
+**权限要求：** 任何有效 Token
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `ver` | string | ❌ | 服务器版本，`jp` 或 `intl`，默认 `jp` |
+
+**示例:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v2/songs/834/image?ver=jp" \
+     --output song_info.png
+```
+
+**响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
+
+#### 16. 生成用户歌曲记录图
+
+```
+GET /api/v2/users/<user_id>/songs/<song_id>/image
+```
+
+**说明：** 生成用户在指定歌曲各难度的游玩记录图片。
+
+**权限要求：** 所有者或被授权 Token
+
+**路径参数：**
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `user_id` | string | 用户 ID |
+| `song_id` | string | 歌曲 ID |
+
+**示例:**
+```bash
+curl -H "Authorization: Bearer abc123..." \
+     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/songs/834/image" \
+     --output song_record.png
+```
+
+**响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
+
+#### 17. 生成成绩图
+
+```
+GET /api/v2/users/<user_id>/image?command=<command>
 ```
 
 **说明：** 生成用户的成绩图片，直接返回 PNG 图像数据。
 
-**权限要求：** 所有者或被授权 Token（`@require_user_permission`）
+**权限要求：** 所有者或被授权 Token
 
 **查询参数：**
 
@@ -708,21 +766,21 @@ GET /api/v1/users/<user_id>/image?command=<command>
 **示例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/image?command=b50" \
+     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/image?command=b50" \
      --output b50.png
 ```
 
 **响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
 
-#### 16. 生成段位牌图
+#### 18. 生成段位牌图
 
 ```
-GET /api/v1/users/<user_id>/plate?title=<title>
+GET /api/v2/users/<user_id>/plate?title=<title>
 ```
 
 **说明：** 生成用户的段位牌图片，直接返回 PNG 图像数据。
 
-**权限要求：** 所有者或被授权 Token（`@require_user_permission`）
+**权限要求：** 所有者或被授权 Token
 
 **查询参数：**
 
@@ -733,21 +791,21 @@ GET /api/v1/users/<user_id>/plate?title=<title>
 **示例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/plate?title=覇極" \
+     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/plate?title=覇極" \
      --output plate.png
 ```
 
 **响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
 
-#### 17. 生成达成情况图
+#### 19. 生成达成情况图
 
 ```
-GET /api/v1/users/<user_id>/achievement?level=<level>&rank=<rank>
+GET /api/v2/users/<user_id>/achievement?level=<level>&rank=<rank>
 ```
 
 **说明：** 生成指定难度等级的达成情况图片，直接返回 PNG 图像数据。
 
-**权限要求：** 所有者或被授权 Token（`@require_user_permission`）
+**权限要求：** 所有者或被授权 Token
 
 **查询参数：**
 
@@ -761,7 +819,7 @@ GET /api/v1/users/<user_id>/achievement?level=<level>&rank=<rank>
 **示例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/achievement?level=15&rank=sss" \
+     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/achievement?level=15&rank=sss" \
      --output achievement.png
 ```
 
@@ -908,13 +966,15 @@ LINE 用户会收到权限请求的 FlexMessage 通知，可以直接在 LINE �
 | `/users/<user_id>/permissions/<token_id>` | DELETE | 撤销已授予的权限 | **仅所有者** |
 | `/users/<user_id>/permissions/self` | DELETE | 自撤销访问权限 | 已授权 Token（非所有者）|
 
-### 图像生成端点
+### 图像生成端点（v2）
 
 | 端点 | 方法 | 说明 | 权限要求 |
 |----------------|--------------|-------------------|----------|
-| `/users/<user_id>/image` | GET | 生成成绩图 | 所有者或被授权 |
-| `/users/<user_id>/plate` | GET | 生成段位牌图 | 所有者或被授权 |
-| `/users/<user_id>/achievement` | GET | 生成达成情况图 | 所有者或被授权 |
+| `/api/v2/songs/<song_id>/image` | GET | 生成歌曲信息图 | 任何 Token |
+| `/api/v2/users/<user_id>/songs/<song_id>/image` | GET | 生成用户歌曲记录图 | 所有者或被授权 |
+| `/api/v2/users/<user_id>/image` | GET | 生成成绩图 | 所有者或被授权 |
+| `/api/v2/users/<user_id>/plate` | GET | 生成段位牌图 | 所有者或被授权 |
+| `/api/v2/users/<user_id>/achievement` | GET | 生成达成情况图 | 所有者或被授权 |
 
 ## 安全建议
 
@@ -1058,9 +1118,14 @@ curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/songs/search?q=ヒバナ&ver=j
 
 ## 版本历史
 
+- **v2.0** (2026-03-12): 新增 API v2 图像生成端点
+  - 图像生成端点迁移至 `/api/v2/` 路径
+  - 新增歌曲信息图生成（`GET /api/v2/songs/<song_id>/image`）
+  - 新增用户歌曲记录图生成（`GET /api/v2/users/<user_id>/songs/<song_id>/image`）
+  - 成绩图、段位牌图、达成情况图迁移至 v2
 - **v1.3** (2026-02-27): 新增自撤销权限和图像生成端点
   - 新增 `DELETE /permissions/self` 允许 Token 主动放弃已授权访问
-  - 新增 3 个图像生成端点（成绩图、段位牌图、达成情况图）
+  - 新增 3 个图像生成端点（成绩图、段位牌图、达成情况图）（已迁移至 v2）
 - **v1.2** (2026-02-03): 修改以符合 RESTful API 标准
   - 修改所有字段以更好地贴合 RESTful API 标准
 - **v1.1** (2025-12-04): 添加权限请求系统
