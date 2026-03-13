@@ -8,7 +8,6 @@ import re
 from urllib.parse import quote
 from lxml import etree
 import os
-from modules.record_manager import get_detailed_info
 from modules.config_loader import DOMAIN, RATING_DIR
 
 logger = logging.getLogger(__name__)

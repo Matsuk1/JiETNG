@@ -4,7 +4,6 @@
 提供优化的歌曲搜索和匹配功能,支持多语言(日语/英语)
 """
 
-import difflib
 import functools
 import re
 import unicodedata
@@ -182,40 +181,3 @@ def find_matching_songs(query: str, SONGS: list, max_results: int = 6, threshold
                 break
 
     return matching_songs
-
-
-def is_exact_song_match(record_name: str, song_title: str) -> bool:
-    """
-    判断记录中的歌曲名是否与歌曲数据中的标题完全匹配
-    用于匹配用户游玩记录和歌曲数据
-
-    Args:
-        record_name: 用户记录中的歌曲名
-        song_title: 歌曲数据中的标题
-
-    Returns:
-        bool: 是否完全匹配
-    """
-    # 策略1: 精确匹配
-    if record_name == song_title:
-        return True
-
-    # 策略2: 标准化后匹配 (处理全角半角问题)
-    normalized_record = normalize_text(record_name)
-    normalized_song = normalize_text(song_title)
-
-    if normalized_record == normalized_song:
-        return True
-
-    # 策略3: 序列相似度 >= 1.0 (difflib精确匹配)
-    # 保留原有逻辑兼容性
-    similarity = difflib.SequenceMatcher(None, record_name, song_title).ratio()
-    if similarity >= 1.0:
-        return True
-
-    # 策略4: 非常高的相似度 (>= 0.98) 且标准化后相同
-    # 处理细微差异 (如空格、标点)
-    if similarity >= 0.98 and normalized_record == normalized_song:
-        return True
-
-    return False

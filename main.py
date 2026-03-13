@@ -133,7 +133,7 @@ from modules.line_messenger import smart_reply, smart_push, notify_admins_error,
 from modules.perm_request_generator import generate_perm_request_message
 from modules import notification_manager
 from modules.config_loader import VAPID_PUBLIC_KEY
-from modules.song_matcher import find_matching_songs, is_exact_song_match, normalize_text
+from modules.song_matcher import find_matching_songs, normalize_text
 from modules.memory_manager import memory_manager, cleanup_user_caches, cleanup_rate_limiter_tracking
 
 # Module aliases for specific use cases
@@ -2047,7 +2047,7 @@ async def get_song_record(user_id, id_use, acronym, ver="jp"):
     for song in matching_songs:
         has_record = False
         for rcd in song_record:
-            if is_exact_song_match(rcd['cover_name'], song['cover_name']) and rcd['type'] == song['type']:
+            if rcd['cover_name'] == song['cover_name'] and rcd['type'] == song['type']:
                 has_record = True
                 break
         if has_record:
@@ -2104,7 +2104,7 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
     # 查找用户的游玩记录
     played_data = []
     for rcd in song_record:
-        if is_exact_song_match(rcd['cover_name'], matching_song['cover_name']) and rcd['type'] == matching_song['type']:
+        if rcd['cover_name'] == matching_song['cover_name'] and rcd['type'] == matching_song['type']:
             played_data.append(rcd)
             song_name = rcd['name']
 
@@ -2221,7 +2221,6 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     }
 
     # 优化：构建用户记录的哈希表，避免嵌套循环 O(n*m*p) -> O(n*m)
-    # 使用多个key策略保持与 is_exact_song_match 的兼容性
 
     rcd_map = {}
     for rcd in version_rcd_data:
@@ -2393,14 +2392,9 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
         difficulty = rcd['difficulty']
         type = rcd['type']
 
-        # 策略1: 精确匹配
+        # 精确匹配
         key1 = (name, difficulty, type)
         rcd_map[key1] = rcd
-
-        # 策略2: 标准化匹配
-        normalized_name = normalize_text(name)
-        key2 = (normalized_name, difficulty, type)
-        rcd_map[key2] = rcd
 
     # 收集数据并统计
     target_data = []
@@ -6421,7 +6415,7 @@ def api_v2_song_record(user_id, song_id):
 
         played_data = []
         for rcd in song_record:
-            if is_exact_song_match(rcd['cover_name'], matching_song['cover_name']) and rcd['type'] == matching_song['type']:
+            if rcd['cover_name'] == matching_song['cover_name'] and rcd['type'] == matching_song['type']:
                 played_data.append(rcd)
 
         if not played_data:
