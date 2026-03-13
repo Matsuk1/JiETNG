@@ -256,7 +256,7 @@ function writeCookie() {
         </div>
         <div class="param-field">
           <label>Version</label>
-          <input class="ver-input" type="text" v-model="paramVer" placeholder="e.g. buddies or splash splash+" :disabled="loading" />
+          <input class="ver-input" type="text" v-model="paramVer" placeholder="e.g. splash+ (plus → +)" :disabled="loading" />
         </div>
         <div class="param-field param-field--inline">
           <label>Page</label>

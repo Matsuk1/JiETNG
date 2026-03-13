@@ -257,7 +257,7 @@ function writeCookie() {
         </div>
         <div class="param-field">
           <label>版本</label>
-          <input class="ver-input" type="text" v-model="paramVer" placeholder="如 buddies 或 splash splash+" :disabled="loading" />
+          <input class="ver-input" type="text" v-model="paramVer" placeholder="如 splash+ (plus → +)" :disabled="loading" />
         </div>
         <div class="param-field param-field--inline">
           <label>页码</label>

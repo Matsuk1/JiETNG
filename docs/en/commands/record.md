@@ -36,7 +36,7 @@ All B-series commands support the following filter parameters:
 | `-star [value] [max]` | Filter by DX star count. Single value = exact match; two values = range | `-star 3` or `-star 3 5` |
 | `-scr [min] [max]` | Filter by achievement rate (max optional) | `-scr 100.3` or `-scr 99 100` |
 | `-dx [min] [max]` | Filter by DX score percentage (max optional) | `-dx 92` or `-dx 90 95` |
-| `-ver [versions...]` | Filter by version, multiple allowed | `-ver buddies` or `-ver splash splash+` |
+| `-ver [versions...]` | Filter by version, multiple allowed | `-ver buddies` or `-ver splash splash+` (plus → +) |
 | `-diff [difficulties...]` | Filter by difficulty, multiple allowed | `-diff mas` or `-diff mas rem` |
 | `-type [dx\|std]` | Filter by chart type | `-type dx` |
 | `-page [n]` | Pagination | `-page 2` |

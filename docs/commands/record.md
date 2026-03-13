@@ -36,7 +36,7 @@ rct50 / r50               # Recent 50（最近 50 次游玩）
 | `-star [值] [最大值]` | 按 DX 星数筛选。单值精确匹配，双值为范围 | `-star 3` 或 `-star 3 5` |
 | `-scr [最小值] [最大值]` | 按达成率筛选（最大值可选） | `-scr 100.3` 或 `-scr 99 100` |
 | `-dx [最小值] [最大值]` | 按 DX score 百分比筛选（最大值可选） | `-dx 92` 或 `-dx 90 95` |
-| `-ver [版本...]` | 按版本筛选，可多选 | `-ver buddies` 或 `-ver splash splash+` |
+| `-ver [版本...]` | 按版本筛选，可多选 | `-ver buddies` 或 `-ver splash splash+` (plus → +) |
 | `-diff [难度...]` | 按难度筛选，可多选 | `-diff mas` 或 `-diff mas rem` |
 | `-type [dx\|std]` | 按谱面类型筛选 | `-type dx` |
 | `-page [页码]` | 翻页 | `-page 2` |
