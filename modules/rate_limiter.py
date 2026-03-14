@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 user_request_tracking = {}  # {user_id: {task_type: [timestamp1, timestamp2, ...]}}
 user_request_lock = threading.Lock()
 REQUEST_LIMIT_WINDOW = 20  # 时间窗口
-MAX_SAME_REQUESTS = 2  # 同一时间窗口内允许的最大相同请求数
+MAX_SAME_REQUESTS = 4  # 同一时间窗口内允许的最大相同请求数
 
 
 def check_rate_limit(user_id: str, task_type: str) -> bool:

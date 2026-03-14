@@ -22,6 +22,7 @@ import urllib3
 import time
 import subprocess
 import gc
+import math
 import base64 as b64mod
 
 from functools import wraps
@@ -1141,9 +1142,9 @@ def _get_user_bg_filter(user_id):
     """
     udata = USERS.get(user_id, {})
     if not udata.get('bg_enabled', False):
-        return []
+        return None
     bg_files = udata.get('bg_files', [])
-    return bg_files if bg_files else None
+    return bg_files
 
 
 @app.route("/linebot/perms/revoke", methods=["POST"])
@@ -2655,6 +2656,7 @@ def generate_profile(user_info, scale=1, user_id=None):
 
 def select_records(song_record, type="best50", command="", ver="jp"):
     page = 1
+    times = 1
     sort_rule = lambda x: (x["ra"], float(x["score"][:-1]))
     filter_rules = [
         (lambda x: x['new_song'] == False),
@@ -2689,7 +2691,7 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 if len(parts) == 1:
                     level = float(parts[0])
                     song_record = list(filter(lambda x: x['internalLevelValue'] == level, song_record))
-                    details['Lv'] = f'= {level}'
+                    details['Lv'] = f'{level}'
                 else:
                     lv_start, lv_stop = map(float, parts[:2])
                     song_record = list(filter(lambda x: lv_start <= x['internalLevelValue'] <= lv_stop, song_record))
@@ -2705,7 +2707,7 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 if len(parts) == 1:
                     ra = int(parts[0])
                     song_record = list(filter(lambda x: x['ra'] == ra, song_record))
-                    details['RA'] = f'= {ra}'
+                    details['RA'] = f'{ra}'
                 else:
                     ra_start, ra_stop = map(int, parts[:2])
                     song_record = list(filter(lambda x: ra_start <= x['ra'] <= ra_stop, song_record))
@@ -2729,7 +2731,7 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 if len(parts) == 1:
                     dx_star = int(re.sub(r"\D", "", parts[0]))
                     song_record = list(filter(lambda x: x['dx_star'] == dx_star, song_record))
-                    details['Star'] = f'= {dx_star}'
+                    details['Star'] = f'{dx_star}'
                 else:
                     dx_start = int(re.sub(r"\D", "", parts[0]))
                     dx_stop = int(re.sub(r"\D", "", parts[1]))
@@ -2783,45 +2785,57 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                         details['Page'] = str(page)
                 except ValueError:
                     pass
+            elif cmd in ["times", "tm"]:
+                parts = cmd_num.split()
+                times = min(float(parts[0]), 2.5)
+                if times > 0:
+                    details['Times'] = times
+                else:
+                    times = 1
 
     up_songs = down_songs = []
 
     up_songs_data = list(filter(filter_rules[0], song_record))
     down_songs_data = list(filter(filter_rules[1], song_record))
 
+    num_50 = math.ceil(50 * times / 5) * 5
+    num_35 = math.ceil(35 * times / 5) * 5
+    num_25 = math.ceil(25 * times / 5) * 5
+    num_15 = math.ceil(15 * times / 5) * 5
+
     if type == "best50":
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*num_35 : page*num_35]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*num_15 : page*num_15]
 
     elif type == "best40":
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*25 : page*25]
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*num_25 : page*num_25]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*num_15 : page*num_15]
 
     elif type == "best35":
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*num_35 : page*num_35]
 
     elif type == "best15":
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*num_15 : page*num_15]
 
     elif type == "allb35":
-        up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
+        up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*num_35 : page*num_35]
 
     elif type == "allb50":
-        up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*50 : page*50]
+        up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*num_50 : page*num_50]
 
     elif type == "apb50":
         up_songs_data = [x for x in up_songs_data if x.get("combo_icon") in ("ap", "app")]
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*num_35 : page*num_35]
 
         down_songs_data = [x for x in down_songs_data if x.get("combo_icon") in ("ap", "app")]
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*num_15 : page*num_15]
 
     elif type == "fdxb50":
         up_songs_data = [x for x in up_songs_data if x.get("sync_icon") in ("fdx", "fdxp")]
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*num_35 : page*num_35]
 
         down_songs_data = [x for x in down_songs_data if x.get("sync_icon") in ("fdx", "fdxp")]
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*num_15 : page*num_15]
 
     elif type == "unknown":
         up_songs = list(filter(lambda x: x['version'] == "UNKNOWN", song_record))
@@ -2848,8 +2862,8 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 rcd['combo_icon'] = "app"
             rcd['ra'] = get_single_ra(rcd['internalLevelValue'], ideal_score, ideal_score == 101)
 
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*35 : page*35]
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*15 : page*15]
+        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*num_35 : page*num_35]
+        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*num_15 : page*num_15]
 
     else:
         return select_records(song_record, "best50", command, ver)

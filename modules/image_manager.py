@@ -265,12 +265,14 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
     has_bg_image = False
     try:
         all_bg_files = [f for f in os.listdir(BG_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
-        # bg_filter=None → 白色背景, bg_filter=[] → 白色背景, bg_filter=[items] → 指定列表
+        if not all_bg_files:
+            raise FileNotFoundError("No background images found")
+        # bg_filter=None → 白色背景, bg_filter=[] → 列表内抽取, bg_filter=[items] → 指定列表
         if bg_filter:
             candidate_files = [f for f in bg_filter if f in all_bg_files]
+        elif bg_filter == []:
+            candidate_files = [f for f in all_bg_files if not f.startswith('jietnguser_')]
         else:
-            candidate_files = []
-        if not candidate_files:
             raise FileNotFoundError("No candidate backgrounds")
         bg_path = os.path.join(BG_DIR, random.choice(candidate_files))
         bg_img = Image.open(bg_path).convert("RGB")
