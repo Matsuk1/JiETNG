@@ -39,6 +39,7 @@ rct50 / r50               # Recent 50（最近 50 次游玩）
 | `-ver [版本...]` | 按版本筛选，可多选 | `-ver buddies` 或 `-ver splash splash+` (plus → +) |
 | `-diff [难度...]` | 按难度筛选，可多选 | `-diff mas` 或 `-diff mas rem` |
 | `-type [dx\|std]` | 按谱面类型筛选 | `-type dx` |
+| `-times [倍率]` | 按倍率缩放显示数量（最大 2.5，向上取整到 5 的倍数） | `-times 2` |
 | `-page [页码]` | 翻页 | `-page 2` |
 
 ::: tip 难度简写
@@ -60,6 +61,7 @@ b50 -dx 92 95                            # DX score 92%~95%
 b50 -ver buddies -lv 14 14.9             # Buddies 版本 14 级歌曲
 b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER 且达成率 ≥100.5%
 b50 -type dx -diff mas                   # DX 谱面 MASTER 难度
+b50 -times 2                                # 显示 70+30（默认 35+15 的 2 倍）
 b50 -diff mas -lv 14 14.9 -page 2        # 翻到第 2 页
 ```
 

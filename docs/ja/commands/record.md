@@ -39,6 +39,7 @@ rct50 / r50               # Recent 50（最近 50 回のプレイ）
 | `-ver [バージョン...]` | バージョンでフィルター、複数指定可 | `-ver buddies` または `-ver splash splash+` (plus → +) |
 | `-diff [難易度...]` | 難易度でフィルター、複数指定可 | `-diff mas` または `-diff mas rem` |
 | `-type [dx\|std]` | 譜面タイプでフィルター | `-type dx` |
+| `-times [倍率]` | 表示件数を倍率でスケーリング（最大 2.5、5 の倍数に切り上げ） | `-times 2` |
 | `-page [n]` | ページ送り | `-page 2` |
 
 ::: tip 難易度略語
@@ -60,6 +61,7 @@ b50 -dx 92 95                            # DX score 92%~95%
 b50 -ver buddies -lv 14 14.9             # Buddies バージョンのレベル 14 楽曲
 b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER かつ達成率 ≥100.5%
 b50 -type dx -diff mas                   # DX 譜面の MASTER 難易度
+b50 -times 2                                # 70+30 を表示（デフォルト 35+15 の 2 倍）
 b50 -diff mas -lv 14 14.9 -page 2        # 2 ページ目へ
 ```
 

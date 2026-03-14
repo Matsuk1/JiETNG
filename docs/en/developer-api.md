@@ -380,6 +380,7 @@ GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rat
   - `-dx <score>` or `-dx <min> <max>` - Filter by DX score
   - `-ver <version1> [version2] ...` - Filter by game version (supports multiple versions, space-separated)
   - `-diff <difficulty1> [difficulty2] ...` - Filter by chart difficulty (bas/adv/exp/mas/rem, supports multiple difficulties, space-separated)
+  - `-times <multiplier>` - Scale the number of displayed records by multiplier (max 2.5, rounded up to nearest 5. e.g., b50 with `-times 2` shows 70+30 instead of 35+15)
 
 **Example:**
 ```bash

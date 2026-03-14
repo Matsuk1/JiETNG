@@ -377,6 +377,7 @@ GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rat
   - `-dx <DX分数>` 或 `-dx <最小DX分数> <最大DX分数>` - 按 DX Score 筛选
   - `-ver <版本1> [版本2] ...` - 按游戏版本筛选（支持多个版本，空格分隔）
   - `-diff <难度1> [难度2] ...` - 按谱面难度筛选（bas/adv/exp/mas/rem，支持多个难度，空格分隔）
+  - `-times <倍率>` - 按倍率缩放显示数量（最大 2.5，向上取整到 5 的倍数。例如 b50 使用 `-times 2` 时显示 70+30 而非 35+15）
 
 **示例:**
 ```bash

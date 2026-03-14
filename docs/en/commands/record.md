@@ -39,6 +39,7 @@ All B-series commands support the following filter parameters:
 | `-ver [versions...]` | Filter by version, multiple allowed | `-ver buddies` or `-ver splash splash+` (plus → +) |
 | `-diff [difficulties...]` | Filter by difficulty, multiple allowed | `-diff mas` or `-diff mas rem` |
 | `-type [dx\|std]` | Filter by chart type | `-type dx` |
+| `-times [multiplier]` | Scale display count by multiplier (max 2.5, rounded up to nearest 5) | `-times 2` |
 | `-page [n]` | Pagination | `-page 2` |
 
 ::: tip Difficulty abbreviations
@@ -60,6 +61,7 @@ b50 -dx 92 95                            # DX score 92%~95%
 b50 -ver buddies -lv 14 14.9             # Buddies version level 14 songs
 b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER with achievement ≥100.5%
 b50 -type dx -diff mas                   # DX charts, MASTER difficulty
+b50 -times 2                                # Show 70+30 (2x the default 35+15)
 b50 -diff mas -lv 14 14.9 -page 2        # Go to page 2
 ```
 
