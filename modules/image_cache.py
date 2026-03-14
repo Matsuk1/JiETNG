@@ -45,8 +45,6 @@ def download_and_cache_icon(url, save_path):
         PIL.Image 或 None
     """
     try:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-
         if os.path.exists(save_path):
             return Image.open(save_path).convert("RGBA")
 
@@ -108,8 +106,6 @@ def get_cover_image(cover_url, cover_name, covers_dir=None):
     try:
         if covers_dir is None:
             covers_dir = COVERS_DIR
-
-        os.makedirs(covers_dir, exist_ok=True)
 
         local_path = os.path.join(covers_dir, cover_name)
 

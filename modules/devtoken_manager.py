@@ -60,8 +60,6 @@ def save_dev_tokens(tokens=None, force=False):
         return True
 
     try:
-        dir_path = os.path.dirname(os.path.abspath(DEV_TOKENS_FILE))
-        os.makedirs(dir_path, exist_ok=True)
         with open(DEV_TOKENS_FILE, 'w', encoding='utf-8') as f:
             json.dump(_dev_tokens, f, ensure_ascii=False, indent=2)
         _dirty = False

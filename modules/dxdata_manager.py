@@ -203,8 +203,6 @@ def load_dxdata_version_history():
 def save_dxdata_version_history(stats):
     """保存 dxdata 版本历史"""
     try:
-        os.makedirs(os.path.dirname(DXDATA_VERSION_FILE), exist_ok=True)
-
         with open(DXDATA_VERSION_FILE, 'w', encoding='utf-8') as f:
             json.dump(stats, f, ensure_ascii=False, indent=2)
         return True

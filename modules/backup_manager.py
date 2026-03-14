@@ -12,6 +12,7 @@ import logging
 from datetime import datetime
 from typing import Tuple, Optional
 import pyzipper
+from modules.config_loader import BACKUP_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,6 @@ def create_backup(
     config_data: dict,
     db_config: dict,
     backup_password: str,
-    output_dir: str
 ) -> Tuple[bool, str, Optional[str]]:
     """
     创建系统备份
@@ -31,7 +31,6 @@ def create_backup(
         config_data: 配置数据字典
         db_config: 数据库配置 {"host", "user", "password", "database"}
         backup_password: 备份文件密码
-        output_dir: 输出目录
 
     Returns:
         (成功标志, 消息, 备份文件路径)
@@ -63,10 +62,7 @@ def create_backup(
             # 4. 创建加密的ZIP文件
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_filename = f"backup_{timestamp}.zip"
-            backup_path = os.path.join(output_dir, backup_filename)
-
-            # 确保输出目录存在
-            os.makedirs(output_dir, exist_ok=True)
+            backup_path = os.path.join(BACKUP_DIR, backup_filename)
 
             # 创建加密压缩包
             with pyzipper.AESZipFile(backup_path, 'w', compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES) as zf:
@@ -87,7 +83,7 @@ def create_backup(
                 f"📦 File: {backup_filename}\n"
                 f"📊 Size: {size_mb:.2f} MB\n"
                 f"{password_note}\n"
-                f"📁 Location: {output_dir}/",
+                f"📁 Location: {BACKUP_DIR}/",
                 backup_path
             )
 

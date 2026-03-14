@@ -69,8 +69,6 @@ def save_tip_ad_data():
         bool: 是否保存成功
     """
     try:
-        os.makedirs(os.path.dirname(TIP_AD_FILE), exist_ok=True)
-
         with open(TIP_AD_FILE, 'w', encoding='utf-8') as f:
             json.dump(TIP_AD_DATA, f, ensure_ascii=False, indent=2)
 

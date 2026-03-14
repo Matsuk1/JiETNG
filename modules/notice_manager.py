@@ -93,7 +93,6 @@ def _load_notices():
 
 def _save_notices(notices):
     """保存公告列表到文件"""
-    os.makedirs(os.path.dirname(NOTICE_FILE), exist_ok=True)
     with open(NOTICE_FILE, 'w', encoding='utf-8') as f:
         json.dump({"notices": notices}, f, ensure_ascii=False, indent=2)
 

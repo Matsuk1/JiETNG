@@ -6,7 +6,18 @@ import logging
 from datetime import datetime
 import os
 from typing import List, Dict, Any
-from modules.config_loader import _config, write_user, mark_user_dirty, USERS
+from modules.config_loader import (
+    DXDATA_LIST, DXDATA_VERSION_FILE, OVERRIDE_LIST,
+    USER_LIST, NOTICE_FILE, TIP_AD_FILE,
+    BACKUP_DIR, DEV_TOKENS_FILE, IMG_DIR,
+    FONT_PATH, LOGO_PATH, QR_CODE,
+    VERSIONS_DIR, COVERS_DIR, PLATES_DIR,
+    ICON_TYPE_DIR, ICON_SCORE_DIR, ICON_DX_STAR_DIR,
+    ICON_COMBO_DIR, ICON_SYNC_DIR,
+    ICON_COMBO_RCD_DIR, ICON_SYNC_RCD_DIR,
+    ICON_BASE_DIR, BG_DIR, RATING_DIR,
+    write_user, mark_user_dirty, USERS
+)
 from modules.user_manager import delete_user
 from modules.dbpool_manager import get_connection
 
@@ -119,38 +130,62 @@ def check_database_connection() -> bool:
 
 def check_required_files() -> Dict[str, bool]:
     """
-    检查必要文件是否存在
+    检查必要文件和目录，不存在则自动创建
 
     Returns:
         文件检查结果字典
     """
-    file_path_config = _config.get("file_path", {})
-
     required_files = {
-        "config.json": "config.json",
-        "dxdata_list": file_path_config.get("dxdata_list", ""),
-        "user_list": file_path_config.get("user_list", ""),
-        "font_file": file_path_config.get("font", ""),
-        "logo_file": file_path_config.get("logo", ""),
+        "config.json": ("file", "config.json"),
+        "dxdata_list": ("file", DXDATA_LIST),
+        "dxdata_version": ("file", DXDATA_VERSION_FILE),
+        "override_list": ("file", OVERRIDE_LIST),
+        "user_list": ("file", USER_LIST),
+        "notice_file": ("file", NOTICE_FILE),
+        "tip_ad_file": ("file", TIP_AD_FILE),
+        "dev_tokens": ("file", DEV_TOKENS_FILE),
+        "font": ("file", FONT_PATH),
+        "logo": ("file", LOGO_PATH),
+        "qrcode": ("file", QR_CODE),
+        "backup_dir": ("dir", BACKUP_DIR),
+        "img_dir": ("dir", IMG_DIR),
+        "versions_dir": ("dir", VERSIONS_DIR),
+        "covers_dir": ("dir", COVERS_DIR),
+        "plates_dir": ("dir", PLATES_DIR),
+        "icon_type": ("dir", ICON_TYPE_DIR),
+        "icon_score": ("dir", ICON_SCORE_DIR),
+        "icon_dx_star": ("dir", ICON_DX_STAR_DIR),
+        "icon_combo": ("dir", ICON_COMBO_DIR),
+        "icon_sync": ("dir", ICON_SYNC_DIR),
+        "icon_combo_rcd": ("dir", ICON_COMBO_RCD_DIR),
+        "icon_sync_rcd": ("dir", ICON_SYNC_RCD_DIR),
+        "icon_base": ("dir", ICON_BASE_DIR),
+        "bg_dir": ("dir", BG_DIR),
+        "rating_dir": ("dir", RATING_DIR),
     }
 
     results = {}
-    all_pass = True
 
-    for name, path in required_files.items():
+    for name, (kind, path) in required_files.items():
         if not path:
-            logger.warning(f"[SystemCheck] ⚠ File path not configured: file={name}")
+            logger.warning(f"[SystemCheck] ⚠ Path not configured: {name}")
             results[name] = False
             continue
 
-        exists = os.path.exists(path)
-        results[name] = exists
-
-        if exists:
-            logger.info(f"[SystemCheck] ✓ File exists: file={name}, path={path}")
+        if kind == "dir":
+            if not os.path.isdir(path):
+                os.makedirs(path, exist_ok=True)
+                logger.info(f"[SystemCheck] ✓ Directory created: {name} -> {path}")
+            else:
+                logger.info(f"[SystemCheck] ✓ Directory exists: {name} -> {path}")
         else:
-            logger.warning(f"[SystemCheck] ✗ File not found: file={name}, path={path}")
-            all_pass = False
+            if not os.path.isfile(path):
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                open(path, 'a').close()
+                logger.info(f"[SystemCheck] ✓ File created: {name} -> {path}")
+            else:
+                logger.info(f"[SystemCheck] ✓ File exists: {name} -> {path}")
+        results[name] = True
 
     return results
 

@@ -132,7 +132,6 @@ from modules.rate_limiter import check_rate_limit
 from modules.line_messenger import smart_reply, smart_push, notify_admins_error, notify_on_error
 from modules.perm_request_generator import generate_perm_request_message
 from modules import notification_manager
-from modules.config_loader import VAPID_PUBLIC_KEY
 from modules.song_matcher import find_matching_songs, normalize_text
 from modules.memory_manager import memory_manager, cleanup_user_caches, cleanup_rate_limiter_tracking
 
@@ -743,7 +742,7 @@ def serve_image(image_id):
     # 验证image_id格式（防止路径穿越攻击）
     if not image_id.replace('-', '').replace('_', '').isalnum():
         logger.warning(f"[ImageHost] ⚠ Invalid image_id format: id={image_id}")
-        abort(404)
+        return send_from_directory('assets/pics', '404.png', mimetype='image/png'), 404
 
     # 添加.png扩展名
     filename = f"{image_id}.png"
@@ -752,7 +751,7 @@ def serve_image(image_id):
     # 检查文件是否存在
     if not os.path.exists(image_path):
         logger.warning(f"[ImageHost] ⚠ Image not found: id={image_id}")
-        abort(404)
+        return send_from_directory('assets/pics', '404.png', mimetype='image/png'), 404
 
     logger.info(f"[ImageHost] → Serving image: id={image_id}")
     return send_from_directory(IMG_DIR, filename, mimetype='image/png')
@@ -5168,7 +5167,6 @@ def admin_create_backup():
             config_data=config_data,
             db_config=db_config,
             backup_password=ADMIN_PASSWORD,
-            output_dir=BACKUP_DIR
         )
 
         return jsonify({'success': success, 'message': message})

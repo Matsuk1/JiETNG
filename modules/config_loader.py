@@ -29,33 +29,6 @@ default_config = {
     "domain": "",
     "host": "0.0.0.0",
     "port": 5000,
-    "file_path": {
-        "dxdata_list": "./data/dxdata/dxdata.json",
-        "dxdata_version": "./data/dxdata/dxdata_version.json",
-        "override_list": "./data/dxdata/intl_override.json",
-        "user_list": "./data/user.json.enc",
-        "notice_file": "./data/notice.json",
-        "tip_ad_file": "./data/tip_ad.json",
-        "backup": "./data/backup",
-        "img_dir": "./data/images",
-        "dev_tokens": "./data/dev_tokens.json",
-        "font": "./assets/fonts/line_seed_jietng.ttf",
-        "logo": "./assets/pics/logo.png",
-        "qrcode": "./assets/pics/qrcode.png",
-        "versions": "./assets/versions",
-        "covers": "./assets/covers",
-        "plates": "./assets/plates",
-        "icon_type": "./assets/icon/type",
-        "icon_score": "./assets/icon/score",
-        "icon_dx_star": "./assets/icon/dx_star",
-        "icon_combo": "./assets/icon/combo",
-        "icon_sync": "./assets/icon/sync",
-        "icon_combo_rcd": "./assets/icon/combo_rcd",
-        "icon_sync_rcd": "./assets/icon/sync_rcd",
-        "icon_base": "./assets/icon",
-        "bg_dir": "./assets/pics/bg",
-        "rating_dir": "./assets/pics/rating"
-    },
     "record_database": {
         "host": "localhost",
         "user": "root",
@@ -170,33 +143,32 @@ DOMAIN = _config["domain"]
 HOST = _config["host"]
 PORT = _config["port"]
 
-# 文件路径字段
-FILE_PATH = _config["file_path"]
-DXDATA_LIST = FILE_PATH["dxdata_list"]
-DXDATA_VERSION_FILE = FILE_PATH["dxdata_version"]
-OVERRIDE_LIST = FILE_PATH["override_list"]
-USER_LIST = FILE_PATH["user_list"]
-NOTICE_FILE = FILE_PATH["notice_file"]
-TIP_AD_FILE = FILE_PATH["tip_ad_file"]
-BACKUP_DIR = FILE_PATH["backup"]
-DEV_TOKENS_FILE = FILE_PATH["dev_tokens"]
-FONT_PATH = FILE_PATH["font"]
-LOGO_PATH = FILE_PATH["logo"]
-QR_CODE = FILE_PATH["qrcode"]
-VERSIONS_DIR = FILE_PATH["versions"]
-COVERS_DIR = FILE_PATH["covers"]
-PLATES_DIR = FILE_PATH["plates"]
-ICON_TYPE_DIR = FILE_PATH["icon_type"]
-ICON_SCORE_DIR = FILE_PATH["icon_score"]
-ICON_DX_STAR_DIR = FILE_PATH["icon_dx_star"]
-ICON_COMBO_DIR = FILE_PATH["icon_combo"]
-ICON_SYNC_DIR = FILE_PATH["icon_sync"]
-ICON_COMBO_RCD_DIR = FILE_PATH["icon_combo_rcd"]
-ICON_SYNC_RCD_DIR = FILE_PATH["icon_sync_rcd"]
-ICON_BASE_DIR = FILE_PATH["icon_base"]
-IMG_DIR = FILE_PATH["img_dir"]
-BG_DIR = FILE_PATH["bg_dir"]
-RATING_DIR = FILE_PATH["rating_dir"]
+# 文件路径
+DXDATA_LIST = "./data/dxdata/dxdata.json"
+DXDATA_VERSION_FILE = "./data/dxdata/dxdata_version.json"
+OVERRIDE_LIST = "./data/dxdata/intl_override.json"
+USER_LIST = "./data/user.json.enc"
+NOTICE_FILE = "./data/notice.json"
+TIP_AD_FILE = "./data/tip_ad.json"
+BACKUP_DIR = "./data/backup"
+DEV_TOKENS_FILE = "./data/dev_tokens.json"
+IMG_DIR = "./data/images"
+FONT_PATH = "./assets/fonts/line_seed_jietng.ttf"
+LOGO_PATH = "./assets/pics/logo.png"
+QR_CODE = "./assets/pics/qrcode.png"
+VERSIONS_DIR = "./assets/versions"
+COVERS_DIR = "./assets/covers"
+PLATES_DIR = "./assets/plates"
+ICON_TYPE_DIR = "./assets/icon/type"
+ICON_SCORE_DIR = "./assets/icon/score"
+ICON_DX_STAR_DIR = "./assets/icon/dx_star"
+ICON_COMBO_DIR = "./assets/icon/combo"
+ICON_SYNC_DIR = "./assets/icon/sync"
+ICON_COMBO_RCD_DIR = "./assets/icon/combo_rcd"
+ICON_SYNC_RCD_DIR = "./assets/icon/sync_rcd"
+ICON_BASE_DIR = "./assets/icon"
+BG_DIR = "./assets/pics/bg"
+RATING_DIR = "./assets/pics/rating"
 
 # 数据库配置字段
 RECORD_DATABASE = _config["record_database"]
@@ -316,6 +288,3 @@ def mark_user_dirty():
     """标记用户数据已修改"""
     global _user_data_dirty
     _user_data_dirty = True
-
-# 确保图片目录存在
-os.makedirs(IMG_DIR, exist_ok=True)
