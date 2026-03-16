@@ -215,13 +215,22 @@ async def smart_upload(img, user_id=None):
     Returns:
         tuple: (original_url, preview_url) 如果上传失败返回 (None, None)
     """
-    # 优先使用 Cloudflare R2（异步，永久存储，全球CDN加速）
+    # 计算图片大小
+    img_size_io = BytesIO()
+    img.save(img_size_io, format='PNG')
+    img_size = img_size_io.tell()
+    img_size_io.close()
+
+    # 优先使用 Cloudflare R2（异步，永久存储，全球CDN加速），限制 10MB 以内
     if R2_ENABLED:
-        logger.info("[ImageUploader] → Using Cloudflare R2")
-        r2_url = await _upload_to_r2(img, user_id)
-        if r2_url:
-            logger.info(f"[ImageUploader] ✓ R2 upload complete: url={r2_url}")
-            return r2_url, r2_url
+        if img_size <= 10 * 1024 * 1024:
+            logger.info(f"[ImageUploader] → Using Cloudflare R2 (size={img_size / 1024:.1f}KB)")
+            r2_url = await _upload_to_r2(img, user_id)
+            if r2_url:
+                logger.info(f"[ImageUploader] ✓ R2 upload complete: url={r2_url}")
+                return r2_url, r2_url
+        else:
+            logger.info(f"[ImageUploader] → Image too large for R2 (size={img_size / 1024 / 1024:.1f}MB > 10MB), using local")
 
     # R2 失败或未启用时，使用本地图床（在线程池中执行）
     logger.info("[ImageUploader] → Using local image host")

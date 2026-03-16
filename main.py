@@ -124,7 +124,7 @@ from modules.backup_manager import create_backup
 from modules.message_manager import *
 
 # Image processing
-from modules.image_uploader import smart_upload
+from modules.image_uploader import smart_upload, _start_periodic_cleanup
 from modules.image_manager import *
 
 # System utilities
@@ -132,7 +132,12 @@ from modules.system_checker import run_system_check, clean_unbound_users
 from modules.rate_limiter import check_rate_limit
 from modules.line_messenger import smart_reply, smart_push, notify_admins_error, notify_on_error
 from modules.perm_request_generator import generate_perm_request_message
-from modules import notification_manager
+from modules.notification_manager import (
+    get_notifications,
+    clear_notifications,
+    add_push_subscription,
+    remove_push_subscription
+)
 from modules.song_matcher import find_matching_songs, normalize_text
 from modules.memory_manager import memory_manager, cleanup_user_caches, cleanup_rate_limiter_tracking
 
@@ -5418,7 +5423,7 @@ def admin_get_notifications():
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    return jsonify(notification_manager.get_notifications())
+    return jsonify(get_notifications())
 
 
 @app.route("/admin/notifications", methods=["DELETE"])
@@ -5427,7 +5432,7 @@ def admin_clear_notifications():
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    notification_manager.clear_notifications()
+    clear_notifications()
     return jsonify({'success': True})
 
 
@@ -5450,7 +5455,7 @@ def admin_add_push_subscription():
     if not sub or not sub.get('endpoint'):
         return jsonify({'error': 'Invalid subscription'}), 400
 
-    notification_manager.add_push_subscription(sub)
+    add_push_subscription(sub)
     return jsonify({'success': True})
 
 
@@ -5465,7 +5470,7 @@ def admin_remove_push_subscription():
     if not endpoint:
         return jsonify({'error': 'Missing endpoint'}), 400
 
-    notification_manager.remove_push_subscription(endpoint)
+    remove_push_subscription(endpoint)
     return jsonify({'success': True})
 
 
@@ -6867,11 +6872,6 @@ if __name__ == "__main__":
 
     logger.info(f"[System] ✓ Workers started: image={MAX_CONCURRENT_IMAGE_TASKS}, web={WEB_MAX_CONCURRENT_TASKS}")
 
-    # 清理过期的图片（启动时执行一次）
-    logger.info("[System] → Cleaning up expired images...")
-    from modules.image_uploader import cleanup_expired_images, _start_periodic_cleanup
-    cleanup_expired_images()
-
     # 启动定期清理线程
     _start_periodic_cleanup()
 
@@ -6892,9 +6892,6 @@ if __name__ == "__main__":
             # 清理未绑定的用户（没有 sega_id 或 sega_pwd）
             cleanup_result = clean_unbound_users()
             cleaned_unbound_users = cleanup_result.get('deleted_count', 0)
-
-            # 清理过期的图片
-            cleanup_expired_images()
 
             # 刷新 dev tokens 缓存到磁盘
             flush_dev_tokens()
