@@ -41,6 +41,7 @@ const paramDxMax   = ref('')
 const paramDiff    = ref([])
 const paramType    = ref('')
 const paramVer     = ref('')
+const paramNext    = ref(false)
 const paramPage    = ref('')
 
 const DIFFS = ['bas', 'adv', 'exp', 'mas', 'rem']
@@ -73,6 +74,8 @@ const paramsString = computed(() => {
 
   const ver = String(paramVer.value).trim()
   if (ver) parts.push(`-ver ${ver}`)
+
+  if (paramNext.value) parts.push('-next')
 
   const page = parseInt(String(paramPage.value))
   if (page > 1) parts.push(`-page ${page}`)
@@ -257,6 +260,10 @@ function writeCookie() {
         <div class="param-field">
           <label>Version</label>
           <input class="ver-input" type="text" v-model="paramVer" placeholder="e.g. splash+ (plus → +)" :disabled="loading" />
+        </div>
+        <div class="param-field param-field--inline">
+          <label>Next Version Grouping</label>
+          <label class="next-toggle"><input type="checkbox" v-model="paramNext" :disabled="loading" />Enable</label>
         </div>
         <div class="param-field param-field--inline">
           <label>Page</label>
@@ -519,6 +526,24 @@ function writeCookie() {
 
 .page-input {
   width: 130px;
+}
+
+.next-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--vp-c-text-1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.next-toggle input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--vp-c-brand-1);
+  cursor: pointer;
 }
 
 .type-select {
