@@ -189,7 +189,7 @@ class ColoredFormatter(logging.Formatter):
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # 配置日志
-file_handler = logging.FileHandler('jietng.log', encoding='utf-8')
+file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
 file_handler.setFormatter(logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
@@ -4317,7 +4317,7 @@ def admin_panel():
     # 读取日志
     logs = ""
     try:
-        with open('jietng.log', 'r', encoding='utf-8') as f:
+        with open(LOG_FILE, 'r', encoding='utf-8') as f:
             logs = ''.join(f.readlines()[-100:])
     except Exception as e:
         logs = f"Error reading logs: {e}"
@@ -4400,7 +4400,7 @@ def admin_get_logs():
         return jsonify({'error': 'Unauthorized'}), 401
 
     try:
-        with open('jietng.log', 'r', encoding='utf-8') as f:
+        with open(LOG_FILE, 'r', encoding='utf-8') as f:
             logs = ''.join(f.readlines()[-100:])
         return jsonify({'logs': logs})
     except Exception as e:

@@ -144,9 +144,10 @@ HOST = _config["host"]
 PORT = _config["port"]
 
 # 文件路径
+LOG_FILE = "./jietng.log"
 DXDATA_LIST = "./data/dxdata/dxdata.json"
 DXDATA_VERSION_FILE = "./data/dxdata/dxdata_version.json"
-OVERRIDE_LIST = "./data/dxdata/intl_override.json"
+OVERRIDE_LIST = "./data/dxdata/intl_override.csv"
 USER_LIST = "./data/user.json.enc"
 NOTICE_FILE = "./data/notice.json"
 TIP_AD_FILE = "./data/tip_ad.json"
@@ -262,6 +263,9 @@ def read_dxdata(ver="jp"):
                 cur[last] = value
             else:
                 cur[last] = value
+
+            for sheet in song.get("sheets", []):
+                sheet["internalLevelValue"] = float(sheet["internalLevelValue"])
 
     versions = list(dxdata_file['versions'])
     return songs, versions

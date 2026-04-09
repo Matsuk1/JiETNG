@@ -262,7 +262,7 @@ async def login_to_maimai(sega_id: str, password: str, ver="jp", aime=0):
 
             # POST 登录
             async with session.post(
-                "https://lng-tgk-aime-gw.am-all.net/common_auth/login/sid/",
+                "https://lng-tgk-aime-gw.am-all.net/common_auth/login/sid",
                 data={
                     "sid": sega_id,
                     "password": password,
