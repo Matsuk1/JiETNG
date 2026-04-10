@@ -708,7 +708,7 @@ def admin_pwa_icon():
 
     canvas = Image.new('RGBA', (size, size), bg_color)
 
-    with Image.open(LOGO_PATH) as logo:
+    with Image.open(LOGO_FILE) as logo:
         logo = logo.convert('RGBA')
         logo = logo.resize((logo_size, logo_size), Image.LANCZOS)
         canvas.paste(logo, (padding, padding), logo)
@@ -5404,7 +5404,7 @@ def admin_update_dxdata():
         return jsonify({'error': 'Unauthorized'}), 401
 
     try:
-        result = update_dxdata_with_comparison(DXDATA_URL, DXDATA_LIST)
+        result = update_dxdata_with_comparison(DXDATA_URL, DXDATA_FILE)
         message = build_dxdata_update_message(result, None)
         diff = result.get('diff', {})
         return jsonify({

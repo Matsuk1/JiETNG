@@ -143,20 +143,26 @@ DOMAIN = _config["domain"]
 HOST = _config["host"]
 PORT = _config["port"]
 
-# 文件路径
+# 数据文件路径（./data/）
 LOG_FILE = "./jietng.log"
-DXDATA_LIST = "./data/dxdata/dxdata.json"
+DXDATA_FILE = "./data/dxdata/dxdata.json"
 DXDATA_VERSION_FILE = "./data/dxdata/dxdata_version.json"
-OVERRIDE_LIST = "./data/dxdata/intl_override.csv"
-USER_LIST = "./data/user.json.enc"
+OVERRIDE_FILE = "./data/dxdata/intl_override.csv"
+USER_FILE = "./data/user.json.enc"
 NOTICE_FILE = "./data/notice.json"
 TIP_AD_FILE = "./data/tip_ad.json"
-BACKUP_DIR = "./data/backup"
 DEV_TOKENS_FILE = "./data/dev_tokens.json"
+
+# 数据目录路径（./data/）
+BACKUP_DIR = "./data/backup"
 IMG_DIR = "./data/images"
-FONT_PATH = "./assets/fonts/line_seed_jietng.ttf"
-LOGO_PATH = "./assets/pics/logo.png"
-QR_CODE = "./assets/pics/qrcode.png"
+
+# 资源文件路径（./assets/）
+FONT_FILE = "./assets/fonts/line_seed_jietng.ttf"
+LOGO_FILE = "./assets/pics/logo.png"
+QR_CODE_FILE = "./assets/pics/qrcode.png"
+
+# 资源目录路径（./assets/）
 VERSIONS_DIR = "./assets/versions"
 COVERS_DIR = "./assets/covers"
 PLATES_DIR = "./assets/plates"
@@ -226,7 +232,7 @@ def read_dxdata(ver="jp"):
     Returns:
         tuple: (songs, versions)
     """
-    dxdata_file = json.load(open(DXDATA_LIST, 'r', encoding='utf-8'))
+    dxdata_file = json.load(open(DXDATA_FILE, 'r', encoding='utf-8'))
     songs = list(dxdata_file['songs'])
 
     def is_int(s):
@@ -234,7 +240,7 @@ def read_dxdata(ver="jp"):
 
     if ver == "intl":
         csv_map = {}
-        with open(OVERRIDE_LIST, 'r', encoding='utf-8') as f:
+        with open(OVERRIDE_FILE, 'r', encoding='utf-8') as f:
             for row in csv.reader(f):
                 if row:
                     csv_map[row[0]] = row[1:]
@@ -273,7 +279,7 @@ def read_dxdata(ver="jp"):
 def load_user():
     global USERS, _user_data_dirty
     if not USERS:  # 只在未加载时读取
-        USERS.update(read_encrypted_json(USER_LIST, USER_DATA_KEY))
+        USERS.update(read_encrypted_json(USER_FILE, USER_DATA_KEY))
     _user_data_dirty = False
 
 def write_user(force=False):
@@ -285,7 +291,7 @@ def write_user(force=False):
     """
     global _user_data_dirty
     if force or _user_data_dirty:
-        write_encrypted_json(USERS, USER_LIST, USER_DATA_KEY)
+        write_encrypted_json(USERS, USER_FILE, USER_DATA_KEY)
         _user_data_dirty = False
 
 def mark_user_dirty():

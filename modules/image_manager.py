@@ -4,24 +4,24 @@ import qrcode
 import logging
 from datetime import datetime, timezone, timedelta, date
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
-from modules.config_loader import FONT_PATH, LOGO_PATH, QR_CODE, BG_DIR
+from modules.config_loader import FONT_FILE, LOGO_FILE, QR_CODE_FILE, BG_DIR
 
 # 全局字体对象（一次性加载）
-font_large  = ImageFont.truetype(FONT_PATH, 28)
-font_stadium = ImageFont.truetype(FONT_PATH, 19)
-font_small = ImageFont.truetype(FONT_PATH, 14)
+font_large  = ImageFont.truetype(FONT_FILE, 28)
+font_stadium = ImageFont.truetype(FONT_FILE, 19)
+font_small = ImageFont.truetype(FONT_FILE, 14)
 
-font_record_name  = ImageFont.truetype(FONT_PATH, 60)
-font_record_info = ImageFont.truetype(FONT_PATH, 29)
+font_record_name  = ImageFont.truetype(FONT_FILE, 60)
+font_record_info = ImageFont.truetype(FONT_FILE, 29)
 
-font_profile = ImageFont.truetype(FONT_PATH, 32)
-font_trophy = ImageFont.truetype(FONT_PATH, 22)
+font_profile = ImageFont.truetype(FONT_FILE, 32)
+font_trophy = ImageFont.truetype(FONT_FILE, 22)
 
-font_song_title = ImageFont.truetype(FONT_PATH, 34)
-font_song_info = ImageFont.truetype(FONT_PATH, 24)
-font_level_badge = ImageFont.truetype(FONT_PATH, 40)
-font_record_title = ImageFont.truetype(FONT_PATH, 170)
-font_record_detail_title = ImageFont.truetype(FONT_PATH, 65)
+font_song_title = ImageFont.truetype(FONT_FILE, 34)
+font_song_info = ImageFont.truetype(FONT_FILE, 24)
+font_level_badge = ImageFont.truetype(FONT_FILE, 40)
+font_record_title = ImageFont.truetype(FONT_FILE, 170)
+font_record_detail_title = ImageFont.truetype(FONT_FILE, 65)
 
 # 获取logger
 logger = logging.getLogger(__name__)
@@ -173,7 +173,7 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
 
     base_font_size = 28
     dynamic_font_size = max(24, min(40, int(base_font_size * scale_factor)))
-    dynamic_font = ImageFont.truetype(FONT_PATH, dynamic_font_size)
+    dynamic_font = ImageFont.truetype(FONT_FILE, dynamic_font_size)
 
     base_logo_size = 130
     dynamic_logo_size = max(100, min(180, int(base_logo_size * scale_factor)))
@@ -230,7 +230,7 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
 
     # QR Code（左侧）
     try:
-        qr_img = Image.open(QR_CODE)
+        qr_img = Image.open(QR_CODE_FILE)
         qr_img = ensure_rgba(
             qr_img.resize(
                 (dynamic_logo_size, dynamic_logo_size),
@@ -246,7 +246,7 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
 
     # Logo（右侧）
     try:
-        logo_img = Image.open(LOGO_PATH)
+        logo_img = Image.open(LOGO_FILE)
         logo_img = ensure_rgba(
             logo_img.resize(
                 (dynamic_logo_size, dynamic_logo_size),

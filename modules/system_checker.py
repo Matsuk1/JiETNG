@@ -7,10 +7,10 @@ from datetime import datetime
 import os
 from typing import List, Dict, Any
 from modules.config_loader import (
-    DXDATA_LIST, DXDATA_VERSION_FILE, OVERRIDE_LIST,
-    USER_LIST, NOTICE_FILE, TIP_AD_FILE,
+    DXDATA_FILE, DXDATA_VERSION_FILE, OVERRIDE_FILE,
+    USER_FILE, NOTICE_FILE, TIP_AD_FILE,
     BACKUP_DIR, DEV_TOKENS_FILE, IMG_DIR,
-    FONT_PATH, LOGO_PATH, QR_CODE,
+    FONT_FILE, LOGO_FILE, QR_CODE_FILE,
     VERSIONS_DIR, COVERS_DIR, PLATES_DIR,
     ICON_TYPE_DIR, ICON_SCORE_DIR, ICON_DX_STAR_DIR,
     ICON_COMBO_DIR, ICON_SYNC_DIR,
@@ -137,16 +137,16 @@ def check_required_files() -> Dict[str, bool]:
     """
     required_files = {
         "config.json": ("file", "config.json"),
-        "dxdata_list": ("file", DXDATA_LIST),
+        "dxdata_file": ("file", DXDATA_FILE),
         "dxdata_version": ("file", DXDATA_VERSION_FILE),
-        "override_list": ("file", OVERRIDE_LIST),
-        "user_list": ("file", USER_LIST),
+        "override_file": ("file", OVERRIDE_FILE),
+        "user_file": ("file", USER_FILE),
         "notice_file": ("file", NOTICE_FILE),
         "tip_ad_file": ("file", TIP_AD_FILE),
         "dev_tokens": ("file", DEV_TOKENS_FILE),
-        "font": ("file", FONT_PATH),
-        "logo": ("file", LOGO_PATH),
-        "qrcode": ("file", QR_CODE),
+        "font": ("file", FONT_FILE),
+        "logo": ("file", LOGO_FILE),
+        "qrcode": ("file", QR_CODE_FILE),
         "backup_dir": ("dir", BACKUP_DIR),
         "img_dir": ("dir", IMG_DIR),
         "versions_dir": ("dir", VERSIONS_DIR),
