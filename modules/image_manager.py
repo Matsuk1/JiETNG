@@ -237,7 +237,7 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
                 Image.Resampling.LANCZOS
             )
         )
-        qr_img = round_corner(qr_img, radius=15)
+        qr_img = round_corner(qr_img, radius=10)
         # QR Code 放在 logo 左边
         qr_x = inner_width - dynamic_right_margin - dynamic_logo_size - qr_logo_spacing
         combined.paste(qr_img, (qr_x, qr_logo_y), qr_img)
