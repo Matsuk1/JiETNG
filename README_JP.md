@@ -17,7 +17,7 @@
 
 <a href="https://lin.ee/Q6O7aI8"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="友だち追加" height="36" border="0"></a>
 
-[機能](#機能) • [コマンドリスト](https://jietng.matsuki.work/ja/commands/) • [オンラインドキュメント](https://jietng.matsuki.work/ja/) • [クイックスタート](#クイックスタート) • [管理パネル](#管理パネル) • [デプロイガイド](#デプロイガイド) • [開発ドキュメント](#開発ドキュメント)
+[機能](#機能) • [コマンドリスト](https://jietng.matsuk1.com/ja/commands/) • [オンラインドキュメント](https://jietng.matsuk1.com/ja/) • [クイックスタート](#クイックスタート) • [管理パネル](#管理パネル) • [デプロイガイド](#デプロイガイド) • [開発ドキュメント](#開発ドキュメント)
 
 </div>
 
@@ -58,7 +58,7 @@
 
 ### 完全コマンドリスト
 
-詳細なコマンド説明と使用例は **[オンラインコマンドドキュメント](https://jietng.matsuki.work/ja/commands/)** をご覧ください
+詳細なコマンド説明と使用例は **[オンラインコマンドドキュメント](https://jietng.matsuk1.com/ja/commands/)** をご覧ください
 
 ---
 

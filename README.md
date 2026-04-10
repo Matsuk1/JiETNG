@@ -17,7 +17,7 @@
 
 <a href="https://lin.ee/Q6O7aI8"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="添加好友" height="36" border="0"></a>
 
-[功能特性](#功能特性) • [命令列表](https://jietng.matsuki.work/commands/) • [在线文档](https://jietng.matsuki.work/) • [快速开始](#快速开始) • [管理后台](#管理后台) • [部署指南](#部署指南) • [开发文档](#开发文档)
+[功能特性](#功能特性) • [命令列表](https://jietng.matsuk1.com/commands/) • [在线文档](https://jietng.matsuk1.com/) • [快速开始](#快速开始) • [管理后台](#管理后台) • [部署指南](#部署指南) • [开发文档](#开发文档)
 
 </div>
 
@@ -58,7 +58,7 @@
 
 ### 完整命令列表
 
-详细的命令说明和使用示例请查看 **[在线命令文档](https://jietng.matsuki.work/commands/)**
+详细的命令说明和使用示例请查看 **[在线命令文档](https://jietng.matsuk1.com/commands/)**
 
 ---
 

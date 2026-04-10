@@ -1193,7 +1193,7 @@ def linebot_perms_revoke():
     return jsonify({"success": True})
 
 
-DEMO_CORS_ORIGIN = "https://jietng.matsuki.work"
+DEMO_CORS_ORIGIN = "https://jietng.matsuk1.com"
 
 def _demo_cors(response):
     response.headers["Access-Control-Allow-Origin"] = DEMO_CORS_ORIGIN

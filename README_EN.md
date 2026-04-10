@@ -17,7 +17,7 @@ Supports Japanese and International servers
 
 <a href="https://lin.ee/Q6O7aI8"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="Add Friend" height="36" border="0"></a>
 
-[Features](#features) • [Command List](https://jietng.matsuki.work/en/commands/) • [Online Docs](https://jietng.matsuki.work/en/) • [Quick Start](#quick-start) • [Admin Panel](#admin-panel) • [Deployment](#deployment) • [Documentation](#documentation)
+[Features](#features) • [Command List](https://jietng.matsuk1.com/en/commands/) • [Online Docs](https://jietng.matsuk1.com/en/) • [Quick Start](#quick-start) • [Admin Panel](#admin-panel) • [Deployment](#deployment) • [Documentation](#documentation)
 
 </div>
 
@@ -43,7 +43,7 @@ Supports Japanese and International servers
 
 ### Complete Command List
 
-Detailed commands list is here **[Online Command Docs](https://jietng.matsuki.work/en/commands/)**
+Detailed commands list is here **[Online Command Docs](https://jietng.matsuk1.com/en/commands/)**
 
 ---
 

@@ -114,7 +114,7 @@ async function generate() {
     fd.append('cmd_type', cmdType.value)
     fd.append('params', paramsString.value)
     writeCookie()
-    const res = await fetch('https://jietng-endpoint.matsuki.work/linebot/demo', { method: 'POST', body: fd })
+    const res = await fetch('https://jietng-endpoint.matsuk1.com/linebot/demo', { method: 'POST', body: fd })
     if (res.ok) {
       const blob = await res.blob()
       imageUrl.value = URL.createObjectURL(blob)

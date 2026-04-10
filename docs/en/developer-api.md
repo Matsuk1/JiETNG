@@ -28,8 +28,8 @@ If you want to use the JiETNG API, follow these steps to get an access token:
 
 ### API Base Information
 
-- **Base URL (v1)**: `https://jietng-endpoint.matsuki.work/api/v1/`
-- **Base URL (v2)**: `https://jietng-endpoint.matsuki.work/api/v2/`
+- **Base URL (v1)**: `https://jietng-endpoint.matsuk1.com/api/v1/`
+- **Base URL (v2)**: `https://jietng-endpoint.matsuk1.com/api/v2/`
 - **Authentication**: Bearer Token
 - **Response Format**: JSON (image generation endpoints return `image/png`)
 
@@ -38,7 +38,7 @@ If you want to use the JiETNG API, follow these steps to get an access token:
 ```bash
 # Use your token to access the API
 curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-     "https://jietng-endpoint.matsuki.work/api/v1/users"
+     "https://jietng-endpoint.matsuk1.com/api/v1/users"
 ```
 
 
@@ -109,7 +109,7 @@ devtoken info <token_id>
 ### Base URL
 
 ```
-https://jietng-endpoint.matsuki.work/api/v1/
+https://jietng-endpoint.matsuk1.com/api/v1/
 ```
 
 ### Authentication
@@ -117,14 +117,14 @@ https://jietng-endpoint.matsuki.work/api/v1/
 All API endpoints require Bearer Token authentication:
 
 ```bash
-curl -H "Authorization: Bearer <your_token>" https://jietng-endpoint.matsuki.work/api/v1/...
+curl -H "Authorization: Bearer <your_token>" https://jietng-endpoint.matsuk1.com/api/v1/...
 ```
 
 ### Available Endpoints
 
-v1 endpoints should be prefixed with `https://jietng-endpoint.matsuki.work/api/v1/`.
+v1 endpoints should be prefixed with `https://jietng-endpoint.matsuk1.com/api/v1/`.
 
-v2 endpoints should be prefixed with `https://jietng-endpoint.matsuki.work/api/v2/`.
+v2 endpoints should be prefixed with `https://jietng-endpoint.matsuk1.com/api/v2/`.
 
 #### 1. Get User List
 
@@ -134,7 +134,7 @@ GET /api/v1/users
 
 **Example:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users
 ```
 
 **Response:**
@@ -170,7 +170,7 @@ POST /api/v1/users
 
 **Example:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/json" -d '{"user_id":"U123456","nickname":"TestUser","language":"en"}' https://jietng-endpoint.matsuki.work/api/v1/users
+curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/json" -d '{"user_id":"U123456","nickname":"TestUser","language":"en"}' https://jietng-endpoint.matsuk1.com/api/v1/users
 ```
 
 **Response:**
@@ -179,7 +179,7 @@ curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/
   "success": true,
   "user_id": "U123456",
   "nickname": "TestUser",
-  "bind_url": "https://jietng-endpoint.matsuki.work/linebot/sega_bind?token=xxx&nickname=TestUser&language=en",
+  "bind_url": "https://jietng-endpoint.matsuk1.com/linebot/sega_bind?token=xxx&nickname=TestUser&language=en",
   "token": "xxx",
   "expires_in": 120,
   "message": "Bind URL generated successfully. Token expires in 2 minutes."
@@ -200,7 +200,7 @@ GET /api/v1/users/<user_id>
 
 **Example:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456
 ```
 
 **Response:**
@@ -225,7 +225,7 @@ DELETE /api/v1/users/<user_id>
 
 **Example:**
 ```bash
-curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456
+curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456
 ```
 
 **Response:**
@@ -249,7 +249,7 @@ POST /api/v1/users/<user_id>/rebind-url
 
 **Example:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/rebind-url
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/rebind-url
 ```
 
 **Response (201 Created):**
@@ -257,7 +257,7 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk
 {
   "success": true,
   "user_id": "U123456",
-  "rebind_url": "https://jietng-endpoint.matsuki.work/linebot/sega_bind?token=xxx&mode=rebind",
+  "rebind_url": "https://jietng-endpoint.matsuk1.com/linebot/sega_bind?token=xxx&mode=rebind",
   "expires_in": 120,
   "message": "Rebind URL generated successfully."
 }
@@ -275,7 +275,7 @@ POST /api/v1/users/<user_id>/settings-url
 
 **Example:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/settings-url
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/settings-url
 ```
 
 **Response (201 Created):**
@@ -283,7 +283,7 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk
 {
   "success": true,
   "user_id": "U123456",
-  "settings_url": "https://jietng-endpoint.matsuki.work/linebot/settings?token=xxx",
+  "settings_url": "https://jietng-endpoint.matsuk1.com/linebot/settings?token=xxx",
   "expires_in": 1800,
   "message": "Settings URL generated successfully."
 }
@@ -299,7 +299,7 @@ POST /api/v1/users/<user_id>/sync
 
 **Example:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/sync
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/sync
 ```
 
 **Response (202 Accepted):**
@@ -324,7 +324,7 @@ Query the status of an update task created via `/users/<user_id>/sync`.
 
 **Example:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/tasks/task_xxx
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/tasks/task_xxx
 ```
 
 **Response:**
@@ -385,25 +385,25 @@ GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rat
 **Example:**
 ```bash
 # Get best50
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50"
 
 # Filter specific version (new parameter)
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&version=buddies"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&version=buddies"
 
 # Filter MASTER difficulty (new parameter)
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&difficulty=mas"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&difficulty=mas"
 
 # Filter constant 14.0 and above (new parameter)
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&level=14.0"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&level=14.0"
 
 # Filter constant range 14.0-15.0 (new parameter)
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&level=14.0,15.0"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&level=14.0,15.0"
 
 # Combined filter: MASTER difficulty and constant 14.0-15.0 (new parameter)
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&difficulty=mas&level=14.0,15.0"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&difficulty=mas&level=14.0,15.0"
 
 # Using old command parameter (backward compatible)
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&command=-diff%20mas%20-lv%2014.0%2015.0"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&command=-diff%20mas%20-lv%2014.0%2015.0"
 ```
 
 **Response:**
@@ -430,13 +430,13 @@ GET /api/v1/songs/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<
 **Example:**
 ```bash
 # Search Japanese songs
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&ver=jp"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&ver=jp"
 
 # Search empty string song names
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/songs/search?q=__empty__&ver=jp"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/songs/search?q=__empty__&ver=jp"
 
 # Match within the user's score database
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&user_id=U123456"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&user_id=U123456"
 ```
 
 **Response:**
@@ -481,7 +481,7 @@ GET /api/v1/versions
 
 **Example:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/versions
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/versions
 ```
 
 **Response:**
@@ -538,7 +538,7 @@ POST /api/v1/users/<user_id>/permissions
 curl -X POST -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"requester_name":"MyApp"}' \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
 ```
 
 **Response:**
@@ -579,7 +579,7 @@ GET /api/v1/users/<user_id>/permissions/requests
 **Example:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/requests
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/requests
 ```
 
 **Response:**
@@ -619,7 +619,7 @@ PATCH /api/v1/users/<user_id>/permissions
 curl -X PATCH -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"request_id":"20250203120000_jt_abc123","action":"accept"}' \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
 ```
 
 **Approve response:**
@@ -638,7 +638,7 @@ curl -X PATCH -H "Authorization: Bearer abc123..." \
 curl -X PATCH -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"request_id":"20250203120000_jt_abc123","action":"reject"}' \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
 ```
 
 **Reject response:**
@@ -673,7 +673,7 @@ DELETE /api/v1/users/<user_id>/permissions/<token_id>
 **Example:**
 ```bash
 curl -X DELETE -H "Authorization: Bearer abc123..." \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/jt_abc123
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/jt_abc123
 ```
 
 **Response:**
@@ -699,7 +699,7 @@ DELETE /api/v1/users/<user_id>/permissions/self
 **Example:**
 ```bash
 curl -X DELETE -H "Authorization: Bearer abc123..." \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/self
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/self
 ```
 
 **Response:**
@@ -742,7 +742,7 @@ GET /api/v2/songs/<song_id>/image?ver=<version>
 **Example:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v2/songs/834/image?ver=jp" \
+     "https://jietng-endpoint.matsuk1.com/api/v2/songs/834/image?ver=jp" \
      --output song_info.png
 ```
 
@@ -768,7 +768,7 @@ GET /api/v2/users/<user_id>/songs/<song_id>/image
 **Example:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/songs/834/image" \
+     "https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/songs/834/image" \
      --output song_record.png
 ```
 
@@ -807,7 +807,7 @@ GET /api/v2/users/<user_id>/image?command=<command>
 **Example:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/image?command=b50" \
+     "https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/image?command=b50" \
      --output b50.png
 ```
 
@@ -832,7 +832,7 @@ GET /api/v2/users/<user_id>/plate?title=<title>
 **Example:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/plate?title=覇極" \
+     "https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/plate?title=覇極" \
      --output plate.png
 ```
 
@@ -860,7 +860,7 @@ GET /api/v2/users/<user_id>/achievement?level=<level>&rank=<rank>
 **Example:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/achievement?level=15&rank=sss" \
+     "https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/achievement?level=15&rank=sss" \
      --output achievement.png
 ```
 
@@ -873,25 +873,25 @@ curl -H "Authorization: Bearer abc123..." \
 curl -X POST -H "Authorization: Bearer TOKEN_B" \
      -H "Content-Type: application/json" \
      -d '{"requester_name":"MyApp"}' \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
 
 # 2. Token A (owner) views pending requests
 curl -H "Authorization: Bearer TOKEN_A" \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/requests
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/requests
 
 # 3. Token A approves the request
 curl -X PATCH -H "Authorization: Bearer TOKEN_A" \
      -H "Content-Type: application/json" \
      -d '{"request_id":"20250203120000_jt_tokenb","action":"accept"}' \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
 
 # 4. Now Token B can access User1's data
 curl -H "Authorization: Bearer TOKEN_B" \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456
 
 # 5. (Optional) Token A revokes Token B's access
 curl -X DELETE -H "Authorization: Bearer TOKEN_A" \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/jt_tokenb
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/jt_tokenb
 ```
 
 ### LINE User Permission Management
@@ -1089,7 +1089,7 @@ def my_api_endpoint():
 import requests
 
 TOKEN = "your_token_here"
-BASE_URL = "https://jietng-endpoint.matsuki.work/api/v1"
+BASE_URL = "https://jietng-endpoint.matsuk1.com/api/v1"
 
 headers = {
     "Authorization": f"Bearer {TOKEN}"
@@ -1108,7 +1108,7 @@ for user in users['users']:
 
 ```javascript
 const TOKEN = 'your_token_here';
-const BASE_URL = 'https://jietng-endpoint.matsuki.work/api/v1';
+const BASE_URL = 'https://jietng-endpoint.matsuk1.com/api/v1';
 
 async function getUsers() {
   const response = await fetch(`${BASE_URL}/users`, {
@@ -1134,7 +1134,7 @@ getUsers();
 #!/bin/bash
 
 TOKEN="your_token_here"
-BASE_URL="https://jietng-endpoint.matsuki.work/api/v1"
+BASE_URL="https://jietng-endpoint.matsuk1.com/api/v1"
 
 # Get user list
 curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/users"

@@ -19,7 +19,7 @@ export default withMermaid(defineConfig({
 
   // Sitemap 配置（用于 SEO）
   sitemap: {
-    hostname: 'https://jietng.matsuki.work'
+    hostname: 'https://jietng.matsuk1.com'
   },
 
   // Markdown 配置
@@ -262,17 +262,17 @@ export default withMermaid(defineConfig({
     ['meta', { property: 'og:site_name', content: 'JiETNG' }],
     ['meta', { property: 'og:title', content: 'JiETNG -『maimai でらっくす』Score Management Bot' }],
     ['meta', { property: 'og:description', content: '『maimai でらっくす』score management bot supporting both Japanese and International servers.' }],
-    ['meta', { property: 'og:image', content: 'https://jietng.matsuki.work/og-image.png' }],
+    ['meta', { property: 'og:image', content: 'https://jietng.matsuk1.com/og-image.png' }],
     ['meta', { property: 'og:image:width', content: '1200' }],
     ['meta', { property: 'og:image:height', content: '630' }],
     ['meta', { property: 'og:image:type', content: 'image/png' }],
-    ['meta', { property: 'og:url', content: 'https://jietng.matsuki.work' }],
+    ['meta', { property: 'og:url', content: 'https://jietng.matsuk1.com' }],
 
     // Twitter Card
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['meta', { name: 'twitter:title', content: 'JiETNG -『maimai でらっくす』Score Management Bot' }],
     ['meta', { name: 'twitter:description', content: '『maimai でらっくす』score management bot supporting both Japanese and International servers.' }],
-    ['meta', { name: 'twitter:image', content: 'https://jietng.matsuki.work/og-image.png' }]
+    ['meta', { name: 'twitter:image', content: 'https://jietng.matsuk1.com/og-image.png' }]
   ],
 
   // Mermaid 配置

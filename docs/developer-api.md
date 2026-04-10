@@ -27,8 +27,8 @@
 
 ### API 基础信息
 
-- **Base URL (v1)**: `https://jietng-endpoint.matsuki.work/api/v1/`
-- **Base URL (v2)**: `https://jietng-endpoint.matsuki.work/api/v2/`
+- **Base URL (v1)**: `https://jietng-endpoint.matsuk1.com/api/v1/`
+- **Base URL (v2)**: `https://jietng-endpoint.matsuk1.com/api/v2/`
 - **认证方式**: Bearer Token
 - **响应格式**: JSON（图像生成端点返回 `image/png`）
 
@@ -37,7 +37,7 @@
 ```bash
 # 使用您的 Token 访问 API
 curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-     "https://jietng-endpoint.matsuki.work/api/v1/users"
+     "https://jietng-endpoint.matsuk1.com/api/v1/users"
 ```
 
 ## 命令使用
@@ -106,7 +106,7 @@ devtoken info <token_id>
 ### Base URL
 
 ```
-https://jietng-endpoint.matsuki.work/api/v1/
+https://jietng-endpoint.matsuk1.com/api/v1/
 ```
 
 ### 认证
@@ -114,14 +114,14 @@ https://jietng-endpoint.matsuki.work/api/v1/
 所有 API 端点都需要 Bearer Token 认证：
 
 ```bash
-curl -H "Authorization: Bearer <your_token>" https://jietng-endpoint.matsuki.work/api/v1/...
+curl -H "Authorization: Bearer <your_token>" https://jietng-endpoint.matsuk1.com/api/v1/...
 ```
 
 ### 可用端点
 
-v1 端点的完整 URL 为 `https://jietng-endpoint.matsuki.work/api/v1/` + 端点路径。
+v1 端点的完整 URL 为 `https://jietng-endpoint.matsuk1.com/api/v1/` + 端点路径。
 
-v2 端点的完整 URL 为 `https://jietng-endpoint.matsuki.work/api/v2/` + 端点路径。
+v2 端点的完整 URL 为 `https://jietng-endpoint.matsuk1.com/api/v2/` + 端点路径。
 
 #### 1. 获取用户列表
 
@@ -131,7 +131,7 @@ GET /api/v1/users
 
 **示例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users
 ```
 
 **响应:**
@@ -167,7 +167,7 @@ POST /api/v1/users
 
 **示例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/json" -d '{"user_id":"U123456","nickname":"TestUser","language":"en"}' https://jietng-endpoint.matsuki.work/api/v1/users
+curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/json" -d '{"user_id":"U123456","nickname":"TestUser","language":"en"}' https://jietng-endpoint.matsuk1.com/api/v1/users
 ```
 
 **响应:**
@@ -176,7 +176,7 @@ curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/
   "success": true,
   "user_id": "U123456",
   "nickname": "TestUser",
-  "bind_url": "https://jietng-endpoint.matsuki.work/linebot/sega_bind?token=xxx&nickname=TestUser&language=en",
+  "bind_url": "https://jietng-endpoint.matsuk1.com/linebot/sega_bind?token=xxx&nickname=TestUser&language=en",
   "token": "xxx",
   "expires_in": 120,
   "message": "Bind URL generated successfully. Token expires in 2 minutes."
@@ -197,7 +197,7 @@ GET /api/v1/users/<user_id>
 
 **示例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456
 ```
 
 **响应:**
@@ -222,7 +222,7 @@ DELETE /api/v1/users/<user_id>
 
 **示例:**
 ```bash
-curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456
+curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456
 ```
 
 **响应:**
@@ -246,7 +246,7 @@ POST /api/v1/users/<user_id>/rebind-url
 
 **示例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/rebind-url
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/rebind-url
 ```
 
 **响应 (201 Created):**
@@ -254,7 +254,7 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk
 {
   "success": true,
   "user_id": "U123456",
-  "rebind_url": "https://jietng-endpoint.matsuki.work/linebot/sega_bind?token=xxx&mode=rebind",
+  "rebind_url": "https://jietng-endpoint.matsuk1.com/linebot/sega_bind?token=xxx&mode=rebind",
   "expires_in": 120,
   "message": "Rebind URL generated successfully."
 }
@@ -272,7 +272,7 @@ POST /api/v1/users/<user_id>/settings-url
 
 **示例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/settings-url
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/settings-url
 ```
 
 **响应 (201 Created):**
@@ -280,7 +280,7 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk
 {
   "success": true,
   "user_id": "U123456",
-  "settings_url": "https://jietng-endpoint.matsuki.work/linebot/settings?token=xxx",
+  "settings_url": "https://jietng-endpoint.matsuk1.com/linebot/settings?token=xxx",
   "expires_in": 1800,
   "message": "Settings URL generated successfully."
 }
@@ -296,7 +296,7 @@ POST /api/v1/users/<user_id>/sync
 
 **示例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/users/U123456/sync
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/sync
 ```
 
 **响应 (202 Accepted):**
@@ -321,7 +321,7 @@ GET /api/v1/tasks/<task_id>
 
 **示例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/tasks/task_xxx
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/tasks/task_xxx
 ```
 
 **响应:**
@@ -382,25 +382,25 @@ GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rat
 **示例:**
 ```bash
 # 获取 best50
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50"
 
 # 筛选特定版本（新参数）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&version=buddies"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&version=buddies"
 
 # 筛选 MASTER 难度（新参数）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&difficulty=mas"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&difficulty=mas"
 
 # 筛选定数 14.0 以上（新参数）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&level=14.0"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&level=14.0"
 
 # 筛选定数范围 14.0-15.0（新参数）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&level=14.0,15.0"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&level=14.0,15.0"
 
 # 组合筛选：MASTER 难度且定数 14.0-15.0（新参数）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&difficulty=mas&level=14.0,15.0"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&difficulty=mas&level=14.0,15.0"
 
 # 使用旧的 command 参数（向后兼容）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/users/U123456/records?type=best50&command=-diff%20mas%20-lv%2014.0%2015.0"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&command=-diff%20mas%20-lv%2014.0%2015.0"
 ```
 
 **响应:**
@@ -427,13 +427,13 @@ GET /api/v1/songs/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<
 **示例:**
 ```bash
 # 搜索日文歌曲
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&ver=jp"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&ver=jp"
 
 # 搜索空字符串歌名
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/songs/search?q=__empty__&ver=jp"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/songs/search?q=__empty__&ver=jp"
 
 # 在用户的成绩数据库内匹配
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuki.work/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&user_id=U123456"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&user_id=U123456"
 ```
 
 **响应:**
@@ -478,7 +478,7 @@ GET /api/v1/versions
 
 **示例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuki.work/api/v1/versions
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/versions
 ```
 
 **响应:**
@@ -535,7 +535,7 @@ POST /api/v1/users/<user_id>/permissions
 curl -X POST -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"requester_name":"MyApp"}' \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
 ```
 
 **响应:**
@@ -576,7 +576,7 @@ GET /api/v1/users/<user_id>/permissions/requests
 **示例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/requests
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/requests
 ```
 
 **响应:**
@@ -623,7 +623,7 @@ PATCH /api/v1/users/<user_id>/permissions
 curl -X PATCH -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"request_id":"20250203120000_jt_abc123","action":"accept"}' \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
 ```
 
 **批准响应:**
@@ -642,7 +642,7 @@ curl -X PATCH -H "Authorization: Bearer abc123..." \
 curl -X PATCH -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"request_id":"20250203120000_jt_abc123","action":"reject"}' \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
 ```
 
 **拒绝响应:**
@@ -677,7 +677,7 @@ DELETE /api/v1/users/<user_id>/permissions/<token_id>
 **示例:**
 ```bash
 curl -X DELETE -H "Authorization: Bearer abc123..." \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/jt_abc123
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/jt_abc123
 ```
 
 **响应:**
@@ -711,7 +711,7 @@ DELETE /api/v1/users/<user_id>/permissions/self
 **示例:**
 ```bash
 curl -X DELETE -H "Authorization: Bearer abc123..." \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/self
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/self
 ```
 
 **响应:**
@@ -754,7 +754,7 @@ GET /api/v2/songs/<song_id>/image?ver=<version>
 **示例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v2/songs/834/image?ver=jp" \
+     "https://jietng-endpoint.matsuk1.com/api/v2/songs/834/image?ver=jp" \
      --output song_info.png
 ```
 
@@ -780,7 +780,7 @@ GET /api/v2/users/<user_id>/songs/<song_id>/image
 **示例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/songs/834/image" \
+     "https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/songs/834/image" \
      --output song_record.png
 ```
 
@@ -819,7 +819,7 @@ GET /api/v2/users/<user_id>/image?command=<command>
 **示例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/image?command=b50" \
+     "https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/image?command=b50" \
      --output b50.png
 ```
 
@@ -844,7 +844,7 @@ GET /api/v2/users/<user_id>/plate?title=<title>
 **示例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/plate?title=覇極" \
+     "https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/plate?title=覇極" \
      --output plate.png
 ```
 
@@ -872,7 +872,7 @@ GET /api/v2/users/<user_id>/achievement?level=<level>&rank=<rank>
 **示例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     "https://jietng-endpoint.matsuki.work/api/v2/users/U123456/achievement?level=15&rank=sss" \
+     "https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/achievement?level=15&rank=sss" \
      --output achievement.png
 ```
 
@@ -885,25 +885,25 @@ curl -H "Authorization: Bearer abc123..." \
 curl -X POST -H "Authorization: Bearer TOKEN_B" \
      -H "Content-Type: application/json" \
      -d '{"requester_name":"MyApp"}' \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
 
 # 2. Token A（所有者）查看待处理的权限请求
 curl -H "Authorization: Bearer TOKEN_A" \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/requests
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/requests
 
 # 3. Token A 批准请求
 curl -X PATCH -H "Authorization: Bearer TOKEN_A" \
      -H "Content-Type: application/json" \
      -d '{"request_id":"20250203120000_jt_tokenb","action":"accept"}' \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
 
 # 4. 现在 Token B 可以访问 User1 的数据
 curl -H "Authorization: Bearer TOKEN_B" \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456
 
 # 5. （可选）Token A 撤销 Token B 的访问权限
 curl -X DELETE -H "Authorization: Bearer TOKEN_A" \
-     https://jietng-endpoint.matsuki.work/api/v1/users/U123456/permissions/jt_tokenb
+     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/jt_tokenb
 ```
 
 ### LINE 用户的权限管理
@@ -1097,7 +1097,7 @@ def my_api_endpoint():
 import requests
 
 TOKEN = "your_token_here"
-BASE_URL = "https://jietng-endpoint.matsuki.work/api/v1"
+BASE_URL = "https://jietng-endpoint.matsuk1.com/api/v1"
 
 headers = {
     "Authorization": f"Bearer {TOKEN}"
@@ -1116,7 +1116,7 @@ for user in users['users']:
 
 ```javascript
 const TOKEN = 'your_token_here';
-const BASE_URL = 'https://jietng-endpoint.matsuki.work/api/v1';
+const BASE_URL = 'https://jietng-endpoint.matsuk1.com/api/v1';
 
 async function getUsers() {
   const response = await fetch(`${BASE_URL}/users`, {
@@ -1142,7 +1142,7 @@ getUsers();
 #!/bin/bash
 
 TOKEN="your_token_here"
-BASE_URL="https://jietng-endpoint.matsuki.work/api/v1"
+BASE_URL="https://jietng-endpoint.matsuk1.com/api/v1"
 
 # 获取用户列表
 curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/users"

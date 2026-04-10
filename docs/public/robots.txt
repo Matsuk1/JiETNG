@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://jietng.matsuki.work/sitemap.xml
+Sitemap: https://jietng.matsuk1.com/sitemap.xml
