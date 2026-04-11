@@ -34,7 +34,6 @@ from io import BytesIO
 from flask import (
     Flask,
     request,
-    abort,
     render_template,
     redirect,
     session,
@@ -693,7 +692,6 @@ def linebot_reply():
             context={"Error": type(e).__name__, "Detail": str(e)[:200]},
             user_id=_notif_uid
         )
-        abort(400 if is_bad_request else 500)
 
     return 'OK', 200
 
