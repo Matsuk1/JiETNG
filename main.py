@@ -128,6 +128,7 @@ from modules.image_manager import *
 
 # System utilities
 from modules.system_checker import run_system_check, clean_unbound_users
+from modules.event_tracker import track_event, get_business_stats
 from modules.rate_limiter import check_rate_limit
 from modules.line_messenger import smart_reply, smart_push, notify_admins_error, notify_on_error
 from modules.perm_request_generator import generate_perm_request_message
@@ -662,6 +663,13 @@ def linebot_reply():
         destination = json_data.get("destination")
         request.destination = destination
         handler.handle(body, signature)
+        # 签名校验通过后再追踪（避免把无效请求计入指标）
+        try:
+            for _ev in json_data.get('events', []):
+                _uid = _ev.get('source', {}).get('userId')
+                track_event('line_webhook', user_id=_uid, metadata={'type': _ev.get('type')})
+        except Exception:
+            pass
 
     except Exception as e:
         is_bad_request = isinstance(e, (json.JSONDecodeError, InvalidSignatureError))
@@ -880,7 +888,9 @@ Token not provided. <br />
                 if mode == "bind":
                     task_id = f"bind_{secrets.token_hex(8)}"
                     webtask_queue.put_nowait((async_bind_update_task, (user_id, user_version), task_id))
+                    track_event('user_bind', user_id=user_id, metadata={'version': user_version})
                 else:
+                    track_event('user_rebind', user_id=user_id, metadata={'version': user_version})
                     try:
                         smart_push(user_id, rebind_msg(user_id), configuration)
                     except Exception as e:
@@ -1307,7 +1317,12 @@ def async_maimai_update_task(event):
     if user_id in USERS and 'version' in USERS[user_id]:
         ver = USERS[user_id]['version']
 
-    reply_msg = asyncio.run(maimai_update(user_id, ver))
+    try:
+        reply_msg = asyncio.run(maimai_update(user_id, ver))
+        track_event('sync_task', user_id=user_id, metadata={'success': True, 'trigger': 'user'})
+    except Exception as e:
+        track_event('sync_task', user_id=user_id, metadata={'success': False, 'trigger': 'user', 'error': str(e)[:200]})
+        raise
     if reply_token:
         smart_reply(user_id, reply_token, reply_msg, configuration)
 
@@ -1315,8 +1330,10 @@ def async_bind_update_task(user_id, ver):
     """绑定后异步数据更新任务 - 在webtask_queue中执行"""
     try:
         messages = asyncio.run(maimai_update(user_id, ver))
+        track_event('sync_task', user_id=user_id, metadata={'success': True, 'trigger': 'bind'})
     except Exception as e:
         logger.error(f"[Bind Update] ⚠ Failed to update: {e}")
+        track_event('sync_task', user_id=user_id, metadata={'success': False, 'trigger': 'bind', 'error': str(e)[:200]})
         messages = rebind_msg(user_id)
     try:
         smart_push(user_id, messages, configuration)
@@ -1353,6 +1370,10 @@ def async_generate_friend_record_task(event):
     if user_id in USERS and 'version' in USERS[user_id]:
         ver = USERS[user_id]['version']
 
+    try:
+        track_event('image_gen', user_id=user_id, metadata={'command': 'friend-rcd', 'source': 'line'})
+    except Exception: pass
+
     # 直接通过网页爬取获取好友信息
     reply_msg = asyncio.run(generate_friend_record(user_id, friend_code, record_type, command, ver))
 
@@ -1380,6 +1401,10 @@ def async_get_song_record_task(event):
 
     # 提取歌曲名称（移除命令后缀）
     acronym = re.sub(r"\s*(のレコード|song-record|record)$", "", user_message).strip()
+
+    try:
+        track_event('image_gen', user_id=user_id, metadata={'command': 'song-record', 'source': 'line'})
+    except Exception: pass
 
     # 调用实际的查询函数
     reply_msg = asyncio.run(get_song_record(user_id, id_use, acronym, mai_ver_use))
@@ -1416,6 +1441,10 @@ def async_get_song_record_by_id_task(event):
     if "id_use=" in user_message:
         id_use = user_message.split("id_use=", 1)[1]
 
+    try:
+        track_event('image_gen', user_id=user_id, metadata={'command': 'song-record-id', 'source': 'line'})
+    except Exception: pass
+
     # 调用实际的查询函数
     reply_msg = asyncio.run(get_song_record_by_id(user_id, id_use, song_id, ver))
 
@@ -1423,6 +1452,12 @@ def async_get_song_record_by_id_task(event):
 
 def async_generate_image_task(event):
     """异步图片生成任务 - 在image_queue中执行"""
+    try:
+        user_id = getattr(event.source, 'user_id', None)
+        cmd = (event.message.text or '').strip().split(maxsplit=1)[0][:64] if getattr(event, 'message', None) else ''
+        track_event('image_gen', user_id=user_id, metadata={'command': cmd, 'source': 'line'})
+    except Exception as e:
+        logger.debug(f"[EventTracker] image_gen track skipped: {e}")
     handle_sync_text_command(event)
 
 def async_admin_maimai_update_task(event):
@@ -1433,7 +1468,12 @@ def async_admin_maimai_update_task(event):
     if user_id in USERS and 'version' in USERS[user_id]:
         ver = USERS[user_id]['version']
 
-    asyncio.run(maimai_update(user_id, ver))
+    try:
+        asyncio.run(maimai_update(user_id, ver))
+        track_event('sync_task', user_id=user_id, metadata={'success': True, 'trigger': 'admin'})
+    except Exception as e:
+        track_event('sync_task', user_id=user_id, metadata={'success': False, 'trigger': 'admin', 'error': str(e)[:200]})
+        raise
 
 
 # ==================== 主程序入口 ====================
@@ -4146,6 +4186,9 @@ def handle_follow(event):
 def handle_unfollow(event):
     user_id = event.source.user_id
     logger.info(f"[UnfollowEvent] {user_id} left")
+    try:
+        track_event('user_unbind', user_id=user_id, metadata={'source': 'line_unfollow'})
+    except Exception: pass
     return delete_user(user_id)
 
 
@@ -4312,6 +4355,10 @@ def admin_panel():
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
+    # 合并业务指标（?refresh=1 跳过 30s 缓存）
+    force_refresh = request.args.get('refresh') == '1'
+    stats.update(get_business_stats(force_refresh=force_refresh))
+
     # 读取日志
     logs = ""
     try:
@@ -4403,33 +4450,6 @@ def admin_get_logs():
         return jsonify({'logs': logs})
     except Exception as e:
         return jsonify({'logs': f'Error reading logs: {e}'})
-
-@app.route("/admin/memory_stats", methods=["GET"])
-def admin_memory_stats():
-    """获取内存管理器状态"""
-    if not check_admin_auth():
-        return jsonify({'error': 'Unauthorized'}), 401
-
-    try:
-        stats = memory_manager.get_stats()
-        return jsonify({'success': True, 'stats': stats})
-    except Exception as e:
-        logger.error(f"[Admin] ✗ Memory stats error: error={e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route("/admin/trigger_cleanup", methods=["POST"])
-@csrf.exempt
-def admin_trigger_cleanup():
-    """手动触发内存清理"""
-    if not check_admin_auth():
-        return jsonify({'error': 'Unauthorized'}), 401
-
-    try:
-        stats = memory_manager.cleanup()
-        return jsonify({'success': True, 'message': 'Memory cleanup completed', 'stats': stats})
-    except Exception as e:
-        logger.error(f"[Admin] ✗ Cleanup trigger error: error={e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route("/admin/get_notices", methods=["GET"])
 def admin_get_notices():
@@ -5739,6 +5759,7 @@ def api_delete_user(user_id):
         # 记录 API 访问日志
         token_info = request.token_info
         logger.info(f"[API] Delete user: user_id={user_id}, nickname={nickname}, token_id={token_info['token_id']}, note={token_info['note']}")
+        track_event('user_unbind', user_id=user_id, metadata={'token_id': token_info['token_id']})
 
         return jsonify({
             "success": True,
@@ -6384,6 +6405,7 @@ def api_v2_song_info(song_id):
 
         token_info = request.token_info
         logger.info(f"[API] Song info generated: song_id={song_id}, ver={ver}, token_id={token_info['token_id']}")
+        track_event('image_gen', user_id=None, metadata={'command': 'song_info', 'song_id': song_id, 'ver': ver})
         return send_file(buf, mimetype="image/png")
 
     except Exception as e:
@@ -6446,6 +6468,7 @@ def api_v2_song_record(user_id, song_id):
         gc.collect(0)
 
         logger.info(f"[API] Song record generated: user_id={user_id}, song_id={song_id}, token_id={token_info['token_id']}")
+        track_event('image_gen', user_id=user_id, metadata={'command': 'song_record'})
         return send_file(buf, mimetype="image/png")
 
     except Exception as e:
@@ -6528,6 +6551,7 @@ def api_v2_generate_record_image(user_id):
         gc.collect(0)
 
         logger.info(f"[API] v2 Image generated: user_id={user_id}, command={command}, token_id={token_info['token_id']}")
+        track_event('image_gen', user_id=user_id, metadata={'command': command})
         return send_file(buf, mimetype="image/png")
 
     except Exception as e:
@@ -6666,6 +6690,7 @@ def api_v2_generate_plate(user_id):
         gc.collect(0)
 
         logger.info(f"[API] Plate generated: user_id={user_id}, title={title}, token_id={token_info['token_id']}")
+        track_event('image_gen', user_id=user_id, metadata={'command': 'plate'})
         return send_file(buf, mimetype="image/png")
 
     except Exception as e:
@@ -6825,6 +6850,7 @@ def api_v2_generate_achievement(user_id):
         gc.collect(0)
 
         logger.info(f"[API] Achievement generated: user_id={user_id}, level={level}, rank={rank}, token_id={token_info['token_id']}")
+        track_event('image_gen', user_id=user_id, metadata={'command': 'achievement'})
         return send_file(buf, mimetype="image/png")
 
     except Exception as e:

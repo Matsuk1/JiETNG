@@ -475,8 +475,6 @@ POST     /admin/clear_cache        # Clear nickname cache
 POST     /admin/cancel_task        # Cancel task
 GET      /admin/task_status        # Get task status
 GET      /admin/get_logs           # Get logs
-GET      /admin/memory_stats       # Get memory stats
-POST     /admin/trigger_cleanup    # Manual memory cleanup
 ```
 
 ### Configuration Reference

@@ -490,8 +490,6 @@ POST     /admin/clear_cache        # ニックネームキャッシュクリア
 POST     /admin/cancel_task        # タスクキャンセル
 GET      /admin/task_status        # タスク状態取得
 GET      /admin/get_logs           # ログ取得
-GET      /admin/memory_stats       # メモリ統計取得
-POST     /admin/trigger_cleanup    # 手動メモリクリーンアップ
 ```
 
 ### 設定リファレンス

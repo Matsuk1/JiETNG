@@ -490,8 +490,6 @@ POST     /admin/clear_cache        # 清除昵称缓存
 POST     /admin/cancel_task        # 取消任务
 GET      /admin/task_status        # 获取任务状态
 GET      /admin/get_logs           # 获取日志
-GET      /admin/memory_stats       # 获取内存统计
-POST     /admin/trigger_cleanup    # 手动触发内存清理
 ```
 
 ### 配置参考

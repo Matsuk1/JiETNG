@@ -862,128 +862,161 @@
 
     <!-- Stats Tab -->
     <div id="stats-tab" class="tab-content active">
-      <!-- Main Statistics Cards -->
+      <!-- Business KPIs -->
       <div class="section">
-        <div class="section-title">System Overview</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div class="section-title" style="margin-bottom: 0;">Active Users</div>
+          <button type="button" class="btn btn-primary" style="font-size: 12px;"
+                  onclick="localStorage.setItem('admin_active_tab','stats'); window.location.href='/admin/panel?refresh=' + Date.now();">
+            ↻ Refresh
+          </button>
+        </div>
         <div class="stats-grid" style="margin-bottom: 20px;">
+          <div class="stat-card">
+            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">DAU</div>
+            <div class="stat-value" style="font-size: 32px;">{{ stats.dau }}</div>
+            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">Today active</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">WAU</div>
+            <div class="stat-value" style="font-size: 32px;">{{ stats.wau }}</div>
+            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">7-day active</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">MAU</div>
+            <div class="stat-value" style="font-size: 32px;">{{ stats.mau }}</div>
+            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">30-day active</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Stickiness</div>
+            <div class="stat-value" style="font-size: 32px;">{{ stats.stickiness }}<span style="font-size: 18px; margin-left: 4px;">%</span></div>
+            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">DAU / MAU</div>
+          </div>
           <div class="stat-card">
             <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Total Users</div>
             <div class="stat-value" style="font-size: 32px;">{{ stats.total_users }}</div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">Registered accounts</div>
+            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">{{ stats.jp_users }} JP · {{ stats.intl_users }} INTL</div>
           </div>
-
           <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">CPU Usage</div>
-            <div class="stat-value" style="font-size: 32px;">{{ stats.cpu_percent }}<span style="font-size: 18px; margin-left: 4px;">%</span></div>
-            <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 3px; margin-top: 8px; opacity: 0.3;">
-              <div style="height: 100%; background: var(--accent-color); border-radius: 3px; width: {{ stats.cpu_percent }}%;"></div>
-            </div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Memory</div>
-            <div class="stat-value" style="font-size: 32px;">{{ stats.memory_percent }}<span style="font-size: 18px; margin-left: 4px;">%</span></div>
-            <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 3px; margin-top: 8px; opacity: 0.3;">
-              <div style="height: 100%; background: var(--accent-color); border-radius: 3px; width: {{ stats.memory_percent }}%;"></div>
-            </div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Uptime</div>
-            <div class="stat-value" style="font-size: 24px;">{{ stats.uptime }}</div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">Service running</div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Tasks Processed</div>
-            <div class="stat-value" style="font-size: 28px;">{{ stats.total_tasks_processed }}</div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">Total completed</div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Active Threads</div>
-            <div class="stat-value" style="font-size: 32px;">{{ stats.thread_count }}</div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">Worker threads</div>
+            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">New Today</div>
+            <div class="stat-value" style="font-size: 32px;">{{ stats.today_new_users }}</div>
+            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">Signups</div>
           </div>
         </div>
       </div>
 
-      <!-- System Resources -->
+      <!-- Today's Activity -->
       <div class="section">
-        <div class="section-title">System Resources</div>
-
-        <div style="margin-bottom: 16px;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="min-width: 120px; font-size: 13px; opacity: 0.7;">CPU Cores</div>
-            <div style="flex: 1; height: 8px; background: var(--border-color); border-radius: 4px; opacity: 0.3; overflow: hidden;">
-              <div style="height: 100%; background: var(--accent-color); border-radius: 4px; width: {{ (stats.cpu_count_used / stats.cpu_count_total * 100) if stats.cpu_count_total > 0 else 0 }}%;"></div>
-            </div>
-            <div style="min-width: 80px; text-align: right; font-size: 13px; font-weight: 600;">{{ stats.cpu_count_used }} / {{ stats.cpu_count_total }}</div>
+        <div class="section-title">Today's Activity</div>
+        <div class="stats-grid" style="margin-bottom: 20px;">
+          <div class="stat-card">
+            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Image Calls</div>
+            <div class="stat-value" style="font-size: 28px;">{{ stats.today_image_calls }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Webhook Msgs</div>
+            <div class="stat-value" style="font-size: 28px;">{{ stats.today_webhook_msgs }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Bindings</div>
+            <div class="stat-value" style="font-size: 28px;">{{ stats.today_bindings }}</div>
+            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">{{ stats.today_unbinds }} unbinds</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Sync Tasks</div>
+            <div class="stat-value" style="font-size: 28px;">{{ stats.today_sync_success }} / {{ stats.today_sync_total }}</div>
+            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">{{ stats.sync_success_rate }}% success</div>
           </div>
         </div>
 
-        <div style="margin-bottom: 16px;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="min-width: 120px; font-size: 13px; opacity: 0.7;">Memory</div>
-            <div style="flex: 1; height: 8px; background: var(--border-color); border-radius: 4px; opacity: 0.3; overflow: hidden;">
-              <div style="height: 100%; background: var(--accent-color); border-radius: 4px; width: {{ stats.memory_percent }}%;"></div>
-            </div>
-            <div style="min-width: 80px; text-align: right; font-size: 13px; font-weight: 600;">{{ stats.memory_used_gb }} / {{ stats.total_memory }} GB</div>
+        <!-- Hourly distribution today -->
+        <div style="margin-top: 8px;">
+          <div style="font-size: 12px; opacity: 0.6; margin-bottom: 10px;">Hourly event volume (today, UTC)</div>
+          <div style="display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; height: 80px;">
+            {% set max_hour = stats.hourly_today|max if stats.hourly_today and (stats.hourly_today|max) > 0 else 1 %}
+            {% for v in stats.hourly_today %}
+              <div title="{{ loop.index0 }}:00 — {{ v }}" style="background: var(--accent-color); opacity: {{ 0.25 + 0.75 * v / max_hour }}; height: {{ 10 + 90 * v / max_hour }}%; border-radius: 3px 3px 0 0;"></div>
+            {% endfor %}
           </div>
-        </div>
-
-        <div style="margin-bottom: 16px;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="min-width: 120px; font-size: 13px; opacity: 0.7;">Image Queue</div>
-            <div style="flex: 1; height: 8px; background: var(--border-color); border-radius: 4px; opacity: 0.3; overflow: hidden;">
-              <div style="height: 100%; background: var(--accent-color); border-radius: 4px; width: {{ (stats.image_queue_size / stats.max_queue_size * 100) if stats.max_queue_size > 0 else 0 }}%;"></div>
-            </div>
-            <div style="min-width: 80px; text-align: right; font-size: 13px; font-weight: 600;">{{ stats.image_queue_size }} / {{ stats.max_queue_size }}</div>
-          </div>
-        </div>
-
-        <div style="margin-bottom: 16px;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="min-width: 120px; font-size: 13px; opacity: 0.7;">Web Queue</div>
-            <div style="flex: 1; height: 8px; background: var(--border-color); border-radius: 4px; opacity: 0.3; overflow: hidden;">
-              <div style="height: 100%; background: var(--accent-color); border-radius: 4px; width: {{ (stats.web_queue_size / stats.max_queue_size * 100) if stats.max_queue_size > 0 else 0 }}%;"></div>
-            </div>
-            <div style="min-width: 80px; text-align: right; font-size: 13px; font-weight: 600;">{{ stats.web_queue_size }} / {{ stats.max_queue_size }}</div>
-          </div>
-        </div>
-
-        <!-- User Distribution -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 20px;">
-          <div style="padding: 20px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">JP Users</div>
-            <div style="font-size: 32px; font-weight: 700; color: var(--accent-color); margin-bottom: 4px;">{{ stats.jp_users }}</div>
-            <div style="font-size: 13px; opacity: 0.5;">{{ stats.jp_percent }}% of total</div>
-          </div>
-          <div style="padding: 20px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">INTL Users</div>
-            <div style="font-size: 32px; font-weight: 700; color: var(--accent-color); margin-bottom: 4px;">{{ stats.intl_users }}</div>
-            <div style="font-size: 13px; opacity: 0.5;">{{ stats.intl_percent }}% of total</div>
+          <div style="display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; margin-top: 4px; font-size: 9px; opacity: 0.5; text-align: center;">
+            {% for i in range(24) %}<div>{% if i % 3 == 0 %}{{ i }}{% endif %}</div>{% endfor %}
           </div>
         </div>
       </div>
 
-      <!-- Memory Management -->
+      <!-- DAU 30d trend -->
       <div class="section">
-        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>Memory Management</span>
-          <button class="btn btn-warning" onclick="triggerMemoryCleanup()" style="font-size: 12px;">
-            Trigger Cleanup
-          </button>
+        <div class="section-title">DAU · Last 30 days</div>
+        {% set ns = namespace(m=1) %}
+        {% for p in stats.dau_30d %}{% if p.dau > ns.m %}{% set ns.m = p.dau %}{% endif %}{% endfor %}
+        <svg viewBox="0 0 600 180" preserveAspectRatio="none" style="width: 100%; height: 180px;">
+          <polyline fill="none" stroke="var(--accent-color)" stroke-width="2"
+            points="{% for p in stats.dau_30d %}{{ loop.index0 * (600 / 29) }},{{ 170 - (p.dau / ns.m * 150) }} {% endfor %}" />
+          {% for p in stats.dau_30d %}
+            <circle cx="{{ loop.index0 * (600 / 29) }}" cy="{{ 170 - (p.dau / ns.m * 150) }}" r="2.5" fill="var(--accent-color)">
+              <title>{{ p.date }} · DAU {{ p.dau }}</title>
+            </circle>
+          {% endfor %}
+        </svg>
+        <div style="display: flex; justify-content: space-between; font-size: 10px; opacity: 0.5; margin-top: 4px;">
+          <span>{{ stats.dau_30d[0].date if stats.dau_30d else '' }}</span>
+          <span>peak {{ ns.m }}</span>
+          <span>{{ stats.dau_30d[-1].date if stats.dau_30d else '' }}</span>
         </div>
+      </div>
 
-        <div id="memory-stats-container">
-          <div style="text-align: center; padding: 40px; opacity: 0.5;">
-            Loading memory stats...
+      <!-- Image command breakdown -->
+      {% if stats.image_command_breakdown %}
+      <div class="section">
+        <div class="section-title">Image calls breakdown (today)</div>
+        {% set cmd_max = stats.image_command_breakdown[0].count if stats.image_command_breakdown else 1 %}
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          {% for row in stats.image_command_breakdown %}
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="min-width: 90px; font-family: monospace; font-size: 13px;">{{ row.command }}</div>
+            <div style="flex: 1; height: 14px; background: var(--border-color); opacity: 0.3; border-radius: 4px; overflow: hidden;">
+              <div style="height: 100%; background: var(--accent-color); width: {{ (row.count / cmd_max * 100) if cmd_max > 0 else 0 }}%; border-radius: 4px;"></div>
+            </div>
+            <div style="min-width: 50px; text-align: right; font-weight: 600; font-size: 13px;">{{ row.count }}</div>
           </div>
+          {% endfor %}
         </div>
+      </div>
+      {% endif %}
 
-        <div style="margin-top: 12px; text-align: center;">
-          <button class="btn btn-primary" onclick="loadMemoryStats()">Refresh Stats</button>
+      <!-- System Health (collapsible) -->
+      <div class="section">
+        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="var e=document.getElementById('sys-health-body'); e.style.display = e.style.display==='none' ? 'block' : 'none';">
+          <span>System Health</span>
+          <span style="font-size: 12px; opacity: 0.5;">click to toggle</span>
+        </div>
+        <div id="sys-health-body" style="display: none;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px;">
+            <div style="padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
+              <div style="font-size: 11px; opacity: 0.6;">CPU</div>
+              <div style="font-size: 20px; font-weight: 600;">{{ stats.cpu_percent }}%</div>
+            </div>
+            <div style="padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
+              <div style="font-size: 11px; opacity: 0.6;">Memory</div>
+              <div style="font-size: 20px; font-weight: 600;">{{ stats.memory_used_gb }}/{{ stats.total_memory }} GB</div>
+            </div>
+            <div style="padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
+              <div style="font-size: 11px; opacity: 0.6;">Uptime</div>
+              <div style="font-size: 16px; font-weight: 600;">{{ stats.uptime }}</div>
+            </div>
+            <div style="padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
+              <div style="font-size: 11px; opacity: 0.6;">Threads</div>
+              <div style="font-size: 20px; font-weight: 600;">{{ stats.thread_count }}</div>
+            </div>
+            <div style="padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
+              <div style="font-size: 11px; opacity: 0.6;">Image Queue</div>
+              <div style="font-size: 20px; font-weight: 600;">{{ stats.image_queue_size }}/{{ stats.max_queue_size }}</div>
+            </div>
+            <div style="padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
+              <div style="font-size: 11px; opacity: 0.6;">Web Queue</div>
+              <div style="font-size: 20px; font-weight: 600;">{{ stats.web_queue_size }}/{{ stats.max_queue_size }}</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1632,11 +1665,6 @@
         loadBackups();
       }
 
-      // 如果切换到stats标签，加载内存统计
-      if (tabName === 'stats') {
-        loadMemoryStats();
-      }
-
       // 如果切换到notifications标签，加载通知
       if (tabName === 'notifications') {
         refreshNotifications();
@@ -1691,8 +1719,6 @@
           loadBackups();
         } else if (savedTab === 'notifications') {
           refreshNotifications();
-        } else if (savedTab === 'stats') {
-          loadMemoryStats();
         } else if (savedTab === 'backgrounds') {
           loadBackgrounds();
         }
@@ -2891,125 +2917,7 @@
       if (document.getElementById('notices-tab').classList.contains('active')) {
         loadNotices();
       }
-
-      // Load memory stats if on stats tab
-      if (document.getElementById('stats-tab').classList.contains('active')) {
-        loadMemoryStats();
-      }
     });
-
-    // ==================== Memory Management Functions ====================
-
-    function loadMemoryStats() {
-      const container = document.getElementById('memory-stats-container');
-      container.innerHTML = '<div style="text-align: center; padding: 40px; opacity: 0.5;">Loading...</div>';
-
-      fetch('/admin/memory_stats')
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            displayMemoryStats(data.stats);
-          } else {
-            container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--danger-color);">Failed to load memory stats</div>';
-          }
-        })
-        .catch(err => {
-          container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--danger-color);">Network error: ' + err + '</div>';
-        });
-    }
-
-    function displayMemoryStats(stats) {
-      const container = document.getElementById('memory-stats-container');
-
-      const html = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
-          <div style="padding: 20px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">Status</div>
-            <div style="font-size: 24px; font-weight: 700; color: ${stats.running ? 'var(--success-color)' : 'var(--danger-color)'}; margin-bottom: 4px;">
-              ${stats.running ? 'Running' : 'Stopped'}
-            </div>
-            <div style="font-size: 13px; opacity: 0.5;">Memory Manager</div>
-          </div>
-
-          <div style="padding: 20px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">Interval</div>
-            <div style="font-size: 32px; font-weight: 700; color: var(--accent-color); margin-bottom: 4px;">
-              ${stats.interval_seconds}<span style="font-size: 18px; opacity: 0.5; margin-left: 4px;">s</span>
-            </div>
-            <div style="font-size: 13px; opacity: 0.5;">Cleanup interval</div>
-          </div>
-
-          <div style="padding: 20px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">Last Cleanup</div>
-            <div style="font-size: 16px; font-weight: 700; color: var(--accent-color); margin-bottom: 4px;">
-              ${stats.last_cleanup}
-            </div>
-            <div style="font-size: 13px; opacity: 0.5;">Last run time</div>
-          </div>
-        </div>
-
-        <div style="padding: 16px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;">
-          <div style="font-size: 12px; font-weight: 600; opacity: 0.7; margin-bottom: 12px;">Garbage Collector Statistics</div>
-
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-            <div>
-              <div style="font-size: 11px; opacity: 0.5; margin-bottom: 4px;">Gen 0 Count</div>
-              <div style="font-size: 20px; font-weight: 600;">${stats.gc_counts[0]}</div>
-            </div>
-            <div>
-              <div style="font-size: 11px; opacity: 0.5; margin-bottom: 4px;">Gen 1 Count</div>
-              <div style="font-size: 20px; font-weight: 600;">${stats.gc_counts[1]}</div>
-            </div>
-            <div>
-              <div style="font-size: 11px; opacity: 0.5; margin-bottom: 4px;">Gen 2 Count</div>
-              <div style="font-size: 20px; font-weight: 600;">${stats.gc_counts[2]}</div>
-            </div>
-          </div>
-
-          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
-            <div style="font-size: 11px; opacity: 0.5; margin-bottom: 8px;">GC Thresholds</div>
-            <div style="font-size: 13px; font-family: 'Courier New', monospace;">
-              Gen 0: ${stats.gc_threshold[0]} | Gen 1: ${stats.gc_threshold[1]} | Gen 2: ${stats.gc_threshold[2]}
-            </div>
-          </div>
-        </div>
-      `;
-
-      container.innerHTML = html;
-    }
-
-    function triggerMemoryCleanup() {
-      if (!confirm('Trigger manual memory cleanup?\n\nThis will run garbage collection and clear expired caches.')) {
-        return;
-      }
-
-      const btn = event.target;
-      const originalText = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = 'Cleaning...';
-
-      fetch('/admin/trigger_cleanup', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'}
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          showToast('✓ Memory cleanup completed: ' + data.stats.collected_objects + ' objects collected in ' + data.stats.elapsed_ms + 'ms');
-          // Reload stats
-          setTimeout(() => loadMemoryStats(), 500);
-        } else {
-          showToast('✗ Cleanup failed: ' + data.message);
-        }
-        btn.disabled = false;
-        btn.textContent = originalText;
-      })
-      .catch(err => {
-        showToast('✗ Network error: ' + err);
-        btn.disabled = false;
-        btn.textContent = originalText;
-      });
-    }
 
     // ==================== DxData Functions ====================
 

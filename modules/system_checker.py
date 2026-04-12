@@ -20,6 +20,7 @@ from modules.config_loader import (
 )
 from modules.user_manager import delete_user
 from modules.dbpool_manager import get_connection
+from modules.event_tracker import init_events_table
 
 logger = logging.getLogger(__name__)
 
@@ -208,6 +209,9 @@ def run_system_check() -> Dict[str, Any]:
     # 1. 数据库连接检查
     logger.info("[SystemCheck] → Phase 1/4: Checking database connection...")
     results["checks"]["database"] = check_database_connection()
+
+    # 1.5 初始化 events 表
+    init_events_table()
 
     # 2. 必要文件检查
     logger.info("[SystemCheck] → Phase 2/4: Checking required files...")
