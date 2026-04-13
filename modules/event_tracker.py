@@ -261,15 +261,27 @@ def _compute_business_stats() -> dict:
             out['stickiness'] = round(out['dau'] / out['mau'] * 100, 1)
 
         # 今日分事件统计
-        out['today_new_users'] = _scalar(cursor,
-            "SELECT COUNT(*) FROM events WHERE event_type='user_bind' AND ts >= CURDATE()")
+        # today_new_users：今日首次有 user_bind 事件、且该 user_id 历史上从未 bind 过的 distinct 用户数
+        out['today_new_users'] = _scalar(cursor, """
+            SELECT COUNT(*) FROM (
+                SELECT user_id, MIN(ts) AS first_bind
+                FROM events
+                WHERE event_type='user_bind' AND user_id IS NOT NULL
+                GROUP BY user_id
+                HAVING first_bind >= CURDATE()
+            ) t
+        """)
         out['today_image_calls'] = _scalar(cursor,
             "SELECT COUNT(*) FROM events WHERE event_type='image_gen' AND ts >= CURDATE()")
         out['today_webhook_msgs'] = _scalar(cursor,
             "SELECT COUNT(*) FROM events WHERE event_type='line_webhook' AND ts >= CURDATE()")
-        out['today_bindings'] = out['today_new_users']
+        # today_bindings：今日全部绑定动作（首绑 + 重绑），按 distinct user_id 去重
+        out['today_bindings'] = _scalar(cursor,
+            "SELECT COUNT(DISTINCT user_id) FROM events "
+            "WHERE event_type IN ('user_bind','user_rebind') AND user_id IS NOT NULL AND ts >= CURDATE()")
         out['today_unbinds'] = _scalar(cursor,
-            "SELECT COUNT(*) FROM events WHERE event_type='user_unbind' AND ts >= CURDATE()")
+            "SELECT COUNT(DISTINCT user_id) FROM events "
+            "WHERE event_type='user_unbind' AND user_id IS NOT NULL AND ts >= CURDATE()")
         out['today_sync_total'] = _scalar(cursor,
             "SELECT COUNT(*) FROM events WHERE event_type='sync_task' AND ts >= CURDATE()")
         out['today_sync_success'] = _scalar(cursor,

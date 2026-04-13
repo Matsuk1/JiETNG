@@ -884,13 +884,16 @@ Token not provided. <br />
             }
             return render_template("error.html", message=maintenance_messages.get(user_language, maintenance_messages["ja"]), language=user_language), 503
         elif result:
-            if "registered_via_token" not in USERS.get(user_id, {}):
-                if mode == "bind":
+            via_token = "registered_via_token" in USERS.get(user_id, {})
+            if mode == "bind":
+                # API token 创建的用户不再跑 bind 自动同步推送，但依然计入绑定事件
+                if not via_token:
                     task_id = f"bind_{secrets.token_hex(8)}"
                     webtask_queue.put_nowait((async_bind_update_task, (user_id, user_version), task_id))
-                    track_event('user_bind', user_id=user_id, metadata={'version': user_version})
-                else:
-                    track_event('user_rebind', user_id=user_id, metadata={'version': user_version})
+                track_event('user_bind', user_id=user_id, metadata={'version': user_version, 'via_token': via_token})
+            else:
+                track_event('user_rebind', user_id=user_id, metadata={'version': user_version, 'via_token': via_token})
+                if not via_token:
                     try:
                         smart_push(user_id, rebind_msg(user_id), configuration)
                     except Exception as e:
