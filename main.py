@@ -4358,8 +4358,8 @@ def admin_panel():
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
-    # 合并业务指标（?refresh=1 跳过 30s 缓存）
-    force_refresh = request.args.get('refresh') == '1'
+    # 合并业务指标（?refresh=<任何值> 跳过 30s 缓存）
+    force_refresh = bool(request.args.get('refresh'))
     stats.update(get_business_stats(force_refresh=force_refresh))
 
     # 读取日志

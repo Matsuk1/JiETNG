@@ -9,7 +9,7 @@ import logging
 import queue
 import threading
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from modules.dbpool_manager import get_connection
 
@@ -212,22 +212,33 @@ _stats_cache = {'ts': 0.0, 'data': None}
 
 
 def get_business_stats(force_refresh: bool = False) -> dict:
-    """带 TTL 缓存的业务指标查询（默认 30s）。force_refresh=True 跳过缓存。"""
+    """带 TTL 缓存的业务指标查询（默认 30s）。force_refresh=True 跳过 TTL 检查。
+    DB 错误时不污染缓存；若有任何旧缓存可用则返回旧值（哪怕已过期），无缓存才返回零数据。
+    返回 dict 含 'business_stats_at'（数据真实生成时间，YYYY-MM-DD HH:MM:SS），
+    用于区分"页面渲染时间"与"业务数据快照时间"。
+    """
     now = time.monotonic()
     if not force_refresh:
         cached = _stats_cache['data']
         if cached is not None and (now - _stats_cache['ts']) < _STATS_CACHE_TTL:
             return cached
-    data = _compute_business_stats()
-    with _stats_cache_lock:
-        _stats_cache['ts'] = time.monotonic()
-        _stats_cache['data'] = data
+    data, ok = _compute_business_stats()
+    if ok:
+        data['business_stats_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with _stats_cache_lock:
+            _stats_cache['ts'] = time.monotonic()
+            _stats_cache['data'] = data
+        return data
+    # 失败：优先返回任何已有缓存（可能过期），否则返回零数据
+    if _stats_cache['data'] is not None:
+        return _stats_cache['data']
+    data['business_stats_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' (DB error)'
     return data
 
 
-def _compute_business_stats() -> dict:
+def _compute_business_stats() -> tuple[dict, bool]:
     """
-    聚合返回业务指标：
+    聚合返回业务指标。返回 (data, ok) —— ok=False 时调用方不应缓存结果。
       dau / wau / mau / stickiness
       today_new_users / today_image_calls / today_webhook_msgs
       today_bindings / today_unbinds / today_sync_total / today_sync_success / sync_success_rate
@@ -235,6 +246,7 @@ def _compute_business_stats() -> dict:
       dau_30d  (日期 → DAU，近 30 天)
       hourly_today  (0-23 小时 → 调用量)
     """
+    ok = True
     out = {
         'dau': 0, 'wau': 0, 'mau': 0, 'stickiness': 0.0,
         'today_new_users': 0, 'today_image_calls': 0, 'today_webhook_msgs': 0,
@@ -331,6 +343,7 @@ def _compute_business_stats() -> dict:
             hourly[int(r[0])] = r[1]
         out['hourly_today'] = hourly
     except Exception as e:
+        ok = False
         logger.error(f"[EventTracker] ✗ get_business_stats failed: {e}")
     finally:
         if cursor:
@@ -340,4 +353,4 @@ def _compute_business_stats() -> dict:
             try: conn.close()
             except Exception: pass
 
-    return out
+    return out, ok

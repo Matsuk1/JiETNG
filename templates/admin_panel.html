@@ -864,12 +864,9 @@
     <div id="stats-tab" class="tab-content active">
       <!-- Business KPIs -->
       <div class="section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <div class="section-title" style="margin-bottom: 0;">Active Users</div>
-          <button type="button" class="btn btn-primary" style="font-size: 12px;"
-                  onclick="localStorage.setItem('admin_active_tab','stats'); window.location.href='/admin/panel?refresh=' + Date.now();">
-            ↻ Refresh
-          </button>
+        <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Active Users</span>
+          <button class="btn btn-primary" onclick="refreshStats(this)">Refresh</button>
         </div>
         <div class="stats-grid" style="margin-bottom: 20px;">
           <div class="stat-card">
@@ -931,7 +928,7 @@
 
         <!-- Hourly distribution today -->
         <div style="margin-top: 8px;">
-          <div style="font-size: 12px; opacity: 0.6; margin-bottom: 10px;">Hourly event volume (today, UTC)</div>
+          <div style="font-size: 12px; opacity: 0.6; margin-bottom: 10px;">Hourly event volume (today, DB server time)</div>
           <div style="display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; height: 80px;">
             {% set max_hour = stats.hourly_today|max if stats.hourly_today and (stats.hourly_today|max) > 0 else 1 %}
             {% for v in stats.hourly_today %}
@@ -1059,7 +1056,7 @@
         </div>
 
         <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color); opacity: 0.5; font-size: 13px;">
-          <p>Last updated: {{ stats.timestamp }}</p>
+          <p>Page rendered: {{ stats.timestamp }}{% if stats.business_stats_at %} · Business data: {{ stats.business_stats_at }}{% endif %}</p>
         </div>
       </div>
     </div>
@@ -2425,6 +2422,44 @@
           scrollLogsToBottom();
         })
         .catch(err => alert('Error refreshing logs: ' + err));
+    }
+
+    function refreshStats(btn) {
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+      // 保留 System Health 折叠状态（refresh 前后都希望维持用户视角）
+      const sysHealth = document.getElementById('sys-health-body');
+      const sysHealthOpen = sysHealth && sysHealth.style.display !== 'none';
+
+      // 拉取整页 HTML，仅替换 #stats-tab 内容（避免在 JS 里复制服务器端渲染逻辑）
+      fetch('/admin/panel?refresh=' + Date.now(), {redirect: 'manual'})
+        .then(res => {
+          if (res.type === 'opaqueredirect' || res.status === 401 || res.status === 302) {
+            throw new Error('Session expired, please re-login');
+          }
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.text();
+        })
+        .then(html => {
+          const doc = new DOMParser().parseFromString(html, 'text/html');
+          const next = doc.getElementById('stats-tab');
+          const curr = document.getElementById('stats-tab');
+          if (!next || !curr) throw new Error('stats-tab not found (session may have expired)');
+          curr.innerHTML = next.innerHTML;
+          // 恢复 System Health 折叠状态
+          if (sysHealthOpen) {
+            const newBody = document.getElementById('sys-health-body');
+            if (newBody) newBody.style.display = 'block';
+          }
+          showToast('✅ Stats refreshed', 'success');
+        })
+        .catch(err => {
+          showToast('❌ ' + err.message, 'error');
+          // 仅在失败路径恢复按钮（成功路径下旧按钮已被 innerHTML 替换为新实例）
+          btn.disabled = false;
+          btn.textContent = originalText;
+        });
     }
 
     function updateDXData() {
