@@ -250,7 +250,7 @@ export default withMermaid(defineConfig({
     ['meta', { name: 'theme-color', content: '#2563eb' }],
 
     // Google Search Console 验证
-    ['meta', { name: 'google-site-verification', content: 'AFFp6ZYIkyQJr6lPnfQ5iQt_eLXph0pjhIgbYqsr7eU' }],
+    ['meta', { name: 'google-site-verification', content: '7wQ3HIU-rk6iSNe441mvYPgkZwuotIB3PlOx6r3xOm8' }],
 
     // SEO meta标签
     ['meta', { name: 'keywords', content: 'maimai, maimai でらっくす, maimaiでらっくす, maimai bot, score tracker, rating calculator, best 50, b50, LINE bot, 舞萌DX, 舞萌, 成绩管理, 查分器, スコア管理, レーティング計算, maimaiDXボット, ベスト50, 日本サーバー, 国際サーバー, 日本版, 海外版, 日版, 国际版, maimaiDX bot, rhythm game, arcade game tracker, Japanese server, International server, 日服, 国际服' }],
