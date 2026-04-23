@@ -12,6 +12,7 @@ This document lists all available commands for the JiETNG LINE Bot.
 - [Song Queries](#song-queries)
 - [Version Achievements](#version-achievements)
 - [Friend Features](#friend-features)
+- [Search Commands](#search-commands)
 - [Utility Commands](#utility-commands)
 
 ---
@@ -24,7 +25,6 @@ This document lists all available commands for the JiETNG LINE Bot.
 |---------|---------|-------------|
 | `donate` | None | Display donation information to support JiETNG's development |
 | `status` | None | Display bot status (uptime, CPU, memory, etc.) |
-| `command` | `cmd` | Display the list of available score commands |
 
 ---
 
@@ -37,7 +37,8 @@ This document lists all available commands for the JiETNG LINE Bot.
 | `bind` | None | Bind SEGA account |
 | `profile` | `getme` | View current account binding info |
 | `unbind` | None | Unbind account |
-| `settings` | `rebind` | Update account settings (password, timezone, language, version, etc.) without unbinding |
+| `rebind` | None | Rebind account (update password, version, Aime). SEGA ID cannot be changed |
+| `settings` | None | Update personal settings (timezone, language, background, etc.) |
 
 ### Data Update
 
@@ -68,6 +69,7 @@ This document lists all available commands for the JiETNG LINE Bot.
 | `fdxb50` | `fdx50` | FDX/FDX+ only Best 50 |
 | `rct50` | `r50` | Recent 50 plays |
 | `idealb50` | `idlb50` | Ideal Best 50 |
+| `unknown` | `unkn` | Songs with unknown version |
 
 ### Filters
 
@@ -131,7 +133,7 @@ Supports `-lv`, `-ra`, `-scr`, `-dx`, `-star`, `-diff`, `-ver`, `-type`, `-page`
 
 **English Alias Examples**:
 ```
-宴極achievement-list            # Same as 宴極の達成状況
+宴極achievement                 # Same as 宴極の達成状況
 双将achievement                 # Same as 双将の達成状況
 ```
 
@@ -172,6 +174,22 @@ friend-rcd 1234567890123456 b50 -lv 14.7     # View friend's B50 (constant 14.7)
 - `[type]` supports all B-series commands (b50, ab50, etc.), defaults to b50
 - `[filters]` supports the same filter parameters as b50 (-lv, -ra, -scr, etc.)
 - Private chat only, not available in group chats
+
+---
+
+## Search Commands
+
+### Song Search
+
+| Command Format | Description | Example |
+|----------------|-------------|---------|
+| `artist <keyword> [page]` | Search songs by artist name | `artist Nanahira` |
+| `designer <keyword> [page]` | Search songs by chart designer | `designer Jack` |
+
+**Notes**:
+- Private chat only (to prevent spam in groups)
+- Keywords are case-insensitive
+- Use page parameter to navigate results
 
 ---
 

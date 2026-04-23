@@ -23,6 +23,7 @@ apb50 / ap50              # All Perfect Best 50（AP/AP+ のみ）
 fdxb50 / fdx50            # Full DX Best 50（FDX/FDX+ のみ）
 idealb50 / idlb50         # Ideal Best 50（上位梯度スコアをシミュレート）
 rct50 / r50               # Recent 50（最近 50 回のプレイ）
+unknown / unkn            # バージョン不明の楽曲リスト
 ```
 
 ## フィルター
@@ -39,6 +40,7 @@ rct50 / r50               # Recent 50（最近 50 回のプレイ）
 | `-ver [バージョン...]` | バージョンでフィルター、複数指定可 | `-ver buddies` または `-ver splash splash+` (plus → +) |
 | `-diff [難易度...]` | 難易度でフィルター、複数指定可 | `-diff mas` または `-diff mas rem` |
 | `-type [dx\|std]` | 譜面タイプでフィルター | `-type dx` |
+| `-next` | 次バージョンのグルーピングを使用（現行バージョンの代わり） | `-next` |
 | `-times [倍率]` | 表示件数を倍率でスケーリング（最大 2.5、5 の倍数に切り上げ） | `-times 2` |
 | `-page [n]` | ページ送り | `-page 2` |
 
@@ -103,6 +105,6 @@ b50 -diff mas -lv 14 14.9 -page 2        # 2 ページ目へ
 
 ::: tip
 - 評価は大文字小文字を区別しません
-- 日本語（進捗）と英語（progress）のキーワードをサポート
+- 日本語（進捗）、英語（progress）、中国語（进度）のキーワードをサポート
 - サポートされている難易度：11、11+、12、12+、13、13+、14、14+、15
 :::

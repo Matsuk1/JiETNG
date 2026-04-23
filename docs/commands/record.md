@@ -23,6 +23,7 @@ apb50 / ap50              # All Perfect Best 50（仅 AP/AP+ 成绩）
 fdxb50 / fdx50            # Full DX Best 50（仅 FDX/FDX+ 成绩）
 idealb50 / idlb50         # Ideal Best 50（模拟上一梯度成绩）
 rct50 / r50               # Recent 50（最近 50 次游玩）
+unknown / unkn            # 版本未知歌曲列表
 ```
 
 ## 过滤参数
@@ -39,6 +40,7 @@ rct50 / r50               # Recent 50（最近 50 次游玩）
 | `-ver [版本...]` | 按版本筛选，可多选 | `-ver buddies` 或 `-ver splash splash+` (plus → +) |
 | `-diff [难度...]` | 按难度筛选，可多选 | `-diff mas` 或 `-diff mas rem` |
 | `-type [dx\|std]` | 按谱面类型筛选 | `-type dx` |
+| `-next` | 使用下一版本分组替代当前版本分组 | `-next` |
 | `-times [倍率]` | 按倍率缩放显示数量（最大 2.5，向上取整到 5 的倍数） | `-times 2` |
 | `-page [页码]` | 翻页 | `-page 2` |
 

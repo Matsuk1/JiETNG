@@ -26,14 +26,21 @@ unbind confirm
 This action is irreversible. All data will be permanently deleted.
 :::
 
-### Update Account Settings
+### Rebind Account
 
 ```
-settings
 rebind
 ```
 
-Sends a settings link to update password, version, timezone, language, Aime, etc. SEGA ID cannot be changed. Private chat only.
+Sends a rebind link to update password, version, and Aime. SEGA ID cannot be changed. Private chat only.
+
+### Personal Settings
+
+```
+settings
+```
+
+Sends a settings link to update timezone, language, background, and other personal settings. Private chat only.
 
 ### Update Scores
 

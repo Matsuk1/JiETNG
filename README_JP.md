@@ -8,7 +8,7 @@
 
 日本版と海外版に対応
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.1.0-green.svg)](https://flask.palletsprojects.com/)
 [![LINE Bot SDK](https://img.shields.io/badge/LINE_Bot_SDK-3.21.0-00C300.svg)](https://github.com/line/line-bot-sdk-python)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
@@ -81,7 +81,8 @@ https://your-domain.com/admin/panel
 | **デュアルキュー監視** | 画像キュー（3並列）+ ネットワークキュー（1並列） |
 | **タスク追跡** | 最近 20 件の完了タスクと実行時間統計を表示 |
 | **頻度制限** | 30秒以内の重複リクエストを防止（各タスクタイプ最大2件） |
-| **システム統計** | ユーザー数、バージョン分布、CPU/メモリ使用率、キュー状態、稼働時間 |
+| **ビジネス分析** | DAU/WAU/MAU、定着率分析、今日の画像生成/同期/連携統計、コマンド分布、30日間DAUトレンドチャート、時間帯別ヒートマップ |
+| **システム監視** | CPU/メモリ使用率、キュー状態、スレッド数、稼働時間（折りたたみ可能） |
 | **リアルタイムログ** | 最近 100 行のログ表示、ANSI カラーコード対応 |
 | **データリフレッシュ** | 個別ユーザーデータとニックネームの高速リフレッシュ |
 
@@ -91,6 +92,7 @@ https://your-domain.com/admin/panel
 - **レスポンシブデザイン**: デスクトップとモバイルデバイスに完全対応
 - **デュアルキューアーキテクチャ**: 画像生成とネットワークタスクを分離し、並列性能を向上
 - **タスク追跡**: 実行中/待機中/完了タスクと所要時間統計をリアルタイム表示
+- **ビジネス分析**: MySQL events テーブルベースのイベント追跡、DAU/WAU/MAU 自動集計、30日間トレンドチャート、時間帯別分布ヒートマップ
 - **スマート制限**: 高速な重複リクエストからサーバーリソースを保護
 - **カラーログ**: ANSI カラーコード対応で、エラー/警告を識別しやすく
 - **セッション管理**: Cookie ベースの安全な認証
@@ -110,11 +112,12 @@ https://your-domain.com/admin/panel
 
 1. `https://your-domain.com/admin/panel` にアクセス
 2. 管理者パスワードでログイン
-3. 5つの主要タブでナビゲーション：
+3. 6つの主要タブでナビゲーション：
    - **Users**: ユーザーリストとデータ管理
    - **Task Queue**: デュアルキュー監視（画像 + ネットワークキュー）
-   - **Statistics**: システム統計情報
+   - **Statistics**: ビジネス分析（DAU/WAU/MAU、今日のアクティビティ、トレンドチャート）+ システムヘルス監視
    - **Notices**: お知らせ管理
+   - **DXData**: 楽曲データベース管理と更新
    - **Logs**: リアルタイムログビューア
 
 ---
@@ -123,7 +126,7 @@ https://your-domain.com/admin/panel
 
 ### システム要件
 
-- **Python**: 3.8 以上
+- **Python**: 3.10 以上
 - **MySQL**: 5.7+ / MariaDB 10.2+
 - **OS**: Linux / macOS / Windows
 
@@ -372,6 +375,7 @@ JiETNG/
 │   ├── dbpool_manager.py      # データベース接続プール
 │   ├── devtoken_manager.py    # 開発者トークン管理
 │   ├── dxdata_manager.py      # 楽曲データ管理
+│   ├── event_tracker.py       # ビジネスイベント追跡と指標集計
 │   ├── image_cache.py         # 画像キャッシュ
 │   ├── image_manager.py       # 画像処理
 │   ├── image_uploader.py      # 画像アップロード（Imgur/Cloudflare R2）
@@ -452,6 +456,23 @@ CREATE TABLE best_records (
 #### recent_records テーブル
 
 `best_records` と同じ構造で、最近のプレイ記録を保存します。
+
+#### events テーブル
+
+```sql
+CREATE TABLE events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(64) NULL,
+    event_type VARCHAR(32) NOT NULL,
+    metadata JSON NULL,
+    ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ts (ts),
+    INDEX idx_event_ts (event_type, ts),
+    INDEX idx_user_ts (user_id, ts)
+);
+```
+
+ビジネスイベント追跡テーブル。起動時に自動作成されます。Webhook 呼び出し、画像生成、連携/解除、同期タスクなどのイベントを記録し、DAU/WAU/MAU などの指標集計を支えます。90日を超える履歴レコードはバックグラウンドスレッドにより自動的にパージされます。
 
 ### API エンドポイント
 

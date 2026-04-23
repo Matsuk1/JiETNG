@@ -8,7 +8,7 @@
 
 支持日服和国际服
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.1.0-green.svg)](https://flask.palletsprojects.com/)
 [![LINE Bot SDK](https://img.shields.io/badge/LINE_Bot_SDK-3.21.0-00C300.svg)](https://github.com/line/line-bot-sdk-python)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
@@ -81,7 +81,8 @@ https://your-domain.com/admin/panel
 | **双队列监控** | 图片队列（3并发）+ 网络队列（1并发） |
 | **任务追踪** | 显示最近 20 个完成任务及执行时间统计 |
 | **频率限制** | 防止 30 秒内重复请求（每类任务最多 2 个） |
-| **系统统计** | 用户数、版本分布、CPU/内存使用、队列状态、运行时长 |
+| **业务指标** | DAU/WAU/MAU、粘性分析、今日图片/同步/绑定统计、命令分布、30 天 DAU 趋势图、小时热力图 |
+| **系统监控** | CPU/内存使用、队列状态、线程数、运行时长（可折叠） |
 | **实时日志** | 查看最近 100 行日志，支持 ANSI 颜色代码 |
 | **数据刷新** | 快速刷新单个用户数据和昵称 |
 
@@ -91,6 +92,7 @@ https://your-domain.com/admin/panel
 - **响应式设计**: 完整支持桌面和移动设备
 - **双队列架构**: 图片生成和网络任务分离，提高并发性能
 - **任务追踪**: 实时显示运行中/排队中/已完成任务及耗时统计
+- **业务分析**: 基于 MySQL events 表的事件追踪，DAU/WAU/MAU 等核心指标自动聚合，30 天趋势图、小时分布热力图
 - **智能限流**: 保护服务器资源免受快速重复请求影响
 - **彩色日志**: ANSI 颜色代码支持，便于识别错误/警告
 - **会话管理**: 基于 Cookie 的安全认证
@@ -113,8 +115,9 @@ https://your-domain.com/admin/panel
 3. 在五个主要标签页中导航：
    - **Users**: 用户列表和数据管理
    - **Task Queue**: 双队列监控（图片 + 网络队列）
-   - **Statistics**: 系统统计信息
+   - **Statistics**: 业务指标（DAU/WAU/MAU、今日活动统计、趋势图）+ 系统健康监控
    - **Notices**: 公告管理
+   - **DXData**: 歌曲数据库管理与更新
    - **Logs**: 实时日志查看器
 
 ---
@@ -123,7 +126,7 @@ https://your-domain.com/admin/panel
 
 ### 系统要求
 
-- **Python**: 3.8 或更高版本
+- **Python**: 3.10 或更高版本
 - **MySQL**: 5.7+ / MariaDB 10.2+
 - **操作系统**: Linux / macOS / Windows
 
@@ -372,6 +375,7 @@ JiETNG/
 │   ├── dbpool_manager.py      # 数据库连接池
 │   ├── devtoken_manager.py    # 开发者 Token 管理
 │   ├── dxdata_manager.py      # 歌曲数据管理
+│   ├── event_tracker.py       # 业务事件追踪与指标聚合
 │   ├── image_cache.py         # 图像缓存
 │   ├── image_manager.py       # 图像处理
 │   ├── image_uploader.py      # 图床上传（Imgur/Cloudflare R2）
@@ -452,6 +456,23 @@ CREATE TABLE best_records (
 #### recent_records 表
 
 结构与 `best_records` 相同，存储最近游玩记录。
+
+#### events 表
+
+```sql
+CREATE TABLE events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(64) NULL,
+    event_type VARCHAR(32) NOT NULL,
+    metadata JSON NULL,
+    ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ts (ts),
+    INDEX idx_event_ts (event_type, ts),
+    INDEX idx_user_ts (user_id, ts)
+);
+```
+
+业务事件追踪表，启动时自动创建。记录 webhook 调用、图片生成、绑定/解绑、同步任务等事件，支撑 DAU/WAU/MAU 等指标聚合。超过 90 天的历史记录由后台线程自动清理。
 
 ### API 接口
 

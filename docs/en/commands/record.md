@@ -23,6 +23,7 @@ apb50 / ap50              # All Perfect Best 50 (AP/AP+ scores only)
 fdxb50 / fdx50            # Full DX Best 50 (FDX/FDX+ scores only)
 idealb50 / idlb50         # Ideal Best 50 (simulate previous tier scores)
 rct50 / r50               # Recent 50 plays
+unknown / unkn            # Songs with unknown version
 ```
 
 ## Filters
@@ -39,6 +40,7 @@ All B-series commands support the following filter parameters:
 | `-ver [versions...]` | Filter by version, multiple allowed | `-ver buddies` or `-ver splash splash+` (plus → +) |
 | `-diff [difficulties...]` | Filter by difficulty, multiple allowed | `-diff mas` or `-diff mas rem` |
 | `-type [dx\|std]` | Filter by chart type | `-type dx` |
+| `-next` | Use next version grouping instead of current version | `-next` |
 | `-times [multiplier]` | Scale display count by multiplier (max 2.5, rounded up to nearest 5) | `-times 2` |
 | `-page [n]` | Pagination | `-page 2` |
 
@@ -103,6 +105,6 @@ View achievement progress for a specified difficulty level and rank.
 
 ::: tip
 - Rank names are case-insensitive
-- Supports Japanese (進捗), English (progress) keywords
+- Supports Japanese (進捗), English (progress), and Chinese (进度) keywords
 - Supported difficulty levels: 11, 11+, 12, 12+, 13, 13+, 14, 14+, 15
 :::

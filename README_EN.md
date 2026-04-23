@@ -8,7 +8,7 @@
 
 Supports Japanese and International servers
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.1.0-green.svg)](https://flask.palletsprojects.com/)
 [![LINE Bot SDK](https://img.shields.io/badge/LINE_Bot_SDK-3.21.0-00C300.svg)](https://github.com/line/line-bot-sdk-python)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
@@ -66,7 +66,8 @@ https://your-domain.com/admin/panel
 | **Dual Queue Monitoring** | Image queue (3 concurrent) + Network queue (1 concurrent) |
 | **Task Tracking** | Display recent 20 completed tasks with execution time statistics |
 | **Rate Limiting** | Prevent duplicate requests within 30-second window (max 2 per task type) |
-| **System Statistics** | User count, version distribution, CPU/memory usage, queue status, uptime |
+| **Business Analytics** | DAU/WAU/MAU, stickiness analysis, today's image/sync/bind stats, command breakdown, 30-day DAU trend chart, hourly heatmap |
+| **System Monitoring** | CPU/memory usage, queue status, thread count, uptime (collapsible) |
 | **Real-time Logs** | View recent 100 log lines with ANSI color code support |
 | **Data Refresh** | Quick refresh for individual user data and nicknames |
 
@@ -76,6 +77,7 @@ https://your-domain.com/admin/panel
 - **Responsive Design**: Full support for desktop and mobile devices
 - **Dual Queue Architecture**: Separate image generation and network tasks for improved concurrency
 - **Task Tracking**: Real-time display of running/queued/completed tasks with timing statistics
+- **Business Analytics**: MySQL events-based event tracking with automatic DAU/WAU/MAU aggregation, 30-day trend charts, and hourly distribution heatmaps
 - **Smart Rate Limiting**: Protect server resources from rapid repeated requests
 - **Colored Logs**: ANSI color code support for easy error/warning identification
 - **Session Management**: Cookie-based secure authentication
@@ -98,8 +100,9 @@ Add admin password in `config.json`:
 3. Navigate through five main tabs:
    - **Users**: User list and data management
    - **Task Queue**: Dual queue monitoring (image + network queues)
-   - **Statistics**: System statistics and information
+   - **Statistics**: Business analytics (DAU/WAU/MAU, today's activity, trend charts) + system health monitoring
    - **Notices**: Announcement management
+   - **DXData**: Song database management and updates
    - **Logs**: Real-time log viewer
 
 ---
@@ -108,7 +111,7 @@ Add admin password in `config.json`:
 
 ### System Requirements
 
-- **Python**: 3.8 or higher
+- **Python**: 3.10 or higher
 - **MySQL**: 5.7+ / MariaDB 10.2+
 - **Operating System**: Linux / macOS / Windows
 
@@ -357,6 +360,7 @@ JiETNG/
 │   ├── dbpool_manager.py      # Database connection pool
 │   ├── devtoken_manager.py    # Developer token management
 │   ├── dxdata_manager.py      # Song data management
+│   ├── event_tracker.py       # Business event tracking and metrics aggregation
 │   ├── image_cache.py         # Image caching
 │   ├── image_manager.py       # Image processing
 │   ├── image_uploader.py      # Image upload (Imgur/Cloudflare R2)
@@ -437,6 +441,23 @@ CREATE TABLE best_records (
 #### recent_records Table
 
 Same structure as `best_records`, stores recent play records.
+
+#### events Table
+
+```sql
+CREATE TABLE events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(64) NULL,
+    event_type VARCHAR(32) NOT NULL,
+    metadata JSON NULL,
+    ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ts (ts),
+    INDEX idx_event_ts (event_type, ts),
+    INDEX idx_user_ts (user_id, ts)
+);
+```
+
+Business event tracking table, automatically created at startup. Records webhook calls, image generation, bind/unbind, sync tasks, and other events. Powers DAU/WAU/MAU and other metric aggregations. Historical records older than 90 days are automatically purged by a background thread.
 
 ### API Endpoints
 

@@ -49,13 +49,20 @@ profile
 getme
 ```
 
-### Update Account Settings
+### Rebind Account
 
-Update your password, timezone, language, etc. without unbinding:
+Update your password, version, and Aime without unbinding (SEGA ID cannot be changed):
+
+```
+rebind
+```
+
+### Personal Settings
+
+Update timezone, language, background, and other personal settings:
 
 ```
 settings
-rebind
 ```
 
 ### Unbind
@@ -75,7 +82,7 @@ Choose the version that matches where you play:
 - **jp** (Japan): Playing at arcades in Japan
 - **intl** (International): Playing outside Japan
 
-You can change the version later via the `settings` command without unbinding.
+You can change the version later via the `rebind` command without unbinding.
 
 ---
 
