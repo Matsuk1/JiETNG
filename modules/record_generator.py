@@ -491,16 +491,21 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
         difficulty: 难度名称（如 "basic", "advanced" 等），用于边框颜色
         achieved: 是否达成目标（True=已完成/False=未完成/None=不添加蒙层）
     """
+    # 牌子模式 / 进度模式：封面下方增加 footer 区域
+    is_plate_mode = complete_info is not None
+    is_progress_mode = difficulty is not None
+    has_footer = is_plate_mode or is_progress_mode
+    footer_height = 30 if has_footer else 0
+
     img_width = size
-    img_height = size
+    img_height = size + footer_height
 
     # 如果指定了难度，添加难度颜色边框
-    border_width = 4 if difficulty else 0
+    border_width = 3 if difficulty else 0
     inner_size = size - border_width * 2
 
     # 创建底图
     if difficulty:
-        # 使用难度颜色作为背景（边框）
         difficulty_color = _get_difficulty_color(difficulty)
         record_img = Image.new("RGB", (img_width, img_height), difficulty_color)
     else:
@@ -511,7 +516,6 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
 
     if cover_img:
         if difficulty:
-            # 缩小封面，留出边框空间
             cover_img = cover_img.resize((inner_size, inner_size))
             record_img.paste(cover_img, (border_width, border_width))
         else:
@@ -519,15 +523,12 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
             record_img.paste(cover_img, (0, 0))
 
     # 添加 type 图标（std/dx）- 按比例缩放
-    # 如果有 complete_info，放在右上角；否则放在右下角
     type_width = int(inner_size * 0.5) if difficulty else int(size * 0.5)
     type_height = int(inner_size * 0.15) if difficulty else int(size * 0.15)
     if complete_info is not None:
-        # 有圆点信息时，type 放在右上角
         type_position = (img_width - type_width - border_width, border_width)
     else:
-        # 无圆点信息时，type 放在右下角
-        type_position = (img_width - type_width - border_width, img_height - type_height - border_width)
+        type_position = (img_width - type_width - border_width, size - type_height - border_width)
 
     paste_icon_optimized(
         record_img,
@@ -539,15 +540,15 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
         url_func=lambda value: "https://maimaidx.jp/maimai-mobile/img/music_standard.png" if value == "std" else "https://maimaidx.jp/maimai-mobile/img/music_dx.png"
     )
 
-    # 检查底部是否有圆点容器
+    # 检查底部是否有圆点容器（牌子模式圆点在 footer，不影响封面布局）
     has_bottom_content = False
-    if complete_info:
+    if complete_info and not is_plate_mode:
         difficulties = ["basic", "advanced", "expert", "master"]
         has_bottom_content = any(complete_info.get(diff, False) for diff in difficulties)
 
     # 添加灰色蒙层（在 icon 之前，这样不会遮挡 icon）
-    # 只有已完成的才添加灰色蒙层，未完成的保持原样
-    if achieved is True:
+    # 有 footer 的模式不使用蒙层，改用 footer 区域表示达成状态
+    if achieved is True and not has_footer:
         record_img = record_img.convert("RGBA")
         # 已完成：灰色蒙层
         overlay = Image.new("RGBA", record_img.size, (50, 50, 50, 180))
@@ -571,87 +572,96 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
                 new_height = int(icon_width * aspect_ratio)
                 resized_img = icon_img.resize((icon_width, new_height), Image.Resampling.LANCZOS)
 
-                # 阴影处理
-                shadow = Image.new("RGBA", record_img.size, (0, 0, 0, 150))
+                # 阴影处理（只覆盖封面区域，不覆盖 footer）
+                shadow = Image.new("RGBA", record_img.size, (0, 0, 0, 0))
+                shadow_draw = ImageDraw.Draw(shadow)
+                shadow_draw.rectangle([0, 0, img_width, size], fill=(0, 0, 0, 150))
                 record_img = Image.alpha_composite(record_img, shadow)
 
-                # 粘贴图标
-                x_offset = (record_img.width - icon_width) // 2
+                # 粘贴图标（居中于封面区域，不包含 footer）
+                x_offset = (img_width - icon_width) // 2
+                cover_center_y = size // 2
                 if has_bottom_content:
-                    y_offset = (record_img.height - new_height) // 2 - int(base_size * 0.08)
+                    y_offset = cover_center_y - new_height // 2 - int(base_size * 0.08)
                 else:
-                    y_offset = (record_img.height - new_height) // 2
+                    y_offset = cover_center_y - new_height // 2
                 record_img.paste(resized_img, (x_offset, y_offset), resized_img.convert("RGBA"))
 
         except Exception as e:
             logger.error(f"[RecordGenerator] ✗ Failed to load icon: icon={icon}, error={e}")
 
-    # 绘制难度完成情况小圆点
-    if complete_info:
-        # 所有难度列表
+    # 绘制 footer 区域
+    if is_plate_mode:
+        # 牌子模式：4 色块表示难度完成状态
+        record_img = record_img.convert("RGBA")
+        draw = ImageDraw.Draw(record_img)
+        footer_y = size
         difficulties = ["basic", "advanced", "expert", "master"]
+        gap = 2  # 色块间距
+        total_gap = gap * (len(difficulties) - 1)
+        block_width = (img_width - total_gap) / len(difficulties)
 
-        # 检查是否有任何难度为 True
-        has_any_true = any(complete_info.get(diff, False) for diff in difficulties)
+        for i, diff in enumerate(difficulties):
+            completed = complete_info.get(diff, False) if complete_info else False
+            if completed:
+                diff_color = _get_difficulty_color(diff)
+                color = diff_color + (255,) if len(diff_color) == 3 else diff_color
+            else:
+                color = (255, 255, 255, 255)
+            x1 = int(i * (block_width + gap))
+            x2 = int(x1 + block_width)
+            draw.rectangle([x1, footer_y, x2, img_height], fill=color)
+    elif is_progress_mode:
+        # 进度模式：单色块，达成 = 难度颜色，未达成 = 白色
+        record_img = record_img.convert("RGBA")
+        draw = ImageDraw.Draw(record_img)
+        footer_y = size
 
-        # 只有当至少有一个难度为 True 时才绘制容器和圆点
-        if has_any_true:
-            record_img = record_img.convert("RGBA")
-            draw = ImageDraw.Draw(record_img)
+        if achieved is True:
+            diff_color = _get_difficulty_color(difficulty)
+            color = diff_color + (255,) if len(diff_color) == 3 else diff_color
+        else:
+            color = (255, 255, 255, 255)
+        draw.rectangle([0, footer_y, img_width, img_height], fill=color)
 
-            # 圆点参数
-            base_size = inner_size if difficulty else size
-            dot_radius = int(base_size * 0.04 * 1.5)
-            dot_y = img_height - dot_radius - int(base_size * 0.05) - border_width
+    # 有 footer 的模式：整体圆角矩形灰色边框
+    if has_footer:
+        record_img = record_img.convert("RGBA")
+        border_color = _get_difficulty_color(difficulty) if difficulty else (255, 255, 255, 0)
+        border_thickness = 3
+        corner_radius = 10
 
-            # 计算圆点间距和起始位置
-            num_positions = len(difficulties)
-            total_dots_width = (num_positions - 1) * (dot_radius * 4)  # 圆点之间的总宽度
-            start_x = (img_width - total_dots_width) // 2  # 居中起始位置
-            spacing_between = dot_radius * 4  # 圆点之间的间距
+        # 使用圆角遮罩裁剪图像
+        mask = Image.new("L", (img_width, img_height), 0)
+        mask_draw = ImageDraw.Draw(mask)
+        mask_draw.rounded_rectangle(
+            [0, 0, img_width - 1, img_height - 1],
+            radius=corner_radius,
+            fill=255
+        )
+        background = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
+        record_img = Image.composite(record_img, background, mask)
 
-            # 绘制半透明灰白色背景容器
-            container_padding_horizontal = int(dot_radius * 2.0)
-            container_padding_vertical = int(dot_radius * 0.8) - 5
-            container_x1 = start_x - container_padding_horizontal
-            container_y1 = dot_y - dot_radius - container_padding_vertical
-            container_x2 = start_x + total_dots_width + container_padding_horizontal
-            container_y2 = dot_y + dot_radius + container_padding_vertical
+        # 绘制圆角边框
+        border_layer = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
+        border_draw = ImageDraw.Draw(border_layer)
+        border_draw.rounded_rectangle(
+            [0, 0, img_width - 1, img_height - 1],
+            radius=corner_radius,
+            outline=border_color,
+            width=border_thickness
+        )
+        record_img = Image.alpha_composite(record_img, border_layer)
 
-            # 创建半透明容器层
-            container_layer = Image.new("RGBA", record_img.size, (0, 0, 0, 0))
-            container_draw = ImageDraw.Draw(container_layer)
-            container_draw.rounded_rectangle(
-                [container_x1, container_y1, container_x2, container_y2],
-                radius=int(dot_radius * 0.8),
-                fill=(240, 240, 240, 160)
-            )
-
-            # 将容器层合成到图像上
-            record_img = Image.alpha_composite(record_img, container_layer)
-            draw = ImageDraw.Draw(record_img)
-
-            # 从左往右绘制小圆点
-            for i, diff in enumerate(difficulties):
-                if complete_info.get(diff, False):
-                    # 如果该难度为 True，绘制对应颜色的圆点
-                    color = _get_difficulty_color(diff)
-                    dot_x = start_x + i * spacing_between
-
-                    # 绘制圆点
-                    draw.ellipse(
-                        [dot_x - dot_radius, dot_y - dot_radius,
-                         dot_x + dot_radius, dot_y + dot_radius],
-                        fill=color
-                    )
-                # 如果为 False，留空
+        return record_img  # 返回 RGBA，保留圆角透明
 
     return record_img.convert("RGB")
 
 def generate_plate_image(target_data, title, img_width=1700, img_height=600, max_per_row=9, margin=20, headers={}):
     level_width = 100
     img_size = 150
-    row_height = img_size + margin
+    footer_height = 30  # 与 generate_cover 中的 footer_height 一致
+    row_height = img_size + footer_height + margin
 
     rows = []
     rows_num = 0
@@ -794,7 +804,10 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
                 y_offset += row_height
                 x_offset = level_width + margin
 
-            final_img.paste(img, (x_offset, y_offset))
+            if img.mode == "RGBA":
+                final_img.paste(img, (x_offset, y_offset), img)
+            else:
+                final_img.paste(img, (x_offset, y_offset))
             x_offset += img_size + margin
 
         y_offset += row_height
@@ -817,7 +830,8 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
     """
     level_width = 100
     img_size = 150
-    row_height = img_size + margin
+    footer_height = 30  # 与 generate_cover 中的 footer_height 一致
+    row_height = img_size + footer_height + margin
 
     # 统计卡片区域高度（2x2布局）
     card_area_height = 180
@@ -956,7 +970,10 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
                 x_offset = level_width + margin
 
             cover_img = entry["img"]
-            final_img.paste(cover_img, (x_offset, y_offset))
+            if cover_img.mode == "RGBA":
+                final_img.paste(cover_img, (x_offset, y_offset), cover_img)
+            else:
+                final_img.paste(cover_img, (x_offset, y_offset))
             x_offset += img_size + margin
 
         y_offset += row_height

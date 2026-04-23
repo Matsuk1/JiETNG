@@ -3450,6 +3450,28 @@ def route_to_image_queue(event):
             smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
             return True
 
+    # 检查难度评级进度命令（如 "13sss+進捗", "14AP progress"）
+    if re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)$", user_message.lower()):
+        try:
+            task_id = f"image_{user_id}_{datetime.now().timestamp()}"
+            nickname = get_user_nickname_wrapper(user_id, use_cache=True)
+
+            with task_tracking_lock:
+                task_tracking['queued'].append({
+                    'id': task_id,
+                    'function': 'async_generate_image_task',
+                    'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'user_id': user_id,
+                    'nickname': nickname
+                })
+
+            show_loading(user_id)
+            image_queue.put_nowait((async_generate_image_task, (event,), task_id))
+            return True
+        except queue.Full:
+            smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
+            return True
+
     # 不是图片生成任务
     return False
 
