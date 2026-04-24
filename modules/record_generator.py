@@ -525,10 +525,7 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
     # 添加 type 图标（std/dx）- 按比例缩放
     type_width = int(inner_size * 0.5) if difficulty else int(size * 0.5)
     type_height = int(inner_size * 0.15) if difficulty else int(size * 0.15)
-    if complete_info is not None:
-        type_position = (img_width - type_width - border_width, border_width)
-    else:
-        type_position = (img_width - type_width - border_width, size - type_height - border_width)
+    type_position = (img_width - type_width - border_width, size - type_height - border_width)
 
     paste_icon_optimized(
         record_img,
@@ -751,7 +748,6 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
         if is_completed:
             data_text = "✓"
         else:
-            # 未完成时显示进度
             data_text = f"{value['clear']} / {value['all']}"
 
         data_text_width = draw.textlength(data_text, font=font_large)
@@ -936,8 +932,13 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
         text_y = current_y + (card_height - 30) // 2
         card_draw.text((text_x, text_y), label, fill=(60, 60, 60), font=font_large)
 
-        # 绘制数量（右侧对齐）
-        data_text = str(count)
+        # 绘制数量（右侧对齐），非总计加百分比
+        total = stats["total"]
+        if label != "総計" and total > 0:
+            pct = count / total * 100
+            data_text = f"{count} ({pct:.1f}%)"
+        else:
+            data_text = str(count)
         data_text_width = card_draw.textlength(data_text, font=font_large)
         data_x = card_x + card_width - data_text_width - 15
         card_draw.text((data_x, text_y), data_text, fill=(40, 40, 40), font=font_large)

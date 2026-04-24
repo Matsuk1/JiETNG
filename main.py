@@ -1453,11 +1453,60 @@ def async_get_song_record_by_id_task(event):
 
     smart_reply(user_id, reply_token, reply_msg, configuration)
 
+def _classify_image_command(msg):
+    """根据消息内容识别图片生成命令类型"""
+    msg_lower = msg.lower().strip()
+    msg_clean = re.sub(r"\s*-(uc|up|c)\s*$", "", msg_lower)
+
+    # B 系列命令：统一为规范名称
+    first_word = re.split(r"[ \n]", msg_lower, 1)[0]
+    b_cmd_map = {
+        "b50": "b50", "best50": "b50",
+        "b40": "b40", "best40": "b40",
+        "b35": "b35", "best35": "b35",
+        "b15": "b15", "best15": "b15",
+        "ab35": "ab35", "allb35": "ab35",
+        "ab50": "ab50", "allb50": "ab50",
+        "apb50": "apb50", "ap50": "apb50",
+        "fdxb50": "fdxb50", "fdx50": "fdxb50",
+        "rct50": "rct50", "r50": "rct50",
+        "idealb50": "idealb50", "idlb50": "idealb50",
+        "unknown": "unknown", "unkn": "unknown",
+    }
+    if first_word in b_cmd_map:
+        return b_cmd_map[first_word]
+
+    # 后缀匹配
+    suffix_map = [
+        (("ってどんな曲", "info", "song-info"), "song-info"),
+        (("の達成状況", "achievement"), "plate"),
+        (("のレコード", "song-record", "record"), "song-record"),
+        (("のバージョンリスト", "version-list"), "version-list"),
+        (("の定数リスト", "のレベルリスト", "level-list"), "level-list"),
+        (("のレコードリスト", "record-list", "records"), "record-list"),
+    ]
+    for suffixes, cmd_name in suffix_map:
+        for suffix in suffixes:
+            if msg_clean.endswith(suffix):
+                return cmd_name
+
+    # 进度命令
+    if re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)", msg_lower):
+        return "progress"
+
+    # random
+    if msg_lower.startswith("random"):
+        return "random"
+
+    return first_word[:32]
+
+
 def async_generate_image_task(event):
     """异步图片生成任务 - 在image_queue中执行"""
     try:
         user_id = getattr(event.source, 'user_id', None)
-        cmd = (event.message.text or '').strip().split(maxsplit=1)[0][:64] if getattr(event, 'message', None) else ''
+        msg = (event.message.text or '').strip() if getattr(event, 'message', None) else ''
+        cmd = _classify_image_command(msg)
         track_event('image_gen', user_id=user_id, metadata={'command': cmd, 'source': 'line'})
     except Exception as e:
         logger.debug(f"[EventTracker] image_gen track skipped: {e}")
@@ -2199,7 +2248,7 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
     original_url, preview_url = await smart_upload(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='record')
 
-async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
+async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None):
     if id_use not in USERS:
         return mention_error(user_id) if id_use != user_id else segaid_error(user_id)
 
@@ -2353,6 +2402,17 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
                     "achievement_rate": achievement_rate
                 })
 
+    # 按 filter_mode 过滤数据
+    if filter_mode == "uncleared":
+        target_data = [d for d in target_data if not d["achieved"]]
+    elif filter_mode == "unplayed":
+        target_data = [d for d in target_data if d["achievement_rate"] == 0.0 and not d["achieved"]]
+    elif filter_mode == "cleared":
+        target_data = [d for d in target_data if d["achieved"]]
+
+    if not target_data:
+        return record_error(user_id)
+
     plate_img = generate_plate_image(target_data, title, headers = target_num)
 
     # 获取用户信息并创建用户信息图片
@@ -2381,7 +2441,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp"):
     return message
 
 
-async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="jp"):
+async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="jp", filter_mode=None):
     """
     生成指定难度和评级的达成情况图片（定数列表+统计卡片）
 
@@ -2391,6 +2451,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
         level: 难度等级（如 "13", "13+", "14", "14+", "15"）
         rank: 评级（如 "s", "s+", "ss", "ss+", "sss", "sss+", "ap", "ap+", "fdx", "fdx+"），可选
         ver: 服务器版本（"jp" 或 "intl"）
+        filter_mode: 过滤模式（"uncleared"=只显示未完成, "unplayed"=只显示未游玩, "cleared"=只显示已完成）
     """
 
     if id_use not in USERS:
@@ -2537,6 +2598,17 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
                 "difficulty": difficulty,
                 "achievement_rate": achievement_rate
             })
+
+    if not target_data:
+        return record_error(user_id)
+
+    # 按 filter_mode 过滤数据
+    if filter_mode == "uncleared":
+        target_data = [d for d in target_data if not d["achieved"]]
+    elif filter_mode == "unplayed":
+        target_data = [d for d in target_data if d["achievement_rate"] == 0.0 and not d["achieved"]]
+    elif filter_mode == "cleared":
+        target_data = [d for d in target_data if d["achieved"]]
 
     if not target_data:
         return record_error(user_id)
@@ -3327,8 +3399,11 @@ def route_to_image_queue(event):
     user_message = event.message.text.strip()
     user_id = event.source.user_id
 
+    # 剥离末尾过滤后缀（-uc / -up），用于后续匹配
+    msg_for_match = re.sub(r"\s*-(uc|up|c)\s*$", "", user_message)
+
     # 检查精确匹配的图片生成任务
-    if user_message in IMAGE_TASK_ROUTES['exact']:
+    if msg_for_match in IMAGE_TASK_ROUTES['exact']:
         # 频率限制检查 - 使用消息类型作为任务类型
         if check_rate_limit(user_id, f"image:{user_message}"):
             smart_reply(user_id, event.reply_token, rate_limit_msg(user_id), configuration)
@@ -3354,10 +3429,10 @@ def route_to_image_queue(event):
             smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
             return True
 
-    # 检查后缀匹配的图片生成任务
+    # 检查后缀匹配的图片生成任务（用剥离过滤后缀后的消息匹配）
     for suffixes in IMAGE_TASK_ROUTES['suffix']:
         for suffix in suffixes:
-            if user_message.endswith(suffix):
+            if msg_for_match.endswith(suffix):
                 try:
                     task_id = f"image_{user_id}_{datetime.now().timestamp()}"
                     nickname = get_user_nickname_wrapper(user_id, use_cache=True)
@@ -3450,8 +3525,8 @@ def route_to_image_queue(event):
             smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
             return True
 
-    # 检查难度评级进度命令（如 "13sss+進捗", "14AP progress"）
-    if re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)$", user_message.lower()):
+    # 检查难度评级进度命令（如 "13sss+進捗", "14AP progress", "15SSS進捗-uc"）
+    if re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)\s*(?:-(uc|up|c))?\s*$", user_message.lower()):
         try:
             task_id = f"image_{user_id}_{datetime.now().timestamp()}"
             nickname = get_user_nickname_wrapper(user_id, use_cache=True)
@@ -3854,9 +3929,13 @@ def handle_sync_text_command(event):
         (lambda msg: msg.startswith(("rc ", "RC ", "Rc ")),
          lambda msg: handle_rc_command(msg, user_id)),
 
-        # 版本达成情况
-        (lambda msg: msg.endswith(("の達成状況", "achievement")),
-         lambda msg: asyncio.run(generate_plate_rcd(user_id, id_use, re.sub(r"\s*(の達成状況|achievement)$", "", msg).strip(), mai_ver_use))),
+        # 版本达成情况（支持 -uc/-up 过滤）
+        (lambda msg: re.sub(r"\s*-(uc|up|c)\s*$", "", msg).endswith(("の達成状況", "achievement")),
+         lambda msg: asyncio.run(generate_plate_rcd(
+             user_id, id_use,
+             re.sub(r"\s*(の達成状況|achievement)$", "", re.sub(r"\s*-(uc|up|c)\s*$", "", msg)).strip(),
+             mai_ver_use,
+             filter_mode="uncleared" if re.search(r"-uc\s*$", msg) else ("unplayed" if re.search(r"-up\s*$", msg) else ("cleared" if re.search(r"-c\s*$", msg) else None))))),
 
         # 等级成绩列表
         (lambda msg: re.match(r".+(のレコードリスト|record-list|records)[ 　]*\d*$", msg),
@@ -3875,14 +3954,15 @@ def handle_sync_text_command(event):
         (lambda msg: msg.endswith(("の定数リスト", "のレベルリスト", "level-list")),
          lambda msg: asyncio.run(generate_level_rank_progress(user_id, user_id, re.sub(r"\s*(の定数リスト|のレベルリスト|level-list)$", "", msg), ver=mai_ver))),
 
-        # 难度+评级达成情况（如 "13sss+進捗", "14AP progress", "15SSS進捗"）
-        (lambda msg: re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)$", msg.lower()),
+        # 难度+评级达成情况（如 "13sss+進捗", "14AP progress-uc", "15SSS進捗 -up"）
+        (lambda msg: re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)\s*(?:-(uc|up|c))?\s*$", msg.lower()),
          lambda msg: asyncio.run(generate_level_rank_progress(
              user_id,
              id_use,
              re.match(r"^(\d+\+?)", msg.lower()).group(1),
              re.search(r"(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)", msg.lower()).group(1),
-             mai_ver_use))),
+             mai_ver_use,
+             filter_mode="uncleared" if re.search(r"-uc\s*$", msg.lower()) else ("unplayed" if re.search(r"-up\s*$", msg.lower()) else ("cleared" if re.search(r"-c\s*$", msg.lower()) else None))))),
 
         # 权限请求管理
         (lambda msg: msg.startswith("accept-perm-request "),
