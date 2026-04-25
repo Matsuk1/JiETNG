@@ -2592,7 +2592,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
 
             # 生成所有难度的封面
             target_data.append({
-                "img": generate_cover(song['cover_url'], song_type, icon if rank else None, target_type if rank else None, size=150, cover_name=song.get('cover_name'), difficulty=difficulty, achieved=achieved if rank else None),
+                "img": generate_cover(song['cover_url'], song_type, icon if rank else None, target_type if rank else None, cover_name=song.get('cover_name'), difficulty=difficulty, achieved=achieved if rank else None, song_title=song_title),
                 "internal_level": sheet['internalLevelValue'],
                 "achieved": achieved,
                 "difficulty": difficulty,
@@ -6919,9 +6919,10 @@ def api_v2_generate_achievement(user_id):
 
                 target_data.append({
                     "img": generate_cover(song['cover_url'], song_type, icon if rank else None,
-                                          target_type if rank else None, size=150,
+                                          target_type if rank else None,
                                           cover_name=song.get('cover_name'), difficulty=difficulty,
-                                          achieved=achieved if rank else None),
+                                          achieved=achieved if rank else None,
+                                          song_title=song_title),
                     "internal_level": sheet['internalLevelValue'],
                     "achieved": achieved,
                     "difficulty": difficulty,

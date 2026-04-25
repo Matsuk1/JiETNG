@@ -147,7 +147,8 @@ PORT = _config["port"]
 LOG_FILE = "./jietng.log"
 DXDATA_FILE = "./data/dxdata/dxdata.json"
 DXDATA_VERSION_FILE = "./data/dxdata/dxdata_version.json"
-OVERRIDE_FILE = "./data/dxdata/intl_override.csv"
+OVERRIDE_FILE = "./data/dxdata/override.csv"
+INTL_OVERRIDE_FILE = "./data/dxdata/intl_override.csv"
 USER_FILE = "./data/user.json.enc"
 NOTICE_FILE = "./data/notice.json"
 TIP_AD_FILE = "./data/tip_ad.json"
@@ -238,9 +239,12 @@ def read_dxdata(ver="jp"):
     def is_int(s):
         return s.isdigit()
 
-    if ver == "intl":
+    def apply_override(songs, override_file):
+        """应用 CSV override 文件到歌曲数据"""
+        if not os.path.exists(override_file):
+            return
         csv_map = {}
-        with open(OVERRIDE_FILE, 'r', encoding='utf-8') as f:
+        with open(override_file, 'r', encoding='utf-8') as f:
             for row in csv.reader(f):
                 if row:
                     csv_map[row[0]] = row[1:]
@@ -272,6 +276,13 @@ def read_dxdata(ver="jp"):
 
             for sheet in song.get("sheets", []):
                 sheet["internalLevelValue"] = float(sheet["internalLevelValue"])
+
+    # 通用 override（所有版本生效）
+    apply_override(songs, OVERRIDE_FILE)
+
+    # intl 专用 override
+    if ver == "intl":
+        apply_override(songs, INTL_OVERRIDE_FILE)
 
     versions = list(dxdata_file['versions'])
     return songs, versions

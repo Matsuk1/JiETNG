@@ -477,20 +477,11 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
     return combined
 
 
-def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_name=None, complete_info=None, difficulty=None, achieved=None):
+def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, complete_info=None, difficulty=None, achieved=None, song_title=None):
     """
     生成歌曲封面图片，带有类型标识和可选图标
-
-    参数:
-        cover_url: 封面 URL
-        type: 歌曲类型 ("std" 或 "dx")
-        icon: 可选的图标名称（如 "ap", "fc" 等）
-        icon_type: 可选的图标类型（如 "combo", "score", "sync"）
-        size: 封面尺寸（默认150）
-        cover_name: 封面文件名（包含扩展名），优先使用本地文件
-        difficulty: 难度名称（如 "basic", "advanced" 等），用于边框颜色
-        achieved: 是否达成目标（True=已完成/False=未完成/None=不添加蒙层）
     """
+    size = 150
     # 牌子模式 / 进度模式：封面下方增加 footer 区域
     is_plate_mode = complete_info is not None
     is_progress_mode = difficulty is not None
@@ -620,6 +611,24 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, size=150, cover_n
         else:
             color = (255, 255, 255, 255)
         draw.rectangle([0, footer_y, img_width, img_height], fill=color)
+
+        # 在 footer 中绘制歌曲标题（水平和垂直居中）
+        if song_title:
+            text_margin = 5
+            max_text_width = img_width - text_margin * 2
+            title_text = truncate_text(draw, song_title, font_stadium, max_text_width)
+            bbox = draw.textbbox((0, 0), title_text, font=font_stadium)
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
+            text_x = (img_width - text_w) // 2
+            text_y = footer_y + (footer_height - text_h) // 2 - 7
+            if achieved is True and difficulty == "remaster":
+                text_color = (114, 20, 141)
+            elif achieved is True:
+                text_color = (255, 255, 255)
+            else:
+                text_color = (60, 60, 60)
+            draw.text((text_x, text_y), title_text, fill=text_color, font=font_stadium)
 
     # 有 footer 的模式：整体圆角矩形灰色边框
     if has_footer:
