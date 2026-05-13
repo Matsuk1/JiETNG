@@ -216,10 +216,9 @@ async def smart_upload(img, user_id=None):
         tuple: (original_url, preview_url) 如果上传失败返回 (None, None)
     """
     # 计算图片大小
-    img_size_io = BytesIO()
-    img.save(img_size_io, format='PNG')
-    img_size = img_size_io.tell()
-    img_size_io.close()
+    with BytesIO() as img_size_io:
+        img.save(img_size_io, format='PNG')
+        img_size = img_size_io.tell()
 
     # 优先使用 Cloudflare R2（异步，永久存储，全球CDN加速），限制 10MB 以内
     if R2_ENABLED:

@@ -769,7 +769,8 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
     try:
         plate_path = os.path.join(PLATES_DIR, f"{title}.webp")
         if os.path.exists(plate_path):
-            plate_img = Image.open(plate_path).convert("RGBA")
+            with Image.open(plate_path) as _plate:
+                plate_img = _plate.convert("RGBA")
 
             target_height = 160
             aspect_ratio = plate_img.width / plate_img.height

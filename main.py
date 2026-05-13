@@ -128,7 +128,7 @@ from modules.image_manager import *
 
 # System utilities
 from modules.system_checker import run_system_check, clean_unbound_users
-from modules.event_tracker import track_event, get_business_stats
+from modules.event_tracker import track_event, get_business_stats, get_hourly_stats
 from modules.rate_limiter import check_rate_limit
 from modules.line_messenger import smart_reply, smart_push, notify_admins_error, notify_on_error
 from modules.perm_request_generator import generate_perm_request_message
@@ -2415,6 +2415,11 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None)
 
     plate_img = generate_plate_image(target_data, title, headers = target_num)
 
+    # 清理 target_data 中的封面图片对象
+    for entry in target_data:
+        entry.pop("img", None)
+    del target_data
+
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
@@ -2633,6 +2638,11 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
         stats
     )
 
+    # 清理 target_data 中的封面图片对象
+    for entry in target_data:
+        entry.pop("img", None)
+    del target_data
+
     # 获取用户信息并创建用户信息图片
     user_info = USERS[id_use].get('personal_info')
     profile_img = generate_profile(user_info, scale=1.5, user_id=id_use)
@@ -2689,10 +2699,9 @@ def generate_profile(user_info, scale=1, user_id=None):
                         "Host": "maimaidx-eng.com",
                     }
 
-                response = requests.get(url, headers=headers, verify=False)
-                response.raise_for_status()
-
-                img = Image.open(BytesIO(response.content))
+                with requests.get(url, headers=headers, verify=False) as response:
+                    response.raise_for_status()
+                    img = Image.open(BytesIO(response.content))
                 if img.mode != "RGBA":
                     img = img.convert("RGBA")
                 img_resized = img.resize(size, Image.LANCZOS)
@@ -2732,9 +2741,8 @@ def generate_profile(user_info, scale=1, user_id=None):
     # rating block: 优先使用本地图片，兼容旧版 URL
     if "rating_block_path" in user_info and user_info["rating_block_path"]:
         try:
-            rb_img = Image.open(user_info["rating_block_path"])
-            if rb_img.mode != "RGBA":
-                rb_img = rb_img.convert("RGBA")
+            with Image.open(user_info["rating_block_path"]) as _rb:
+                rb_img = _rb.convert("RGBA")
             rb_img = rb_img.resize((296, 58), Image.LANCZOS)
             info_img.paste(rb_img, (219, 24), rb_img)
         except Exception as e:
@@ -3175,8 +3183,8 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
     version_img = None
     version_img_path = os.path.join(VERSIONS_DIR, f"{version_title.replace(' ', '_')}.png")
     try:
-        version_img = Image.open(version_img_path)
-        version_img = resize_by_width(version_img, 1340)
+        with Image.open(version_img_path) as _ver:
+            version_img = resize_by_width(_ver.copy(), 1340)
     except Exception as e:
         logger.error(f"[VersionImage] ✗ Failed to load image: file={version_img_path}, error={e}")
 
@@ -4485,6 +4493,16 @@ def admin_logout():
     """管理员登出"""
     session.pop('admin_authenticated', None)
     return redirect("/admin/panel")
+
+@app.route("/admin/api/hourly", methods=["GET"])
+def admin_api_hourly():
+    """获取指定日期的小时分布数据"""
+    if not check_admin_auth():
+        return jsonify({"error": "Unauthorized"}), 401
+    date_str = request.args.get("date", "")
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+        return jsonify({"error": "Invalid date format, use YYYY-MM-DD"}), 400
+    return jsonify(get_hourly_stats(date_str))
 
 @app.route("/admin/trigger_update", methods=["POST"])
 @csrf.exempt
@@ -6510,7 +6528,7 @@ def api_v2_song_info(song_id):
 
         token_info = request.token_info
         logger.info(f"[API] Song info generated: song_id={song_id}, ver={ver}, token_id={token_info['token_id']}")
-        track_event('image_gen', user_id=None, metadata={'command': 'song_info', 'song_id': song_id, 'ver': ver})
+        track_event('image_gen', user_id=None, metadata={'command': 'song-info', 'song_id': song_id, 'ver': ver})
         return send_file(buf, mimetype="image/png")
 
     except Exception as e:
@@ -6573,7 +6591,7 @@ def api_v2_song_record(user_id, song_id):
         gc.collect(0)
 
         logger.info(f"[API] Song record generated: user_id={user_id}, song_id={song_id}, token_id={token_info['token_id']}")
-        track_event('image_gen', user_id=user_id, metadata={'command': 'song_record'})
+        track_event('image_gen', user_id=user_id, metadata={'command': 'song-record'})
         return send_file(buf, mimetype="image/png")
 
     except Exception as e:
@@ -6656,7 +6674,7 @@ def api_v2_generate_record_image(user_id):
         gc.collect(0)
 
         logger.info(f"[API] v2 Image generated: user_id={user_id}, command={command}, token_id={token_info['token_id']}")
-        track_event('image_gen', user_id=user_id, metadata={'command': command})
+        track_event('image_gen', user_id=user_id, metadata={'command': _classify_image_command(command)})
         return send_file(buf, mimetype="image/png")
 
     except Exception as e:
@@ -6781,6 +6799,10 @@ def api_v2_generate_plate(user_id):
                     })
 
         plate_img = generate_plate_image(target_data, title, headers=target_num)
+        for entry in target_data:
+            entry.pop("img", None)
+        del target_data
+
         user_info = USERS[user_id].get('personal_info')
         profile_img = generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
@@ -6942,6 +6964,10 @@ def api_v2_generate_achievement(user_id):
         }
 
         record_img = generate_level_rank_progress_image(target_data, level_display, rank_display, stats)
+        for entry in target_data:
+            entry.pop("img", None)
+        del target_data
+
         user_info = USERS[user_id].get('personal_info')
         profile_img = generate_profile(user_info, scale=1.5, user_id=user_id)
         user_tz = get_user_timezone(user_id)
@@ -6956,7 +6982,7 @@ def api_v2_generate_achievement(user_id):
         gc.collect(0)
 
         logger.info(f"[API] Achievement generated: user_id={user_id}, level={level}, rank={rank}, token_id={token_info['token_id']}")
-        track_event('image_gen', user_id=user_id, metadata={'command': 'achievement'})
+        track_event('image_gen', user_id=user_id, metadata={'command': 'progress' if rank else 'level-list'})
         return send_file(buf, mimetype="image/png")
 
     except Exception as e:

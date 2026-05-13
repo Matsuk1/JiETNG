@@ -46,7 +46,8 @@ def download_and_cache_icon(url, save_path):
     """
     try:
         if os.path.exists(save_path):
-            return Image.open(save_path).convert("RGBA")
+            with Image.open(save_path) as img:
+                return img.convert("RGBA")
 
         session = _get_session()
         response = session.get(url, timeout=10)
@@ -55,7 +56,8 @@ def download_and_cache_icon(url, save_path):
         with open(save_path, "wb") as f:
             f.write(response.content)
 
-        return Image.open(save_path).convert("RGBA")
+        with Image.open(save_path) as img:
+            return img.convert("RGBA")
 
     except Exception as e:
         logger.error(f"[ImageCache] ✗ Download failed: url={url}, error={e}")
@@ -112,7 +114,8 @@ def get_cover_image(cover_url, cover_name, covers_dir=None):
         # 1. 首先尝试从本地加载
         if os.path.exists(local_path):
             try:
-                return Image.open(local_path).convert("RGBA")
+                with Image.open(local_path) as img:
+                    return img.convert("RGBA")
             except Exception as e:
                 logger.warning(f"[ImageCache] ⚠ Local file corrupted, re-downloading: path={local_path}, error={e}")
                 # 如果本地文件损坏，删除它并重新下载
@@ -139,7 +142,8 @@ def get_cover_image(cover_url, cover_name, covers_dir=None):
                     f.write(response.content)
 
                 # 4. 返回图片对象
-                return Image.open(local_path).convert("RGBA")
+                with Image.open(local_path) as img:
+                    return img.convert("RGBA")
 
             except requests.exceptions.Timeout:
                 if attempt < max_retries - 1:

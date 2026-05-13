@@ -213,12 +213,10 @@ def get_divingfish_data(username=None, qq=None):
         "Content-Type": "application/json"
     }
 
-    response = requests.post(url, json=data, headers=headers)
-
-    if response.status_code != 200:
-        return None, None
-
-    raw_data = response.json()
+    with requests.post(url, json=data, headers=headers) as response:
+        if response.status_code != 200:
+            return None, None
+        raw_data = response.json()
 
     def clean_chart_data(chart, new_song=False):
         """清洗单个谱面数据"""

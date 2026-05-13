@@ -233,7 +233,8 @@ def read_dxdata(ver="jp"):
     Returns:
         tuple: (songs, versions)
     """
-    dxdata_file = json.load(open(DXDATA_FILE, 'r', encoding='utf-8'))
+    with open(DXDATA_FILE, 'r', encoding='utf-8') as f:
+        dxdata_file = json.load(f)
     songs = list(dxdata_file['songs'])
 
     def is_int(s):

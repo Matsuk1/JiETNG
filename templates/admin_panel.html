@@ -926,10 +926,13 @@
           </div>
         </div>
 
-        <!-- Hourly distribution today -->
+        <!-- Hourly distribution -->
         <div style="margin-top: 8px;">
-          <div style="font-size: 12px; opacity: 0.6; margin-bottom: 10px;">Hourly event volume (today, DB server time)</div>
-          <div style="display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; height: 80px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <span style="font-size: 12px; opacity: 0.6;">Hourly event volume (DB server time)</span>
+            <input type="date" id="hourly-date" style="font-size: 12px; padding: 2px 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);" />
+          </div>
+          <div id="hourly-chart" style="display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; height: 80px;">
             {% set max_hour = stats.hourly_today|max if stats.hourly_today and (stats.hourly_today|max) > 0 else 1 %}
             {% for v in stats.hourly_today %}
               <div title="{{ loop.index0 }}:00 — {{ v }}" style="background: var(--accent-color); opacity: {{ 0.25 + 0.75 * v / max_hour }}; height: {{ 10 + 90 * v / max_hour }}%; border-radius: 3px 3px 0 0;"></div>
@@ -964,13 +967,36 @@
 
       <!-- Image command breakdown -->
       {% if stats.image_command_breakdown %}
+      {% set cmd_labels = {
+        'b50': 'Best 50',
+        'b40': 'Best 40',
+        'b35': 'Best 35',
+        'b15': 'Best 15',
+        'ab35': 'All Best 35',
+        'ab50': 'All Best 50',
+        'apb50': 'AP Best 50',
+        'fdxb50': 'FDX Best 50',
+        'rct50': 'Recent 50',
+        'idealb50': 'Ideal Best 50',
+        'unknown': 'Unknown',
+        'song-info': 'Song Info',
+        'song-record': 'Song Record',
+        'song-record-id': 'Song Record (ID)',
+        'friend-rcd': 'Friend Record',
+        'plate': 'Plate',
+        'progress': 'Progress',
+        'level-list': 'Level List',
+        'version-list': 'Version List',
+        'record-list': 'Record List',
+        'random': 'Random Song'
+      } %}
       <div class="section">
-        <div class="section-title">Image calls breakdown (today)</div>
+        <div class="section-title" id="breakdown-title">Image calls breakdown (today)</div>
         {% set cmd_max = stats.image_command_breakdown[0].count if stats.image_command_breakdown else 1 %}
-        <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div id="breakdown-chart" style="display: flex; flex-direction: column; gap: 6px;">
           {% for row in stats.image_command_breakdown %}
           <div style="display: flex; align-items: center; gap: 10px;">
-            <div style="min-width: 90px; font-family: monospace; font-size: 13px;">{{ row.command }}</div>
+            <div style="min-width: 130px; font-size: 13px;">{{ cmd_labels.get(row.command, row.command) }}</div>
             <div style="flex: 1; height: 14px; background: var(--border-color); opacity: 0.3; border-radius: 4px; overflow: hidden;">
               <div style="height: 100%; background: var(--accent-color); width: {{ (row.count / cmd_max * 100) if cmd_max > 0 else 0 }}%; border-radius: 4px;"></div>
             </div>
@@ -3485,6 +3511,73 @@
           showToast('✗ Network error: ' + err);
         });
     }
+
+    // Hourly date picker
+    (function() {
+      var dateInput = document.getElementById('hourly-date');
+      if (!dateInput) return;
+      // Default to today
+      var today = new Date().toISOString().slice(0, 10);
+      dateInput.value = today;
+      dateInput.max = today;
+
+      var cmdLabels = {
+        'b50': 'Best 50', 'b40': 'Best 40', 'b35': 'Best 35', 'b15': 'Best 15',
+        'ab35': 'All Best 35', 'ab50': 'All Best 50', 'apb50': 'AP Best 50',
+        'fdxb50': 'FDX Best 50', 'rct50': 'Recent 50', 'idealb50': 'Ideal Best 50',
+        'unknown': 'Unknown', 'song-info': 'Song Info', 'song-record': 'Song Record',
+        'song-record-id': 'Song Record (ID)', 'friend-rcd': 'Friend Record',
+        'plate': 'Plate', 'progress': 'Progress', 'level-list': 'Level List',
+        'version-list': 'Version List', 'record-list': 'Record List', 'random': 'Random Song'
+      };
+
+      dateInput.addEventListener('change', function() {
+        var date = this.value;
+        if (!date) return;
+        fetch('/admin/api/hourly?date=' + date)
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            // Update hourly chart
+            var chart = document.getElementById('hourly-chart');
+            var hourly = data.hourly || [];
+            var maxV = Math.max.apply(null, hourly) || 1;
+            var html = '';
+            for (var i = 0; i < 24; i++) {
+              var v = hourly[i] || 0;
+              var opacity = (0.25 + 0.75 * v / maxV).toFixed(2);
+              var height = (10 + 90 * v / maxV).toFixed(1);
+              html += '<div title="' + i + ':00 — ' + v + '" style="background:var(--accent-color);opacity:' + opacity + ';height:' + height + '%;border-radius:3px 3px 0 0;"></div>';
+            }
+            chart.innerHTML = html;
+
+            // Update breakdown
+            var bd = data.image_command_breakdown || [];
+            var bdChart = document.getElementById('breakdown-chart');
+            var bdTitle = document.getElementById('breakdown-title');
+            if (bdTitle) bdTitle.textContent = 'Image calls breakdown (' + date + ')';
+            if (bdChart) {
+              if (bd.length === 0) {
+                bdChart.innerHTML = '<div style="opacity:0.5;font-size:13px;">No data</div>';
+              } else {
+                var cmdMax = bd[0].count || 1;
+                var bhtml = '';
+                for (var j = 0; j < bd.length; j++) {
+                  var row = bd[j];
+                  var label = cmdLabels[row.command] || row.command;
+                  var pct = (row.count / cmdMax * 100).toFixed(1);
+                  bhtml += '<div style="display:flex;align-items:center;gap:10px;">' +
+                    '<div style="min-width:130px;font-size:13px;">' + label + '</div>' +
+                    '<div style="flex:1;height:14px;background:var(--border-color);opacity:0.3;border-radius:4px;overflow:hidden;">' +
+                    '<div style="height:100%;background:var(--accent-color);width:' + pct + '%;border-radius:4px;"></div></div>' +
+                    '<div style="min-width:50px;text-align:right;font-weight:600;font-size:13px;">' + row.count + '</div></div>';
+                }
+                bdChart.innerHTML = bhtml;
+              }
+            }
+          })
+          .catch(function(err) { showToast('Failed to load data: ' + err); });
+      });
+    })();
 
   </script>
 </body>

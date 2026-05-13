@@ -86,10 +86,9 @@ def merge_songs_list(source_songs, target_songs, key_field="title"):
 
 def load_dxdata(url):
     try:
-        response = requests.get(url)
-        response.raise_for_status()
-
-        data = response.json()
+        with requests.get(url) as response:
+            response.raise_for_status()
+            data = response.json()
 
         data['songs'] = _split_song_sheets_by_type(data['songs'])
         for song in data['songs']:

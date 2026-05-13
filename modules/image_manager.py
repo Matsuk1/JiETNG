@@ -230,7 +230,8 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
 
     # QR Code（左侧）
     try:
-        qr_img = Image.open(QR_CODE_FILE)
+        with Image.open(QR_CODE_FILE) as _qr:
+            qr_img = _qr.copy()
         qr_img = ensure_rgba(
             qr_img.resize(
                 (dynamic_logo_size, dynamic_logo_size),
@@ -246,7 +247,8 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
 
     # Logo（右侧）
     try:
-        logo_img = Image.open(LOGO_FILE)
+        with Image.open(LOGO_FILE) as _logo:
+            logo_img = _logo.copy()
         logo_img = ensure_rgba(
             logo_img.resize(
                 (dynamic_logo_size, dynamic_logo_size),
@@ -275,7 +277,8 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
         else:
             raise FileNotFoundError("No candidate backgrounds")
         bg_path = os.path.join(BG_DIR, random.choice(candidate_files))
-        bg_img = Image.open(bg_path).convert("RGB")
+        with Image.open(bg_path) as _bg:
+            bg_img = _bg.convert("RGB")
         # Cover 裁剪：等比缩放使短边覆盖目标尺寸，居中裁剪
         bg_w, bg_h = bg_img.size
         scale = max(final_width / bg_w, final_height / bg_h)

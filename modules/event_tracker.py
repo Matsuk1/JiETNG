@@ -354,3 +354,52 @@ def _compute_business_stats() -> tuple[dict, bool]:
             except Exception: pass
 
     return out, ok
+
+
+def get_hourly_stats(date_str):
+    """
+    获取指定日期的小时分布和图片命令分布
+
+    Args:
+        date_str: 日期字符串，格式 YYYY-MM-DD
+
+    Returns:
+        dict: {'hourly': [0]*24, 'image_command_breakdown': [...]}
+    """
+    result = {'hourly': [0] * 24, 'image_command_breakdown': []}
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT HOUR(ts) AS h, COUNT(*) AS c
+            FROM events
+            WHERE DATE(ts) = %s
+            GROUP BY h
+        """, (date_str,))
+        for r in cursor.fetchall():
+            result['hourly'][int(r[0])] = r[1]
+
+        cursor.execute("""
+            SELECT JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.command')) AS cmd, COUNT(*) AS cnt
+            FROM events
+            WHERE event_type='image_gen' AND DATE(ts) = %s
+            GROUP BY cmd
+            ORDER BY cnt DESC
+        """, (date_str,))
+        result['image_command_breakdown'] = [
+            {'command': (r[0] or 'unknown'), 'count': r[1]} for r in cursor.fetchall()
+        ]
+    except Exception as e:
+        logger.error(f"[EventTracker] ✗ get_hourly_stats failed: date={date_str}, error={e}")
+    finally:
+        if cursor:
+            try: cursor.close()
+            except Exception: pass
+        if conn:
+            try: conn.close()
+            except Exception: pass
+
+    return result
