@@ -776,6 +776,7 @@ GET /api/v2/songs/<song_id>/image?ver=<version>
 | パラメータ | 型 | 必須 | 説明 |
 |---------|------|------|------|
 | `ver` | string | ❌ | サーバーバージョン、`jp` または `intl`、デフォルト `jp` |
+| `format` | string | ❌ | レスポンス形式、`png`（デフォルト）または `base64` |
 
 **例:**
 ```bash
@@ -803,6 +804,12 @@ GET /api/v2/users/<user_id>/songs/<song_id>/image
 | `user_id` | string | ユーザー ID |
 | `song_id` | string | 楽曲 ID |
 
+**クエリパラメータ:**
+
+| パラメータ | 型 | 必須 | 説明 |
+|---------|------|------|------|
+| `format` | string | ❌ | レスポンス形式、`png`（デフォルト）または `base64` |
+
 **例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
@@ -824,9 +831,10 @@ GET /api/v2/users/<user_id>/image?command=<command>
 
 **クエリパラメータ:**
 
-| パラメータ | 型 | 説明 |
-|---------|------|------|
-| `command` | string | 成績タイプ（下表参照）、デフォルト `b50` |
+| パラメータ | 型 | 必須 | 説明 |
+|---------|------|------|------|
+| `command` | string | ❌ | 成績タイプ（下表参照）、デフォルト `b50` |
+| `format` | string | ❌ | レスポンス形式、`png`（デフォルト）または `base64` |
 
 **command の選択肢:**
 
@@ -863,9 +871,10 @@ GET /api/v2/users/<user_id>/plate?title=<title>
 
 **クエリパラメータ:**
 
-| パラメータ | 型 | 説明 |
-|---------|------|------|
-| `title` | string | 段位称号（例: `覇極`、`覇将`、`覇舞舞`） |
+| パラメータ | 型 | 必須 | 説明 |
+|---------|------|------|------|
+| `title` | string | ✅ | 段位称号（例: `覇極`、`覇将`、`覇舞舞`） |
+| `format` | string | ❌ | レスポンス形式、`png`（デフォルト）または `base64` |
 
 **例:**
 ```bash
@@ -892,6 +901,7 @@ GET /api/v2/users/<user_id>/achievement?level=<level>&rank=<rank>
 |---------|------|------|------|
 | `level` | string | ✅ | 難度レベル（例: `15`、`14+`、`13`） |
 | `rank` | string | ❌ | 達成ランクフィルター（例: `sss`、`ap+`、`fc`、未指定で全件表示） |
+| `format` | string | ❌ | レスポンス形式、`png`（デフォルト）または `base64` |
 
 **rank の選択肢:** `s`、`s+`、`ss`、`ss+`、`sss`、`sss+`、`fc`、`fc+`、`ap`、`ap+`、`fdx`、`fdx+`
 

@@ -32,7 +32,7 @@ def add_user(user_id: str) -> None:
     if user_id in USERS:
         return
 
-    USERS[user_id] = {}
+    USERS[user_id] = {"created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
     mark_user_dirty()
     write_user()
 

@@ -1363,10 +1363,14 @@ def async_generate_friend_record_task(event):
     command = parts[2] if len(parts) > 2 else ""
 
     # 转换 record_type 为标准格式
+    std = False
     for aliases, standard_type in RANK_COMMANDS.items():
         if record_type.lower() in aliases:
             record_type = standard_type
+            std = True
             break
+    if not std:
+        record_type = "best50"
 
     # 获取用户版本
     ver = "jp"
@@ -6465,8 +6469,7 @@ def api_get_task(task_id):
                         "success": True,
                         "task_id": task_id,
                         "status": "running",
-                        "start_time": task.get('start_time'),
-                        "task_type": task.get('type', 'unknown')
+                        "start_time": task.get('start_time')
                     })
 
             # 检查任务是否在队列中
@@ -6477,7 +6480,6 @@ def api_get_task(task_id):
                         "task_id": task_id,
                         "status": "queued",
                         "queued_time": task.get('queued_time'),
-                        "task_type": task.get('type', 'unknown'),
                         "queue_position": task_tracking['queued'].index(task) + 1
                     })
 
@@ -6491,7 +6493,6 @@ def api_get_task(task_id):
                         "start_time": task.get('start_time'),
                         "end_time": task.get('end_time'),
                         "duration": task.get('duration'),
-                        "task_type": task.get('type', 'unknown'),
                         "result": task.get('result', 'success')
                     })
 

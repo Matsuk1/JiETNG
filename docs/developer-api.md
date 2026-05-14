@@ -783,6 +783,7 @@ GET /api/v2/songs/<song_id>/image?ver=<version>
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `ver` | string | ❌ | 服务器版本，`jp` 或 `intl`，默认 `jp` |
+| `format` | string | ❌ | 响应格式，`png`（默认）或 `base64` |
 
 **示例:**
 ```bash
@@ -810,6 +811,12 @@ GET /api/v2/users/<user_id>/songs/<song_id>/image
 | `user_id` | string | 用户 ID |
 | `song_id` | string | 歌曲 ID |
 
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `format` | string | ❌ | 响应格式，`png`（默认）或 `base64` |
+
 **示例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
@@ -831,9 +838,10 @@ GET /api/v2/users/<user_id>/image?command=<command>
 
 **查询参数：**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `command` | string | 成绩类型（见下表），默认 `b50` |
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `command` | string | ❌ | 成绩类型（见下表），默认 `b50` |
+| `format` | string | ❌ | 响应格式，`png`（默认）或 `base64` |
 
 **command 可选值：**
 
@@ -870,9 +878,10 @@ GET /api/v2/users/<user_id>/plate?title=<title>
 
 **查询参数：**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `title` | string | 段位称号，如 `覇極`、`覇将`、`覇舞舞` |
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `title` | string | ✅ | 段位称号，如 `覇極`、`覇将`、`覇舞舞` |
+| `format` | string | ❌ | 响应格式，`png`（默认）或 `base64` |
 
 **示例:**
 ```bash
@@ -899,6 +908,7 @@ GET /api/v2/users/<user_id>/achievement?level=<level>&rank=<rank>
 |------|------|------|------|
 | `level` | string | ✅ | 难度等级，如 `15`、`14+`、`13` |
 | `rank` | string | ❌ | 达成等级过滤，如 `sss`、`ap+`、`fc`（不传则显示全部） |
+| `format` | string | ❌ | 响应格式，`png`（默认）或 `base64` |
 
 **rank 可选值：** `s`、`s+`、`ss`、`ss+`、`sss`、`sss+`、`fc`、`fc+`、`ap`、`ap+`、`fdx`、`fdx+`
 

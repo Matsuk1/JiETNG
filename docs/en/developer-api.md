@@ -771,6 +771,7 @@ GET /api/v2/songs/<song_id>/image?ver=<version>
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `ver` | string | ❌ | Server version, `jp` or `intl`, default `jp` |
+| `format` | string | ❌ | Response format, `png` (default) or `base64` |
 
 **Example:**
 ```bash
@@ -798,6 +799,12 @@ GET /api/v2/users/<user_id>/songs/<song_id>/image
 | `user_id` | string | User ID |
 | `song_id` | string | Song ID |
 
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `format` | string | ❌ | Response format, `png` (default) or `base64` |
+
 **Example:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
@@ -819,9 +826,10 @@ GET /api/v2/users/<user_id>/image?command=<command>
 
 **Query Parameters:**
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `command` | string | Score type (see table below), default `b50` |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `command` | string | ❌ | Score type (see table below), default `b50` |
+| `format` | string | ❌ | Response format, `png` (default) or `base64` |
 
 **command options:**
 
@@ -858,9 +866,10 @@ GET /api/v2/users/<user_id>/plate?title=<title>
 
 **Query Parameters:**
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `title` | string | Rating title (e.g., `覇極`, `覇将`, `覇舞舞`) |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `title` | string | ✅ | Rating title (e.g., `覇極`, `覇将`, `覇舞舞`) |
+| `format` | string | ❌ | Response format, `png` (default) or `base64` |
 
 **Example:**
 ```bash
@@ -887,6 +896,7 @@ GET /api/v2/users/<user_id>/achievement?level=<level>&rank=<rank>
 |-----------|------|----------|-------------|
 | `level` | string | ✅ | Difficulty level (e.g., `15`, `14+`, `13`) |
 | `rank` | string | ❌ | Achievement rank filter (e.g., `sss`, `ap+`, `fc`; omit to show all) |
+| `format` | string | ❌ | Response format, `png` (default) or `base64` |
 
 **rank options:** `s`, `s+`, `ss`, `ss+`, `sss`, `sss+`, `fc`, `fc+`, `ap`, `ap+`, `fdx`, `fdx+`
 

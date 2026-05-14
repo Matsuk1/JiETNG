@@ -3,7 +3,7 @@
 在系统启动时执行各种检查和清理任务
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from typing import List, Dict, Any
 from modules.config_loader import (
@@ -28,14 +28,26 @@ logger = logging.getLogger(__name__)
 def clean_unbound_users() -> Dict[str, Any]:
     """
     清理未完成绑定的用户
-    删除没有 sega_id 或 sega_pwd 字段的账户
+    删除注册超过1小时且没有 sega_id 或 sega_pwd 字段的账户
     """
+    now = datetime.now()
+    cutoff = now - timedelta(hours=1)
 
     # 先收集需要删除的用户，避免在迭代中修改字典
-    users_to_delete = [
-        user_id for user_id, value in USERS.items()
-        if "sega_id" not in value or "sega_pwd" not in value
-    ]
+    users_to_delete = []
+    for user_id, value in USERS.items():
+        if "sega_id" in value and "sega_pwd" in value:
+            continue
+        # 检查注册时间，未满1小时的跳过
+        created_at = value.get('created_at') or value.get('registered_at')
+        if created_at:
+            try:
+                created_time = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
+                if created_time > cutoff:
+                    continue
+            except (ValueError, TypeError):
+                pass
+        users_to_delete.append(user_id)
 
     for user_id in users_to_delete:
         logger.info(f"[SystemCheck] → Deleting unbound user: user_id={user_id}, reason=missing_credentials")
