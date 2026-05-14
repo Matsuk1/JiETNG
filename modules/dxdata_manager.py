@@ -4,7 +4,7 @@ import os
 import copy
 import hashlib
 from datetime import datetime
-from modules.config_loader import MAIMAI_VERSION, DXDATA_VERSION_FILE
+from modules.config_loader import MAIMAI_VERSION, DXDATA_VERSION_FILE, OVERRIDE_FILE, apply_override
 
 def merge_json(source, target):
     """递归合并两个 JSON 结构（dict / list / 基础类型）"""
@@ -290,8 +290,10 @@ def update_dxdata_with_comparison(urls, save_to: str = None):
     new_data = new_datas[0]
 
     if save_to:
+        filtered_songs = [_filter_song_fields(song) for song in new_data.get("songs", [])]
+        apply_override(filtered_songs, OVERRIDE_FILE)
         filtered_data = {
-            "songs": [_filter_song_fields(song) for song in new_data.get("songs", [])],
+            "songs": filtered_songs,
             "versions": new_data.get("versions", [])
         }
 

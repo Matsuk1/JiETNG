@@ -328,7 +328,7 @@ def _compute_business_stats() -> tuple[dict, bool]:
         series = []
         for i in range(29, -1, -1):
             d = today - timedelta(days=i)
-            series.append({'date': d.strftime('%m-%d'), 'dau': by_date.get(str(d), 0)})
+            series.append({'date': d.strftime('%m-%d'), 'full_date': str(d), 'dau': by_date.get(str(d), 0)})
         out['dau_30d'] = series
 
         # 今日小时分布（所有事件调用量）
@@ -366,7 +366,12 @@ def get_hourly_stats(date_str):
     Returns:
         dict: {'hourly': [0]*24, 'image_command_breakdown': [...]}
     """
-    result = {'hourly': [0] * 24, 'image_command_breakdown': []}
+    result = {
+        'hourly': [0] * 24, 'image_command_breakdown': [],
+        'image_calls': 0, 'webhook_msgs': 0,
+        'bindings': 0, 'unbinds': 0,
+        'sync_total': 0, 'sync_success': 0, 'sync_success_rate': 0.0
+    }
     conn = None
     cursor = None
     try:
@@ -392,6 +397,25 @@ def get_hourly_stats(date_str):
         result['image_command_breakdown'] = [
             {'command': (r[0] or 'unknown'), 'count': r[1]} for r in cursor.fetchall()
         ]
+
+        # Activity stats
+        result['image_calls'] = _scalar(cursor,
+            "SELECT COUNT(*) FROM events WHERE event_type='image_gen' AND DATE(ts) = %s", (date_str,))
+        result['webhook_msgs'] = _scalar(cursor,
+            "SELECT COUNT(*) FROM events WHERE event_type='line_webhook' AND DATE(ts) = %s", (date_str,))
+        result['bindings'] = _scalar(cursor,
+            "SELECT COUNT(DISTINCT user_id) FROM events "
+            "WHERE event_type IN ('user_bind','user_rebind') AND user_id IS NOT NULL AND DATE(ts) = %s", (date_str,))
+        result['unbinds'] = _scalar(cursor,
+            "SELECT COUNT(DISTINCT user_id) FROM events "
+            "WHERE event_type='user_unbind' AND user_id IS NOT NULL AND DATE(ts) = %s", (date_str,))
+        result['sync_total'] = _scalar(cursor,
+            "SELECT COUNT(*) FROM events WHERE event_type='sync_task' AND DATE(ts) = %s", (date_str,))
+        result['sync_success'] = _scalar(cursor,
+            "SELECT COUNT(*) FROM events WHERE event_type='sync_task' AND DATE(ts) = %s "
+            "AND JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.success')) = 'true'", (date_str,))
+        if result['sync_total']:
+            result['sync_success_rate'] = round(result['sync_success'] / result['sync_total'] * 100, 1)
     except Exception as e:
         logger.error(f"[EventTracker] ✗ get_hourly_stats failed: date={date_str}, error={e}")
     finally:

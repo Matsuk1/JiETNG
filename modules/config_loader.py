@@ -223,6 +223,50 @@ USERS = {}
 # 用户数据脏标记（用于延迟写入）
 _user_data_dirty = False
 
+def apply_override(songs, override_file):
+    """应用 CSV override 文件到歌曲数据"""
+    if not os.path.exists(override_file):
+        return
+    csv_map = {}
+    with open(override_file, 'r', encoding='utf-8') as f:
+        for row in csv.reader(f):
+            if row:
+                csv_map[row[0]] = row[1:]
+
+    for song in songs:
+        if song['title'] not in csv_map:
+            continue
+        if song['type'] != csv_map[song['title']][0]:
+            continue
+        row = csv_map[song['title']][1:]
+        *keys, value = row
+        # 自动转换数字类型
+        try:
+            value = int(value) if value.isdigit() else float(value)
+        except (ValueError, AttributeError):
+            pass
+        cur = song
+        for k in keys[:-1]:
+            if k.isdigit():
+                k = int(k)
+                while len(cur) <= k:
+                    cur.append({})
+                cur = cur[k]
+            else:
+                cur = cur.setdefault(k, {})
+        last = keys[-1]
+        if last.isdigit():
+            last = int(last)
+            while len(cur) <= last:
+                cur.append(None)
+            cur[last] = value
+        else:
+            cur[last] = value
+
+        for sheet in song.get("sheets", []):
+            sheet["internalLevelValue"] = float(sheet["internalLevelValue"])
+
+
 def read_dxdata(ver="jp"):
     """
     读取歌曲数据
@@ -236,47 +280,6 @@ def read_dxdata(ver="jp"):
     with open(DXDATA_FILE, 'r', encoding='utf-8') as f:
         dxdata_file = json.load(f)
     songs = list(dxdata_file['songs'])
-
-    def is_int(s):
-        return s.isdigit()
-
-    def apply_override(songs, override_file):
-        """应用 CSV override 文件到歌曲数据"""
-        if not os.path.exists(override_file):
-            return
-        csv_map = {}
-        with open(override_file, 'r', encoding='utf-8') as f:
-            for row in csv.reader(f):
-                if row:
-                    csv_map[row[0]] = row[1:]
-
-        for song in songs:
-            if song['title'] not in csv_map:
-                continue
-            if song['type'] != csv_map[song['title']][0]:
-                continue
-            row = csv_map[song['title']][1:]
-            *keys, value = row
-            cur = song
-            for k in keys[:-1]:
-                if is_int(k):
-                    k = int(k)
-                    while len(cur) <= k:
-                        cur.append({})
-                    cur = cur[k]
-                else:
-                    cur = cur.setdefault(k, {})
-            last = keys[-1]
-            if is_int(last):
-                last = int(last)
-                while len(cur) <= last:
-                    cur.append(None)
-                cur[last] = value
-            else:
-                cur[last] = value
-
-            for sheet in song.get("sheets", []):
-                sheet["internalLevelValue"] = float(sheet["internalLevelValue"])
 
     # 通用 override（所有版本生效）
     apply_override(songs, OVERRIDE_FILE)

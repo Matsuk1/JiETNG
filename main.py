@@ -1173,7 +1173,7 @@ def linebot_perms_revoke():
     - perm_token: 权限管理 Token（页面加载时生成，10分钟有效）
     - token_id: 要撤销的 token ID
     """
-    data = request.get_json() or {}
+    data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
     perm_token = data.get('perm_token', '')
     token_id_to_revoke = data.get('token_id', '')
 
@@ -5686,8 +5686,9 @@ def admin_delete_devtoken(token_id):
     return jsonify({'success': True})
 
 
-# ==================== 开发者 API v1 ====================
+# ==================== 开发者 API ====================
 
+@app.route("/api/v2/users", methods=["GET"])
 @app.route("/api/v1/users", methods=["GET"])
 @csrf.exempt
 @require_dev_token
@@ -5745,6 +5746,7 @@ def api_list_users():
         }), 500
 
 
+@app.route("/api/v2/users", methods=["POST"])
 @app.route("/api/v1/users", methods=["POST"])
 @csrf.exempt
 @require_dev_token
@@ -5763,9 +5765,10 @@ def api_create_user():
     - token: 绑定 token（2分钟有效）
     - expires_in: token 过期时间（秒）
     """
+    user_id = ''
     try:
-        # 获取 JSON 数据
-        data = request.get_json() or {}
+        # 获取请求数据（支持 JSON body 和 form data）
+        data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
         user_id = data.get('user_id', '')
         nickname = data.get('nickname', '')
 
@@ -5825,6 +5828,7 @@ def api_create_user():
         }), 500
 
 
+@app.route("/api/v2/users/<user_id>", methods=["GET"])
 @app.route("/api/v1/users/<user_id>", methods=["GET"])
 @csrf.exempt
 @require_dev_token
@@ -5862,6 +5866,7 @@ def api_get_user(user_id):
         }), 500
 
 
+@app.route("/api/v2/users/<user_id>", methods=["DELETE"])
 @app.route("/api/v1/users/<user_id>", methods=["DELETE"])
 @csrf.exempt
 @require_dev_token
@@ -5898,7 +5903,8 @@ def api_delete_user(user_id):
         }), 500
 
 
-@app.route("/api/v1/users/<user_id>/rebind-url", methods=["POST"])
+@app.route("/api/v2/users/<user_id>/rebind-url", methods=["GET"])
+@app.route("/api/v1/users/<user_id>/rebind-url", methods=["GET"])
 @csrf.exempt
 @require_dev_token
 @require_user_permission
@@ -5935,7 +5941,8 @@ def api_create_rebind_url(user_id):
         }), 500
 
 
-@app.route("/api/v1/users/<user_id>/settings-url", methods=["POST"])
+@app.route("/api/v2/users/<user_id>/settings-url", methods=["GET"])
+@app.route("/api/v1/users/<user_id>/settings-url", methods=["GET"])
 @csrf.exempt
 @require_dev_token
 @require_user_permission
@@ -5972,6 +5979,139 @@ def api_create_settings_url(user_id):
         }), 500
 
 
+@app.route("/api/v2/users/<user_id>/bind", methods=["POST"])
+@csrf.exempt
+@require_dev_token
+@require_user_permission
+def api_bind_user(user_id):
+    """
+    绑定 SEGA 账号 API
+
+    需要 Bearer Token 认证并拥有该用户的访问权限
+
+    请求体 (JSON / form-data):
+    - sega_id: 必需，SEGA ID
+    - password: 必需，密码
+    - ver: 服务器版本 jp/intl（默认 jp）
+    - aime: Aime卡选择（默认 0，仅jp有效）
+    - timezone: 时区偏移（默认 9）
+    - language: 语言 ja/en/zh（默认 en）
+    """
+    try:
+        token_info = request.token_info
+        data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
+
+        sega_id = data.get('sega_id', '')
+        password = data.get('password', '')
+        ver = data.get('ver', 'jp').strip().lower()
+        aime = data.get('aime', '0')
+        timezone = data.get('timezone', '9')
+        language = data.get('language', 'en').strip().lower()
+
+        if not sega_id:
+            return jsonify({"error": "Missing parameter", "message": "Parameter 'sega_id' is required"}), 400
+        if not password:
+            return jsonify({"error": "Missing parameter", "message": "Parameter 'password' is required"}), 400
+        if ver not in ('jp', 'intl'):
+            return jsonify({"error": "Invalid parameter", "message": "Parameter 'ver' must be jp or intl"}), 400
+        if language not in ('ja', 'en', 'zh'):
+            language = 'en'
+
+        try:
+            timezone_int = int(timezone)
+        except (ValueError, TypeError):
+            timezone_int = 9
+        try:
+            aime_int = int(aime)
+        except (ValueError, TypeError):
+            aime_int = 0
+
+        # 检查用户是否已绑定
+        user_data = USERS.get(user_id, {})
+        has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
+        if has_account:
+            return jsonify({"error": "Already bound", "message": "User already has a SEGA account linked. Use PUT to rebind."}), 409
+
+        result = asyncio.run(process_sega_credentials(user_id, sega_id, password, ver, language, timezone_int, aime_int, False))
+        if result == "MAINTENANCE":
+            return jsonify({"error": "Maintenance", "message": "The official website is under maintenance. Please try again later."}), 503
+        elif result:
+            track_event('user_bind', user_id=user_id, metadata={'version': ver, 'via_token': True})
+            logger.info(f"[API] ✓ Bind success: user_id={user_id}, ver={ver}, token_id={token_info['token_id']}")
+            return jsonify({"success": True, "user_id": user_id, "message": "SEGA account bound successfully."})
+        else:
+            return jsonify({"error": "Authentication failed", "message": "Invalid SEGA ID or password."}), 401
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Bind error: user_id={user_id}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
+@app.route("/api/v2/users/<user_id>/bind", methods=["PUT"])
+@csrf.exempt
+@require_dev_token
+@require_user_permission
+def api_rebind_user(user_id):
+    """
+    换绑 SEGA 账号 API（更新密码/版本/Aime）
+
+    需要 Bearer Token 认证并拥有该用户的访问权限
+
+    请求体 (JSON / form-data):
+    - sega_id: 必需，SEGA ID（必须与现有一致）
+    - password: 必需，新密码
+    - ver: 服务器版本 jp/intl（可选，保持现有）
+    - aime: Aime卡选择（可选，保持现有）
+    """
+    try:
+        token_info = request.token_info
+        data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
+
+        sega_id = data.get('sega_id', '')
+        password = data.get('password', '')
+
+        if not sega_id:
+            return jsonify({"error": "Missing parameter", "message": "Parameter 'sega_id' is required"}), 400
+        if not password:
+            return jsonify({"error": "Missing parameter", "message": "Parameter 'password' is required"}), 400
+
+        user_data = USERS.get(user_id, {})
+        has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
+        if not has_account:
+            return jsonify({"error": "Not bound", "message": "User has no SEGA account linked. Use POST to bind first."}), 404
+
+        if sega_id != user_data.get('sega_id'):
+            return jsonify({"error": "Forbidden", "message": "Cannot change SEGA ID. Provide the existing SEGA ID."}), 403
+
+        ver = data.get('ver', user_data.get('version', 'jp')).strip().lower()
+        aime = data.get('aime', str(user_data.get('aime', 0)))
+        language = user_data.get('language', 'en')
+        timezone_int = user_data.get('timezone', 9)
+
+        if ver not in ('jp', 'intl'):
+            return jsonify({"error": "Invalid parameter", "message": "Parameter 'ver' must be jp or intl"}), 400
+
+        try:
+            aime_int = int(aime)
+        except (ValueError, TypeError):
+            aime_int = user_data.get('aime', 0)
+
+        result = asyncio.run(process_sega_credentials(user_id, sega_id, password, ver, language, timezone_int, aime_int, True))
+        if result == "MAINTENANCE":
+            return jsonify({"error": "Maintenance", "message": "The official website is under maintenance. Please try again later."}), 503
+        elif result:
+            track_event('user_rebind', user_id=user_id, metadata={'version': ver, 'via_token': True})
+            logger.info(f"[API] ✓ Rebind success: user_id={user_id}, ver={ver}, token_id={token_info['token_id']}")
+            return jsonify({"success": True, "user_id": user_id, "message": "SEGA account rebound successfully."})
+        else:
+            return jsonify({"error": "Authentication failed", "message": "Invalid SEGA ID or password."}), 401
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Rebind error: user_id={user_id}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
+@app.route("/api/v2/users/<user_id>/tasks", methods=["POST"])
 @app.route("/api/v1/users/<user_id>/tasks", methods=["POST"])
 @csrf.exempt
 @require_dev_token
@@ -6036,6 +6176,7 @@ def api_sync_user_data(user_id):
 
 # ==================== Permission Management APIs (RESTful) ====================
 
+@app.route("/api/v2/users/<user_id>/permissions", methods=["POST"])
 @app.route("/api/v1/users/<user_id>/permissions", methods=["POST"])
 @csrf.exempt
 @require_dev_token
@@ -6057,7 +6198,7 @@ def api_request_user_permission(user_id):
     """
     try:
         # 获取 JSON 数据
-        data = request.get_json() or {}
+        data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
         requester_name = data.get('requester_name', '')
 
         # 获取 token 信息
@@ -6107,6 +6248,7 @@ def api_request_user_permission(user_id):
         }), 500
 
 
+@app.route("/api/v2/users/<user_id>/permissions/requests", methods=["GET"])
 @app.route("/api/v1/users/<user_id>/permissions/requests", methods=["GET"])
 @csrf.exempt
 @require_dev_token
@@ -6144,6 +6286,7 @@ def api_get_user_permission_requests(user_id):
 
 
 @app.route("/api/v1/users/<user_id>/permissions/requests/<request_id>", methods=["PATCH"])
+@app.route("/api/v2/users/<user_id>/permissions/requests/<request_id>", methods=["PATCH"])
 @csrf.exempt
 @require_dev_token
 @require_owner_permission
@@ -6163,7 +6306,7 @@ def api_manage_user_permission(user_id, request_id):
     """
     try:
         # 获取 JSON 数据
-        data = request.get_json() or {}
+        data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
         action = data.get('action', '')
 
         if action not in ['accept', 'reject']:
@@ -6214,6 +6357,7 @@ def api_manage_user_permission(user_id, request_id):
 
 
 @app.route("/api/v1/users/<user_id>/permissions/self", methods=["DELETE"])
+@app.route("/api/v2/users/<user_id>/permissions/self", methods=["DELETE"])
 @csrf.exempt
 @require_dev_token
 def api_revoke_own_permission(user_id):
@@ -6251,6 +6395,7 @@ def api_revoke_own_permission(user_id):
 
 
 @app.route("/api/v1/users/<user_id>/permissions/<token_id>", methods=["DELETE"])
+@app.route("/api/v2/users/<user_id>/permissions/<token_id>", methods=["DELETE"])
 @csrf.exempt
 @require_dev_token
 @require_owner_permission
@@ -6308,6 +6453,7 @@ def api_revoke_user_permission(user_id, token_id):
 # ==================== Task Status API (RESTful) ====================
 
 @app.route("/api/v1/tasks/<task_id>", methods=["GET"])
+@app.route("/api/v2/tasks/<task_id>", methods=["GET"])
 @csrf.exempt
 @require_dev_token
 def api_get_task(task_id):
@@ -6454,6 +6600,7 @@ def api_v2_search_songs():
 
 
 @app.route("/api/v1/versions", methods=["GET"])
+@app.route("/api/v2/versions", methods=["GET"])
 @csrf.exempt
 @require_dev_token
 def api_get_versions():
@@ -6488,6 +6635,34 @@ def api_get_versions():
 
 
 # ==================== API v2 ====================
+
+@app.route("/api/v2/dxdata", methods=["GET"])
+@csrf.exempt
+@require_dev_token
+def api_v2_dxdata():
+    """
+    下载 dxdata.json（已应用 override）
+
+    参数:
+    - ver: jp / intl (默认 jp)
+
+    返回: application/json
+    """
+    ver = request.args.get("ver", "jp").strip().lower()
+    if ver not in ("jp", "intl"):
+        return jsonify({"error": "Invalid ver, use jp or intl"}), 400
+    songs, versions = read_dxdata(ver)
+    return jsonify({"songs": songs, "versions": versions})
+
+def _send_image_response(buf):
+    """根据 format 参数返回图片（png 或 base64 JSON）"""
+    fmt = request.args.get('format', 'png').strip().lower()
+    if fmt == 'base64':
+        img_data = b64mod.b64encode(buf.getvalue()).decode()
+        buf.close()
+        return jsonify({"success": True, "format": "base64", "image": img_data})
+    return send_file(buf, mimetype="image/png")
+
 
 @app.route("/api/v2/songs/<song_id>/image", methods=["GET"])
 @csrf.exempt
@@ -6529,7 +6704,7 @@ def api_v2_song_info(song_id):
         token_info = request.token_info
         logger.info(f"[API] Song info generated: song_id={song_id}, ver={ver}, token_id={token_info['token_id']}")
         track_event('image_gen', user_id=None, metadata={'command': 'song-info', 'song_id': song_id, 'ver': ver})
-        return send_file(buf, mimetype="image/png")
+        return _send_image_response(buf)
 
     except Exception as e:
         logger.error(f"[API] ✗ Song info error: song_id={song_id}, error={e}", exc_info=True)
@@ -6592,7 +6767,7 @@ def api_v2_song_record(user_id, song_id):
 
         logger.info(f"[API] Song record generated: user_id={user_id}, song_id={song_id}, token_id={token_info['token_id']}")
         track_event('image_gen', user_id=user_id, metadata={'command': 'song-record'})
-        return send_file(buf, mimetype="image/png")
+        return _send_image_response(buf)
 
     except Exception as e:
         logger.error(f"[API] ✗ Song record error: user_id={user_id}, song_id={song_id}, error={e}", exc_info=True)
@@ -6675,7 +6850,7 @@ def api_v2_generate_record_image(user_id):
 
         logger.info(f"[API] v2 Image generated: user_id={user_id}, command={command}, token_id={token_info['token_id']}")
         track_event('image_gen', user_id=user_id, metadata={'command': _classify_image_command(command)})
-        return send_file(buf, mimetype="image/png")
+        return _send_image_response(buf)
 
     except Exception as e:
         logger.error(f"[API] ✗ v2 Generate image error: user_id={user_id}, error={e}", exc_info=True)
@@ -6818,7 +6993,7 @@ def api_v2_generate_plate(user_id):
 
         logger.info(f"[API] Plate generated: user_id={user_id}, title={title}, token_id={token_info['token_id']}")
         track_event('image_gen', user_id=user_id, metadata={'command': 'plate'})
-        return send_file(buf, mimetype="image/png")
+        return _send_image_response(buf)
 
     except Exception as e:
         logger.error(f"[API] ✗ Generate plate error: user_id={user_id}, error={e}", exc_info=True)
@@ -6983,7 +7158,7 @@ def api_v2_generate_achievement(user_id):
 
         logger.info(f"[API] Achievement generated: user_id={user_id}, level={level}, rank={rank}, token_id={token_info['token_id']}")
         track_event('image_gen', user_id=user_id, metadata={'command': 'progress' if rank else 'level-list'})
-        return send_file(buf, mimetype="image/png")
+        return _send_image_response(buf)
 
     except Exception as e:
         logger.error(f"[API] ✗ Generate achievement error: user_id={user_id}, error={e}", exc_info=True)

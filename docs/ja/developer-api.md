@@ -27,8 +27,8 @@ JiETNG APIを使用したい場合は、以下の手順でアクセストーク�
 
 ### API 基本情報
 
-- **Base URL (v1)**: `https://jietng-endpoint.matsuk1.com/api/v1/`
-- **Base URL (v2)**: `https://jietng-endpoint.matsuk1.com/api/v2/`
+- **Base URL**: `https://jietng-endpoint.matsuk1.com/api/v2/`
+- **Legacy URL**: `https://jietng-endpoint.matsuk1.com/api/v1/`（引き続き利用可能）
 - **認証方式**: Bearer Token
 - **レスポンス形式**: JSON（画像生成エンドポイントは `image/png` を返します）
 
@@ -37,7 +37,7 @@ JiETNG APIを使用したい場合は、以下の手順でアクセストーク�
 ```bash
 # トークンを使用してAPIにアクセス
 curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-     "https://jietng-endpoint.matsuk1.com/api/v1/users"
+     "https://jietng-endpoint.matsuk1.com/api/v2/users"
 ```
 
 ## コマンド使用法
@@ -106,7 +106,7 @@ devtoken info <token_id>
 ### Base URL
 
 ```
-https://jietng-endpoint.matsuk1.com/api/v1/
+https://jietng-endpoint.matsuk1.com/api/v2/
 ```
 
 ### 認証
@@ -114,24 +114,22 @@ https://jietng-endpoint.matsuk1.com/api/v1/
 すべてのAPIエンドポイントはBearer Token認証が必要です:
 
 ```bash
-curl -H "Authorization: Bearer <your_token>" https://jietng-endpoint.matsuk1.com/api/v1/...
+curl -H "Authorization: Bearer <your_token>" https://jietng-endpoint.matsuk1.com/api/v2/...
 ```
 
 ### 利用可能なエンドポイント
 
-v1 エンドポイントは `https://jietng-endpoint.matsuk1.com/api/v1/` をプレフィックスとして使用します。
-
-v2 エンドポイントは `https://jietng-endpoint.matsuk1.com/api/v2/` をプレフィックスとして使用します。
+すべてのエンドポイントは `https://jietng-endpoint.matsuk1.com/api/v2/` をプレフィックスとして使用します。レガシーの `/api/v1/` パスも引き続き利用可能です。
 
 #### 1. ユーザー一覧取得
 
 ```http
-GET /api/v1/users
+GET /api/v2/users
 ```
 
 **例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/users
 ```
 
 **レスポンス:**
@@ -152,7 +150,7 @@ curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/ap
 #### 2. ユーザー登録
 
 ```http
-POST /api/v1/users
+POST /api/v2/users
 ```
 
 **リクエストボディ (JSON):**
@@ -167,7 +165,7 @@ POST /api/v1/users
 
 **例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/json" -d '{"user_id":"U123456","nickname":"TestUser","language":"en"}' https://jietng-endpoint.matsuk1.com/api/v1/users
+curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/json" -d '{"user_id":"U123456","nickname":"TestUser","language":"en"}' https://jietng-endpoint.matsuk1.com/api/v2/users
 ```
 
 **レスポンス:**
@@ -192,12 +190,12 @@ API経由で登録された新規ユーザーは以下の情報を自動的に�
 #### 3. ユーザー情報取得
 
 ```http
-GET /api/v1/users/<user_id>
+GET /api/v2/users/<user_id>
 ```
 
 **例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/users/U123456
 ```
 
 **レスポンス:**
@@ -217,12 +215,12 @@ curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/ap
 #### 4. ユーザーを削除
 
 ```http
-DELETE /api/v1/users/<user_id>
+DELETE /api/v2/users/<user_id>
 ```
 
 **例:**
 ```bash
-curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456
+curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/users/U123456
 ```
 
 **レスポンス:**
@@ -235,10 +233,89 @@ curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.mats
 ```
 
 
-#### 5. 再連携URLの取得
+#### 5. SEGAアカウントの連携
 
 ```http
-POST /api/v1/users/<user_id>/rebind-url
+POST /api/v2/users/<user_id>/bind
+```
+
+**説明:** ユーザーにSEGAアカウントを連携します。公式サイトにログインして資格情報を検証します。
+
+**必要な権限:** 所有者または承認済みトークン
+
+**リクエストボディ (JSON / form-data):**
+- `sega_id`: **必須**、SEGA ID
+- `password`: **必須**、パスワード
+- `ver`: サーバーバージョン（`jp` または `intl`、デフォルト `jp`）
+- `aime`: Aimeカード選択（デフォルト `0`、`jp` のみ有効）
+- `timezone`: タイムゾーンオフセット（デフォルト `9`）
+- `language`: 言語（`ja`/`en`/`zh`、デフォルト `en`）
+
+**例:**
+```bash
+curl -X POST -H "Authorization: Bearer abc123..." \
+     -H "Content-Type: application/json" \
+     -d '{"sega_id":"your_sega_id","password":"your_password","ver":"jp"}' \
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/bind
+```
+
+**レスポンス:**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "message": "SEGA account bound successfully."
+}
+```
+
+**エラーレスポンス:**
+- `409`: ユーザーにはすでにSEGAアカウントが連携されています
+- `401`: SEGA IDまたはパスワードが無効
+- `503`: 公式サイトがメンテナンス中
+
+#### 6. SEGAアカウントの再連携
+
+```http
+PUT /api/v2/users/<user_id>/bind
+```
+
+**説明:** SEGAアカウントの資格情報を更新します（パスワード、バージョン、Aime）。SEGA IDは変更できません。
+
+**必要な権限:** 所有者または承認済みトークン
+
+**リクエストボディ (JSON / form-data):**
+- `sega_id`: **必須**、SEGA ID（既存のものと一致する必要があります）
+- `password`: **必須**、新しいパスワード
+- `ver`: サーバーバージョン（`jp` または `intl`、オプション、既存の設定を維持）
+- `aime`: Aimeカード選択（オプション、既存の設定を維持）
+
+**例:**
+```bash
+curl -X PUT -H "Authorization: Bearer abc123..." \
+     -H "Content-Type: application/json" \
+     -d '{"sega_id":"your_sega_id","password":"new_password"}' \
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/bind
+```
+
+**レスポンス:**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "message": "SEGA account rebound successfully."
+}
+```
+
+**エラーレスポンス:**
+- `403`: SEGA IDが既存のアカウントと一致しません
+- `404`: SEGAアカウントが連携されていません（まずPOSTで連携してください）
+- `401`: SEGA IDまたはパスワードが無効
+- `503`: 公式サイトがメンテナンス中
+
+#### 7. 再連携URLの取得
+
+```http
+GET /api/v2/users/<user_id>/rebind-url
 ```
 
 **説明:** 再連携ページのURLを生成します。SEGA IDのパスワード、バージョンなどのアカウント情報の変更に使用します。
@@ -247,7 +324,7 @@ POST /api/v1/users/<user_id>/rebind-url
 
 **例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/rebind-url
+curl -X GET -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/rebind-url
 ```
 
 **レスポンス (201 Created):**
@@ -261,10 +338,10 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk
 }
 ```
 
-#### 6. 設定URLの取得
+#### 8. 設定URLの取得
 
 ```http
-POST /api/v1/users/<user_id>/settings-url
+GET /api/v2/users/<user_id>/settings-url
 ```
 
 **説明:** 設定ページのURLを生成します。言語、タイムゾーン、背景画像などの個人設定の変更に使用します。
@@ -273,7 +350,7 @@ POST /api/v1/users/<user_id>/settings-url
 
 **例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/settings-url
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/settings-url
 ```
 
 **レスポンス (201 Created):**
@@ -287,17 +364,17 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk
 }
 ```
 
-#### 7. ユーザーデータ同期
+#### 9. ユーザーデータ同期
 
 ```http
-POST /api/v1/users/<user_id>/sync
+POST /api/v2/users/<user_id>/tasks
 ```
 
 **説明:** 非同期でユーザーデータを同期し、202 Accepted ステータスコードを返します。
 
 **例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/sync
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/tasks
 ```
 
 **レスポンス (202 Accepted):**
@@ -311,18 +388,18 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk
 }
 ```
 
-#### 8. タスク状態確認
+#### 10. タスク状態確認
 
 ```http
-GET /api/v1/tasks/<task_id>
+GET /api/v2/tasks/<task_id>
 ```
 
 **説明:**
-`/users/<user_id>/sync` で作成された更新タスクの実行状態を確認します。
+`/users/<user_id>/tasks` で作成された更新タスクの実行状態を確認します。
 
 **例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/tasks/task_xxx
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/tasks/task_xxx
 ```
 
 **レスポンス:**
@@ -359,64 +436,10 @@ curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/ap
 }
 ```
 
-#### 9. ユーザーレコード取得
+#### 11. 楽曲検索
 
 ```http
-GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rating>&version=<version>&difficulty=<difficulty>
-```
-
-**パラメータ:**
-- `type`: レコードタイプ (best50/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idlb50、オプション、デフォルトはbest50)
-- `level`: 譜面定数でフィルター (単一値または "min,max" 範囲、オプション)
-- `rating`: 単曲Ratingでフィルター (単一値または "min,max" 範囲、オプション)
-- `version`: ゲームバージョンでフィルター (複数のバージョンをカンマ区切り、例: "buddies,prism"、オプション)
-- `difficulty`: 譜面難易度でフィルター (bas/adv/exp/mas/rem、複数の難易度をカンマ区切り、オプション)
-- `command`: **非推奨、後方互換性のために維持**、フィルターコマンド（オプション）、以下のパラメータをサポート：
-  - `-lv <定数>` または `-lv <最小> <最大>` - 譜面定数でフィルター
-  - `-ra <rating>` または `-ra <最小> <最大>` - 単曲Ratingでフィルター
-  - `-scr <達成率>` または `-scr <最小> <最大>` - 達成率でフィルター
-  - `-dx <スコア>` または `-dx <最小> <最大>` - でらっくすスコアでフィルター
-  - `-ver <バージョン1> [バージョン2] ...` - ゲームバージョンでフィルター（複数のバージョンをスペース区切りでサポート）
-  - `-diff <難易度1> [難易度2] ...` - 譜面難易度でフィルター（bas/adv/exp/mas/rem、複数の難易度をスペース区切りでサポート）
-  - `-times <倍率>` - 表示件数を倍率でスケーリング（最大 2.5、5 の倍数に切り上げ。例：b50 で `-times 2` を使用すると 35+15 ではなく 70+30 を表示）
-
-**例:**
-```bash
-# best50を取得
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50"
-
-# 特定のバージョンでフィルター（新パラメータ）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&version=buddies"
-
-# MASTER難易度でフィルター（新パラメータ）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&difficulty=mas"
-
-# 定数14.0以上でフィルター（新パラメータ）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&level=14.0"
-
-# 定数範囲14.0-15.0でフィルター（新パラメータ）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&level=14.0,15.0"
-
-# 組み合わせフィルター：MASTER難易度かつ定数14.0-15.0（新パラメータ）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&difficulty=mas&level=14.0,15.0"
-
-# 旧 command パラメータを使用（後方互換性）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&command=-diff%20mas%20-lv%2014.0%2015.0"
-```
-
-**レスポンス:**
-```json
-{
-  "success": true,
-  "old_songs": [...],
-  "new_songs": [...]
-}
-```
-
-#### 10. 楽曲検索
-
-```http
-GET /api/v1/songs/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<limit>
+GET /api/v2/songs/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<limit>
 ```
 
 **パラメータ:**
@@ -428,13 +451,13 @@ GET /api/v1/songs/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<
 **例:**
 ```bash
 # 日本語楽曲を検索
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&ver=jp"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v2/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&ver=jp"
 
 # 空文字列の曲名を検索
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/songs/search?q=__empty__&ver=jp"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v2/songs/search?q=__empty__&ver=jp"
 
 # ユーザーのスコアデータベース内で照合
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&user_id=U123456"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v2/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&user_id=U123456"
 ```
 
 **レスポンス:**
@@ -471,15 +494,15 @@ curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/a
 }
 ```
 
-#### 11. バージョン一覧取得
+#### 12. バージョン一覧取得
 
 ```http
-GET /api/v1/versions
+GET /api/v2/versions
 ```
 
 **例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/versions
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/versions
 ```
 
 **レスポンス:**
@@ -518,10 +541,10 @@ API は2種類のデコレーターを使用してアクセス権限を制御し
 - **`@require_user_permission`**: 所有者と承認された両方のトークンを許可（読み取り操作用）
 - **`@require_owner_permission`**: 所有者のみを許可（機密操作用）
 
-#### 12. アクセス権限のリクエスト
+#### 13. アクセス権限のリクエスト
 
 ```http
-POST /api/v1/users/<user_id>/permissions
+POST /api/v2/users/<user_id>/permissions
 ```
 
 **説明:** 指定されたユーザーのデータにアクセスするための権限リクエストを送信します。
@@ -536,7 +559,7 @@ POST /api/v1/users/<user_id>/permissions
 curl -X POST -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"requester_name":"MyApp"}' \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions
 ```
 
 **レスポンス:**
@@ -564,10 +587,10 @@ curl -X POST -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 13. 権限リクエスト一覧の表示
+#### 14. 権限リクエスト一覧の表示
 
 ```http
-GET /api/v1/users/<user_id>/permissions/requests
+GET /api/v2/users/<user_id>/permissions/requests
 ```
 
 **説明:** ユーザーの保留中の権限リクエスト一覧を取得します。
@@ -577,7 +600,7 @@ GET /api/v1/users/<user_id>/permissions/requests
 **例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/requests
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions/requests
 ```
 
 **レスポンス:**
@@ -605,10 +628,10 @@ curl -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 14. 権限リクエストの承認または拒否
+#### 15. 権限リクエストの承認または拒否
 
 ```http
-PATCH /api/v1/users/<user_id>/permissions
+PATCH /api/v2/users/<user_id>/permissions
 ```
 
 **説明:** 指定された権限リクエストを承認または拒否します。
@@ -624,7 +647,7 @@ PATCH /api/v1/users/<user_id>/permissions
 curl -X PATCH -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"request_id":"20250203120000_jt_abc123","action":"accept"}' \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions
 ```
 
 **承認レスポンス:**
@@ -643,7 +666,7 @@ curl -X PATCH -H "Authorization: Bearer abc123..." \
 curl -X PATCH -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"request_id":"20250203120000_jt_abc123","action":"reject"}' \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions
 ```
 
 **拒否レスポンス:**
@@ -665,10 +688,10 @@ curl -X PATCH -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 15. 付与された権限の取り消し
+#### 16. 付与された権限の取り消し
 
 ```http
-DELETE /api/v1/users/<user_id>/permissions/<token_id>
+DELETE /api/v2/users/<user_id>/permissions/<token_id>
 ```
 
 **説明:** 指定されたトークンに以前付与されたアクセス権限を取り消します。
@@ -678,7 +701,7 @@ DELETE /api/v1/users/<user_id>/permissions/<token_id>
 **例:**
 ```bash
 curl -X DELETE -H "Authorization: Bearer abc123..." \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/jt_abc123
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions/jt_abc123
 ```
 
 **レスポンス:**
@@ -691,10 +714,10 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 16. アクセス権限の自己取り消し
+#### 17. アクセス権限の自己取り消し
 
 ```
-DELETE /api/v1/users/<user_id>/permissions/self
+DELETE /api/v2/users/<user_id>/permissions/self
 ```
 
 **説明:** トークンが自分自身のアクセス権限を主体的に放棄します。所有者（作成者）権限の取り消しには使用できません。
@@ -704,7 +727,7 @@ DELETE /api/v1/users/<user_id>/permissions/self
 **例:**
 ```bash
 curl -X DELETE -H "Authorization: Bearer abc123..." \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/self
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions/self
 ```
 
 **レスポンス:**
@@ -724,11 +747,21 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 }
 ```
 
-### API v2 エンドポイント（画像生成）
+### 画像生成エンドポイント
 
-以下のエンドポイントはすべて `/api/v2/` パス配下にあり、`image/png` 形式の画像データを返します。
+以下のエンドポイントはすべて `/api/v2/` パス配下にあり、デフォルトで `image/png` 形式の画像データを返します。
 
-#### 17. 楽曲情報画像の生成
+**共通パラメータ：** すべての画像エンドポイントは `format=base64` クエリパラメータに対応しています。設定するとJSON形式で返します：
+
+```json
+{
+  "success": true,
+  "format": "base64",
+  "image": "<base64エンコードされたPNGデータ>"
+}
+```
+
+#### 18. 楽曲情報画像の生成
 
 ```
 GET /api/v2/songs/<song_id>/image?ver=<version>
@@ -753,7 +786,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
 
-#### 18. ユーザー楽曲記録画像の生成
+#### 19. ユーザー楽曲記録画像の生成
 
 ```
 GET /api/v2/users/<user_id>/songs/<song_id>/image
@@ -779,7 +812,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
 
-#### 19. 成績画像の生成
+#### 20. 成績画像の生成
 
 ```
 GET /api/v2/users/<user_id>/image?command=<command>
@@ -818,7 +851,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
 
-#### 20. 段位牌画像の生成
+#### 21. 段位牌画像の生成
 
 ```
 GET /api/v2/users/<user_id>/plate?title=<title>
@@ -843,7 +876,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **レスポンス:** `Content-Type: image/png`、PNG 画像バイナリデータを直接返します。
 
-#### 21. 達成状況画像の生成
+#### 22. 達成状況画像の生成
 
 ```
 GET /api/v2/users/<user_id>/achievement?level=<level>&rank=<rank>
@@ -968,12 +1001,13 @@ LINE ユーザーは権限リクエストの FlexMessage 通知を受け取り�
 | `/users` | POST | ユーザーを登録し連携URLを生成 | 任意のトークン |
 | `/users/<user_id>` | GET | ユーザー情報を取得 | 所有者または承認済み |
 | `/users/<user_id>` | DELETE | ユーザーを削除 | **所有者のみ** |
-| `/users/<user_id>/rebind-url` | POST | 再連携URLを生成 | 所有者または承認済み |
-| `/users/<user_id>/settings-url` | POST | 設定URLを生成 | 所有者または承認済み |
+| `/users/<user_id>/bind` | POST | SEGAアカウントを連携 | 所有者または承認済み |
+| `/users/<user_id>/bind` | PUT | SEGAアカウントを再連携 | 所有者または承認済み |
+| `/users/<user_id>/rebind-url` | GET | 再連携URLを生成 | 所有者または承認済み |
+| `/users/<user_id>/settings-url` | GET | 設定URLを生成 | 所有者または承認済み |
 | `/users/<user_id>/tasks` | POST | 同期タスクを作成 (202 Accepted) | 所有者または承認済み |
 | `/tasks/<task_id>` | GET | タスク状態確認 | 任意のトークン |
-| `/users/<user_id>/records` | GET | ユーザーレコードを取得 | 所有者または承認済み |
-| `/songs` | GET | 楽曲を検索 | 任意のトークン |
+| `/songs/search` | GET | 楽曲を検索 | 任意のトークン |
 | `/versions` | GET | バージョン一覧を取得 | 任意のトークン |
 
 ### 権限管理エンドポイント
@@ -986,7 +1020,7 @@ LINE ユーザーは権限リクエストの FlexMessage 通知を受け取り�
 | `/users/<user_id>/permissions/<token_id>` | DELETE | 付与された権限を取り消し | **所有者のみ** |
 | `/users/<user_id>/permissions/self` | DELETE | アクセス権限の自己取り消し | 承認済みトークン（非所有者）|
 
-### 画像生成エンドポイント（v2）
+### 画像生成エンドポイント
 
 | エンドポイント | メソッド | 説明 | 必要な権限 |
 |----------------|--------------|-------------------|----------|
@@ -1043,7 +1077,7 @@ LINE ユーザーは権限リクエストの FlexMessage 通知を受け取り�
 新しいAPIエンドポイントには `@require_dev_token` デコレーターを使用します:
 
 ```python
-@app.route("/api/v1/my_endpoint", methods=["GET"])
+@app.route("/api/v2/my_endpoint", methods=["GET"])
 @csrf.exempt
 @require_dev_token
 def my_api_endpoint():
@@ -1062,7 +1096,7 @@ def my_api_endpoint():
 import requests
 
 TOKEN = "your_token_here"
-BASE_URL = "https://jietng-endpoint.matsuk1.com/api/v1"
+BASE_URL = "https://jietng-endpoint.matsuk1.com/api/v2"
 
 headers = {
     "Authorization": f"Bearer {TOKEN}"
@@ -1081,7 +1115,7 @@ for user in users['users']:
 
 ```javascript
 const TOKEN = 'your_token_here';
-const BASE_URL = 'https://jietng-endpoint.matsuk1.com/api/v1';
+const BASE_URL = 'https://jietng-endpoint.matsuk1.com/api/v2';
 
 async function getUsers() {
   const response = await fetch(`${BASE_URL}/users`, {
@@ -1107,7 +1141,7 @@ getUsers();
 #!/bin/bash
 
 TOKEN="your_token_here"
-BASE_URL="https://jietng-endpoint.matsuk1.com/api/v1"
+BASE_URL="https://jietng-endpoint.matsuk1.com/api/v2"
 
 # ユーザー一覧を取得
 curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/users"
@@ -1138,6 +1172,10 @@ curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/songs/search?q=ヒバナ&ver=j
 
 ## バージョン履歴
 
+- **v2.1**（2026-04-26）：すべてのエンドポイントを v2 に統一
+  - すべての v1 エンドポイントが `/api/v2/` でも利用可能に
+  - ドキュメントを v2 パスに統一
+  - レガシーの `/api/v1/` パスは引き続き利用可能
 - **v2.0**（2026-03-12）：API v2 画像生成エンドポイントを追加
   - 画像生成エンドポイントを `/api/v2/` パスに移行
   - 楽曲情報画像生成を追加（`GET /api/v2/songs/<song_id>/image`）

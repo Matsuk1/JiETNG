@@ -902,36 +902,36 @@
         </div>
       </div>
 
-      <!-- Today's Activity -->
+      <!-- Daily Activity -->
       <div class="section">
-        <div class="section-title">Today's Activity</div>
+        <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span id="activity-title">Today's Activity</span>
+          <input type="date" id="hourly-date" style="font-size: 12px; padding: 2px 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);" />
+        </div>
         <div class="stats-grid" style="margin-bottom: 20px;">
           <div class="stat-card">
             <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Image Calls</div>
-            <div class="stat-value" style="font-size: 28px;">{{ stats.today_image_calls }}</div>
+            <div class="stat-value" style="font-size: 28px;" id="stat-image-calls">{{ stats.today_image_calls }}</div>
           </div>
           <div class="stat-card">
             <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Webhook Msgs</div>
-            <div class="stat-value" style="font-size: 28px;">{{ stats.today_webhook_msgs }}</div>
+            <div class="stat-value" style="font-size: 28px;" id="stat-webhook-msgs">{{ stats.today_webhook_msgs }}</div>
           </div>
           <div class="stat-card">
             <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Bindings</div>
-            <div class="stat-value" style="font-size: 28px;">{{ stats.today_bindings }}</div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">{{ stats.today_unbinds }} unbinds</div>
+            <div class="stat-value" style="font-size: 28px;" id="stat-bindings">{{ stats.today_bindings }}</div>
+            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;" id="stat-unbinds">{{ stats.today_unbinds }} unbinds</div>
           </div>
           <div class="stat-card">
             <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Sync Tasks</div>
-            <div class="stat-value" style="font-size: 28px;">{{ stats.today_sync_success }} / {{ stats.today_sync_total }}</div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">{{ stats.sync_success_rate }}% success</div>
+            <div class="stat-value" style="font-size: 28px;" id="stat-sync">{{ stats.today_sync_success }} / {{ stats.today_sync_total }}</div>
+            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;" id="stat-sync-rate">{{ stats.sync_success_rate }}% success</div>
           </div>
         </div>
 
         <!-- Hourly distribution -->
         <div style="margin-top: 8px;">
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-            <span style="font-size: 12px; opacity: 0.6;">Hourly event volume (DB server time)</span>
-            <input type="date" id="hourly-date" style="font-size: 12px; padding: 2px 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);" />
-          </div>
+          <div style="font-size: 12px; opacity: 0.6; margin-bottom: 10px;">Hourly event volume (DB server time)</div>
           <div id="hourly-chart" style="display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; height: 80px;">
             {% set max_hour = stats.hourly_today|max if stats.hourly_today and (stats.hourly_today|max) > 0 else 1 %}
             {% for v in stats.hourly_today %}
@@ -949,19 +949,31 @@
         <div class="section-title">DAU · Last 30 days</div>
         {% set ns = namespace(m=1) %}
         {% for p in stats.dau_30d %}{% if p.dau > ns.m %}{% set ns.m = p.dau %}{% endif %}{% endfor %}
-        <svg viewBox="0 0 600 180" preserveAspectRatio="none" style="width: 100%; height: 180px;">
-          <polyline fill="none" stroke="var(--accent-color)" stroke-width="2"
-            points="{% for p in stats.dau_30d %}{{ loop.index0 * (600 / 29) }},{{ 170 - (p.dau / ns.m * 150) }} {% endfor %}" />
-          {% for p in stats.dau_30d %}
-            <circle cx="{{ loop.index0 * (600 / 29) }}" cy="{{ 170 - (p.dau / ns.m * 150) }}" r="2.5" fill="var(--accent-color)">
-              <title>{{ p.date }} · DAU {{ p.dau }}</title>
-            </circle>
-          {% endfor %}
-        </svg>
-        <div style="display: flex; justify-content: space-between; font-size: 10px; opacity: 0.5; margin-top: 4px;">
-          <span>{{ stats.dau_30d[0].date if stats.dau_30d else '' }}</span>
-          <span>peak {{ ns.m }}</span>
-          <span>{{ stats.dau_30d[-1].date if stats.dau_30d else '' }}</span>
+        {% set chart_l = 40 %}{% set chart_t = 10 %}{% set chart_w = 550 %}{% set chart_h = 150 %}
+        <div style="position: relative;">
+          <div id="dau-tooltip" style="display:none; position:absolute; pointer-events:none; background:var(--card-bg); border:1px solid var(--border-color); border-radius:6px; padding:4px 10px; font-size:12px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,0.15); z-index:10; white-space:nowrap;"></div>
+          <svg id="dau-svg" viewBox="0 0 620 210" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: auto;">
+            <!-- Y 轴刻度线 + 标签 -->
+            {% for i in range(5) %}
+              {% set yv = (ns.m * (4 - i) / 4)|round|int %}
+              {% set yy = chart_t + chart_h * i / 4 %}
+              <line x1="{{ chart_l }}" y1="{{ yy }}" x2="{{ chart_l + chart_w }}" y2="{{ yy }}" stroke="var(--border-color)" stroke-width="0.5" opacity="0.4" />
+              <text x="{{ chart_l - 6 }}" y="{{ yy + 4 }}" text-anchor="end" fill="var(--text-color)" font-size="9" opacity="0.5">{{ yv }}</text>
+            {% endfor %}
+            <!-- 折线 -->
+            <polyline fill="none" stroke="var(--accent-color)" stroke-width="2"
+              points="{% for p in stats.dau_30d %}{{ chart_l + loop.index0 * (chart_w / 29) }},{{ chart_t + chart_h - (p.dau / ns.m * chart_h) }} {% endfor %}" />
+            <!-- 数据点 -->
+            {% for p in stats.dau_30d %}
+              <circle class="dau-dot" cx="{{ chart_l + loop.index0 * (chart_w / 29) }}" cy="{{ chart_t + chart_h - (p.dau / ns.m * chart_h) }}" r="3.5" fill="var(--accent-color)" style="cursor:pointer; transition: r 0.15s;" data-date="{{ p.date }}" data-full-date="{{ p.full_date }}" data-dau="{{ p.dau }}" />
+            {% endfor %}
+            <!-- X 轴日期标签（每 5 天显示一次） -->
+            {% for p in stats.dau_30d %}
+              {% if loop.index0 % 5 == 0 or loop.last %}
+                <text x="{{ chart_l + loop.index0 * (chart_w / 29) }}" y="{{ chart_t + chart_h + 16 }}" text-anchor="middle" fill="var(--text-color)" font-size="9" opacity="0.5">{{ p.date }}</text>
+              {% endif %}
+            {% endfor %}
+          </svg>
         </div>
       </div>
 
@@ -1082,7 +1094,7 @@
         </div>
 
         <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color); opacity: 0.5; font-size: 13px;">
-          <p>Page rendered: {{ stats.timestamp }}{% if stats.business_stats_at %} · Business data: {{ stats.business_stats_at }}{% endif %}</p>
+          <p>Page rendered: {{ stats.timestamp }}</p>
         </div>
       </div>
     </div>
@@ -2478,6 +2490,8 @@
             const newBody = document.getElementById('sys-health-body');
             if (newBody) newBody.style.display = 'block';
           }
+          // 重新绑定 DAU 图表和日期选择器事件
+          initStatsInteractions();
           showToast('✅ Stats refreshed', 'success');
         })
         .catch(err => {
@@ -3512,72 +3526,119 @@
         });
     }
 
-    // Hourly date picker
-    (function() {
-      var dateInput = document.getElementById('hourly-date');
-      if (!dateInput) return;
-      // Default to today
-      var today = new Date().toISOString().slice(0, 10);
-      dateInput.value = today;
-      dateInput.max = today;
+    var _cmdLabels = {
+      'b50': 'Best 50', 'b40': 'Best 40', 'b35': 'Best 35', 'b15': 'Best 15',
+      'ab35': 'All Best 35', 'ab50': 'All Best 50', 'apb50': 'AP Best 50',
+      'fdxb50': 'FDX Best 50', 'rct50': 'Recent 50', 'idealb50': 'Ideal Best 50',
+      'unknown': 'Unknown', 'song-info': 'Song Info', 'song-record': 'Song Record',
+      'song-record-id': 'Song Record (ID)', 'friend-rcd': 'Friend Record',
+      'plate': 'Plate', 'progress': 'Progress', 'level-list': 'Level List',
+      'version-list': 'Version List', 'record-list': 'Record List', 'random': 'Random Song'
+    };
 
-      var cmdLabels = {
-        'b50': 'Best 50', 'b40': 'Best 40', 'b35': 'Best 35', 'b15': 'Best 15',
-        'ab35': 'All Best 35', 'ab50': 'All Best 50', 'apb50': 'AP Best 50',
-        'fdxb50': 'FDX Best 50', 'rct50': 'Recent 50', 'idealb50': 'Ideal Best 50',
-        'unknown': 'Unknown', 'song-info': 'Song Info', 'song-record': 'Song Record',
-        'song-record-id': 'Song Record (ID)', 'friend-rcd': 'Friend Record',
-        'plate': 'Plate', 'progress': 'Progress', 'level-list': 'Level List',
-        'version-list': 'Version List', 'record-list': 'Record List', 'random': 'Random Song'
-      };
+    function _loadDateData(date) {
+      if (!date) return;
+      var today = new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0') + '-' + String(new Date().getDate()).padStart(2,'0');
+      var isToday = (date === today);
+      var titleEl = document.getElementById('activity-title');
+      if (titleEl) titleEl.textContent = isToday ? "Today's Activity" : date + ' Activity';
 
-      dateInput.addEventListener('change', function() {
-        var date = this.value;
-        if (!date) return;
-        fetch('/admin/api/hourly?date=' + date)
-          .then(function(r) { return r.json(); })
-          .then(function(data) {
-            // Update hourly chart
-            var chart = document.getElementById('hourly-chart');
-            var hourly = data.hourly || [];
-            var maxV = Math.max.apply(null, hourly) || 1;
-            var html = '';
-            for (var i = 0; i < 24; i++) {
-              var v = hourly[i] || 0;
-              var opacity = (0.25 + 0.75 * v / maxV).toFixed(2);
-              var height = (10 + 90 * v / maxV).toFixed(1);
-              html += '<div title="' + i + ':00 — ' + v + '" style="background:var(--accent-color);opacity:' + opacity + ';height:' + height + '%;border-radius:3px 3px 0 0;"></div>';
-            }
-            chart.innerHTML = html;
+      fetch('/admin/api/hourly?date=' + date)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          // Hourly chart
+          var chart = document.getElementById('hourly-chart');
+          var hourly = data.hourly || [];
+          var maxV = Math.max.apply(null, hourly) || 1;
+          var html = '';
+          for (var i = 0; i < 24; i++) {
+            var v = hourly[i] || 0;
+            var opacity = (0.25 + 0.75 * v / maxV).toFixed(2);
+            var height = (10 + 90 * v / maxV).toFixed(1);
+            html += '<div title="' + i + ':00 — ' + v + '" style="background:var(--accent-color);opacity:' + opacity + ';height:' + height + '%;border-radius:3px 3px 0 0;"></div>';
+          }
+          if (chart) chart.innerHTML = html;
 
-            // Update breakdown
-            var bd = data.image_command_breakdown || [];
-            var bdChart = document.getElementById('breakdown-chart');
-            var bdTitle = document.getElementById('breakdown-title');
-            if (bdTitle) bdTitle.textContent = 'Image calls breakdown (' + date + ')';
-            if (bdChart) {
-              if (bd.length === 0) {
-                bdChart.innerHTML = '<div style="opacity:0.5;font-size:13px;">No data</div>';
-              } else {
-                var cmdMax = bd[0].count || 1;
-                var bhtml = '';
-                for (var j = 0; j < bd.length; j++) {
-                  var row = bd[j];
-                  var label = cmdLabels[row.command] || row.command;
-                  var pct = (row.count / cmdMax * 100).toFixed(1);
-                  bhtml += '<div style="display:flex;align-items:center;gap:10px;">' +
-                    '<div style="min-width:130px;font-size:13px;">' + label + '</div>' +
-                    '<div style="flex:1;height:14px;background:var(--border-color);opacity:0.3;border-radius:4px;overflow:hidden;">' +
-                    '<div style="height:100%;background:var(--accent-color);width:' + pct + '%;border-radius:4px;"></div></div>' +
-                    '<div style="min-width:50px;text-align:right;font-weight:600;font-size:13px;">' + row.count + '</div></div>';
-                }
-                bdChart.innerHTML = bhtml;
+          // Activity cards
+          var el;
+          if ((el = document.getElementById('stat-image-calls'))) el.textContent = data.image_calls || 0;
+          if ((el = document.getElementById('stat-webhook-msgs'))) el.textContent = data.webhook_msgs || 0;
+          if ((el = document.getElementById('stat-bindings'))) el.textContent = data.bindings || 0;
+          if ((el = document.getElementById('stat-unbinds'))) el.textContent = (data.unbinds || 0) + ' unbinds';
+          if ((el = document.getElementById('stat-sync'))) el.textContent = (data.sync_success || 0) + ' / ' + (data.sync_total || 0);
+          if ((el = document.getElementById('stat-sync-rate'))) el.textContent = (data.sync_success_rate || 0) + '% success';
+
+          // Breakdown
+          var bd = data.image_command_breakdown || [];
+          var bdChart = document.getElementById('breakdown-chart');
+          var bdTitle = document.getElementById('breakdown-title');
+          if (bdTitle) bdTitle.textContent = 'Image calls breakdown (' + (isToday ? 'today' : date) + ')';
+          if (bdChart) {
+            if (bd.length === 0) {
+              bdChart.innerHTML = '<div style="opacity:0.5;font-size:13px;">No data</div>';
+            } else {
+              var cmdMax = bd[0].count || 1;
+              var bhtml = '';
+              for (var j = 0; j < bd.length; j++) {
+                var row = bd[j];
+                var label = _cmdLabels[row.command] || row.command;
+                var pct = (row.count / cmdMax * 100).toFixed(1);
+                bhtml += '<div style="display:flex;align-items:center;gap:10px;">' +
+                  '<div style="min-width:130px;font-size:13px;">' + label + '</div>' +
+                  '<div style="flex:1;height:14px;background:var(--border-color);opacity:0.3;border-radius:4px;overflow:hidden;">' +
+                  '<div style="height:100%;background:var(--accent-color);width:' + pct + '%;border-radius:4px;"></div></div>' +
+                  '<div style="min-width:50px;text-align:right;font-weight:600;font-size:13px;">' + row.count + '</div></div>';
               }
+              bdChart.innerHTML = bhtml;
             }
-          })
-          .catch(function(err) { showToast('Failed to load data: ' + err); });
-      });
-    })();
+          }
+        })
+        .catch(function(err) { showToast('Failed to load data: ' + err); });
+    }
+
+    function initStatsInteractions() {
+      // DAU chart: hover tooltip + click to load date
+      var svg = document.getElementById('dau-svg');
+      var tooltip = document.getElementById('dau-tooltip');
+      if (svg && tooltip) {
+        svg.querySelectorAll('.dau-dot').forEach(function(dot) {
+          dot.addEventListener('mouseenter', function() {
+            var rect = svg.parentElement.getBoundingClientRect();
+            var dotRect = dot.getBoundingClientRect();
+            tooltip.textContent = this.dataset.date + ' · DAU ' + this.dataset.dau;
+            tooltip.style.display = 'block';
+            var tx = dotRect.left - rect.left + dotRect.width / 2 - tooltip.offsetWidth / 2;
+            var ty = dotRect.top - rect.top - tooltip.offsetHeight - 8;
+            tooltip.style.left = Math.max(0, Math.min(tx, rect.width - tooltip.offsetWidth)) + 'px';
+            tooltip.style.top = ty + 'px';
+            this.setAttribute('r', '6');
+          });
+          dot.addEventListener('mouseleave', function() {
+            tooltip.style.display = 'none';
+            this.setAttribute('r', '3.5');
+          });
+          dot.addEventListener('click', function() {
+            var fullDate = this.dataset.fullDate;
+            var dateInput = document.getElementById('hourly-date');
+            if (dateInput) {
+              dateInput.value = fullDate;
+              _loadDateData(fullDate);
+            }
+          });
+        });
+      }
+
+      // Hourly date picker
+      var dateInput = document.getElementById('hourly-date');
+      if (dateInput) {
+        var today = new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0') + '-' + String(new Date().getDate()).padStart(2,'0');
+        dateInput.value = today;
+        dateInput.max = today;
+        dateInput.addEventListener('change', function() { _loadDateData(this.value); });
+      }
+    }
+
+    initStatsInteractions();
 
   </script>
 </body>

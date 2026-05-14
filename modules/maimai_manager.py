@@ -12,7 +12,7 @@ from modules.config_loader import DOMAIN, RATING_DIR
 
 logger = logging.getLogger(__name__)
 
-# Rating → 本地图片映射（阈值从高到低）
+# Rating → 本地图片映射
 RATING_TIERS = [
     (16750, "rainbow_extreme_4.png"),
     (16500, "rainbow_extreme_3.png"),
@@ -191,7 +191,7 @@ def calc_score(notes, judgements):
             total_deduction += scores[k] * v
     return round(101 - total_deduction, 4)
 
-# ==================== 异步版本函数 ====================
+# ==================== Maimai 函数 ====================
 
 async def fetch_dom(session: aiohttp.ClientSession, url: str, ver="jp") -> etree._Element:
     """异步版本的 fetch_dom，支持并发请求"""

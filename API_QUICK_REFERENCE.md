@@ -4,7 +4,7 @@
 
 ### 请求权限 Request Permission
 ```http
-POST /api/v1/users/{user_id}/permissions
+POST /api/v2/users/{user_id}/permissions
 Authorization: Bearer {token}
 Content-Type: application/json
 
@@ -23,7 +23,7 @@ Response: 201 Created
 
 ### 获取权限请求 Get Permission Requests
 ```http
-GET /api/v1/users/{user_id}/permissions/requests
+GET /api/v2/users/{user_id}/permissions/requests
 Authorization: Bearer {owner_token}
 
 Response: 200 OK
@@ -44,7 +44,7 @@ Response: 200 OK
 
 ### 管理权限请求 Manage Permission Request
 ```http
-PATCH /api/v1/users/{user_id}/permissions
+PATCH /api/v2/users/{user_id}/permissions
 Authorization: Bearer {owner_token}
 Content-Type: application/json
 
@@ -72,7 +72,7 @@ Response: 200 OK
 
 ### 撤销权限 Revoke Permission
 ```http
-DELETE /api/v1/users/{user_id}/permissions/{token_id}
+DELETE /api/v2/users/{user_id}/permissions/{token_id}
 Authorization: Bearer {owner_token}
 
 Response: 200 OK
@@ -88,7 +88,7 @@ Response: 200 OK
 
 ### 触发同步 Trigger Sync
 ```http
-POST /api/v1/users/{user_id}/sync
+POST /api/v2/users/{user_id}/tasks
 Authorization: Bearer {token}
 
 Response: 202 Accepted
@@ -101,29 +101,11 @@ Response: 202 Accepted
 }
 ```
 
-## 成绩记录 Records
-
-### 获取成绩 Get Records
-```http
-GET /api/v1/users/{user_id}/records?type=best50&level=14,15&rating=100-200
-Authorization: Bearer {token}
-
-Response: 200 OK
-{
-  "success": true,
-  "user_id": "U123",
-  "type": "best50",
-  "count": 50,
-  "old_songs": [...],
-  "new_songs": [...]
-}
-```
-
 ## 歌曲搜索 Song Search
 
 ### 搜索歌曲 Search Songs
 ```http
-GET /api/v1/songs/search?q=残響&ver=jp&max_results=6
+GET /api/v2/songs/search?q=残響&ver=jp&max_results=6
 Authorization: Bearer {token}
 
 Response: 200 OK
@@ -143,7 +125,7 @@ Response: 200 OK
 }
 
 // 带用户记录
-GET /api/v1/songs/search?q=残響&user_id=U123
+GET /api/v2/songs/search?q=残響&user_id=U123
 {
   "success": true,
   "count": 1,
@@ -166,7 +148,7 @@ GET /api/v1/songs/search?q=残響&user_id=U123
 
 ### 查询任务 Get Task
 ```http
-GET /api/v1/tasks/{task_id}
+GET /api/v2/tasks/{task_id}
 Authorization: Bearer {token}
 
 Response: 200 OK
@@ -212,12 +194,8 @@ Response: 200 OK
 - `request_id`: 请求ID（必需，用于accept/reject）
 - `action`: 操作类型（"accept" 或 "reject"）
 
-### 成绩查询
-- `type`: best50, best40, best35, best15, allb50, allb35, apb50, rct50, idlb50, unknown
-- `level`: 定数范围，如 "14,15" 或 "14.0-15.0"
-- `rating`: rating范围，如 "100-200"
-- `version`: 版本过滤
-- `difficulty`: 难度过滤
+### 图像生成
+- `format`: 返回格式，`png`（默认）或 `base64`（返回 JSON 含 base64 编码图片）
 
 ### 歌曲搜索
 - `q`: 搜索关键词（支持 "__empty__" 表示空字符串）

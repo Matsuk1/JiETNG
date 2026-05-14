@@ -27,8 +27,8 @@
 
 ### API 基础信息
 
-- **Base URL (v1)**: `https://jietng-endpoint.matsuk1.com/api/v1/`
-- **Base URL (v2)**: `https://jietng-endpoint.matsuk1.com/api/v2/`
+- **Base URL**: `https://jietng-endpoint.matsuk1.com/api/v2/`
+- **Legacy URL**: `https://jietng-endpoint.matsuk1.com/api/v1/`（仍可使用）
 - **认证方式**: Bearer Token
 - **响应格式**: JSON（图像生成端点返回 `image/png`）
 
@@ -37,7 +37,7 @@
 ```bash
 # 使用您的 Token 访问 API
 curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-     "https://jietng-endpoint.matsuk1.com/api/v1/users"
+     "https://jietng-endpoint.matsuk1.com/api/v2/users"
 ```
 
 ## 命令使用
@@ -106,7 +106,7 @@ devtoken info <token_id>
 ### Base URL
 
 ```
-https://jietng-endpoint.matsuk1.com/api/v1/
+https://jietng-endpoint.matsuk1.com/api/v2/
 ```
 
 ### 认证
@@ -114,24 +114,22 @@ https://jietng-endpoint.matsuk1.com/api/v1/
 所有 API 端点都需要 Bearer Token 认证：
 
 ```bash
-curl -H "Authorization: Bearer <your_token>" https://jietng-endpoint.matsuk1.com/api/v1/...
+curl -H "Authorization: Bearer <your_token>" https://jietng-endpoint.matsuk1.com/api/v2/...
 ```
 
 ### 可用端点
 
-v1 端点的完整 URL 为 `https://jietng-endpoint.matsuk1.com/api/v1/` + 端点路径。
-
-v2 端点的完整 URL 为 `https://jietng-endpoint.matsuk1.com/api/v2/` + 端点路径。
+所有端点的完整 URL 为 `https://jietng-endpoint.matsuk1.com/api/v2/` + 端点路径。旧版 `/api/v1/` 路径仍然可用。
 
 #### 1. 获取用户列表
 
 ```http
-GET /api/v1/users
+GET /api/v2/users
 ```
 
 **示例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/users
 ```
 
 **响应:**
@@ -152,7 +150,7 @@ curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/ap
 #### 2. 注册用户
 
 ```http
-POST /api/v1/users
+POST /api/v2/users
 ```
 
 **请求体 (JSON):**
@@ -167,7 +165,7 @@ POST /api/v1/users
 
 **示例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/json" -d '{"user_id":"U123456","nickname":"TestUser","language":"en"}' https://jietng-endpoint.matsuk1.com/api/v1/users
+curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/json" -d '{"user_id":"U123456","nickname":"TestUser","language":"en"}' https://jietng-endpoint.matsuk1.com/api/v2/users
 ```
 
 **响应:**
@@ -192,12 +190,12 @@ curl -X POST -H "Authorization: Bearer abc123..." -H "Content-Type: application/
 #### 3. 获取用户信息
 
 ```http
-GET /api/v1/users/<user_id>
+GET /api/v2/users/<user_id>
 ```
 
 **示例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/users/U123456
 ```
 
 **响应:**
@@ -217,12 +215,12 @@ curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/ap
 #### 4. 删除用户
 
 ```http
-DELETE /api/v1/users/<user_id>
+DELETE /api/v2/users/<user_id>
 ```
 
 **示例:**
 ```bash
-curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456
+curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/users/U123456
 ```
 
 **响应:**
@@ -234,10 +232,89 @@ curl -X DELETE -H "Authorization: Bearer abc123..." https://jietng-endpoint.mats
 }
 ```
 
-#### 5. 获取换绑链接
+#### 5. 绑定 SEGA 账号
 
 ```http
-POST /api/v1/users/<user_id>/rebind-url
+POST /api/v2/users/<user_id>/bind
+```
+
+**说明:** 为用户绑定 SEGA 账号。通过登录官方网站验证凭据。
+
+**权限要求:** 所有者或被授权 Token
+
+**请求体 (JSON / form-data):**
+- `sega_id`: **必需**，SEGA ID
+- `password`: **必需**，密码
+- `ver`: 服务器版本（`jp` 或 `intl`，默认 `jp`）
+- `aime`: Aime 卡选择（默认 `0`，仅 `jp` 有效）
+- `timezone`: 时区偏移（默认 `9`）
+- `language`: 语言（`ja`/`en`/`zh`，默认 `en`）
+
+**示例:**
+```bash
+curl -X POST -H "Authorization: Bearer abc123..." \
+     -H "Content-Type: application/json" \
+     -d '{"sega_id":"your_sega_id","password":"your_password","ver":"jp"}' \
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/bind
+```
+
+**响应:**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "message": "SEGA account bound successfully."
+}
+```
+
+**错误响应:**
+- `409`: 用户已绑定 SEGA 账号
+- `401`: SEGA ID 或密码无效
+- `503`: 官方网站维护中
+
+#### 6. 换绑 SEGA 账号
+
+```http
+PUT /api/v2/users/<user_id>/bind
+```
+
+**说明:** 更新 SEGA 账号凭据（密码、版本、Aime）。不能更改 SEGA ID。
+
+**权限要求:** 所有者或被授权 Token
+
+**请求体 (JSON / form-data):**
+- `sega_id`: **必需**，SEGA ID（必须与现有一致）
+- `password`: **必需**，新密码
+- `ver`: 服务器版本（`jp` 或 `intl`，可选，保持现有）
+- `aime`: Aime 卡选择（可选，保持现有）
+
+**示例:**
+```bash
+curl -X PUT -H "Authorization: Bearer abc123..." \
+     -H "Content-Type: application/json" \
+     -d '{"sega_id":"your_sega_id","password":"new_password"}' \
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/bind
+```
+
+**响应:**
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "message": "SEGA account rebound successfully."
+}
+```
+
+**错误响应:**
+- `403`: SEGA ID 与现有账号不匹配
+- `404`: 未绑定 SEGA 账号（请先使用 POST 绑定）
+- `401`: SEGA ID 或密码无效
+- `503`: 官方网站维护中
+
+#### 7. 获取换绑链接
+
+```http
+GET /api/v2/users/<user_id>/rebind-url
 ```
 
 **说明:** 生成换绑页面链接，用于修改 SEGA ID 密码、版本等账号信息。
@@ -246,7 +323,7 @@ POST /api/v1/users/<user_id>/rebind-url
 
 **示例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/rebind-url
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/rebind-url
 ```
 
 **响应 (201 Created):**
@@ -260,10 +337,10 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk
 }
 ```
 
-#### 6. 获取设置链接
+#### 8. 获取设置链接
 
 ```http
-POST /api/v1/users/<user_id>/settings-url
+GET /api/v2/users/<user_id>/settings-url
 ```
 
 **说明:** 生成设置页面链接，用于修改语言、时区、背景图等个人偏好。
@@ -272,7 +349,7 @@ POST /api/v1/users/<user_id>/settings-url
 
 **示例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/settings-url
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/settings-url
 ```
 
 **响应 (201 Created):**
@@ -286,17 +363,17 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk
 }
 ```
 
-#### 7. 同步用户数据
+#### 9. 同步用户数据
 
 ```http
-POST /api/v1/users/<user_id>/sync
+POST /api/v2/users/<user_id>/tasks
 ```
 
 **说明:** 异步同步用户数据,返回 202 Accepted 状态码。
 
 **示例:**
 ```bash
-curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/sync
+curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/tasks
 ```
 
 **响应 (202 Accepted):**
@@ -310,18 +387,18 @@ curl -X POST -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk
 }
 ```
 
-#### 8. 查询任务状态
+#### 10. 查询任务状态
 
 ```http
-GET /api/v1/tasks/<task_id>
+GET /api/v2/tasks/<task_id>
 ```
 
 **说明:**
-查询通过 `/users/<user_id>/sync` 创建的更新任务的执行状态。
+查询通过 `/users/<user_id>/tasks` 创建的更新任务的执行状态。
 
 **示例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/tasks/task_xxx
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/tasks/task_xxx
 ```
 
 **响应:**
@@ -358,64 +435,10 @@ curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/ap
 }
 ```
 
-#### 9. 获取用户记录
+#### 11. 搜索歌曲
 
 ```http
-GET /api/v1/users/<user_id>/records?type=<record_type>&level=<level>&rating=<rating>&version=<version>&difficulty=<difficulty>
-```
-
-**参数:**
-- `type`: 记录类型 (best50/best35/best15/allb50/allb35/apb50/fdxb50/rct50/idlb50，可选，默认 best50)
-- `level`: 按谱面定数筛选 (单个值或 "min,max" 范围，可选)
-- `rating`: 按单曲 Rating 筛选 (单个值或 "min,max" 范围，可选)
-- `version`: 按游戏版本筛选 (支持多个版本，逗号分隔，如 "buddies,prism"，可选)
-- `difficulty`: 按谱面难度筛选 (bas/adv/exp/mas/rem，支持多个难度，逗号分隔，可选)
-- `command`: **已弃用，保持向后兼容**，筛选命令（可选），支持以下参数：
-  - `-lv <定数>` 或 `-lv <最小定数> <最大定数>` - 按谱面定数筛选
-  - `-ra <rating>` 或 `-ra <最小rating> <最大rating>` - 按单曲 Rating 筛选
-  - `-scr <达成率>` 或 `-scr <最小达成率> <最大达成率>` - 按达成率筛选
-  - `-dx <DX分数>` 或 `-dx <最小DX分数> <最大DX分数>` - 按 DX Score 筛选
-  - `-ver <版本1> [版本2] ...` - 按游戏版本筛选（支持多个版本，空格分隔）
-  - `-diff <难度1> [难度2] ...` - 按谱面难度筛选（bas/adv/exp/mas/rem，支持多个难度，空格分隔）
-  - `-times <倍率>` - 按倍率缩放显示数量（最大 2.5，向上取整到 5 的倍数。例如 b50 使用 `-times 2` 时显示 70+30 而非 35+15）
-
-**示例:**
-```bash
-# 获取 best50
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50"
-
-# 筛选特定版本（新参数）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&version=buddies"
-
-# 筛选 MASTER 难度（新参数）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&difficulty=mas"
-
-# 筛选定数 14.0 以上（新参数）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&level=14.0"
-
-# 筛选定数范围 14.0-15.0（新参数）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&level=14.0,15.0"
-
-# 组合筛选：MASTER 难度且定数 14.0-15.0（新参数）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&difficulty=mas&level=14.0,15.0"
-
-# 使用旧的 command 参数（向后兼容）
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/records?type=best50&command=-diff%20mas%20-lv%2014.0%2015.0"
-```
-
-**响应:**
-```json
-{
-  "success": true,
-  "old_songs": [...],
-  "new_songs": [...]
-}
-```
-
-#### 10. 搜索歌曲
-
-```http
-GET /api/v1/songs/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<limit>
+GET /api/v2/songs/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<limit>
 ```
 
 **参数:**
@@ -427,13 +450,13 @@ GET /api/v1/songs/search?q=<query>&user_id=<user_id>&ver=<version>&max_results=<
 **示例:**
 ```bash
 # 搜索日文歌曲
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&ver=jp"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v2/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&ver=jp"
 
 # 搜索空字符串歌名
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/songs/search?q=__empty__&ver=jp"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v2/songs/search?q=__empty__&ver=jp"
 
 # 在用户的成绩数据库内匹配
-curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v1/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&user_id=U123456"
+curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/api/v2/songs/search?q=%E3%83%92%E3%83%90%E3%83%8A&user_id=U123456"
 ```
 
 **响应:**
@@ -470,15 +493,15 @@ curl -H "Authorization: Bearer abc123..." "https://jietng-endpoint.matsuk1.com/a
 }
 ```
 
-#### 11. 获取版本列表
+#### 12. 获取版本列表
 
 ```http
-GET /api/v1/versions
+GET /api/v2/versions
 ```
 
 **示例:**
 ```bash
-curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v1/versions
+curl -H "Authorization: Bearer abc123..." https://jietng-endpoint.matsuk1.com/api/v2/versions
 ```
 
 **响应:**
@@ -517,10 +540,10 @@ API 使用两种装饰器来控制访问权限：
 - **`@require_user_permission`**：允许所有者和被授权者访问（用于读取操作）
 - **`@require_owner_permission`**：只允许所有者访问（用于敏感操作）
 
-#### 12. 请求访问权限
+#### 13. 请求访问权限
 
 ```http
-POST /api/v1/users/<user_id>/permissions
+POST /api/v2/users/<user_id>/permissions
 ```
 
 **说明：** 向指定用户发送权限请求，请求访问该用户的数据。
@@ -535,7 +558,7 @@ POST /api/v1/users/<user_id>/permissions
 curl -X POST -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"requester_name":"MyApp"}' \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions
 ```
 
 **响应:**
@@ -563,10 +586,10 @@ curl -X POST -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 13. 查看权限请求列表
+#### 14. 查看权限请求列表
 
 ```http
-GET /api/v1/users/<user_id>/permissions/requests
+GET /api/v2/users/<user_id>/permissions/requests
 ```
 
 **说明：** 获取用户的待处理权限请求列表。
@@ -576,7 +599,7 @@ GET /api/v1/users/<user_id>/permissions/requests
 **示例:**
 ```bash
 curl -H "Authorization: Bearer abc123..." \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/requests
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions/requests
 ```
 
 **响应:**
@@ -604,10 +627,10 @@ curl -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 14. 批准或拒绝权限请求
+#### 15. 批准或拒绝权限请求
 
 ```http
-PATCH /api/v1/users/<user_id>/permissions
+PATCH /api/v2/users/<user_id>/permissions
 ```
 
 **说明：** 批准或拒绝指定的权限请求。
@@ -623,7 +646,7 @@ PATCH /api/v1/users/<user_id>/permissions
 curl -X PATCH -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"request_id":"20250203120000_jt_abc123","action":"accept"}' \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions
 ```
 
 **批准响应:**
@@ -642,7 +665,7 @@ curl -X PATCH -H "Authorization: Bearer abc123..." \
 curl -X PATCH -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
      -d '{"request_id":"20250203120000_jt_abc123","action":"reject"}' \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions
 ```
 
 **拒绝响应:**
@@ -664,10 +687,10 @@ curl -X PATCH -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 15. 撤销已授予的权限
+#### 16. 撤销已授予的权限
 
 ```http
-DELETE /api/v1/users/<user_id>/permissions/<token_id>
+DELETE /api/v2/users/<user_id>/permissions/<token_id>
 ```
 
 **说明：** 撤销已授予给指定 Token 的访问权限。
@@ -677,7 +700,7 @@ DELETE /api/v1/users/<user_id>/permissions/<token_id>
 **示例:**
 ```bash
 curl -X DELETE -H "Authorization: Bearer abc123..." \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/jt_abc123
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions/jt_abc123
 ```
 
 **响应:**
@@ -698,10 +721,10 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 }
 ```
 
-#### 16. 自撤销访问权限
+#### 17. 自撤销访问权限
 
 ```
-DELETE /api/v1/users/<user_id>/permissions/self
+DELETE /api/v2/users/<user_id>/permissions/self
 ```
 
 **说明：** Token 主动放弃自己对某用户的已授权访问权限。不能用于撤销所有者（创建者）权限。
@@ -711,7 +734,7 @@ DELETE /api/v1/users/<user_id>/permissions/self
 **示例:**
 ```bash
 curl -X DELETE -H "Authorization: Bearer abc123..." \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/self
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions/self
 ```
 
 **响应:**
@@ -731,11 +754,21 @@ curl -X DELETE -H "Authorization: Bearer abc123..." \
 }
 ```
 
-### API v2 端点（图像生成）
+### 图像生成端点
 
-以下端点均位于 `/api/v2/` 路径下，返回 `image/png` 格式的图像数据。
+以下端点均位于 `/api/v2/` 路径下，默认返回 `image/png` 格式的图像数据。
 
-#### 17. 生成歌曲信息图
+**通用参数：** 所有图像端点支持 `format=base64` 查询参数。设置后返回 JSON 格式：
+
+```json
+{
+  "success": true,
+  "format": "base64",
+  "image": "<base64 编码的 PNG 数据>"
+}
+```
+
+#### 18. 生成歌曲信息图
 
 ```
 GET /api/v2/songs/<song_id>/image?ver=<version>
@@ -760,7 +793,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
 
-#### 18. 生成用户歌曲记录图
+#### 19. 生成用户歌曲记录图
 
 ```
 GET /api/v2/users/<user_id>/songs/<song_id>/image
@@ -786,7 +819,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
 
-#### 19. 生成成绩图
+#### 20. 生成成绩图
 
 ```
 GET /api/v2/users/<user_id>/image?command=<command>
@@ -825,7 +858,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
 
-#### 20. 生成段位牌图
+#### 21. 生成段位牌图
 
 ```
 GET /api/v2/users/<user_id>/plate?title=<title>
@@ -850,7 +883,7 @@ curl -H "Authorization: Bearer abc123..." \
 
 **响应：** `Content-Type: image/png`，直接返回 PNG 图像二进制数据。
 
-#### 21. 生成达成情况图
+#### 22. 生成达成情况图
 
 ```
 GET /api/v2/users/<user_id>/achievement?level=<level>&rank=<rank>
@@ -885,25 +918,25 @@ curl -H "Authorization: Bearer abc123..." \
 curl -X POST -H "Authorization: Bearer TOKEN_B" \
      -H "Content-Type: application/json" \
      -d '{"requester_name":"MyApp"}' \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions
 
 # 2. Token A（所有者）查看待处理的权限请求
 curl -H "Authorization: Bearer TOKEN_A" \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/requests
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions/requests
 
 # 3. Token A 批准请求
 curl -X PATCH -H "Authorization: Bearer TOKEN_A" \
      -H "Content-Type: application/json" \
      -d '{"request_id":"20250203120000_jt_tokenb","action":"accept"}' \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions
 
 # 4. 现在 Token B 可以访问 User1 的数据
 curl -H "Authorization: Bearer TOKEN_B" \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456
 
 # 5. （可选）Token A 撤销 Token B 的访问权限
 curl -X DELETE -H "Authorization: Bearer TOKEN_A" \
-     https://jietng-endpoint.matsuk1.com/api/v1/users/U123456/permissions/jt_tokenb
+     https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/permissions/jt_tokenb
 ```
 
 ### LINE 用户的权限管理
@@ -1003,12 +1036,13 @@ LINE 用户会收到权限请求的 FlexMessage 通知，可以直接在 LINE �
 | `/users` | POST | 注册用户并生成绑定链接 | 任何 Token |
 | `/users/<user_id>` | GET | 获取用户信息 | 所有者或被授权 |
 | `/users/<user_id>` | DELETE | 删除用户 | **仅所有者** |
-| `/users/<user_id>/rebind-url` | POST | 获取换绑链接 | 所有者或被授权 |
-| `/users/<user_id>/settings-url` | POST | 获取设置链接 | 所有者或被授权 |
+| `/users/<user_id>/bind` | POST | 绑定 SEGA 账号 | 所有者或被授权 |
+| `/users/<user_id>/bind` | PUT | 换绑 SEGA 账号 | 所有者或被授权 |
+| `/users/<user_id>/rebind-url` | GET | 获取换绑链接 | 所有者或被授权 |
+| `/users/<user_id>/settings-url` | GET | 获取设置链接 | 所有者或被授权 |
 | `/users/<user_id>/tasks` | POST | 创建同步任务 (202 Accepted) | 所有者或被授权 |
 | `/tasks/<task_id>` | GET | 查询任务状态 | 任何 Token |
-| `/users/<user_id>/records` | GET | 获取用户成绩记录 | 所有者或被授权 |
-| `/songs` | GET | 搜索歌曲 | 任何 Token |
+| `/songs/search` | GET | 搜索歌曲 | 任何 Token |
 | `/versions` | GET | 获取版本列表 | 任何 Token |
 
 ### 权限管理端点
@@ -1021,7 +1055,7 @@ LINE 用户会收到权限请求的 FlexMessage 通知，可以直接在 LINE �
 | `/users/<user_id>/permissions/<token_id>` | DELETE | 撤销已授予的权限 | **仅所有者** |
 | `/users/<user_id>/permissions/self` | DELETE | 自撤销访问权限 | 已授权 Token（非所有者）|
 
-### 图像生成端点（v2）
+### 图像生成端点
 
 | 端点 | 方法 | 说明 | 权限要求 |
 |----------------|--------------|-------------------|----------|
@@ -1078,7 +1112,7 @@ Token 数据存储位置由 `config.json` 中的 `file_path.dev_tokens` 配置�
 在新的 API 端点中使用 `@require_dev_token` 装饰器：
 
 ```python
-@app.route("/api/v1/my_endpoint", methods=["GET"])
+@app.route("/api/v2/my_endpoint", methods=["GET"])
 @csrf.exempt
 @require_dev_token
 def my_api_endpoint():
@@ -1097,7 +1131,7 @@ def my_api_endpoint():
 import requests
 
 TOKEN = "your_token_here"
-BASE_URL = "https://jietng-endpoint.matsuk1.com/api/v1"
+BASE_URL = "https://jietng-endpoint.matsuk1.com/api/v2"
 
 headers = {
     "Authorization": f"Bearer {TOKEN}"
@@ -1116,7 +1150,7 @@ for user in users['users']:
 
 ```javascript
 const TOKEN = 'your_token_here';
-const BASE_URL = 'https://jietng-endpoint.matsuk1.com/api/v1';
+const BASE_URL = 'https://jietng-endpoint.matsuk1.com/api/v2';
 
 async function getUsers() {
   const response = await fetch(`${BASE_URL}/users`, {
@@ -1142,7 +1176,7 @@ getUsers();
 #!/bin/bash
 
 TOKEN="your_token_here"
-BASE_URL="https://jietng-endpoint.matsuk1.com/api/v1"
+BASE_URL="https://jietng-endpoint.matsuk1.com/api/v2"
 
 # 获取用户列表
 curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/users"
@@ -1173,6 +1207,10 @@ curl -H "Authorization: Bearer $TOKEN" "$BASE_URL/songs/search?q=ヒバナ&ver=j
 
 ## 版本历史
 
+- **v2.1** (2026-04-26): 统一所有端点至 v2
+  - 所有 v1 端点现在同时可通过 `/api/v2/` 访问
+  - 文档统一改为引用 v2 路径
+  - 旧版 `/api/v1/` 路径仍可使用
 - **v2.0** (2026-03-12): 新增 API v2 图像生成端点
   - 图像生成端点迁移至 `/api/v2/` 路径
   - 新增歌曲信息图生成（`GET /api/v2/songs/<song_id>/image`）
