@@ -6058,8 +6058,8 @@ def api_rebind_user(user_id):
     需要 Bearer Token 认证并拥有该用户的访问权限
 
     请求体 (JSON / form-data):
-    - sega_id: 必需，SEGA ID（必须与现有一致）
-    - password: 必需，新密码
+    - sega_id: 可选，SEGA ID（不提供则保持现有）
+    - password: 可选，新密码（不提供则保持现有）
     - ver: 服务器版本 jp/intl（可选，保持现有）
     - aime: Aime卡选择（可选，保持现有）
     """
@@ -6067,21 +6067,13 @@ def api_rebind_user(user_id):
         token_info = request.token_info
         data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
 
-        sega_id = data.get('sega_id', '')
-        password = data.get('password', '')
-
-        if not sega_id:
-            return jsonify({"error": "Missing parameter", "message": "Parameter 'sega_id' is required"}), 400
-        if not password:
-            return jsonify({"error": "Missing parameter", "message": "Parameter 'password' is required"}), 400
-
         user_data = USERS.get(user_id, {})
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
         if not has_account:
             return jsonify({"error": "Not bound", "message": "User has no SEGA account linked. Use POST to bind first."}), 404
 
-        if sega_id != user_data.get('sega_id'):
-            return jsonify({"error": "Forbidden", "message": "Cannot change SEGA ID. Provide the existing SEGA ID."}), 403
+        sega_id = data.get('sega_id', '') or user_data.get('sega_id', '')
+        password = data.get('password', '') or user_data.get('sega_pwd', '')
 
         ver = data.get('ver', user_data.get('version', 'jp')).strip().lower()
         aime = data.get('aime', str(user_data.get('aime', 0)))

@@ -278,13 +278,13 @@ curl -X POST -H "Authorization: Bearer abc123..." \
 PUT /api/v2/users/<user_id>/bind
 ```
 
-**说明:** 更新 SEGA 账号凭据（密码、版本、Aime）。不能更改 SEGA ID。
+**说明:** 更新 SEGA 账号凭据（SEGA ID、密码、版本、Aime）。所有参数均为可选，未提供则保持现有设置。
 
 **权限要求:** 所有者或被授权 Token
 
 **请求体 (JSON / form-data):**
-- `sega_id`: **必需**，SEGA ID（必须与现有一致）
-- `password`: **必需**，新密码
+- `sega_id`: 可选，SEGA ID（不提供则保持现有）
+- `password`: 可选，新密码（不提供则保持现有）
 - `ver`: 服务器版本（`jp` 或 `intl`，可选，保持现有）
 - `aime`: Aime 卡选择（可选，保持现有）
 
@@ -292,7 +292,7 @@ PUT /api/v2/users/<user_id>/bind
 ```bash
 curl -X PUT -H "Authorization: Bearer abc123..." \
      -H "Content-Type: application/json" \
-     -d '{"sega_id":"your_sega_id","password":"new_password"}' \
+     -d '{"password":"new_password","ver":"intl"}' \
      https://jietng-endpoint.matsuk1.com/api/v2/users/U123456/bind
 ```
 
