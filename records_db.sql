@@ -4,6 +4,13 @@ CREATE DATABASE IF NOT EXISTS maimai_records
 
 USE maimai_records;
 
+CREATE TABLE IF NOT EXISTS users (
+    user_id VARCHAR(64) PRIMARY KEY,
+    data JSON NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS best_records (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id VARCHAR(64),
@@ -22,3 +29,14 @@ CREATE TABLE IF NOT EXISTS best_records (
 );
 
 CREATE TABLE IF NOT EXISTS recent_records LIKE best_records;
+
+CREATE TABLE IF NOT EXISTS events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(64) NULL,
+    event_type VARCHAR(32) NOT NULL,
+    metadata JSON NULL,
+    ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ts (ts),
+    INDEX idx_event_ts (event_type, ts),
+    INDEX idx_user_ts (user_id, ts)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

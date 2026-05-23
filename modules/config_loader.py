@@ -217,11 +217,6 @@ VAPID_PRIVATE_KEY = WEB_PUSH_CONFIG.get("vapid_private_key", "")
 VAPID_PUBLIC_KEY = WEB_PUSH_CONFIG.get("vapid_public_key", "")
 VAPID_CONTACT = WEB_PUSH_CONFIG.get("contact", "mailto:admin@example.com")
 
-# 全局缓存数据
-USERS = {}
-
-# 用户数据脏标记（用于延迟写入）
-_user_data_dirty = False
 
 def apply_override(songs, override_file):
     """应用 CSV override 文件到歌曲数据"""
@@ -292,24 +287,17 @@ def read_dxdata(ver="jp"):
     return songs, versions
 
 def load_user():
-    global USERS, _user_data_dirty
-    if not USERS:  # 只在未加载时读取
-        USERS.update(read_encrypted_json(USER_FILE, USER_DATA_KEY))
-    _user_data_dirty = False
+    """初始化用户表，首次迁移时自动从 JSON 导入"""
+    from modules.user_db import init_users_table, migrate_from_json, get_user_count
+    import logging
+    _logger = logging.getLogger(__name__)
 
-def write_user(force=False):
-    """
-    写入用户数据
+    init_users_table()
 
-    Args:
-        force: 强制写入，忽略脏标记
-    """
-    global _user_data_dirty
-    if force or _user_data_dirty:
-        write_encrypted_json(USERS, USER_FILE, USER_DATA_KEY)
-        _user_data_dirty = False
-
-def mark_user_dirty():
-    """标记用户数据已修改"""
-    global _user_data_dirty
-    _user_data_dirty = True
+    # 如果 DB 为空但 JSON 文件存在，执行一次性迁移
+    if get_user_count() == 0 and os.path.isfile(USER_FILE) and os.path.getsize(USER_FILE) > 0:
+        _logger.info("[ConfigLoader] DB empty, migrating from JSON...")
+        json_users = read_encrypted_json(USER_FILE, USER_DATA_KEY)
+        if json_users:
+            migrate_from_json(json_users)
+            _logger.info(f"[ConfigLoader] ✓ Migrated {len(json_users)} users to DB")

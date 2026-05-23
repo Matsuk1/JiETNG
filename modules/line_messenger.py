@@ -17,7 +17,7 @@ from linebot.v3.messaging import (
     PushMessageRequest,
     TextMessage
 )
-from modules.config_loader import USERS
+from modules.user_db import user_exists
 from modules.notification_manager import record_notification
 from modules.user_manager import (
     has_user_read_notice,
@@ -58,7 +58,7 @@ def smart_reply(user_id: str, reply_token: str, messages, configuration: Configu
     # 只有当消息数量小于5时，才添加附加消息
     if len(messages) < 5 and addition:
         # 优先级1: 好友申请与权限申请消息
-        if user_id in USERS:
+        if user_exists(user_id):
             perm_requests = get_pending_perm_requests(user_id)
             if perm_requests and len(messages) < 5:
                 perm_request_msg = generate_perm_request_message(perm_requests, user_id)

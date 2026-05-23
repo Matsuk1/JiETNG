@@ -10,7 +10,12 @@ import logging
 import threading
 from datetime import datetime
 from modules.record_manager import delete_record
-from modules.config_loader import write_user, mark_user_dirty, USERS, BG_DIR
+from modules.config_loader import BG_DIR
+from modules.user_db import (
+    save_user, delete_user_from_db, get_user, user_exists,
+    get_user_field, update_user_field, remove_user_field,
+    get_all_user_ids, increment_user_field
+)
 from modules.notice_manager import get_latest_published_notice
 
 logger = logging.getLogger(__name__)
@@ -28,13 +33,11 @@ def add_user(user_id: str) -> None:
     Args:
         user_id: LINE用户ID或代理用户ID
     """
-
-    if user_id in USERS:
+    if user_exists(user_id):
         return
 
-    USERS[user_id] = {"created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-    mark_user_dirty()
-    write_user()
+    user_data = {"created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+    save_user(user_id, user_data)
 
 
 def delete_user(user_id: str) -> None:
@@ -44,11 +47,7 @@ def delete_user(user_id: str) -> None:
     Args:
         user_id: 要删除的用户ID
     """
-
-    if user_id in USERS:
-        del USERS[user_id]
-        mark_user_dirty()
-        write_user()
+    delete_user_from_db(user_id)
 
     # 删除数据库中的记录
     delete_record(user_id, recent=True)
@@ -78,23 +77,20 @@ def edit_user_value(user_id: str, key: str, word: Any, operation: int = 0) -> No
             2 - 减少值
             4 - 删除键
     """
-    if user_id not in USERS:
+    if not user_exists(user_id):
         add_user(user_id)
 
     if operation == 0:
-        USERS[user_id][key] = word
+        update_user_field(user_id, key, word)
 
     elif operation == 1:
-        USERS[user_id][key] += word
+        increment_user_field(user_id, key, word)
 
     elif operation == 2:
-        USERS[user_id][key] -= word
+        increment_user_field(user_id, key, -word)
 
     elif operation == 4:
-        del USERS[user_id][key]
-
-    mark_user_dirty()
-    write_user()
+        remove_user_field(user_id, key)
 
 
 def get_user_timezone(user_id: str) -> int:
@@ -107,10 +103,7 @@ def get_user_timezone(user_id: str) -> int:
     Returns:
         int: 时区偏移（小时数），默认 9（UTC+9）
     """
-    if user_id not in USERS:
-        return 9  # 默认 UTC+9
-
-    return USERS[user_id].get('timezone', 9)
+    return get_user_field(user_id, 'timezone', 9)
 
 
 def clear_user_value(key: str, word: Any, operation: int = 0) -> None:
@@ -122,7 +115,7 @@ def clear_user_value(key: str, word: Any, operation: int = 0) -> None:
         word: 要设置/增加/减少的值
         operation: 操作类型 (同 edit_user_value)
     """
-    for user_id in list(USERS.keys()):
+    for user_id in get_all_user_ids():
         edit_user_value(user_id, key, word, operation)
 
 
@@ -188,25 +181,28 @@ def record_notice_read(user_id: str, notice_id: str) -> None:
         user_id: 用户ID
         notice_id: 公告ID
     """
-    if user_id not in USERS:
+    if not user_exists(user_id):
         add_user(user_id)
 
-    if 'notice_interactions' not in USERS[user_id]:
-        USERS[user_id]['notice_interactions'] = {}
+    user_data = get_user(user_id)
+    if not user_data:
+        return
 
-    if notice_id not in USERS[user_id]['notice_interactions']:
-        USERS[user_id]['notice_interactions'][notice_id] = {
+    if 'notice_interactions' not in user_data:
+        user_data['notice_interactions'] = {}
+
+    if notice_id not in user_data['notice_interactions']:
+        user_data['notice_interactions'][notice_id] = {
             'read': False,
             'read_at': None,
             'vote': None,
             'voted_at': None
         }
 
-    USERS[user_id]['notice_interactions'][notice_id]['read'] = True
-    USERS[user_id]['notice_interactions'][notice_id]['read_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    user_data['notice_interactions'][notice_id]['read'] = True
+    user_data['notice_interactions'][notice_id]['read_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    mark_user_dirty()
-    write_user()
+    save_user(user_id, user_data)
 
 
 def record_notice_vote(user_id: str, notice_id: str, vote_type: str) -> bool:
@@ -221,30 +217,30 @@ def record_notice_vote(user_id: str, notice_id: str, vote_type: str) -> bool:
     Returns:
         bool: 是否成功
     """
-    if user_id not in USERS:
+    user_data = get_user(user_id)
+    if not user_data:
         return False
 
-    if 'notice_interactions' not in USERS[user_id]:
-        USERS[user_id]['notice_interactions'] = {}
+    if 'notice_interactions' not in user_data:
+        user_data['notice_interactions'] = {}
 
-    if notice_id not in USERS[user_id]['notice_interactions']:
-        USERS[user_id]['notice_interactions'][notice_id] = {
+    if notice_id not in user_data['notice_interactions']:
+        user_data['notice_interactions'][notice_id] = {
             'read': True,
             'read_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'vote': None,
             'voted_at': None
         }
 
-    USERS[user_id]['notice_interactions'][notice_id]['vote'] = vote_type
-    USERS[user_id]['notice_interactions'][notice_id]['voted_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    user_data['notice_interactions'][notice_id]['vote'] = vote_type
+    user_data['notice_interactions'][notice_id]['voted_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     # 确保投票时也标记为已读
-    if not USERS[user_id]['notice_interactions'][notice_id]['read']:
-        USERS[user_id]['notice_interactions'][notice_id]['read'] = True
-        USERS[user_id]['notice_interactions'][notice_id]['read_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    if not user_data['notice_interactions'][notice_id]['read']:
+        user_data['notice_interactions'][notice_id]['read'] = True
+        user_data['notice_interactions'][notice_id]['read_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    mark_user_dirty()
-    write_user()
+    save_user(user_id, user_data)
 
     return True
 
@@ -260,10 +256,11 @@ def get_notice_interaction(user_id: str, notice_id: str) -> Optional[Dict]:
     Returns:
         交互状态字典或None
     """
-    if user_id not in USERS:
+    user_data = get_user(user_id)
+    if not user_data:
         return None
 
-    interactions = USERS[user_id].get('notice_interactions', {})
+    interactions = user_data.get('notice_interactions', {})
     return interactions.get(notice_id)
 
 
@@ -278,7 +275,7 @@ def has_user_read_notice(user_id: str, notice_id: str) -> bool:
     Returns:
         bool: 是否已阅读
     """
-    if user_id not in USERS:
+    if not user_exists(user_id):
         return True
 
     interaction = get_notice_interaction(user_id, notice_id)
@@ -292,19 +289,22 @@ def clear_notice_read_status(notice_id: str) -> None:
     Args:
         notice_id: 公告ID
     """
-    for user_id in list(USERS.keys()):
-        if 'notice_interactions' not in USERS[user_id]:
-            USERS[user_id]['notice_interactions'] = {}
+    for user_id in get_all_user_ids():
+        user_data = get_user(user_id)
+        if not user_data:
+            continue
 
-        USERS[user_id]['notice_interactions'][notice_id] = {
+        if 'notice_interactions' not in user_data:
+            user_data['notice_interactions'] = {}
+
+        user_data['notice_interactions'][notice_id] = {
             'read': False,
             'read_at': None,
             'vote': None,
             'voted_at': None
         }
+        save_user(user_id, user_data)
 
-    mark_user_dirty()
-    write_user()
 
 def clear_notice_record(notice_id: str) -> None:
     """
@@ -313,11 +313,13 @@ def clear_notice_record(notice_id: str) -> None:
     Args:
         notice_id: 公告ID
     """
-    for user_id in list(USERS.keys()):
-        if 'notice_interactions' not in USERS[user_id]:
-            USERS[user_id]['notice_interactions'] = {}
+    for user_id in get_all_user_ids():
+        user_data = get_user(user_id)
+        if not user_data:
+            continue
 
-        USERS[user_id]['notice_interactions'].pop(notice_id, None)
+        if 'notice_interactions' not in user_data:
+            continue
 
-    mark_user_dirty()
-    write_user()
+        user_data['notice_interactions'].pop(notice_id, None)
+        save_user(user_id, user_data)

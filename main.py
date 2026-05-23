@@ -77,6 +77,11 @@ from modules.record_generator import *
 
 # User and data managers
 from modules.user_manager import *
+from modules.user_db import (
+    save_user, delete_user_from_db, get_user, user_exists,
+    get_user_field, update_user_field, load_all_users, get_all_user_ids,
+    get_user_count
+)
 from modules.bindtoken_manager import (
     generate_bind_token, get_user_id_from_token,
     generate_perm_token, get_user_id_from_perm_token,
@@ -540,9 +545,9 @@ def require_user_permission(f):
         token_id = token_info['token_id']
 
         # 使用辅助函数检查权限
-        has_permission, error_response = check_user_permission(user_id, token_id)
+        has_permission, result = check_user_permission(user_id, token_id)
         if not has_permission:
-            return error_response
+            return result
 
         return f(*args, **kwargs)
 
@@ -582,19 +587,19 @@ def require_owner_permission(f):
                 "message": "user_id is required"
             }), 400
 
-        # 检查用户是否存在
-        if user_id not in USERS:
+        # 获取 token 信息（由 require_dev_token 装饰器提供）
+        token_info = request.token_info
+        token_id = token_info['token_id']
+
+        # 检查用户是否存在且为该 token 创建
+        _owner_token = get_user_field(user_id, 'registered_via_token')
+        if _owner_token is None:
             return jsonify({
                 "error": "User not found",
                 "message": f"User {user_id} does not exist"
             }), 404
 
-        # 获取 token 信息（由 require_dev_token 装饰器提供）
-        token_info = request.token_info
-        token_id = token_info['token_id']
-
-        # 只检查是否为所有者（创建者）
-        if USERS[user_id].get('registered_via_token') != token_id:
+        if _owner_token != token_id:
             return jsonify({
                 "error": "Forbidden",
                 "message": "Only the owner token (creator) can perform this operation"
@@ -614,26 +619,29 @@ def check_user_permission(user_id, token_id):
         token_id: Token ID
 
     Returns:
-        tuple: (has_permission: bool, error_response: dict or None)
+        tuple: (has_permission: bool, error_response_or_user_data)
+            成功时返回 (True, user_data_dict)
+            失败时返回 (False, error_response)
     """
+    user_data = get_user(user_id)
 
     # 检查用户是否存在
-    if user_id not in USERS:
+    if not user_data:
         return False, (jsonify({
             "error": "User not found",
             "message": f"User {user_id} does not exist"
         }), 404)
 
     # 检查权限：方式1 - 用户是通过该 token 创建的
-    if USERS[user_id].get('registered_via_token') == token_id:
-        return True, None
+    if user_data.get('registered_via_token') == token_id:
+        return True, user_data
 
     # 检查权限：方式2 - token 的 allowed_users 列表包含该用户
     dev_tokens = load_dev_tokens()
     if token_id in dev_tokens:
         allowed_users = dev_tokens[token_id].get('allowed_users', [])
         if user_id in allowed_users:
-            return True, None
+            return True, user_data
 
     # 没有权限
     return False, (jsonify({
@@ -800,7 +808,7 @@ Token not provided. <br />
 
     try:
         user_id = get_user_id_from_token(token)
-        if user_id not in USERS:
+        if not user_exists(user_id):
             token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
             return render_template("error.html", message=token_invalid_message, language="ja"), 400
         
@@ -816,7 +824,7 @@ Token not provided. <br />
         aime = request.form.get("aime", "0")
 
         # 获取用户数据
-        user_data = USERS.get(user_id, {})
+        user_data = get_user(user_id) or {}
 
         if mode == "rebind":
             # rebind 模式下保持现有 timezone 和 language 不变
@@ -884,7 +892,7 @@ Token not provided. <br />
             }
             return render_template("error.html", message=maintenance_messages.get(user_language, maintenance_messages["ja"]), language=user_language), 503
         elif result:
-            via_token = "registered_via_token" in USERS.get(user_id, {})
+            via_token = "registered_via_token" in (get_user(user_id) or {})
             if mode == "bind":
                 # API token 创建的用户不再跑 bind 自动同步推送，但依然计入绑定事件
                 if not via_token:
@@ -908,7 +916,7 @@ Token not provided. <br />
             return render_template("error.html", message=invalid_credentials_messages.get(user_language, invalid_credentials_messages["ja"]), language=user_language), 500
 
     # GET 请求时，从用户数据中获取语言设置和其他信息
-    user_data = USERS.get(user_id, {})
+    user_data = get_user(user_id) or {}
     user_language = user_data.get("language")
     if not user_language:
         # 首次绑定时，尝试从 LINE profile 自动检测语言
@@ -966,7 +974,7 @@ Token not provided. <br />
 
     try:
         user_id = get_user_id_from_settings_token(token)
-        if user_id not in USERS:
+        if not user_exists(user_id):
             token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
             return render_template("error.html", message=token_invalid_message, language="ja"), 400
     except Exception as e:
@@ -974,7 +982,7 @@ Token not provided. <br />
         token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
         return render_template("error.html", message=token_invalid_message, language="ja"), 400
 
-    user_data = USERS.get(user_id, {})
+    user_data = get_user(user_id) or {}
 
     # 检查用户是否已绑定账号
     has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
@@ -1081,7 +1089,7 @@ def manage_custom_bg():
 
     try:
         user_id = get_user_id_from_settings_token(token)
-        if user_id not in USERS:
+        if not user_exists(user_id):
             return jsonify({"success": False, "message": "Invalid token"}), 400
     except Exception:
         return jsonify({"success": False, "message": "Invalid token"}), 400
@@ -1100,7 +1108,7 @@ def manage_custom_bg():
                 logger.error(f"[Settings] ✗ Failed to delete custom bg: user_id={user_id}, error={e}")
                 return jsonify({"success": False, "message": "Failed to delete"}), 500
 
-        bg_files = USERS[user_id].get("bg_files", [])
+        bg_files = get_user_field(user_id, "bg_files", [])
         if custom_bg_filename in bg_files:
             bg_files.remove(custom_bg_filename)
             edit_user_value(user_id, "bg_files", bg_files)
@@ -1156,7 +1164,7 @@ def _get_user_bg_filter(user_id):
     - bg_enabled=True, bg_files 非空 → bg_files
     - bg_enabled=True, bg_files 为空 → None (全部随机)
     """
-    udata = USERS.get(user_id, {})
+    udata = get_user(user_id) or {}
     if not udata.get('bg_enabled', False):
         return None
     bg_files = udata.get('bg_files', [])
@@ -1182,10 +1190,11 @@ def linebot_perms_revoke():
     except ValueError:
         return jsonify({"error": "Invalid or expired token"}), 401
 
-    if user_id not in USERS:
+    _udata = get_user(user_id)
+    if not _udata:
         return jsonify({"error": "User not found"}), 404
 
-    if USERS[user_id].get('registered_via_token') == token_id_to_revoke:
+    if _udata.get('registered_via_token') == token_id_to_revoke:
         return jsonify({"error": "Cannot revoke owner permission"}), 403
 
     dev_tokens = load_dev_tokens()
@@ -1317,8 +1326,9 @@ def async_maimai_update_task(event):
 
     # 获取用户版本
     ver = "jp"
-    if user_id in USERS and 'version' in USERS[user_id]:
-        ver = USERS[user_id]['version']
+    _ver = get_user_field(user_id, 'version')
+    if _ver is not None:
+        ver = _ver
 
     try:
         reply_msg = asyncio.run(maimai_update(user_id, ver))
@@ -1342,6 +1352,60 @@ def async_bind_update_task(user_id, ver):
         smart_push(user_id, messages, configuration)
     except Exception as e:
         logger.error(f"[Bind Update] ⚠ Failed to push: {e}")
+
+def async_get_friend_list_task(event):
+    """异步获取好友列表任务 - 在webtask_queue中执行，实时登录SEGA抓取"""
+    user_id = event.source.user_id
+    reply_token = event.reply_token
+
+    source_type = getattr(event.source, 'type', 'user')
+    if source_type != 'user':
+        smart_reply(user_id, reply_token, TextMessage(text=get_multilingual_text(friend_rcd_group_warning_text, user_id)), configuration, addition=False)
+        return
+
+    _udata = get_user(user_id)
+    if not _udata or 'sega_id' not in _udata:
+        smart_reply(user_id, reply_token, segaid_error(user_id), configuration)
+        return
+
+    sega_id = _udata.get('sega_id')
+    sega_pwd = _udata.get('sega_pwd')
+    ver = _udata.get('version', 'jp')
+    aime = _udata.get('aime', 0)
+
+    try:
+        cookies = asyncio.run(login_to_maimai(sega_id, sega_pwd, ver=ver, aime=aime))
+        if cookies is None:
+            smart_reply(user_id, reply_token, segaid_error(user_id), configuration)
+            return
+        if cookies == "MAINTENANCE":
+            smart_reply(user_id, reply_token, maintenance_error(user_id), configuration)
+            return
+
+        friend_list = asyncio.run(get_friends_list(cookies, ver))
+        if friend_list == "MAINTENANCE":
+            smart_reply(user_id, reply_token, maintenance_error(user_id), configuration)
+            return
+        if not friend_list:
+            smart_reply(user_id, reply_token, friend_error(user_id), configuration)
+            return
+
+        friend_num = len(friend_list)
+        if friend_num <= 10:
+            group_size = 10
+        elif 14 < friend_num <= 16:
+            group_size = 8
+        elif 17 <= friend_num <= 18:
+            group_size = 9
+        else:
+            group_size = 7
+
+        reply_msg = generate_friend_buttons(user_id, get_friend_list_alt_text(user_id), friend_list, group_size)
+        smart_reply(user_id, reply_token, reply_msg, configuration)
+
+    except Exception as e:
+        logger.error(f"[FriendList] ✗ Failed to get friend list: user_id={user_id}, error={e}", exc_info=True)
+        smart_reply(user_id, reply_token, friend_error(user_id), configuration)
 
 def async_generate_friend_record_task(event):
     """异步生成好友成绩任务 - 在webtask_queue中执行"""
@@ -1374,8 +1438,9 @@ def async_generate_friend_record_task(event):
 
     # 获取用户版本
     ver = "jp"
-    if user_id in USERS and 'version' in USERS[user_id]:
-        ver = USERS[user_id]['version']
+    _ver = get_user_field(user_id, 'version')
+    if _ver is not None:
+        ver = _ver
 
     try:
         track_event('image_gen', user_id=user_id, metadata={'command': 'friend-rcd', 'source': 'line'})
@@ -1396,11 +1461,13 @@ def async_get_song_record_task(event):
     mentioned_user_id = extract_single_mention(event, user_id)
 
     # 初始化用户版本和目标用户
-    if user_id in USERS:
-        mai_ver = USERS[user_id].get("version", "jp")
+    _cur_user = get_user(user_id)
+    if _cur_user:
+        mai_ver = _cur_user.get("version", "jp")
         # 只有当 mentioned_user_id 存在且已注册时才使用
         id_use = mentioned_user_id if mentioned_user_id else user_id
-        mai_ver_use = USERS[id_use].get("version", "jp") if id_use in USERS else mai_ver
+        _target_user = get_user(id_use) if id_use != user_id else _cur_user
+        mai_ver_use = _target_user.get("version", "jp") if _target_user else mai_ver
     else:
         id_use = user_id
         mai_ver = "jp"
@@ -1440,9 +1507,9 @@ def async_get_song_record_by_id_task(event):
     ver = "jp"
     id_use = user_id
 
-    if user_id in USERS:
-        if 'version' in USERS[user_id]:
-            ver = USERS[user_id]['version']
+    _ver = get_user_field(user_id, 'version')
+    if _ver is not None:
+        ver = _ver
 
     # 提取id_use参数
     if "id_use=" in user_message:
@@ -1525,8 +1592,9 @@ def async_admin_maimai_update_task(event):
     user_id = event.source.user_id
 
     ver = "jp"
-    if user_id in USERS and 'version' in USERS[user_id]:
-        ver = USERS[user_id]['version']
+    _ver = get_user_field(user_id, 'version')
+    if _ver is not None:
+        ver = _ver
 
     try:
         asyncio.run(maimai_update(user_id, ver))
@@ -1547,18 +1615,15 @@ async def maimai_update(user_id, ver="jp"):
         "User Info": True,
         "Best Records": True,
         "Recent Records": True,
-        "Favorite Friends": 0
     }
 
-    if user_id not in USERS:
+    _udata = get_user(user_id)
+    if not _udata or 'sega_id' not in _udata or 'sega_pwd' not in _udata:
         return segaid_error(user_id)
 
-    elif 'sega_id' not in USERS[user_id] or 'sega_pwd' not in USERS[user_id]:
-        return segaid_error(user_id)
-
-    sega_id = USERS[user_id].get('sega_id')
-    sega_pwd = USERS[user_id].get('sega_pwd')
-    aime = USERS[user_id].get('aime', 0)
+    sega_id = _udata.get('sega_id')
+    sega_pwd = _udata.get('sega_pwd')
+    aime = _udata.get('aime', 0)
 
     # 定义数据获取函数（在重试循环外定义一次）
     async def fetch_all_data(cookies):
@@ -1566,10 +1631,9 @@ async def maimai_update(user_id, ver="jp"):
             get_maimai_info(cookies, ver),
             get_maimai_records(cookies, ver),
             get_recent_records(cookies, ver),
-            get_friends_list(cookies, ver)
         )
 
-    user_info = maimai_records = recent_records = friends_list = None
+    user_info = maimai_records = recent_records = None
 
     cookies = await login_to_maimai(sega_id, sega_pwd, ver=ver, aime=aime)
     if cookies is None:
@@ -1579,12 +1643,11 @@ async def maimai_update(user_id, ver="jp"):
         return maintenance_error(user_id)
 
     # 使用异步函数并发获取所有数据
-    user_info, maimai_records, recent_records, friends_list = await fetch_all_data(cookies)
+    user_info, maimai_records, recent_records = await fetch_all_data(cookies)
 
     if (user_info == "MAINTENANCE" or
         maimai_records == "MAINTENANCE" or
-        recent_records == "MAINTENANCE" or
-        friends_list == "MAINTENANCE"):
+        recent_records == "MAINTENANCE"):
         return maintenance_error(user_id)
 
     if not user_info or not maimai_records or not recent_records:
@@ -1610,10 +1673,6 @@ async def maimai_update(user_id, ver="jp"):
         func_status["Recent Records"] = False
         error = True
 
-    if not error:
-        edit_user_value(user_id, "mai_friends", friends_list)
-        func_status["Favorite Friends"] = len(friends_list)
-
     # 计算耗时
     elapsed_time = time.time() - start_time
 
@@ -1623,7 +1682,7 @@ async def maimai_update(user_id, ver="jp"):
         edit_user_value(user_id, "last_update", current_time)
 
         # 获取用户信息
-        user_data = USERS[user_id]
+        user_data = get_user(user_id) or {}
         username = user_data.get('personal_info', {}).get('name', 'N/A')
         rating = user_data.get('personal_info', {}).get('rating', 'N/A')
 
@@ -1639,7 +1698,7 @@ async def maimai_update(user_id, ver="jp"):
         ))
     else:
         # 获取用户信息
-        user_data = USERS[user_id]
+        user_data = get_user(user_id) or {}
         username = user_data.get('personal_info', {}).get('name', 'N/A')
         rating = user_data.get('personal_info', {}).get('rating', 'N/A')
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1836,11 +1895,11 @@ def get_ranking(user_id, id_use, ver=None):
     Returns:
         FlexMessage: 排行榜
     """
-    user_ver = ver or USERS.get(id_use, {}).get('version', 'jp')
+    user_ver = ver or (get_user(id_use) or {}).get('version', 'jp')
 
     # 收集同版本且有 rating 的用户
     ranked_users = []
-    for uid, data in USERS.items():
+    for uid, data in load_all_users().items():
         if data.get('version', 'jp') != user_ver:
             continue
         info = data.get('personal_info')
@@ -2040,34 +2099,6 @@ def get_user_info(user_id, source_type):
 
     return generate_user_info_flex(user_id)
 
-def get_friend_list(user_id, source_type):
-    if user_id not in USERS:
-        return segaid_error(user_id)
-
-    elif 'mai_friends' not in USERS[user_id]:
-        return friend_error(user_id)
-
-    if source_type != 'user':
-        # 在群聊中，返回警告消息
-        return TextMessage(text=get_multilingual_text(friend_rcd_group_warning_text, user_id))
-
-    friend_list = copy.deepcopy(USERS[user_id].get("mai_friends"))
-    if not friend_list:
-        friend_list = []
-
-    friend_num = len(friend_list)
-    
-    if friend_num <= 10:
-        group_size = 10
-    elif 14 < friend_num <= 16:
-        group_size = 8
-    elif 17 <= friend_num <= 18:
-        group_size = 9
-    else:
-        group_size = 7
-
-    return generate_friend_buttons(user_id, get_friend_list_alt_text(user_id), friend_list, group_size)
-
 def get_bot_status(user_id):
     """
     获取 Bot 状态信息
@@ -2127,10 +2158,11 @@ async def get_song_record(user_id, id_use, acronym, ver="jp"):
     Returns:
         包含用户成绩的歌曲信息图片消息列表 或搜索结果flex message 或错误消息
     """
-    if id_use not in USERS:
+    _id_use_data = get_user(id_use)
+    if not _id_use_data:
         return mention_error(user_id) if id_use != user_id else segaid_error(user_id)
 
-    if "personal_info" not in USERS[id_use]:
+    if "personal_info" not in _id_use_data:
         return mention_error(user_id) if id_use != user_id else info_error(user_id)
     
     song_record = read_record(id_use)
@@ -2182,10 +2214,11 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
     Returns:
         包含用户成绩的歌曲信息图片消息 或错误消息
     """
-    if id_use not in USERS:
+    _id_use_data = get_user(id_use)
+    if not _id_use_data:
         return mention_error(user_id) if id_use != user_id else segaid_error(user_id)
 
-    if "personal_info" not in USERS[id_use]:
+    if "personal_info" not in _id_use_data:
         return mention_error(user_id) if id_use != user_id else info_error(user_id)
 
     song_record = read_record(id_use)
@@ -2217,10 +2250,11 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
 
     # 尝试使用新函数获取更详细的成绩（包含游玩次数和最后游玩时间）
     try:
-        if 'sega_id' in USERS[id_use] and 'sega_pwd' in USERS[id_use] and user_id == id_use:
-            sega_id = USERS[id_use]['sega_id']
-            sega_pwd = USERS[id_use]['sega_pwd']
-            aime = USERS[id_use].get('aime', 0)
+        _id_use_data = get_user(id_use) if user_id == id_use else None
+        if _id_use_data and 'sega_id' in _id_use_data and 'sega_pwd' in _id_use_data:
+            sega_id = _id_use_data['sega_id']
+            sega_pwd = _id_use_data['sega_pwd']
+            aime = _id_use_data.get('aime', 0)
             cookies = await login_to_maimai(sega_id, sega_pwd, ver=ver, aime=aime)
             if cookies is None:
                 logger.warning(f"[Song Record] ⚠ Login failed: user_id={user_id}")
@@ -2257,10 +2291,11 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='record')
 
 async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None):
-    if id_use not in USERS:
+    _id_use_data = get_user(id_use)
+    if not _id_use_data:
         return mention_error(user_id) if id_use != user_id else segaid_error(user_id)
 
-    if "personal_info" not in USERS[id_use]:
+    if "personal_info" not in _id_use_data:
         return mention_error(user_id) if id_use != user_id else info_error(user_id)
 
     if not (len(title) == 2 or len(title) == 3):
@@ -2429,7 +2464,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None)
     del target_data
 
     # 获取用户信息并创建用户信息图片
-    user_info = USERS[id_use].get('personal_info')
+    user_info = _id_use_data.get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(user_id)
     img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
@@ -2467,10 +2502,11 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
         filter_mode: 过滤模式（"uncleared"=只显示未完成, "unplayed"=只显示未游玩, "cleared"=只显示已完成）
     """
 
-    if id_use not in USERS:
+    _id_use_data = get_user(id_use)
+    if not _id_use_data:
         return mention_error(user_id) if id_use != user_id else segaid_error(user_id)
 
-    if "personal_info" not in USERS[id_use]:
+    if "personal_info" not in _id_use_data:
         return mention_error(user_id) if id_use != user_id else info_error(user_id)
 
     # 检查等级是否支持
@@ -2652,7 +2688,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
     del target_data
 
     # 获取用户信息并创建用户信息图片
-    user_info = USERS[id_use].get('personal_info')
+    user_info = _id_use_data.get('personal_info')
     profile_img = generate_profile(user_info, scale=1.5, user_id=id_use)
     user_tz = get_user_timezone(user_id)
     img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
@@ -3005,10 +3041,11 @@ def select_records(song_record, type="best50", command="", ver="jp"):
     return up_songs, down_songs, details
 
 async def generate_records(user_id, id_use, type="best50", command="", ver="jp"):
-    if id_use not in USERS:
+    _id_use_data = get_user(id_use)
+    if not _id_use_data:
         return mention_error(user_id) if id_use != user_id else segaid_error(user_id)
 
-    if "personal_info" not in USERS[id_use]:
+    if "personal_info" not in _id_use_data:
         return mention_error(user_id) if id_use != user_id else info_error(user_id)
 
     recent = (type == "rct50")
@@ -3027,7 +3064,7 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
     record_img = generate_records_picture(up_songs, down_songs, type.upper(), ver, details)
 
     # 获取用户信息并创建用户信息图片
-    user_info = USERS[id_use].get('personal_info')
+    user_info = _id_use_data.get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(user_id)
     img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
@@ -3052,14 +3089,12 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
     return message
 
 async def generate_friend_record(user_id, friend_code, type="best50", cmd="", ver="jp"):
-    if user_id not in USERS:
+    _udata = get_user(user_id)
+    if not _udata or 'sega_id' not in _udata or 'sega_pwd' not in _udata:
         return segaid_error(user_id)
 
-    elif 'sega_id' not in USERS[user_id] or 'sega_pwd' not in USERS[user_id]:
-        return segaid_error(user_id)
-
-    sega_id = USERS[user_id]['sega_id']
-    sega_pwd = USERS[user_id]['sega_pwd']
+    sega_id = _udata['sega_id']
+    sega_pwd = _udata['sega_pwd']
 
     # 使用异步登录和获取好友成绩
     async def fetch_friend_data():
@@ -3121,10 +3156,11 @@ async def generate_friend_record(user_id, friend_code, type="best50", cmd="", ve
     return message
 
 async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
-    if id_use not in USERS:
+    _id_use_data = get_user(id_use)
+    if not _id_use_data:
         return mention_error(user_id) if id_use != user_id else segaid_error(user_id)
 
-    if "personal_info" not in USERS[id_use]:
+    if "personal_info" not in _id_use_data:
         return mention_error(user_id) if id_use != user_id else info_error(user_id)
 
     song_record = read_record(id_use)
@@ -3150,7 +3186,7 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     record_img = generate_records_picture(up_level_list, down_level_list, title.replace("+", "⁺"), ver)
 
     # 获取用户信息并创建用户信息图片
-    user_info = USERS[id_use].get('personal_info')
+    user_info = _id_use_data.get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(user_id)
     img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
@@ -3235,6 +3271,8 @@ WEB_TASK_ROUTES = {
     'exact': {
         "maimai update": async_maimai_update_task,
         "update": async_maimai_update_task,
+        "friend list": async_get_friend_list_task,
+        "friends": async_get_friend_list_task,
     },
     # 前缀匹配规则
     'prefix': {
@@ -3744,7 +3782,7 @@ def extract_single_mention(event, user_id):
 
         mentioned_user_id = getattr(mentionee, 'user_id', None)
         if mentioned_user_id:
-            if mentioned_user_id in USERS:
+            if user_exists(mentioned_user_id):
                 logger.info(f"[Mention] User mentioned: user_id={user_id}, mentioned_user_id={mentioned_user_id}")
                 return mentioned_user_id
             else:
@@ -3851,11 +3889,13 @@ def handle_sync_text_command(event):
     mentioned_user_id = extract_single_mention(event, user_id)
 
     # 初始化用户版本和目标用户
-    if user_id in USERS:
-        mai_ver = USERS[user_id].get("version", "jp")
+    _cur_user = get_user(user_id)
+    if _cur_user:
+        mai_ver = _cur_user.get("version", "jp")
         # 只有当 mentioned_user_id 存在且已注册时才使用
         id_use = mentioned_user_id if mentioned_user_id else user_id
-        mai_ver_use = USERS[id_use].get("version", "jp") if id_use in USERS else mai_ver
+        _target_user = get_user(id_use) if id_use != user_id else _cur_user
+        mai_ver_use = _target_user.get("version", "jp") if _target_user else mai_ver
     else:
         id_use = user_id
         mai_ver = "jp"
@@ -3886,10 +3926,6 @@ def handle_sync_text_command(event):
         # 账户管理
         "profile": lambda: get_user_info(user_id, source_type),
         "getme": lambda: get_user_info(user_id, source_type),
-
-        # 好友列表
-        "friend list": lambda: get_friend_list(user_id, source_type),
-        "friends": lambda: get_friend_list(user_id, source_type),
 
         # 系统状态
         "status": lambda: get_bot_status(user_id),
@@ -4018,7 +4054,7 @@ def handle_sync_text_command(event):
 
         # 检查是否已经绑定账号
         add_user(user_id)
-        user_data = USERS.get(user_id, {})
+        user_data = get_user(user_id) or {}
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
 
         if has_account:
@@ -4055,7 +4091,7 @@ def handle_sync_text_command(event):
             return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
 
         # 检查用户是否已绑定账号
-        user_data = USERS.get(user_id, {})
+        user_data = get_user(user_id) or {}
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
 
         if not has_account:
@@ -4091,7 +4127,7 @@ def handle_sync_text_command(event):
             return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
 
         # 检查用户是否已绑定账号
-        user_data = USERS.get(user_id, {})
+        user_data = get_user(user_id) or {}
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
 
         if not has_account:
@@ -4151,7 +4187,7 @@ def handle_location_message(event):
     lng = event.message.longitude
     user_id = event.source.user_id
 
-    stores = asyncio.run(get_nearby_maimai_stores(lat, lng, USERS[user_id].get('version', "jp")))
+    stores = asyncio.run(get_nearby_maimai_stores(lat, lng, get_user_field(user_id, 'version', "jp")))
 
     # 检查维护状态
     if stores == "MAINTENANCE":
@@ -4380,8 +4416,9 @@ def get_user_nickname_wrapper(user_id, use_cache=True):
 
     # 如果LINE API失败,尝试从用户数据获取
     if not nickname:
-        if user_id in USERS and USERS[user_id].get('nickname'):
-            nickname = USERS[user_id].get('nickname')
+        _stored_nick = get_user_field(user_id, 'nickname')
+        if _stored_nick:
+            nickname = _stored_nick
 
     return nickname if nickname else f"User {user_id[:8]}..."
 
@@ -4405,17 +4442,18 @@ def admin_panel():
         return render_template("admin_login.html")
 
     # 准备用户数据 - 不获取昵称,使用懒加载
+    all_users = load_all_users()
     users_data = {}
-    for user_id, user_info in USERS.items():
+    for user_id, user_info in all_users.items():
         users_data[user_id] = {
             'nickname': 'Loading...',  # 初始占位符
             'json_str': json.dumps(user_info, indent=2, ensure_ascii=False)
         }
 
     # 获取统计信息
-    total_users = len(USERS)
-    jp_users = sum(1 for user in USERS.values() if user.get("version") == "jp")
-    intl_users = sum(1 for user in USERS.values() if user.get("version") == "intl")
+    total_users = len(all_users)
+    jp_users = sum(1 for user in all_users.values() if user.get("version") == "jp")
+    intl_users = sum(1 for user in all_users.values() if user.get("version") == "intl")
 
     # 计算运行时长
     uptime = datetime.now() - SERVICE_START_TIME
@@ -5116,7 +5154,7 @@ def admin_delete_background(filename):
         os.remove(filepath)
         logger.info(f"[Admin] ✓ Deleted background: {safe_name}")
 
-        for uid, udata in USERS.items():
+        for uid, udata in load_all_users().items():
             user_bg_list = udata.get('bg_files', [])
             if safe_name in user_bg_list:
                 user_bg_list.remove(safe_name)
@@ -5148,15 +5186,16 @@ def admin_edit_user():
         }), 400
 
     try:
-        if user_id not in USERS:
+        if not user_exists(user_id):
             return jsonify({
                 'success': False,
                 'message': f'User {user_id} not found'
             }), 404
 
-        # 更新用户数据
-        USERS[user_id] = user_data
-        mark_user_dirty()
+        # 合并更新用户数据（保留未修改的字段）
+        existing_data = get_user(user_id) or {}
+        existing_data.update(user_data)
+        save_user(user_id, existing_data)
 
         logger.info(f"[Admin] ✓ User data edited: user_id={user_id}")
 
@@ -5191,7 +5230,7 @@ def admin_delete_user():
         }), 400
 
     try:
-        if user_id not in USERS:
+        if not user_exists(user_id):
             return jsonify({
                 'success': False,
                 'message': f'User {user_id} not found'
@@ -5257,14 +5296,13 @@ def admin_get_user_data():
         }), 400
 
     try:
-        if user_id not in USERS:
+        # 获取用户数据
+        user_info = get_user(user_id)
+        if not user_info:
             return jsonify({
                 'success': False,
                 'message': f'User {user_id} not found'
             }), 404
-
-        # 获取用户数据
-        user_info = USERS[user_id]
 
         # 获取昵称(不使用缓存,强制刷新)
         nickname = get_user_nickname_wrapper(user_id, use_cache=False)
@@ -5296,7 +5334,7 @@ def admin_load_nicknames():
     try:
         # 获取所有用户的昵称
         nicknames = {}
-        for user_id in USERS.keys():
+        for user_id in get_all_user_ids():
             nickname = get_user_nickname_wrapper(user_id, use_cache=True)
             nicknames[user_id] = nickname
 
@@ -5331,7 +5369,7 @@ def admin_create_backup():
             config_data = json.load(f)
 
         success, message, backup_path = create_backup(
-            users_data=USERS,
+            users_data=load_all_users(),
             config_data=config_data,
             db_config=db_config,
             backup_password=ADMIN_PASSWORD,
@@ -5717,12 +5755,12 @@ def api_list_users():
         allowed_users = dev_tokens.get(token_id, {}).get('allowed_users', [])
 
         users_list = []
-        for user_id in USERS.keys():
+        for user_id in get_all_user_ids():
             # 检查是否有访问权限（创建的用户或授权访问的用户）
             has_access = False
             access_type = None
 
-            if 'registered_via_token' in USERS[user_id] and USERS[user_id]['registered_via_token'] == token_id:
+            if get_user_field(user_id, 'registered_via_token') == token_id:
                 has_access = True
                 access_type = "owner"
             elif user_id in allowed_users:
@@ -5799,7 +5837,7 @@ def api_create_user():
         logger.info(f"[API] Create user: user_id={user_id}, nickname={nickname}, token_id={token_info['token_id']}, note={token_info['note']}")
 
         # 读取用户数据
-        if user_id in USERS:
+        if user_exists(user_id):
             return jsonify({
                 "error": "User already exists",
                 "message": f"User {user_id} was created already."
@@ -5848,7 +5886,10 @@ def api_get_user(user_id):
     需要 Bearer Token 认证并拥有该用户的访问权限
     """
     try:
-        user_data = USERS[user_id]
+        user_data = get_user(user_id)
+        if not user_data:
+            return jsonify({"error": "User not found"}), 404
+
         nickname = get_user_nickname_wrapper(user_id, use_cache=True)
 
         # 记录 API 访问日志
@@ -6035,7 +6076,7 @@ def api_bind_user(user_id):
             aime_int = 0
 
         # 检查用户是否已绑定
-        user_data = USERS.get(user_id, {})
+        user_data = get_user(user_id) or {}
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
         if has_account:
             return jsonify({"error": "Already bound", "message": "User already has a SEGA account linked. Use PUT to rebind."}), 409
@@ -6075,7 +6116,7 @@ def api_rebind_user(user_id):
         token_info = request.token_info
         data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
 
-        user_data = USERS.get(user_id, {})
+        user_data = get_user(user_id) or {}
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
         if not has_account:
             return jsonify({"error": "Not bound", "message": "User has no SEGA account linked. Use POST to bind first."}), 404
@@ -6126,7 +6167,8 @@ def api_sync_user_data(user_id):
     """
     try:
         # 检查用户是否已绑定账号
-        if 'sega_id' not in USERS[user_id] or 'sega_pwd' not in USERS[user_id]:
+        _udata = get_user(user_id)
+        if not _udata or 'sega_id' not in _udata or 'sega_pwd' not in _udata:
             return jsonify({
                 "error": "Account not bound",
                 "message": f"User {user_id} has not bound a SEGA account"
@@ -6368,13 +6410,14 @@ def api_revoke_own_permission(user_id):
     不能撤销 owner（创建者）权限。
     """
     try:
-        if user_id not in USERS:
+        _udata = get_user(user_id)
+        if not _udata:
             return jsonify({"error": "User not found", "message": f"User {user_id} does not exist"}), 404
 
         token_info = request.token_info
         token_id = token_info['token_id']
 
-        if USERS[user_id].get('registered_via_token') == token_id:
+        if _udata.get('registered_via_token') == token_id:
             return jsonify({"error": "Forbidden", "message": "Owner permission cannot be self-revoked"}), 403
 
         dev_tokens = load_dev_tokens()
@@ -6721,16 +6764,15 @@ def api_v2_song_record(user_id, song_id):
     """
     try:
         token_info = request.token_info
-        has_permission, error_response = check_user_permission(user_id, token_info['token_id'])
+        has_permission, result = check_user_permission(user_id, token_info['token_id'])
         if not has_permission:
-            return error_response
+            return result
 
-        if user_id not in USERS:
-            return jsonify({"error": "User not found"}), 404
-        if "personal_info" not in USERS[user_id]:
+        _udata = result
+        if "personal_info" not in _udata:
             return jsonify({"error": "User info not found, please sync first"}), 404
 
-        ver = USERS[user_id].get("version", "jp")
+        ver = _udata.get("version", "jp")
         songs, _ = read_dxdata(ver)
         matching_song = None
         for song in songs:
@@ -6788,14 +6830,12 @@ def api_v2_generate_record_image(user_id):
     try:
         token_info = request.token_info
 
-        has_permission, error_response = check_user_permission(user_id, token_info['token_id'])
+        has_permission, result = check_user_permission(user_id, token_info['token_id'])
         if not has_permission:
-            return error_response
+            return result
 
-        if user_id not in USERS:
-            return jsonify({"error": "User not found"}), 404
-
-        if "personal_info" not in USERS[user_id]:
+        _udata = result
+        if "personal_info" not in _udata:
             return jsonify({"error": "User info not found, please sync first"}), 404
 
         command = request.args.get('command', 'b50').strip().lower()
@@ -6803,7 +6843,7 @@ def api_v2_generate_record_image(user_id):
         first_word = parts[0]
         rest_text = parts[1] if len(parts) > 1 else ""
 
-        ver = USERS[user_id].get("version", "jp")
+        ver = _udata.get("version", "jp")
 
         record_type = None
         for aliases, mode in RANK_COMMANDS.items():
@@ -6832,7 +6872,7 @@ def api_v2_generate_record_image(user_id):
 
         display_type = "未だ知らず" if record_type == "unknown" else record_type
         record_img = generate_records_picture(up_songs, down_songs, display_type.upper(), ver, details)
-        user_info = USERS[user_id].get('personal_info')
+        user_info = _udata.get('personal_info')
         profile_img = generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
         img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
@@ -6870,13 +6910,12 @@ def api_v2_generate_plate(user_id):
     """
     try:
         token_info = request.token_info
-        has_permission, error_response = check_user_permission(user_id, token_info['token_id'])
+        has_permission, result = check_user_permission(user_id, token_info['token_id'])
         if not has_permission:
-            return error_response
+            return result
 
-        if user_id not in USERS:
-            return jsonify({"error": "User not found"}), 404
-        if "personal_info" not in USERS[user_id]:
+        _udata = result
+        if "personal_info" not in _udata:
             return jsonify({"error": "User info not found, please sync first"}), 404
 
         title = request.args.get('title', '').strip()
@@ -6885,7 +6924,7 @@ def api_v2_generate_plate(user_id):
         if not (len(title) == 2 or len(title) == 3):
             return jsonify({"error": "Invalid title length, must be 2 or 3 characters"}), 400
 
-        ver = USERS[user_id].get("version", "jp")
+        ver = _udata.get("version", "jp")
         song_record = read_record(user_id)
         if not song_record:
             return jsonify({"error": "No records found, please sync first"}), 404
@@ -6975,7 +7014,7 @@ def api_v2_generate_plate(user_id):
             entry.pop("img", None)
         del target_data
 
-        user_info = USERS[user_id].get('personal_info')
+        user_info = _udata.get('personal_info')
         profile_img = generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
         img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
@@ -7014,13 +7053,12 @@ def api_v2_generate_achievement(user_id):
     """
     try:
         token_info = request.token_info
-        has_permission, error_response = check_user_permission(user_id, token_info['token_id'])
+        has_permission, result = check_user_permission(user_id, token_info['token_id'])
         if not has_permission:
-            return error_response
+            return result
 
-        if user_id not in USERS:
-            return jsonify({"error": "User not found"}), 404
-        if "personal_info" not in USERS[user_id]:
+        _udata = result
+        if "personal_info" not in _udata:
             return jsonify({"error": "User info not found, please sync first"}), 404
 
         level = request.args.get('level', '').strip()
@@ -7050,7 +7088,7 @@ def api_v2_generate_achievement(user_id):
         if rank is not None and rank not in rank_mapping:
             return jsonify({"error": f"Invalid rank, supported: {list(rank_mapping.keys())}"}), 400
 
-        ver = USERS[user_id].get("version", "jp")
+        ver = _udata.get("version", "jp")
         target_type, target_icons = rank_mapping[rank] if rank else (None, None)
 
         song_record = read_record(user_id)
@@ -7140,7 +7178,7 @@ def api_v2_generate_achievement(user_id):
             entry.pop("img", None)
         del target_data
 
-        user_info = USERS[user_id].get('personal_info')
+        user_info = _udata.get('personal_info')
         profile_img = generate_profile(user_info, scale=1.5, user_id=user_id)
         user_tz = get_user_timezone(user_id)
         img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
@@ -7240,7 +7278,6 @@ if __name__ == "__main__":
         app.run(host=HOST, port=PORT)
 
     finally:
-        write_user(True)
         save_dev_tokens(force=True)
 
         # 停止内存管理器

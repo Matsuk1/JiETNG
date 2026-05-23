@@ -6,7 +6,7 @@
 
 import logging
 from datetime import datetime
-from modules.config_loader import USERS
+from modules.user_db import user_exists, get_user, get_user_field
 from modules.user_manager import edit_user_value
 from modules.devtoken_manager import load_dev_tokens, save_dev_tokens
 from modules.message_manager import segaid_error
@@ -28,7 +28,7 @@ def send_perm_request(token_id: str, to_user_id: str, requester_name: str = None
     """
 
     # 验证目标用户是否存在
-    if to_user_id not in USERS:
+    if not user_exists(to_user_id):
         return {
             "success": False,
             "error": "User not found",
@@ -45,7 +45,7 @@ def send_perm_request(token_id: str, to_user_id: str, requester_name: str = None
         }
 
     # 检查是否已经拥有权限（owner 或 allowed_users）
-    if USERS[to_user_id].get('registered_via_token') == token_id:
+    if get_user_field(to_user_id, 'registered_via_token') == token_id:
         return {
             "success": False,
             "error": "Permission already granted",
@@ -61,7 +61,7 @@ def send_perm_request(token_id: str, to_user_id: str, requester_name: str = None
         }
 
     # 检查是否已经发送过请求
-    user_perm_requests = USERS[to_user_id].get('perm_requests', [])
+    user_perm_requests = get_user_field(to_user_id, 'perm_requests', [])
     for req in user_perm_requests:
         if req['token_id'] == token_id:
             return {
@@ -113,7 +113,7 @@ def accept_perm_request(user_id: str, request_id: str) -> dict:
     Returns:
         包含状态和消息的字典
     """
-    if user_id not in USERS:
+    if not user_exists(user_id):
         return {
             "success": False,
             "error": "User not found",
@@ -121,7 +121,7 @@ def accept_perm_request(user_id: str, request_id: str) -> dict:
         }
 
     # 获取请求列表
-    requests = USERS[user_id].get('perm_requests', [])
+    requests = get_user_field(user_id, 'perm_requests', [])
 
     # 查找对应的请求
     request_data = None
@@ -186,7 +186,7 @@ def reject_perm_request(user_id: str, request_id: str) -> dict:
     Returns:
         包含状态和消息的字典
     """
-    if user_id not in USERS:
+    if not user_exists(user_id):
         return {
             "success": False,
             "error": "User not found",
@@ -194,7 +194,7 @@ def reject_perm_request(user_id: str, request_id: str) -> dict:
         }
 
     # 获取请求列表
-    requests = USERS[user_id].get('perm_requests', [])
+    requests = get_user_field(user_id, 'perm_requests', [])
 
     # 查找对应的请求
     request_data = None
@@ -235,7 +235,7 @@ def get_pending_perm_requests(user_id: str) -> list:
     Returns:
         请求列表
     """
-    if user_id not in USERS:
+    if not user_exists(user_id):
         return []
 
-    return USERS[user_id].get('perm_requests', [])
+    return get_user_field(user_id, 'perm_requests', [])

@@ -9,9 +9,9 @@ import re
 from typing import List, Dict, Any, Optional
 from modules.config_loader import (
     MAIMAI_VERSION,
-    read_dxdata,
-    USERS
+    read_dxdata
 )
+from modules.user_db import get_user_field
 from modules.dbpool_manager import get_connection
 
 logger = logging.getLogger(__name__)
@@ -225,7 +225,7 @@ def read_record(user_id: str, recent: bool = False, recent_type: bool = False) -
             item.pop("user_id", None)
             records.append(item)
 
-        return get_detailed_info(records, USERS[user_id].get('version', "jp"), recent_type)
+        return get_detailed_info(records, get_user_field(user_id, 'version', "jp"), recent_type)
 
     finally:
         conn.close()

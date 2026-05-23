@@ -1,5 +1,6 @@
 from urllib.parse import quote
-from modules.config_loader import SUPPORT_PAGE, USERS, LINE_ACCOUNT_ID
+from modules.config_loader import SUPPORT_PAGE, LINE_ACCOUNT_ID
+from modules.user_db import get_user, get_user_field, user_exists
 from modules.user_manager import get_notice_interaction, get_user_timezone
 from modules.tip_ad_manager import get_random_tip, get_random_ad
 from modules.message_texts import *
@@ -37,8 +38,8 @@ def get_user_language(user_id):
         str: 语言代码 ('ja', 'en', 'zh')，默认为 'en'
     """
     language = 'en'
-    if user_id and user_id in USERS:
-        language = USERS[user_id].get('language', 'en')
+    if user_id and user_exists(user_id):
+        language = get_user_field(user_id, 'language', 'en')
 
     if language not in ['zh', 'ja', 'en']:
         language = 'en'
@@ -656,8 +657,8 @@ def generate_user_info_flex(user_id):
     # 构建内容行
     content_rows = []
 
-    if user_id in USERS:
-        user_data = USERS[user_id]
+    user_data = get_user(user_id)
+    if user_data:
 
         # LINE ID 行（带复制按钮）
         content_rows.append({
@@ -1101,11 +1102,7 @@ def generate_update_result_flex(user_id, username, rating, update_time, elapsed_
     ]
 
     for func_name, status in func_status.items():
-        # Favorite Friends 特殊处理：显示数量
-        if func_name == "Favorite Friends":
-            status_text = f"{status}"
-        else:
-            status_text = get_multilingual_text(texts['success'], language=lang) if status else get_multilingual_text(texts['failed'], language=lang)
+        status_text = get_multilingual_text(texts['success'], language=lang) if status else get_multilingual_text(texts['failed'], language=lang)
 
         status_color = "#17B169" if status else "#FF3B30"
         status_contents.append({

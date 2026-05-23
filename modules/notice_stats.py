@@ -5,7 +5,7 @@
 """
 
 from typing import Optional, Dict
-from modules.config_loader import USERS
+from modules.user_db import load_all_users, get_user_count
 from modules.notice_manager import get_notice_by_id, get_all_notices
 
 
@@ -31,12 +31,12 @@ def calculate_notice_stats(notice_id: str) -> Optional[Dict]:
     if not notice:
         return None
 
-    total_users = len(USERS)
+    total_users = get_user_count()
     read_count = 0
     support_count = 0
     oppose_count = 0
 
-    for user_id, user_data in USERS.items():
+    for user_id, user_data in load_all_users().items():
         interactions = user_data.get('notice_interactions', {})
         interaction = interactions.get(notice_id)
 

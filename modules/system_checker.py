@@ -15,9 +15,9 @@ from modules.config_loader import (
     ICON_TYPE_DIR, ICON_SCORE_DIR, ICON_DX_STAR_DIR,
     ICON_COMBO_DIR, ICON_SYNC_DIR,
     ICON_COMBO_RCD_DIR, ICON_SYNC_RCD_DIR,
-    ICON_BASE_DIR, BG_DIR, RATING_DIR,
-    write_user, mark_user_dirty, USERS
+    ICON_BASE_DIR, BG_DIR, RATING_DIR
 )
+from modules.user_db import load_all_users, save_user
 from modules.user_manager import delete_user
 from modules.dbpool_manager import get_connection
 from modules.event_tracker import init_events_table
@@ -33,9 +33,11 @@ def clean_unbound_users() -> Dict[str, Any]:
     now = datetime.now()
     cutoff = now - timedelta(hours=1)
 
+    all_users = load_all_users()
+
     # 先收集需要删除的用户，避免在迭代中修改字典
     users_to_delete = []
-    for user_id, value in USERS.items():
+    for user_id, value in all_users.items():
         if "sega_id" in value and "sega_pwd" in value:
             continue
         # 检查注册时间，未满1小时的跳过
@@ -73,12 +75,14 @@ def clean_deprecated_user_fields() -> Dict[str, Any]:
     清理用户数据中的废弃字段
     """
 
-    deprecated_fields = ["friend_requests", "id_use", "line_friends", "beta", "beta_ver"]
+    deprecated_fields = ["friend_requests", "id_use", "line_friends", "beta", "beta_ver", "mai_friends"]
     cleaned_users = []
     total_fields_removed = 0
 
+    all_users = load_all_users()
+
     # 遍历所有用户
-    for user_id, user_data in USERS.items():
+    for user_id, user_data in all_users.items():
         fields_removed = []
 
         # 修正旧的语言代码
@@ -91,18 +95,14 @@ def clean_deprecated_user_fields() -> Dict[str, Any]:
                 fields_removed.append(field)
                 total_fields_removed += 1
 
-        # 如果有字段被删除，标记用户数据为脏数据并记录
+        # 如果有字段被删除，保存到 DB 并记录
         if fields_removed:
-            mark_user_dirty()
+            save_user(user_id, user_data)
             cleaned_users.append({
                 "user_id": user_id,
                 "removed_fields": fields_removed
             })
             logger.debug(f"[SystemCheck] Cleaned deprecated fields: user_id={user_id}, fields={fields_removed}")
-
-    # 如果有修改，写入文件
-    if cleaned_users:
-        write_user()
 
     result = {
         "cleaned_user_count": len(cleaned_users),
