@@ -1494,9 +1494,13 @@ def _classify_image_command(msg):
             if msg_clean.endswith(suffix):
                 return cmd_name
 
-    # 进度命令
-    if re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)", msg_lower):
+    # 进度命令（带/不带 progress 关键词）
+    if re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)", msg_lower):
         return "progress"
+
+    # 定数列表（纯等级数字）
+    if re.match(r"^(\d+\+?)$", msg_lower):
+        return "level-list"
 
     # random
     if msg_lower.startswith("random"):

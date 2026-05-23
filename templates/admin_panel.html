@@ -3635,6 +3635,8 @@
         dateInput.value = today;
         dateInput.max = today;
         dateInput.addEventListener('change', function() { _loadDateData(this.value); });
+        // 页面加载时立即用本地日期刷新，避免 DB 时区与浏览器时区不一致
+        _loadDateData(today);
       }
     }
 
