@@ -11,7 +11,6 @@ import secrets
 import csv
 
 from cryptography.fernet import Fernet
-from modules.json_encrypt import *
 
 CONFIG_PATH = "./config.json"
 
@@ -149,7 +148,6 @@ DXDATA_FILE = "./data/dxdata/dxdata.json"
 DXDATA_VERSION_FILE = "./data/dxdata/dxdata_version.json"
 OVERRIDE_FILE = "./data/dxdata/override.csv"
 INTL_OVERRIDE_FILE = "./data/dxdata/intl_override.csv"
-USER_FILE = "./data/user.json.enc"
 NOTICE_FILE = "./data/notice.json"
 TIP_AD_FILE = "./data/tip_ad.json"
 DEV_TOKENS_FILE = "./data/dev_tokens.json"
@@ -199,7 +197,6 @@ LINE_CHANNEL_SECRET = LINE_CHANNEL["secret"]
 
 # key 配置字段
 KEYS = _config["keys"]
-USER_DATA_KEY = KEYS["user_data"].encode()
 BIND_TOKEN_KEY = KEYS["bind_token"].encode()
 
 # Cloudflare R2 配置字段
@@ -287,17 +284,6 @@ def read_dxdata(ver="jp"):
     return songs, versions
 
 def load_user():
-    """初始化用户表，首次迁移时自动从 JSON 导入"""
-    from modules.user_db import init_users_table, migrate_from_json, get_user_count
-    import logging
-    _logger = logging.getLogger(__name__)
-
+    """初始化用户表"""
+    from modules.user_db import init_users_table
     init_users_table()
-
-    # 如果 DB 为空但 JSON 文件存在，执行一次性迁移
-    if get_user_count() == 0 and os.path.isfile(USER_FILE) and os.path.getsize(USER_FILE) > 0:
-        _logger.info("[ConfigLoader] DB empty, migrating from JSON...")
-        json_users = read_encrypted_json(USER_FILE, USER_DATA_KEY)
-        if json_users:
-            migrate_from_json(json_users)
-            _logger.info(f"[ConfigLoader] ✓ Migrated {len(json_users)} users to DB")
