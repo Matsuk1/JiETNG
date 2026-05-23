@@ -14,12 +14,18 @@ logger = logging.getLogger(__name__)
 
 
 def init_users_table():
-    """初始化 users 表（启动时调用）"""
+    """检查 users 表是否存在，不存在则尝试创建"""
     conn = None
     cursor = None
     try:
         conn = get_connection()
         cursor = conn.cursor()
+        # 检查表是否存在
+        cursor.execute("SHOW TABLES LIKE 'users'")
+        if cursor.fetchone():
+            logger.info("[UserDB] ✓ users table ready")
+            return
+        # 表不存在，创建
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id VARCHAR(64) PRIMARY KEY,
@@ -29,10 +35,9 @@ def init_users_table():
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """)
         conn.commit()
-        logger.info("[UserDB] ✓ users table ready")
+        logger.info("[UserDB] ✓ users table created")
     except Exception as e:
         logger.error(f"[UserDB] ✗ Failed to init users table: {e}", exc_info=True)
-        raise
     finally:
         if cursor:
             try: cursor.close()
