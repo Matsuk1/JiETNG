@@ -73,6 +73,27 @@ def _draw_detail_line(draw, x, y, key, value, font, max_w, lh):
             draw.text((cur_x, y), token, fill=(80, 80, 80), font=font)
             cur_x += token_w
 
+
+def _draw_level_label(draw, text, x, row_top, content_h, font,
+                      pad_x=14, pad_y=8, radius=12, dx=-4, dy=6,
+                      border_color=(150, 150, 150, 255), border_width=3):
+    """在左侧等级占位处绘制白色圆角矩形卡片（带边框），并把等级文字（如 13.6 / 14+）在卡片内垂直居中。
+
+    dx / dy 让卡片与文字整体平移（负 = 左 / 上），调用处无需改动。
+    """
+    ascent, descent = font.getmetrics()
+    text_h = ascent + descent
+    text_w = int(draw.textlength(text, font=font))
+    tx = x + dx
+    ty = row_top + (content_h - text_h) // 2 + dy
+    draw.rounded_rectangle(
+        (tx - pad_x, ty - pad_y, tx + text_w + pad_x, ty + text_h + pad_y),
+        radius=radius, fill=(255, 255, 255, 255),
+        outline=border_color, width=border_width,
+    )
+    draw.text((tx, ty), text, fill="black", font=font)
+
+
 def create_thumbnail_in_line(song):
     thumb_size=(600, 225)
     bg_color = (255, 255, 255, 255)
@@ -802,7 +823,7 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
     # 渲染主体图像内容
     y_offset = margin + 30 + 180
     for level, img_list in rows:
-        draw.text((margin, y_offset + img_size // 3), level, fill="black", font=font_level_badge)
+        _draw_level_label(draw, level, margin, y_offset, img_size, font_level_badge)
 
         x_offset = level_width + margin
         for i, img in enumerate(img_list):
@@ -971,7 +992,7 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
     y_offset = card_y + cards_total_height + 40
 
     for level_str, entries_list in rows:
-        draw.text((margin, y_offset + img_size // 3), level_str, fill="black", font=font_level_badge)
+        _draw_level_label(draw, level_str, margin, y_offset, img_size, font_level_badge)
 
         x_offset = level_width + margin
 
