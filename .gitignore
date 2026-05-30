@@ -69,3 +69,6 @@ test_api.py
 # 上传的图片缓存
 uploads/
 temp/
+
+# 临时产物：导出文件（30 分钟内自动清理）
+data/exports/

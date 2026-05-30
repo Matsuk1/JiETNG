@@ -118,6 +118,65 @@ maintenance_error_text = {
 }
 
 # ============================================================
+# 成績エクスポート / Records Export
+# ============================================================
+
+# 通知预览栏 / Push notification alt text
+export_alt_text = {
+    "ja": "📦 成績データを書き出しました",
+    "en": "📦 Your records have been exported",
+    "zh": "📦 成绩数据已导出"
+}
+
+# Flex 卡片标题
+export_flex_title_text = {
+    "ja": "📦 成績データを書き出したよ！",
+    "en": "📦 Records Exported!",
+    "zh": "📦 成绩数据已导出！"
+}
+
+# Flex 卡片内说明（{best} / {recent} / {size} / {ttl} 可格式化）
+export_flex_summary_text = {
+    "ja": "Best: {best} 件 ・ Recent: {recent} 件\nファイル形式: {fmt}（{size_kb} KB）",
+    "en": "Best: {best}  ·  Recent: {recent}\nFormat: {fmt} ({size_kb} KB)",
+    "zh": "Best: {best} 条  ·  Recent: {recent} 条\n格式: {fmt}（{size_kb} KB）"
+}
+
+# Flex 卡片底部小字
+export_flex_footnote_text = {
+    "ja": "リンクは {ttl} 分後に自動で失効します",
+    "en": "Link expires in {ttl} minutes",
+    "zh": "下载链接将在 {ttl} 分钟后失效"
+}
+
+# Flex 按钮
+export_flex_button_text = {
+    "ja": "ダウンロード",
+    "en": "Download",
+    "zh": "下载"
+}
+
+# Flex 副按钮：复制下载链接
+export_flex_copy_button_text = {
+    "ja": "リンクをコピー",
+    "en": "Copy Link",
+    "zh": "复制链接"
+}
+
+# 无成绩 / 失败时的纯文本回退
+export_empty_text = {
+    "ja": "📭 まだ成績データがないみたい！『maimai update』で更新してから試してね。",
+    "en": "📭 No records to export yet! Run `maimai update` first, then try again.",
+    "zh": "📭 还没有成绩数据可以导出！请先用『maimai update』更新后再试。"
+}
+
+export_failed_text = {
+    "ja": "🙇 書き出しに失敗しました…しばらく経ってからもう一度お試しください。",
+    "en": "🙇 Export failed... Please try again later.",
+    "zh": "🙇 导出失败…请稍后再试。"
+}
+
+# ============================================================
 # フレンド関連 / Friend Messages
 # ============================================================
 

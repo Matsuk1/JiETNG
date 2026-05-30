@@ -155,6 +155,7 @@ DEV_TOKENS_FILE = "./data/dev_tokens.json"
 # 数据目录路径（./data/）
 BACKUP_DIR = "./data/backup"
 IMG_DIR = "./data/images"
+EXPORT_DIR = "./data/exports"
 
 # 资源文件路径（./assets/）
 FONT_FILE = "./assets/fonts/line_seed_jietng.ttf"

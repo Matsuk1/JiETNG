@@ -59,7 +59,16 @@ from linebot.v3.messaging import (
     FlexMessage,
     FlexContainer
 )
-from linebot.v3.messaging.models import MarkMessagesAsReadByTokenRequest, ShowLoadingAnimationRequest
+from linebot.v3.messaging.models import (
+    MarkMessagesAsReadByTokenRequest,
+    ShowLoadingAnimationRequest,
+    FlexBubble,
+    FlexBox,
+    FlexText,
+    FlexButton,
+    FlexSeparator,
+    ClipboardAction,
+)
 from linebot.v3.webhooks import (
     FollowEvent,
     UnfollowEvent,
@@ -129,6 +138,7 @@ from modules.message_manager import *
 
 # Image processing
 from modules.image_uploader import smart_upload, _start_periodic_cleanup
+from modules.export_manager import export_records
 from modules.image_manager import *
 
 # System utilities
@@ -775,6 +785,41 @@ def serve_image(image_id):
 
     logger.info(f"[ImageHost] → Serving image: id={image_id}")
     return send_from_directory(IMG_DIR, filename, mimetype='image/png')
+
+
+@app.route("/linebot/export/<file_id>/<friendly_name>", methods=["GET"])
+def serve_export(file_id, friendly_name):
+    """提供导出文件下载（30 分钟后自动失效）
+
+    URL 形如 `/linebot/export/{token}/{JiETNG-玩家名-时间戳.json}`：
+      - file_id: token_urlsafe 字符串，对应磁盘上的随机文件名
+      - friendly_name: 用户可见的下载文件名，浏览器 Save As 时使用
+    """
+    # 防路径穿越：id 只允许 token_urlsafe 字符集（字母数字 + _ -）
+    if not file_id.replace('-', '').replace('_', '').isalnum():
+        logger.warning(f"[Export] ⚠ Invalid file_id: {file_id}")
+        return ("Not Found", 404)
+
+    # friendly_name 由 Flask 自动 url-decode；校验扩展名 + 无路径穿越字符
+    if '/' in friendly_name or '\\' in friendly_name or '..' in friendly_name:
+        return ("Bad Request", 400)
+    _, _, ext = friendly_name.rpartition('.')
+    if ext not in ('json', 'xml'):
+        logger.warning(f"[Export] ⚠ Unsupported ext: {friendly_name}")
+        return ("Not Found", 404)
+
+    disk_name = f"{file_id}.{ext}"
+    if not os.path.exists(os.path.join(EXPORT_DIR, disk_name)):
+        logger.warning(f"[Export] ⚠ Export not found / expired: {disk_name}")
+        return ("Gone", 410)
+
+    mimetype = 'application/json' if ext == 'json' else 'application/xml'
+    logger.info(f"[Export] → Serving: disk={disk_name}, name={friendly_name}")
+    # download_name 走 friendly_name，浏览器另存为时直接是这个名字（含 CJK）
+    return send_from_directory(
+        EXPORT_DIR, disk_name, mimetype=mimetype,
+        as_attachment=True, download_name=friendly_name,
+    )
 
 
 @app.route("/linebot/sega_bind", methods=["GET", "POST"])
@@ -1718,6 +1763,88 @@ async def maimai_update(user_id, ver="jp"):
         messages.append(await generate_records(user_id, user_id, ver=ver))
 
     return messages
+
+def _build_export_flex(user_id: str, meta: dict) -> FlexMessage:
+    """根据 export_records 返回的 meta 拼一张下载卡。"""
+    size_kb = max(1, round(meta["size"] / 1024))
+    fmt_label = meta["fmt"].upper()
+
+    title  = get_multilingual_text(export_flex_title_text, user_id)
+    body   = get_multilingual_text(export_flex_summary_text, user_id).format(
+        best=meta["best_count"], recent=meta["recent_count"],
+        fmt=fmt_label, size_kb=size_kb,
+    )
+    foot   = get_multilingual_text(export_flex_footnote_text, user_id).format(ttl=meta["ttl_minutes"])
+    btn    = get_multilingual_text(export_flex_button_text, user_id)
+    alt    = get_multilingual_text(export_alt_text, user_id)
+
+    copy_btn = get_multilingual_text(export_flex_copy_button_text, user_id)
+
+    bubble = FlexBubble(
+        body=FlexBox(
+            layout="vertical",
+            spacing="md",
+            paddingAll="16px",
+            contents=[
+                FlexText(text=title, weight="bold", size="md", wrap=True, color="#000000"),
+                FlexSeparator(margin="md"),
+                FlexText(text=body, size="sm", wrap=True, color="#555555"),
+                FlexText(text=foot, size="xs", wrap=True, margin="md", color="#999999"),
+            ],
+        ),
+        footer=FlexBox(
+            layout="vertical",
+            spacing="sm",
+            paddingAll="12px",
+            contents=[
+                FlexButton(
+                    style="primary",
+                    color="#FF6B35",
+                    height="sm",
+                    # `openExternalBrowser=1` 让 LINE 用系统默认浏览器打开，
+                    # 外部浏览器会正常响应 Content-Disposition: attachment 触发下载，
+                    # 否则 LINE 内置 WebView 会把 .json/.xml 当文本预览。
+                    action=URIAction(label=btn, uri=f"{meta['url']}?openExternalBrowser=1"),
+                ),
+                FlexButton(
+                    style="secondary",
+                    height="sm",
+                    # ClipboardAction：原生复制到剪贴板，复制不带 LINE 专用 query param 的纯链接
+                    action=ClipboardAction(label=copy_btn, clipboard_text=meta["url"]),
+                ),
+            ],
+        ),
+    )
+    return FlexMessage(alt_text=alt, contents=bubble)
+
+
+def handle_export_command(user_id: str, fmt: str):
+    """
+    处理成绩导出命令（export json / export xml）
+
+    Args:
+        user_id: 用户ID
+        fmt: 导出格式 ('json' 或 'xml')
+
+    Returns:
+        FlexMessage（成功，带下载按钮）/ TextMessage（无数据 / 失败）
+    """
+    try:
+        meta = export_records(user_id, fmt)
+    except Exception as e:
+        logger.error(f"[Export] ✗ Handler error: user_id={user_id}, fmt={fmt}, error={e}", exc_info=True)
+        return TextMessage(text=get_multilingual_text(export_failed_text, user_id))
+
+    status = meta.get("status")
+    if status == "empty":
+        return TextMessage(text=get_multilingual_text(export_empty_text, user_id))
+    if status != "ok":
+        return TextMessage(text=get_multilingual_text(export_failed_text, user_id))
+
+    logger.info(f"[Export] ✓ Export delivered: user_id={user_id}, fmt={fmt}, "
+                f"size={meta['size']}, best={meta['best_count']}, recent={meta['recent_count']}")
+    return _build_export_flex(user_id, meta)
+
 
 def handle_rc_command(msg: str, user_id: str):
     """
@@ -3980,6 +4107,12 @@ def handle_sync_text_command(event):
         # Rating 对照表
         (lambda msg: msg.startswith(("rc ", "RC ", "Rc ")),
          lambda msg: handle_rc_command(msg, user_id)),
+
+        # 成绩导出（export json / export xml / 成績エクスポート json / 成绩导出 xml）
+        (lambda msg: re.match(r"^(成績エクスポート|成绩导出|export)\s+(json|xml)\s*$", msg, re.IGNORECASE) is not None,
+         lambda msg: handle_export_command(
+             user_id,
+             re.match(r"^(成績エクスポート|成绩导出|export)\s+(json|xml)\s*$", msg, re.IGNORECASE).group(2).lower())),
 
         # 版本达成情况（支持 -uc/-up 过滤）
         (lambda msg: re.sub(r"\s*-(uc|up|c)\s*$", "", msg).endswith(("の達成状況", "achievement")),
