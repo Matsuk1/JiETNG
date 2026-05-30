@@ -90,8 +90,8 @@ def wrap_in_rounded_background(content_img, padding=20, radius=30,
         content_img: 原始图像 (PIL.Image)
         padding: 内容与圆角框的间距
         radius: 圆角半径
-        bg_color: 内部背景颜色（默认白色）
-        border_color: 边框颜色（默认浅灰）
+        bg_color: 内部背景颜色
+        border_color: 边框颜色
         border_width: 边框线宽
     """
     # 计算背景尺寸
@@ -118,24 +118,23 @@ def wrap_in_rounded_background(content_img, padding=20, radius=30,
 
     return bg
 
-def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_color=(0, 0, 0, 0), inner_bg=(0, 0, 0, 0), border_width=5, timezone_offset=9, bg_filter=None):
+def compose_images(images, timezone_offset=9, bg_filter=None):
     """
     将多张图片垂直拼接，并添加页脚（RGB / RGBA 自适应）。
 
     参数：
         images: PIL.Image 对象列表
-        spacing: 图片之间的间距
-        outer_margin: 最外层边距
-        footer_height: 页脚高度（基准值，会根据图片宽度动态调整）
-        bg_color: 外层背景颜色（RGB 或 RGBA）
-        inner_bg: 内部背景颜色（RGB 或 RGBA）
-        border_width: 边框宽度
         timezone_offset: 时区偏移（小时数），默认 9（UTC+9）
         bg_filter: 可选的背景图文件名列表，非空时只从该列表中随机选择
 
     返回：
         组合后的 PIL.Image 对象（RGB 或 RGBA）
     """
+    spacing = 5
+    outer_margin = 40
+    footer_height = 150
+    bg_color = inner_bg = (0, 0, 0, 0)
+
     if not images:
         raise ValueError("图片列表不能为空")
 
@@ -156,7 +155,7 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
 
     # 1. 给每个图加圆角背景，并统一为 RGBA
     images_with_bg = [
-        ensure_rgba(wrap_in_rounded_background(img, border_width=border_width))
+        img
         for img in images
     ]
 
@@ -178,8 +177,8 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
     base_logo_size = 130
     dynamic_logo_size = max(100, min(180, int(base_logo_size * scale_factor)))
 
-    dynamic_left_margin = max(40, min(80, int(50 * scale_factor)))
-    dynamic_right_margin = max(150, min(250, int(180 * scale_factor)))
+    dynamic_left_margin = max(40, min(80, int(50 * scale_factor))) - 10
+    dynamic_right_margin = max(150, min(250, int(180 * scale_factor))) - 10
     dynamic_line_spacing = max(30, min(50, int(35 * scale_factor)))
 
     # 4. 内部画布
@@ -189,7 +188,7 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
     combined = Image.new("RGBA", (inner_width, inner_height), inner_bg_rgba)
 
     # 5. 粘贴图片（统一使用 alpha）
-    y_offset = 0
+    y_offset = 10
     for img in images_with_bg:
         x_offset = (inner_width - img.width) // 2
         combined.paste(img, (x_offset, y_offset), img)
@@ -197,7 +196,7 @@ def compose_images(images, spacing=40, outer_margin=30, footer_height=150, bg_co
 
     # 6. 页脚
     draw = ImageDraw.Draw(combined)
-    footer_y_start = total_images_height + spacing - 10
+    footer_y_start = total_images_height + spacing + 20
 
     # 获取用户时区时间
     user_timezone = timezone(timedelta(hours=timezone_offset))

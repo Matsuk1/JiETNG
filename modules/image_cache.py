@@ -101,7 +101,7 @@ def paste_icon_optimized(img, song_data, key, size, position, save_dir, url_func
         logger.error(f"[ImageCache] ✗ Failed to paste icon: key={key}, error={e}")
 
 
-def get_cover_image(cover_url, cover_name, covers_dir=None):
+def get_cover_image(cover_url, cover_name=None, covers_dir=None):
     """
     获取封面图片（优先从本地加载，不存在则下载）
 
@@ -117,10 +117,12 @@ def get_cover_image(cover_url, cover_name, covers_dir=None):
         if covers_dir is None:
             covers_dir = COVERS_DIR
 
-        local_path = os.path.join(covers_dir, cover_name)
+        local_path = covers_dir
+        if cover_name:
+            local_path = os.path.join(covers_dir, cover_name)
 
         # 1. 首先尝试从本地加载
-        if os.path.exists(local_path):
+        if os.path.exists(local_path) and cover_name:
             try:
                 with Image.open(local_path) as img:
                     return img.convert("RGBA")
@@ -145,13 +147,12 @@ def get_cover_image(cover_url, cover_name, covers_dir=None):
                 response = session.get(download_url, timeout=30)
                 response.raise_for_status()
 
-                # 3. 保存到本地
-                with open(local_path, "wb") as f:
-                    f.write(response.content)
+                if cover_name:
+                    with open(local_path, "wb") as f:
+                        f.write(response.content)
 
-                # 4. 返回图片对象
-                with Image.open(local_path) as img:
-                    return img.convert("RGBA")
+                img = Image.open(BytesIO(response.content))
+                return img.convert("RGBA")
 
             except requests.exceptions.Timeout:
                 if attempt < max_retries - 1:

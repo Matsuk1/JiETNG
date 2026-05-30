@@ -161,36 +161,20 @@ def create_thumbnail(song):
     thumb_size=(300, 150)
     padding=15
     bg_color = _get_difficulty_color(song['difficulty'])
-    img = Image.new("RGB", thumb_size, bg_color)
+    img = Image.new("RGBA", thumb_size, (*bg_color, 255))
     draw = ImageDraw.Draw(img)
 
     text_color = (114, 20, 141) if song['difficulty'] == "remaster" else (255, 255, 255)
 
     # --- 封面 ---
     cover_size = 80
-    if 'cover_name' in song and song['cover_name']:
-        try:
-            cover_img = get_cover_image(
-                cover_url=song.get('cover_url'),
-                cover_name=song['cover_name']
-            )
-            if cover_img:
-                cover_img = cover_img.resize((cover_size, cover_size), Image.Resampling.LANCZOS)
-                cover_img = round_corner(cover_img, radius=8)
-                img.paste(cover_img, (padding - 1, padding - 2), cover_img)
-        except Exception as e:
-            logger.error(f"[RecordGenerator] ✗ Failed to load cover image: error={e}")
-
-    # --- type 图标 ---
-    type_width = int(cover_size * 0.5)
-    type_height = int(cover_size * 0.15)
-    paste_icon_optimized(
-        img, song, key='type',
-        size=(type_width, type_height),
-        position=(padding + cover_size - type_width - 1, padding + cover_size - type_height - 2),
-        save_dir=ICON_TYPE_DIR,
-        url_func=lambda value: "https://maimaidx.jp/maimai-mobile/img/music_standard.png" if value == "std" else "https://maimaidx.jp/maimai-mobile/img/music_dx.png" if value == "dx" else "https://maimaidx.jp/maimai-mobile/img/diff_utage.png"
-    )
+    try:
+        cover_img = generate_cover(song['cover_url'], song['type'], cover_name=song['cover_name'])
+        cover_img = cover_img.resize((cover_size, cover_size), Image.Resampling.LANCZOS)
+        cover_img = round_corner(cover_img, radius=8)
+        img.alpha_composite(cover_img, (padding - 1, padding - 2))
+    except Exception as e:
+        logger.error(f"[RecordGenerator] ✗ Failed to load cover image: error={e}")
 
     # 计算布局
     line_spacing = 28
@@ -550,11 +534,14 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
 
     if cover_img:
         if difficulty:
-            cover_img = cover_img.resize((inner_size, inner_size))
+            cover_img = cover_img.resize((inner_size, inner_size), Image.Resampling.LANCZOS)
             record_img.paste(cover_img, (border_width, border_width))
         else:
-            cover_img = cover_img.resize((size, size))
-            record_img.paste(cover_img, (0, 0))
+            cover_img = cover_img.resize((size, size), Image.Resampling.LANCZOS)
+            record_img.alpha_composite(cover_img, (0, 0))
+
+    else:
+        record_img = Image.new("RGBA", (img_width, img_height), (114, 51, 4, 255))
 
     # 添加 type 图标（std/dx）- 按比例缩放
     type_width = int(inner_size * 0.5) if difficulty else int(size * 0.5)
@@ -702,9 +689,7 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
         )
         record_img = Image.alpha_composite(record_img, border_layer)
 
-        return record_img  # 返回 RGBA，保留圆角透明
-
-    return record_img.convert("RGB")
+    return record_img
 
 def generate_plate_image(target_data, title, img_width=1700, img_height=600, max_per_row=9, margin=20, headers={}):
     level_width = 100

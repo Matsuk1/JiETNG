@@ -1305,7 +1305,7 @@ def demo_page():
         up_songs, down_songs, details = select_records(song_record, type=cmd_type, command=params, ver=ver)
         profile_img = generate_profile(user_info)
         records_img = generate_records_picture(up_songs, down_songs, title=title, ver=ver, details=details)
-        return compose_images([profile_img, records_img], spacing=0, border_width=0, timezone_offset=tz)
+        return compose_images([profile_img, records_img], timezone_offset=tz)
 
     try:
         result = asyncio.run(_pipeline())
@@ -2594,7 +2594,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None)
     user_info = _id_use_data.get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(user_id)
-    img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
+    img = compose_images([profile_img, plate_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
 
     # 清理中间图片对象
     del profile_img, plate_img
@@ -2818,7 +2818,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
     user_info = _id_use_data.get('personal_info')
     profile_img = generate_profile(user_info, scale=1.5, user_id=id_use)
     user_tz = get_user_timezone(user_id)
-    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
+    img = compose_images([profile_img, record_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
 
     del profile_img, record_img
     gc.collect(0)
@@ -3194,7 +3194,7 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
     user_info = _id_use_data.get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(user_id)
-    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
+    img = compose_images([profile_img, record_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
 
     # 清理中间图片对象
     del profile_img, record_img
@@ -3264,7 +3264,7 @@ async def generate_friend_record(user_id, friend_code, type="best50", cmd="", ve
     user_info_img = generate_profile(friend_info)
     rcd_img = generate_records_picture(up_songs, down_songs, type.upper(), ver, details)
     user_tz = get_user_timezone(user_id)
-    img = compose_images([user_info_img, rcd_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
+    img = compose_images([user_info_img, rcd_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
 
     # 清理中间图片对象
     del user_info_img, rcd_img
@@ -3316,7 +3316,7 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     user_info = _id_use_data.get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
     user_tz = get_user_timezone(user_id)
-    img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
+    img = compose_images([profile_img, record_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
 
     # 清理中间图片对象
     del profile_img, record_img
@@ -3365,9 +3365,9 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
     user_tz = get_user_timezone(user_id)
     user_bg_filter = _get_user_bg_filter(user_id)
     if version_img is None:
-        img = compose_images([version_list_img], border_width=0, timezone_offset=user_tz, bg_filter=user_bg_filter)
+        img = compose_images([version_list_img], timezone_offset=user_tz, bg_filter=user_bg_filter)
     else:
-        img = compose_images([version_img, version_list_img], border_width=0, timezone_offset=user_tz, bg_filter=user_bg_filter)
+        img = compose_images([version_img, version_list_img], timezone_offset=user_tz, bg_filter=user_bg_filter)
 
     # 清理中间图片对象
     if version_img is not None:
@@ -7008,7 +7008,7 @@ def api_v2_generate_record_image(user_id):
         user_info = _udata.get('personal_info')
         profile_img = generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
+        img = compose_images([profile_img, record_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
         del profile_img, record_img
         gc.collect(0)
 
@@ -7150,7 +7150,7 @@ def api_v2_generate_plate(user_id):
         user_info = _udata.get('personal_info')
         profile_img = generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = compose_images([profile_img, plate_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
+        img = compose_images([profile_img, plate_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
         del profile_img, plate_img
         gc.collect(0)
 
@@ -7314,7 +7314,7 @@ def api_v2_generate_achievement(user_id):
         user_info = _udata.get('personal_info')
         profile_img = generate_profile(user_info, scale=1.5, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = compose_images([profile_img, record_img], spacing=0, border_width=0, timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
+        img = compose_images([profile_img, record_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
         del profile_img, record_img
         gc.collect(0)
 

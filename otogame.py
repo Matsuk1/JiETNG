@@ -227,7 +227,7 @@ def api_best50():
         from main import generate_profile
         profile_img = generate_profile(user_info)
 
-        final_img = compose_images([profile_img, record_img], spacing=0, border_width=0)
+        final_img = compose_images([profile_img, record_img])
 
         # 输出为 PNG
         buf = io.BytesIO()
