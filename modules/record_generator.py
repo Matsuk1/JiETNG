@@ -2,7 +2,7 @@ import math
 import logging
 import os
 
-from PIL import Image, ImageDraw, ImageChops, ImageOps
+from PIL import Image, ImageDraw
 
 from modules.config_loader import (
     PLATES_DIR,
