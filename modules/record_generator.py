@@ -2,7 +2,7 @@ import math
 import logging
 import os
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageChops, ImageOps
 
 from modules.config_loader import (
     PLATES_DIR,
@@ -228,19 +228,50 @@ def create_thumbnail(song):
     draw.text((score_x_offset, padding + line_spacing * 2),
               song['dx_score'], fill=text_color, font=font_small, anchor="ra")
 
-    # --- 最下面的横线 ---
-    draw.line([(0, thumb_size[1]), (thumb_size[0], thumb_size[1])], fill=(255, 255, 255), width=90)
+    # --- 底部白色圆角矩形（AA）---
+    bottom_h = 45
+    radius = 10
+    border_w = 2
 
-    # --- dx_star 图标 ---
-    star_width = 80
-    star_height = 16
-    paste_icon_optimized(
-        img, song, key='dx_star',
-        size=(star_width, star_height),
-        position=(padding + cover_size - 4, 119),
-        save_dir=ICON_DX_STAR_DIR,
-        url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_dxstar_detail_{value}.png"
+    s = 4
+    W, H = thumb_size[0] * s, thumb_size[1] * s
+
+    rect_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    rect_draw = ImageDraw.Draw(rect_layer)
+
+    x1 = 0
+    y1 = (thumb_size[1] - bottom_h) * s
+    x2 = W - 1
+    y2 = H - 1
+
+    # 白色填充
+    rect_draw.rounded_rectangle(
+        [(x1, y1), (x2, y2)],
+        radius=radius * s,
+        corners=(False, False, True, True),
+        fill=(255, 255, 255, 255),
     )
+
+    # 彩色边框
+    rect_draw.rounded_rectangle(
+        [(x1, y1), (x2, y2)],
+        radius=radius * s,
+        corners=(False, False, True, True),
+        outline=(*_get_difficulty_color(song['difficulty']), 255),
+        width=border_w * s,
+    )
+
+    rect_layer = rect_layer.resize(
+        thumb_size,
+        Image.Resampling.LANCZOS
+    )
+
+    img = Image.alpha_composite(
+        img.convert("RGBA"),
+        rect_layer
+    )
+
+    draw = ImageDraw.Draw(img)
 
     # --- combo_icon 图标 ---
     combo_icon_width = 40
@@ -262,30 +293,21 @@ def create_thumbnail(song):
         url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_{value}.png"
     )
 
+    # --- dx_star 图标 ---
+    star_width = 80
+    star_height = 16
+    paste_icon_optimized(
+        img, song, key='dx_star',
+        size=(star_width, star_height),
+        position=(padding + cover_size - 4, 119),
+        save_dir=ICON_DX_STAR_DIR,
+        url_func=lambda value: f"https://maimaidx.jp/maimai-mobile/img/music_icon_dxstar_detail_{value}.png"
+    )
 
     # --- 数值 ---
     draw.text((score_x_offset + 3, thumb_size[1] - 38),
               f"{song['internalLevelValue']:.1f} → {song['ra']}",
               fill=(0, 0, 0), font=font_stadium, anchor="ra")
-
-    # --- 白条三边圆角矩形框（左、下、右，无上边，超采样抗锯齿）---
-    r = 8
-    lx, rx = 1, thumb_size[0] - 1
-    ty = thumb_size[1] - 45
-    by = thumb_size[1] - 1
-    bdr = (*_get_difficulty_color(song['difficulty']), 255)
-    s = 6
-    border_layer = Image.new("RGBA", (thumb_size[0] * s, thumb_size[1] * s), (0, 0, 0, 0))
-    bdraw = ImageDraw.Draw(border_layer)
-    bdraw.line([(lx*s, ty*s), (lx*s, by*s - r*s)], fill=bdr, width=2*s)
-    h = s // 2  # 0.5px 偏移量（超采样空间）
-    bdraw.arc([lx*s, by*s - 2*r*s + h, lx*s + 2*r*s, by*s + h], start=90, end=180, fill=bdr, width=2*s)
-    bdraw.line([(lx*s + r*s, by*s + h), (rx*s - r*s, by*s + h)], fill=bdr, width=2*s)
-    bdraw.arc([rx*s - 2*r*s + h, by*s - 2*r*s + h, rx*s + h, by*s + h], start=0, end=90, fill=bdr, width=2*s)
-    bdraw.line([(rx*s, by*s - r*s), (rx*s, ty*s)], fill=bdr, width=2*s)
-    border_layer = border_layer.resize(thumb_size, Image.Resampling.LANCZOS)
-    img = img.convert("RGBA")
-    img = Image.alpha_composite(img, border_layer)
 
     final_img = round_corner(img, radius=12)
     return final_img

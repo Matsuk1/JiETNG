@@ -93,8 +93,9 @@ def paste_icon_optimized(img, song_data, key, size, position, save_dir, url_func
 
         icon_img = download_and_cache_icon(url, file_path)
         if icon_img:
-            icon_img = icon_img.resize(size, Image.LANCZOS)
-            img.paste(icon_img, position, mask=icon_img)
+            icon_img = icon_img.convert("RGBA")
+            icon_img = icon_img.resize(size, Image.Resampling.LANCZOS)
+            img.alpha_composite(icon_img, position)
 
     except Exception as e:
         logger.error(f"[ImageCache] ✗ Failed to paste icon: key={key}, error={e}")

@@ -319,19 +319,15 @@ def _generate_qrcode(data: str, box_size: int = 10, border: int = 4) -> Image.Im
     img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
     return img
 
+
 def round_corner(img, radius=20):
     img = img.convert("RGBA")
-    w, h = img.size
-
-    mask = Image.new("L", (w, h), 0)
-    draw = ImageDraw.Draw(mask)
-
-    draw.rounded_rectangle(
-        [(0, 0), (w, h)],
+    mask = Image.new("L", img.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle(
+        (0, 0, *img.size),
         radius=radius,
         fill=255
     )
 
     img.putalpha(mask)
-
     return img
