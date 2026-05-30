@@ -19,9 +19,8 @@ logger = logging.getLogger(__name__)
 # 永久保留的文件名前缀
 PERMANENT_PREFIX = "keep_"
 
-# 图片清理任务列表 {image_id: cleanup_time}
-_image_cleanup_tasks = {}
-_cleanup_lock = threading.Lock()
+# 清理统一由 _start_periodic_cleanup 启动的全局线程按 mtime 处理；
+# 不再为每张图片单独 spawn 一个 sleep 30 分钟的守护线程。
 _periodic_cleanup_thread = None
 
 def cleanup_expired_images(expiry_seconds = 7200):
@@ -81,36 +80,6 @@ def _start_periodic_cleanup():
         _periodic_cleanup_thread.start()
         logger.info("[ImageCleanup] ✓ Periodic cleanup thread started")
 
-def _schedule_image_cleanup(image_id, delay_seconds=1800):
-    """安排图片清理任务（默认30分钟）
-
-    Args:
-        image_id: 图片ID
-        delay_seconds: 延迟时间（秒），默认1800秒（30分钟）
-    """
-    cleanup_time = time.time() + delay_seconds
-
-    with _cleanup_lock:
-        _image_cleanup_tasks[image_id] = cleanup_time
-
-    def cleanup():
-        time.sleep(delay_seconds)
-
-        image_path = os.path.join(IMG_DIR, f"{image_id}.png")
-        try:
-            if os.path.exists(image_path):
-                os.remove(image_path)
-                logger.info(f"[ImageCleanup] ✓ Deleted expired image: id={image_id}")
-
-            with _cleanup_lock:
-                _image_cleanup_tasks.pop(image_id, None)
-        except Exception as e:
-            logger.error(f"[ImageCleanup] ✗ Failed to delete image: id={image_id}, error={e}")
-
-    # 在后台线程中执行清理
-    cleanup_thread = threading.Thread(target=cleanup, daemon=True, name=f"ImageCleanup-{image_id}")
-    cleanup_thread.start()
-
 def _save_to_local(img):
     """保存图片到本地图床
 
@@ -128,8 +97,7 @@ def _save_to_local(img):
         # 保存图片
         img.save(image_path, format='PNG')
 
-        # 安排30分钟后清理
-        _schedule_image_cleanup(image_id, delay_seconds=1800)
+        # 清理由 _start_periodic_cleanup 启动的全局线程按 mtime 统一处理
 
         # 生成URL
         image_url = f"https://{DOMAIN}/linebot/img/{image_id}"

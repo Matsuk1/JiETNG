@@ -2,35 +2,42 @@
 图片缓存和下载工具模块
 统一管理图片的下载、缓存和加载
 
-使用独立的 session 实例避免污染
+使用全局共享 session：requests.Session 在常规使用方式（多线程并发 GET）
+下是线程安全的，比之前每线程一个 session 更省连接池/内存，
+避免长生命周期 worker 线程导致 session 永不释放。
 """
 import os
 import requests
 import logging
 from PIL import Image
 from io import BytesIO
-import threading
+from requests.adapters import HTTPAdapter
 from modules.config_loader import COVERS_DIR
 
 
 logger = logging.getLogger(__name__)
-_thread_local = threading.local()
+
+
+def _build_session() -> requests.Session:
+    s = requests.Session()
+    s.verify = False
+    s.headers.update({
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://maimaidx.jp",
+    })
+    # 单 session 服务全部 worker，提高连接池上限
+    adapter = HTTPAdapter(pool_connections=20, pool_maxsize=50)
+    s.mount("http://", adapter)
+    s.mount("https://", adapter)
+    return s
+
+
+_SESSION = _build_session()
 
 
 def _get_session():
-    """
-    获取当前线程的专用 session
-    每个线程有独立的 session，避免污染
-    """
-    if not hasattr(_thread_local, 'session'):
-        session = requests.Session()
-        session.verify = False
-        session.headers.update({
-            "User-Agent": "Mozilla/5.0",
-            "Referer": "https://maimaidx.jp"
-        })
-        _thread_local.session = session
-    return _thread_local.session
+    """获取全局共享 session（线程安全）。"""
+    return _SESSION
 
 
 def download_and_cache_icon(url, save_path):

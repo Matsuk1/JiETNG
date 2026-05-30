@@ -4,9 +4,10 @@
 把 best_records / recent_records 加工成阅读友好的结构（rank 写人话、
 dx_score 拆成当前/上限、icon 翻成 FC+/AP+ 等），再以 JSON 或 XML
 落盘到 EXPORT_DIR；返回 30 分钟内可访问的下载 URL + 元数据（条数、
-体积），由后台线程超时自动清理。
+体积）。
 
-设计参照 image_uploader 的 _save_to_local + _schedule_image_cleanup。
+清理策略：单个全局周期线程（默认每 5 分钟扫一次）按 mtime 删过期文件，
+重启可自愈，避免「每文件 1 sleep 30 分钟守护线程」的浪费与重启失忆问题。
 """
 
 import json
@@ -29,8 +30,9 @@ logger = logging.getLogger(__name__)
 
 _EXPORT_TTL_SECONDS = 1800           # 30 min
 _MAX_PAYLOAD_BYTES = 20 * 1024 * 1024  # 20 MB 保险阀
-_cleanup_lock = threading.Lock()
-_cleanup_tasks: dict = {}
+
+_periodic_cleanup_thread: Optional[threading.Thread] = None
+_periodic_cleanup_lock = threading.Lock()
 
 
 def _ensure_dir():
@@ -258,24 +260,51 @@ def to_xml_bytes(payload: dict) -> bytes:
 # 文件生命周期 / File lifecycle
 # ----------------------------------------------------------------------------
 
-def _schedule_cleanup(file_id: str, ext: str, delay: int = _EXPORT_TTL_SECONDS):
-    """delay 秒后删除单个导出文件。"""
-    def _run():
-        try:
-            time.sleep(delay)
-            path = os.path.join(EXPORT_DIR, f"{file_id}.{ext}")
-            if os.path.exists(path):
-                os.remove(path)
-                logger.info(f"[Export] ✓ Deleted expired export: id={file_id}.{ext}")
-            with _cleanup_lock:
-                _cleanup_tasks.pop(file_id, None)
-        except Exception as e:
-            logger.error(f"[Export] ✗ Cleanup failed: id={file_id}, error={e}")
+def cleanup_expired_exports(ttl_seconds: int = _EXPORT_TTL_SECONDS):
+    """扫描 EXPORT_DIR，删除 mtime 超过 ttl 的 .json/.xml。"""
+    if not os.path.exists(EXPORT_DIR):
+        return
+    now = time.time()
+    deleted = 0
+    try:
+        for filename in os.listdir(EXPORT_DIR):
+            if not (filename.endswith(".json") or filename.endswith(".xml")):
+                continue
+            path = os.path.join(EXPORT_DIR, filename)
+            try:
+                age = now - os.path.getmtime(path)
+                if age > ttl_seconds:
+                    os.remove(path)
+                    deleted += 1
+                    logger.info(f"[Export] ✓ Deleted expired: file={filename}, age={int(age)}s")
+            except Exception as e:
+                logger.error(f"[Export] ✗ Cleanup file failed: file={filename}, error={e}")
+        if deleted:
+            logger.info(f"[Export] ✓ Periodic cleanup done: deleted={deleted}")
+    except Exception as e:
+        logger.error(f"[Export] ✗ Periodic cleanup failed: error={e}")
 
-    t = threading.Thread(target=_run, daemon=True, name=f"ExportCleanup-{file_id}")
-    with _cleanup_lock:
-        _cleanup_tasks[file_id] = t
-    t.start()
+
+def start_periodic_cleanup(interval_seconds: int = 300):
+    """启动周期性清理线程（默认每 5 分钟扫一次）；重复调用幂等。"""
+    global _periodic_cleanup_thread
+    with _periodic_cleanup_lock:
+        if _periodic_cleanup_thread is not None and _periodic_cleanup_thread.is_alive():
+            return
+
+        def _loop():
+            while True:
+                try:
+                    time.sleep(interval_seconds)
+                    cleanup_expired_exports()
+                except Exception as e:
+                    logger.error(f"[Export] ✗ Periodic loop error: error={e}", exc_info=True)
+
+        _periodic_cleanup_thread = threading.Thread(
+            target=_loop, daemon=True, name="PeriodicExportCleanup"
+        )
+        _periodic_cleanup_thread.start()
+        logger.info("[Export] ✓ Periodic cleanup thread started")
 
 
 def _save_export(content: bytes, ext: str, friendly_name: str) -> Optional[str]:
@@ -283,6 +312,7 @@ def _save_export(content: bytes, ext: str, friendly_name: str) -> Optional[str]:
 
     磁盘文件名仍为 `{token}.{ext}`（安全/唯一），URL 第二段携带
     `friendly_name`（CJK 自动百分号编码），便于用户辨识。
+    文件清理由 start_periodic_cleanup 启动的全局线程按 mtime 统一处理。
     """
     if not content or len(content) > _MAX_PAYLOAD_BYTES:
         logger.error(f"[Export] ✗ Payload size out of range: bytes={len(content) if content else 0}")
@@ -293,7 +323,6 @@ def _save_export(content: bytes, ext: str, friendly_name: str) -> Optional[str]:
         path = os.path.join(EXPORT_DIR, f"{file_id}.{ext}")
         with open(path, "wb") as f:
             f.write(content)
-        _schedule_cleanup(file_id, ext)
         url = f"https://{DOMAIN}/linebot/export/{file_id}/{quote(friendly_name, safe='')}"
         logger.info(f"[Export] ✓ Saved: id={file_id}.{ext} bytes={len(content)} name={friendly_name}")
         return url

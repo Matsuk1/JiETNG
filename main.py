@@ -138,7 +138,7 @@ from modules.message_manager import *
 
 # Image processing
 from modules.image_uploader import smart_upload, _start_periodic_cleanup
-from modules.export_manager import export_records
+from modules.export_manager import export_records, start_periodic_cleanup as start_export_cleanup
 from modules.image_manager import *
 
 # System utilities
@@ -7371,8 +7371,9 @@ if __name__ == "__main__":
 
     logger.info(f"[System] ✓ Workers started: image={MAX_CONCURRENT_IMAGE_TASKS}, web={WEB_MAX_CONCURRENT_TASKS}")
 
-    # 启动定期清理线程
+    # 启动定期清理线程（图床 + 成绩导出）
     _start_periodic_cleanup()
+    start_export_cleanup()
 
     # 启动内存管理器
     memory_manager.start()

@@ -9,6 +9,7 @@ import json
 import os
 import secrets
 import csv
+import threading
 
 from cryptography.fernet import Fernet
 
@@ -260,16 +261,41 @@ def apply_override(songs, override_file):
             sheet["internalLevelValue"] = float(sheet["internalLevelValue"])
 
 
+# dxdata 内存缓存：按 ver 缓存 (mtimes, songs, versions)
+# mtimes 任一变化（dxdata.json / override.csv / intl_override.csv）即失效重建
+# 注意：返回的 songs/versions 是共享引用，调用方禁止原地修改
+_dxdata_cache: dict = {}
+_dxdata_cache_lock = threading.Lock()
+
+
+def _file_mtime(path: str) -> float:
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return 0.0
+
+
 def read_dxdata(ver="jp"):
     """
-    读取歌曲数据
+    读取歌曲数据（带 mtime 失效缓存）
 
     Args:
         ver: 版本 "jp" 或 "intl"
 
     Returns:
-        tuple: (songs, versions)
+        tuple: (songs, versions) — 共享引用，请勿原地修改
     """
+    files = [DXDATA_FILE, OVERRIDE_FILE]
+    if ver == "intl":
+        files.append(INTL_OVERRIDE_FILE)
+    mtimes = tuple(_file_mtime(f) for f in files)
+
+    with _dxdata_cache_lock:
+        cached = _dxdata_cache.get(ver)
+        if cached and cached[0] == mtimes:
+            return cached[1], cached[2]
+
+    # 缓存未命中或失效；不持锁重建，避免长时间阻塞并发读
     with open(DXDATA_FILE, 'r', encoding='utf-8') as f:
         dxdata_file = json.load(f)
     songs = list(dxdata_file['songs'])
@@ -282,6 +308,9 @@ def read_dxdata(ver="jp"):
         apply_override(songs, INTL_OVERRIDE_FILE)
 
     versions = list(dxdata_file['versions'])
+
+    with _dxdata_cache_lock:
+        _dxdata_cache[ver] = (mtimes, songs, versions)
     return songs, versions
 
 def load_user():
