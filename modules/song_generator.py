@@ -1,22 +1,10 @@
 from PIL import Image, ImageDraw
-from modules.record_generator import create_thumbnail_in_line, _get_difficulty_color
+from modules.record_generator import create_thumbnail_in_line, _get_difficulty_color, generate_cover
 from modules.image_manager import *
-from modules.image_cache import paste_icon_optimized, get_cover_image
 from modules.config_loader import ICON_TYPE_DIR
 
 def song_info_generate(song_json, played_data = [], timezone_offset=9, ver="jp", bg_filter=None):
-    cover_url = song_json.get("cover_url")
-    cover_name = song_json.get("cover_name")
-
-    # 优先使用本地缓存
-    cover_img = get_cover_image(cover_url, cover_name)
-
-    if not cover_img:
-        cover_img = Image.new("RGBA", (200, 200), (200, 200, 200))
-    else:
-        cover_img = cover_img.convert("RGBA")
-
-    img1 = resize_by_width(_render_basic_info_image(song_json, cover_img, ver), 900)
+    img1 = resize_by_width(_render_basic_info_image(song_json, ver), 900)
 
     if played_data:
         img2 = resize_by_width(_makeup_played_data(played_data), 780)
@@ -28,7 +16,7 @@ def song_info_generate(song_json, played_data = [], timezone_offset=9, ver="jp",
 
     return song_img
 
-def _render_basic_info_image(song_json, cover_img, ver="jp"):
+def _render_basic_info_image(song_json, ver="jp"):
     # 参数设定
     canvas_width = 1000
     canvas_height = 265
@@ -40,6 +28,11 @@ def _render_basic_info_image(song_json, cover_img, ver="jp"):
     img = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
+    cover_url = song_json.get("cover_url")
+    cover_name = song_json.get("cover_name")
+    song_type = song_json.get("type")
+    cover_img = generate_cover(cover_url, song_type, cover_name = cover_name)
+
     # 封面图处理
     cover_size = 200
     large_cover = cover_img.resize((cover_size, cover_size), Image.Resampling.LANCZOS)
@@ -47,14 +40,6 @@ def _render_basic_info_image(song_json, cover_img, ver="jp"):
     cover_x = margin
     cover_y = margin
     img.paste(large_cover, (cover_x, cover_y), large_cover)
-
-    paste_icon_optimized(
-        img, song_json, key='type',
-        size=(100, 30),
-        position=(cover_x + cover_size - 100, cover_y + cover_size - 30),
-        save_dir=ICON_TYPE_DIR,
-        url_func=lambda value: "https://maimaidx.jp/maimai-mobile/img/music_standard.png" if value == "std" else "https://maimaidx.jp/maimai-mobile/img/music_dx.png"
-    )
 
     # 文字区域
     text_x = cover_x + cover_size + text_gap
@@ -187,7 +172,7 @@ def _makeup_played_data(played_data, gap=10):
 
     return new_img
 
-def _render_song_info_small_img(song_json, cover_img):
+def _render_song_info_small_img(song_json):
     # 参数设定
     canvas_width = 1000
     canvas_height = 265
@@ -200,6 +185,11 @@ def _render_song_info_small_img(song_json, cover_img):
     draw = ImageDraw.Draw(img)
 
     # 封面图处理
+    cover_url = song_json.get("cover_url")
+    cover_name = song_json.get("cover_name")
+    song_type = song_json.get("type")
+    cover_img = generate_cover(cover_url, song_type, cover_name = cover_name)
+
     cover_size = 200
     large_cover = cover_img.resize((cover_size, cover_size), Image.Resampling.LANCZOS)
     large_cover = round_corner(large_cover)
@@ -210,14 +200,6 @@ def _render_song_info_small_img(song_json, cover_img):
     levels = []
     for sheet in song_json['sheets']:
         levels.append(sheet['internalLevelValue'])
-
-    paste_icon_optimized(
-        img, song_json, key='type',
-        size=(100, 30),
-        position=(cover_x + cover_size - 100, cover_y + cover_size - 30),
-        save_dir=ICON_TYPE_DIR,
-        url_func=lambda value: "https://maimaidx.jp/maimai-mobile/img/music_standard.png" if value == "std" else "https://maimaidx.jp/maimai-mobile/img/music_dx.png"
-    )
 
     # 文字区域
     text_x = cover_x + cover_size + text_gap
@@ -248,17 +230,7 @@ def generate_version_list(songs_json):
     song_imgs = []
 
     for song in songs_json:
-        cover_url = song.get("cover_url")
-        cover_name = song.get("cover_name")
-
-        cover_img = get_cover_image(cover_url, cover_name)
-
-        if not cover_img:
-            cover_img = Image.new("RGBA", (200, 200), (200, 200, 200))
-        else:
-            cover_img = cover_img.convert("RGBA")
-
-        song_img = _render_song_info_small_img(song, cover_img)
+        song_img = _render_song_info_small_img(song)
         song_img = wrap_in_rounded_background(song_img)
         song_imgs.append(song_img)
 

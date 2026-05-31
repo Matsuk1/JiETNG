@@ -101,21 +101,19 @@ def paste_icon_optimized(img, song_data, key, size, position, save_dir, url_func
         logger.error(f"[ImageCache] ✗ Failed to paste icon: key={key}, error={e}")
 
 
-def get_cover_image(cover_url, cover_name=None, covers_dir=None):
+def get_cover_image(cover_url, cover_name=None):
     """
     获取封面图片（优先从本地加载，不存在则下载）
 
     Args:
         cover_url: 封面图片 URL（不带扩展名）
         cover_name: 封面文件名（hash，不带扩展名）
-        covers_dir: 本地封面缓存目录（默认使用配置中的路径）
 
     Returns:
         PIL.Image 或 None
     """
     try:
-        if covers_dir is None:
-            covers_dir = COVERS_DIR
+        covers_dir = COVERS_DIR
 
         local_path = covers_dir
         if cover_name:
