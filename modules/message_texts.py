@@ -51,7 +51,7 @@ record_error_text = {
 }
 
 info_error_text = {
-    "ja": "ごめん！maimai個人情報まだメモしてないわ！",
+    "ja": "ごめん！maimai個人情報まだ保存してないみたい！",
     "en": "Sorry! Your maimai profile hasn't been saved yet!",
     "zh": "抱歉！你的 maimai 个人信息还没有保存！"
 }
@@ -69,7 +69,7 @@ system_error_text = {
 }
 
 input_error_text = {
-    "ja": "全然わかんないなー",
+    "ja": "全然意味がわかんないかも...",
     "en": "I don't understand what you mean...",
     "zh": "我完全不明白你的意思..."
 }
@@ -205,9 +205,9 @@ mention_record_error_text = {
 }
 
 cannot_do_for_others_text = {
-    "ja": "ごめん！このコマンドは自分自身にしか使えないよ～他の人の代わりにはできないんだ！",
-    "en": "Sorry! This command can only be used on yourself — I can't do it on someone else's behalf!",
-    "zh": "抱歉！这个命令只能对自己用哦～不可以帮别人做的！"
+    "ja": "ごめん！このコマンドは自分にしか使えないよ。他の人の代わりにはできないんだ！",
+    "en": "Sorry! This command can only be used on yourself. I can't do it on someone else's behalf!",
+    "zh": "抱歉！这个命令只能对自己用哦，不可以帮别人做的！"
 }
 
 
