@@ -239,6 +239,10 @@ def mention_error(user_id=None):
     """生成提到用户不存在错误消息"""
     return create_text_message(mention_error_text, user_id)
 
+def mention_record_error(user_id=None):
+    """生成被提到用户无成绩数据错误消息（与 record_error 区分，避免主语错位）"""
+    return create_text_message(mention_record_error_text, user_id)
+
 def get_perm_request_notification_alt_text(count, user_id=None):
     """获取权限请求通知的 alt text"""
     return get_multilingual_text(perm_request_notification_alt_text, user_id).format(count=count)

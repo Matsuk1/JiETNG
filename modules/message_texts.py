@@ -198,6 +198,12 @@ mention_error_text = {
     "zh": "被提到的用户好像还没有注册！"
 }
 
+mention_record_error_text = {
+    "ja": "メンションされたユーザーはまだmaimaiレコードをアップデートしてないみたい！",
+    "en": "Looks like the mentioned user hasn't updated their maimai records yet!",
+    "zh": "看起来被提到的用户还没有更新 maimai 记录！"
+}
+
 
 # 权限请求通知相关文本
 perm_request_notification_title_text = {

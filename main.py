@@ -2295,7 +2295,7 @@ async def get_song_record(user_id, id_use, acronym, ver="jp"):
     song_record = read_record(id_use)
 
     if not len(song_record):
-        return record_error(user_id)
+        return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
         
     # 使用优化的歌曲匹配函数
     songs, _ = read_dxdata(ver)
@@ -2351,7 +2351,7 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
     song_record = read_record(id_use)
 
     if not len(song_record):
-        return record_error(user_id)
+        return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
 
     matching_song = None
     songs, _ = read_dxdata(ver)
@@ -2431,7 +2431,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None)
     song_record = read_record(id_use)
 
     if not len(song_record):
-        return record_error(user_id)
+        return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
 
     title = title.replace("晓", "暁").replace("极", "極")
 
@@ -2581,7 +2581,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None)
         target_data = [d for d in target_data if d["achieved"]]
 
     if not target_data:
-        return record_error(user_id)
+        return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
 
     plate_img = generate_plate_image(target_data, title, headers = target_num)
 
@@ -2664,7 +2664,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
     song_record = read_record(id_use)
 
     if not len(song_record):
-        return record_error(user_id)
+        return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
 
     region_key = ver
 
@@ -2776,7 +2776,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
             })
 
     if not target_data:
-        return record_error(user_id)
+        return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
 
     # 按 filter_mode 过滤数据
     if filter_mode == "uncleared":
@@ -2787,7 +2787,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
         target_data = [d for d in target_data if d["achieved"]]
 
     if not target_data:
-        return record_error(user_id)
+        return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
 
     # 生成标题
     level_display = level.replace("+", "⁺")
@@ -3179,7 +3179,7 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
     recent_type = (type == "best40")
     song_record = read_record(id_use, recent, recent_type)
     if not len(song_record):
-        return record_error(user_id)
+        return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
 
     up_songs, down_songs, details = select_records(song_record, type, command, ver)
     if not up_songs and not down_songs:
@@ -3293,7 +3293,7 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     song_record = read_record(id_use)
 
     if not len(song_record):
-        return record_error(user_id)
+        return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
 
     level_values = parse_level_value(level)
     if not level_values:
