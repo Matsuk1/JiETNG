@@ -243,6 +243,10 @@ def mention_record_error(user_id=None):
     """生成被提到用户无成绩数据错误消息（与 record_error 区分，避免主语错位）"""
     return create_text_message(mention_record_error_text, user_id)
 
+def cannot_do_for_others(user_id=None):
+    """@ 别人但用了仅限本人的命令（如 update / bind / unbind / export）时的拒绝消息"""
+    return create_text_message(cannot_do_for_others_text, user_id)
+
 def get_perm_request_notification_alt_text(count, user_id=None):
     """获取权限请求通知的 alt text"""
     return get_multilingual_text(perm_request_notification_alt_text, user_id).format(count=count)

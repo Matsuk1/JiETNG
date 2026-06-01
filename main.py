@@ -3918,6 +3918,49 @@ def extract_single_mention(event, user_id):
     return None
 
 
+def has_non_bot_mention(event) -> bool:
+    """是否 @ 了至少一个非 bot 用户（不论该用户是否已注册）。
+
+    与 extract_single_mention 不同：这里只关心"有没有 @ 别人"，
+    不要求被 @ 的人在我们系统里注册过。用于拒绝"@ 别人但用了
+    仅限本人命令"的场景。
+    """
+    if not hasattr(event.message, 'mention') or not event.message.mention:
+        return False
+    mentionees = event.message.mention.mentionees
+    if not mentionees:
+        return False
+    for m in mentionees:
+        if not getattr(m, 'is_self', False):
+            return True
+    return False
+
+
+# 仅限本人使用的命令——对账号/数据"做动作"，无法代他人执行。
+# 注意：纯查询类（record / b50 / plate / level-list 等）不在此列表，允许 @ 他人查询。
+_SELF_ONLY_EXACT_COMMANDS = {
+    "maimai update", "update",
+    "bind", "rebind",
+    "unbind", "unbind confirm",
+}
+_SELF_ONLY_REGEX = re.compile(
+    r"^(成績エクスポート|成绩导出|export)\s+(json|xml)\s*$",
+    re.IGNORECASE,
+)
+
+
+def is_self_only_command(text: str) -> bool:
+    """命令是否对发起者本人的账号/数据做动作（不能 @ 别人代办）。"""
+    if not text:
+        return False
+    stripped = text.strip()
+    if stripped.lower() in _SELF_ONLY_EXACT_COMMANDS:
+        return True
+    if _SELF_ONLY_REGEX.match(stripped):
+        return True
+    return False
+
+
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_text_message(event):
     """
@@ -3963,6 +4006,13 @@ def handle_text_message(event):
 
     if original_text != cleaned_text:
         logger.debug(f"[TextCleaning] Cleaned mention: original='{original_text}', cleaned='{cleaned_text}'")
+
+    # @ 了非 bot 用户但用了仅限本人的命令（update / bind / unbind / export 等）→ 拒绝
+    if has_non_bot_mention(event) and is_self_only_command(cleaned_text):
+        uid = event.source.user_id
+        logger.info(f"[Mention] Rejected self-only command via mention: user_id={uid}, cmd={cleaned_text!r}")
+        smart_reply(uid, event.reply_token, cannot_do_for_others(uid), configuration)
+        return
 
     # 检查是否是web任务
     if route_to_web_queue(event):

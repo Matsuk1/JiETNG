@@ -204,6 +204,12 @@ mention_record_error_text = {
     "zh": "看起来被提到的用户还没有更新 maimai 记录！"
 }
 
+cannot_do_for_others_text = {
+    "ja": "ごめん！このコマンドは自分自身にしか使えないよ～他の人の代わりにはできないんだ！",
+    "en": "Sorry! This command can only be used on yourself — I can't do it on someone else's behalf!",
+    "zh": "抱歉！这个命令只能对自己用哦～不可以帮别人做的！"
+}
+
 
 # 权限请求通知相关文本
 perm_request_notification_title_text = {
