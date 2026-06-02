@@ -210,6 +210,19 @@ cannot_do_for_others_text = {
     "zh": "抱歉！这个命令只能对自己用哦，不可以帮别人做的！"
 }
 
+# 有成绩，但本次查询的过滤/条件没匹配到（与"没成绩"区分）
+no_matching_data_text = {
+    "ja": "条件に合うデータがないみたい...",
+    "en": "No data matches the criteria...",
+    "zh": "没有符合条件的数据..."
+}
+
+mention_no_matching_data_text = {
+    "ja": "メンションされたユーザーには条件に合うデータがないみたい...",
+    "en": "The mentioned user has no data matching the criteria...",
+    "zh": "被提到的用户没有符合条件的数据..."
+}
+
 
 # 权限请求通知相关文本
 perm_request_notification_title_text = {

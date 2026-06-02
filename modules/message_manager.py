@@ -247,6 +247,14 @@ def cannot_do_for_others(user_id=None):
     """@ 别人但用了仅限本人的命令（如 update / bind / unbind / export）时的拒绝消息"""
     return create_text_message(cannot_do_for_others_text, user_id)
 
+def no_matching_data(user_id=None):
+    """有成绩，但本次查询的过滤/条件无匹配时返回（与 record_error 区分语义）"""
+    return create_text_message(no_matching_data_text, user_id)
+
+def mention_no_matching_data(user_id=None):
+    """被 @ 的用户有成绩但本次查询无匹配时返回"""
+    return create_text_message(mention_no_matching_data_text, user_id)
+
 def get_perm_request_notification_alt_text(count, user_id=None):
     """获取权限请求通知的 alt text"""
     return get_multilingual_text(perm_request_notification_alt_text, user_id).format(count=count)

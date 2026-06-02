@@ -2581,7 +2581,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None)
         target_data = [d for d in target_data if d["achieved"]]
 
     if not target_data:
-        return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
+        return mention_no_matching_data(user_id) if id_use != user_id else no_matching_data(user_id)
 
     plate_img = generate_plate_image(target_data, title, headers = target_num)
 
@@ -2776,7 +2776,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
             })
 
     if not target_data:
-        return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
+        return mention_no_matching_data(user_id) if id_use != user_id else no_matching_data(user_id)
 
     # 按 filter_mode 过滤数据
     if filter_mode == "uncleared":
@@ -2787,7 +2787,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
         target_data = [d for d in target_data if d["achieved"]]
 
     if not target_data:
-        return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
+        return mention_no_matching_data(user_id) if id_use != user_id else no_matching_data(user_id)
 
     # 生成标题
     level_display = level.replace("+", "⁺")
@@ -3999,7 +3999,9 @@ def handle_text_message(event):
 
     # 删除不可见字符（在删除 mention 之后，避免影响索引）
     cleaned_text = re.sub(r'[\ufffd]', '', cleaned_text)
-    cleaned_text = cleaned_text.strip()
+    # 归一化空白：mention 卡在命令中间删除后会留下双空格，
+    # 否则 `maimai update` 这类精确匹配命令识别不出
+    cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
 
     # 替换 event.message.text 用于命令匹配
     event.message.text = cleaned_text
@@ -4007,12 +4009,30 @@ def handle_text_message(event):
     if original_text != cleaned_text:
         logger.debug(f"[TextCleaning] Cleaned mention: original='{original_text}', cleaned='{cleaned_text}'")
 
-    # @ 了非 bot 用户但用了仅限本人的命令（update / bind / unbind / export 等）→ 拒绝
-    if has_non_bot_mention(event) and is_self_only_command(cleaned_text):
+    # ============================================================
+    # mention 一级拦截（统一在路由前处理，避免下游 dispatcher 各自
+    # 重复判定或静默 fallback）
+    # ============================================================
+    if has_non_bot_mention(event):
         uid = event.source.user_id
-        logger.info(f"[Mention] Rejected self-only command via mention: user_id={uid}, cmd={cleaned_text!r}")
-        smart_reply(uid, event.reply_token, cannot_do_for_others(uid), configuration)
-        return
+
+        # 拦截 1：@ 别人但用了仅限本人的命令（update / bind / unbind / export 等）
+        if is_self_only_command(cleaned_text):
+            logger.info(f"[Mention] Rejected self-only command via mention: user_id={uid}, cmd={cleaned_text!r}")
+            with stats_lock:
+                STATS['tasks_processed'] += 1
+            smart_reply(uid, event.reply_token, cannot_do_for_others(uid), configuration)
+            return
+
+        # 拦截 2：@ 了未注册用户。原本下游 extract_single_mention 会
+        # 静默返回 None，dispatcher 把 id_use 回退到 user_id，导致
+        # 查询走 self 路径——这里改成主动拒绝。
+        if extract_single_mention(event, uid) is None:
+            logger.info(f"[Mention] Rejected query for unregistered mentioned user: user_id={uid}, cmd={cleaned_text!r}")
+            with stats_lock:
+                STATS['tasks_processed'] += 1
+            smart_reply(uid, event.reply_token, mention_error(uid), configuration)
+            return
 
     # 检查是否是web任务
     if route_to_web_queue(event):
