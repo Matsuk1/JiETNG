@@ -2158,31 +2158,37 @@ def get_bot_status(user_id):
     Returns:
         FlexMessage: Bot 状态信息
     """
-    # 计算运行时长
+    # 运行时长
     uptime = datetime.now() - SERVICE_START_TIME
     days = uptime.days
     hours, remainder = divmod(uptime.seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
+    minutes, _ = divmod(remainder, 60)
     uptime_str = f"{days}d {hours}h {minutes}m"
 
-    # 获取系统信息
-    cpu_percent = round(psutil.cpu_percent(interval=0.1), 1)
+    # 用户版本（影响读哪份 dxdata）
+    ver = get_user_field(user_id, 'version', 'jp') if user_id else 'jp'
 
-    memory = psutil.virtual_memory()
-    memory_percent = round(memory.percent, 1)
-    total_memory = round(memory.total / (1024**3), 1)  # GB
-    memory_used_gb = round(memory.used / (1024**3), 1)  # GB
+    # 楽曲データ：曲数 + 文件 mtime
+    try:
+        songs, _ = read_dxdata(ver)
+        song_count = len(songs)
+    except Exception:
+        song_count = 0
+    try:
+        dxdata_date = datetime.fromtimestamp(os.path.getmtime(DXDATA_FILE)).strftime('%Y-%m-%d')
+    except Exception:
+        dxdata_date = "N/A"
 
-    with stats_lock:
-        total_tasks = STATS['tasks_processed']
+    # 今日任务数（复用 business_stats 30s 缓存）
+    tasks_today = get_business_stats().get('today_image_calls', 0)
 
     return generate_bot_status_flex(
         uptime_str=uptime_str,
-        cpu_percent=cpu_percent,
-        memory_percent=memory_percent,
-        memory_used_gb=memory_used_gb,
-        total_memory=total_memory,
-        total_tasks=total_tasks,
+        image_queue_size=image_queue.qsize(),
+        web_queue_size=webtask_queue.qsize(),
+        tasks_today=tasks_today,
+        song_count=song_count,
+        dxdata_date=dxdata_date,
         user_id=user_id
     )
 

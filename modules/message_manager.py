@@ -2352,17 +2352,18 @@ def generate_rc_flex(level: float, rc_data: list, user_id=None):
         contents=FlexContainer.from_dict(bubble)
     )
 
-def generate_bot_status_flex(uptime_str, cpu_percent, memory_percent, memory_used_gb, total_memory, total_tasks, user_id=None):
+def generate_bot_status_flex(uptime_str, image_queue_size, web_queue_size,
+                              tasks_today, song_count, dxdata_date, user_id=None):
     """
     生成 Bot 状态信息 Flex Message
 
     Args:
-        uptime_str: 运行时长字符串
-        cpu_percent: CPU 使用率
-        memory_percent: 内存使用率百分比（已弃用，参数保留兼容）
-        memory_used_gb: 已使用内存（已弃用，参数保留兼容）
-        total_memory: 总内存（已弃用，参数保留兼容）
-        total_tasks: 累计处理任务数
+        uptime_str: 运行时长字符串（如 "1d 4h 22m"）
+        image_queue_size: 图片队列当前排队任务数
+        web_queue_size: web 队列当前排队任务数
+        tasks_today: 今日已处理 image_gen 任务数
+        song_count: dxdata 中的歌曲总数
+        dxdata_date: dxdata 文件 mtime 的日期字符串（YYYY-MM-DD）
         user_id: 用户ID（用于多语言）
 
     Returns:
@@ -2370,108 +2371,42 @@ def generate_bot_status_flex(uptime_str, cpu_percent, memory_percent, memory_use
     """
     lang = get_user_language(user_id)
 
-    # 多语言文本
     texts = {
-        'title': {
-            'ja': 'JiETNG 稼働状態',
-            'en': 'JiETNG Service Status',
-            'zh': 'JiETNG 运行状态'
-        },
-        'uptime': {
-            'ja': '稼働時間',
-            'en': 'Uptime',
-            'zh': '运行时长'
-        },
-        'cpu': {
-            'ja': 'CPU 使用率',
-            'en': 'CPU Usage',
-            'zh': 'CPU 使用率'
-        },
-        'tasks': {
-            'ja': '処理タスク',
-            'en': 'Tasks Processed',
-            'zh': '已处理任务'
-        }
+        'title':       {'ja': 'JiETNG 稼働状態', 'en': 'JiETNG Service Status', 'zh': 'JiETNG 运行状态'},
+        'uptime':      {'ja': '稼働時間',      'en': 'Uptime',          'zh': '运行时长'},
+        'queue':       {'ja': 'キュー状況',    'en': 'Queue Status',    'zh': '队列状态'},
+        'tasks_today': {'ja': '本日のタスク',  'en': 'Tasks Today',     'zh': '今日任务'},
+        'songs':       {'ja': '楽曲データ',    'en': 'Songs DB',        'zh': '歌曲数据'},
     }
+    # "曲" / songs / 首
+    song_unit = {'ja': '曲', 'en': 'songs', 'zh': '首'}[lang]
 
-    content_rows = [
-        # Uptime
-        {
+    queue_busy = (image_queue_size + web_queue_size) > 0
+    queue_text = f"Image {image_queue_size} · Web {web_queue_size}"
+    queue_color = "#FF9500" if queue_busy else "#34C759"
+    songs_text = f"{song_count} {song_unit} · {dxdata_date}"
+
+    def _row(label, value, value_color="#111111", margin="md"):
+        return {
             "type": "box",
             "layout": "horizontal",
             "contents": [
-                {
-                    "type": "text",
-                    "text": texts['uptime'][lang],
-                    "size": "xs",
-                    "color": "#666666",
-                    "flex": 0
-                },
-                {
-                    "type": "text",
-                    "text": uptime_str,
-                    "size": "sm",
-                    "weight": "bold",
-                    "color": "#111111",
-                    "align": "end"
-                }
+                {"type": "text", "text": label, "size": "xs", "color": "#666666", "flex": 0},
+                {"type": "text", "text": value, "size": "sm", "weight": "bold",
+                 "color": value_color, "align": "end"},
             ],
-            "margin": "none"
-        },
-        {
-            "type": "separator",
-            "margin": "md"
-        },
-        # CPU Usage
-        {
-            "type": "box",
-            "layout": "horizontal",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": texts['cpu'][lang],
-                    "size": "xs",
-                    "color": "#666666",
-                    "flex": 0
-                },
-                {
-                    "type": "text",
-                    "text": f"{cpu_percent}%",
-                    "size": "sm",
-                    "weight": "bold",
-                    "color": "#FF9500" if cpu_percent > 70 else "#34C759",
-                    "align": "end"
-                }
-            ],
-            "margin": "md"
-        },
-        {
-            "type": "separator",
-            "margin": "md"
-        },
-        # Tasks Processed
-        {
-            "type": "box",
-            "layout": "horizontal",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": texts['tasks'][lang],
-                    "size": "xs",
-                    "color": "#666666",
-                    "flex": 0
-                },
-                {
-                    "type": "text",
-                    "text": str(total_tasks),
-                    "size": "sm",
-                    "weight": "bold",
-                    "color": "#AF52DE",
-                    "align": "end"
-                }
-            ],
-            "margin": "md"
+            "margin": margin,
         }
+
+    _sep = {"type": "separator", "margin": "md"}
+    content_rows = [
+        _row(texts['uptime'][lang],      uptime_str, margin="none"),
+        _sep,
+        _row(texts['queue'][lang],       queue_text, value_color=queue_color),
+        _sep,
+        _row(texts['tasks_today'][lang], str(tasks_today), value_color="#AF52DE"),
+        _sep,
+        _row(texts['songs'][lang],       songs_text),
     ]
     
     # 获取随机tip和ad并添加到内容中
