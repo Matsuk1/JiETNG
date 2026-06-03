@@ -139,6 +139,11 @@ from modules.message_manager import *
 # Image processing
 from modules.image_uploader import smart_upload, _start_periodic_cleanup
 from modules.export_manager import export_records, start_periodic_cleanup as start_export_cleanup
+from modules.command_router import (
+    Exact, Prefix, Suffix, Regex, FirstWord,
+    Command, CommandContext,
+    QUEUE_SYNC, QUEUE_IMAGE, QUEUE_WEB,
+)
 from modules.image_manager import *
 
 # System utilities
@@ -278,10 +283,9 @@ def set_security_headers(response):
 # 记录服务启动时间和统计
 SERVICE_START_TIME = datetime.now()
 
-# 使用字典存储统计数据,避免global变量问题
+# 使用字典存储统计数据,避免 global 变量问题
 STATS = {
     'tasks_processed': 0,
-    'response_time': 0.0
 }
 stats_lock = threading.Lock()  # 保护统计数据的线程锁
 
@@ -309,8 +313,6 @@ def run_task_with_limit(func: callable, args: tuple, sem: threading.Semaphore,
         task_id: 任务 ID
         is_web_task: 是否是 web 任务
     """
-    start_time = datetime.now()
-
     # 添加到运行中的任务
     if task_id:
         with task_tracking_lock:
@@ -328,8 +330,7 @@ def run_task_with_limit(func: callable, args: tuple, sem: threading.Semaphore,
             task_info = {
                 'id': task_id,
                 'function': func.__name__,
-                'start_time': start_time.strftime('%Y-%m-%d %H:%M:%S'),
-                'user_id': user_id_for_tracking
+                'user_id': user_id_for_tracking,
             }
             task_tracking['running'].append(task_info)
 
@@ -386,39 +387,23 @@ def run_task_with_limit(func: callable, args: tuple, sem: threading.Semaphore,
         thread.join()
         timer.cancel()
 
-        # 任务完成后更新统计(在主流程中,不在子线程中)
-        end_time = datetime.now()
-        response_time = (end_time - start_time).total_seconds() * 1000
-
         # 从运行中的任务移除，并添加到已完成列表
         if task_id:
             with task_tracking_lock:
-                # 找到运行中的任务信息
                 task_info = None
                 for t in task_tracking['running']:
                     if t.get('id') == task_id:
                         task_info = t.copy()
                         break
-
-                # 从运行中移除
                 task_tracking['running'] = [t for t in task_tracking['running'] if t.get('id') != task_id]
-
-                # 添加到已完成列表
                 if task_info:
-                    task_info['end_time'] = end_time.strftime('%Y-%m-%d %H:%M:%S')
-                    task_info['duration'] = f"{response_time/1000:.2f}s"
-
-                    # 在列表开头插入（最新的在前面）
                     task_tracking['completed'].insert(0, task_info)
-
-                    # 保持最多20个已完成任务
                     if len(task_tracking['completed']) > MAX_COMPLETED_TASKS:
                         task_tracking['completed'] = task_tracking['completed'][:MAX_COMPLETED_TASKS]
 
         with stats_lock:
             STATS['tasks_processed'] += 1
-            STATS['response_time'] += response_time
-            logger.info(f"[Task] ✓ Completed: function={func.__name__}, total={STATS['tasks_processed']}, avg_time={STATS['response_time']/STATS['tasks_processed']:.1f}ms")
+            logger.info(f"[Task] ✓ Completed: function={func.__name__}, total={STATS['tasks_processed']}")
 
 
 @notify_on_error("Image Task Worker Error", context={"Worker": "image_worker"}, reraise=False)
@@ -1569,69 +1554,6 @@ def async_get_song_record_by_id_task(event):
 
     smart_reply(user_id, reply_token, reply_msg, configuration)
 
-def _classify_image_command(msg):
-    """根据消息内容识别图片生成命令类型"""
-    msg_lower = msg.lower().strip()
-    msg_clean = re.sub(r"\s*-(uc|up|c)\s*$", "", msg_lower)
-
-    # B 系列命令：统一为规范名称
-    first_word = re.split(r"[ \n]", msg_lower, 1)[0]
-    b_cmd_map = {
-        "b50": "b50", "best50": "b50",
-        "b40": "b40", "best40": "b40",
-        "b35": "b35", "best35": "b35",
-        "b15": "b15", "best15": "b15",
-        "ab35": "ab35", "allb35": "ab35",
-        "ab50": "ab50", "allb50": "ab50",
-        "apb50": "apb50", "ap50": "apb50",
-        "fdxb50": "fdxb50", "fdx50": "fdxb50",
-        "rct50": "rct50", "r50": "rct50",
-        "idealb50": "idealb50", "idlb50": "idealb50",
-        "unknown": "unknown", "unkn": "unknown",
-    }
-    if first_word in b_cmd_map:
-        return b_cmd_map[first_word]
-
-    # 后缀匹配
-    suffix_map = [
-        (("ってどんな曲", "info", "song-info"), "song-info"),
-        (("の達成状況", "achievement"), "plate"),
-        (("のレコード", "song-record", "record"), "song-record"),
-        (("のバージョンリスト", "version-list"), "version-list"),
-        (("の定数リスト", "のレベルリスト", "level-list"), "level-list"),
-        (("のレコードリスト", "record-list", "records"), "record-list"),
-    ]
-    for suffixes, cmd_name in suffix_map:
-        for suffix in suffixes:
-            if msg_clean.endswith(suffix):
-                return cmd_name
-
-    # 进度命令（带/不带 progress 关键词）
-    if re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)", msg_lower):
-        return "progress"
-
-    # 定数列表（纯等级数字）
-    if re.match(r"^(\d+\+?)$", msg_lower):
-        return "level-list"
-
-    # random
-    if msg_lower.startswith("random"):
-        return "random"
-
-    return first_word[:32]
-
-
-def async_generate_image_task(event):
-    """异步图片生成任务 - 在image_queue中执行"""
-    try:
-        user_id = getattr(event.source, 'user_id', None)
-        msg = (event.message.text or '').strip() if getattr(event, 'message', None) else ''
-        cmd = _classify_image_command(msg)
-        track_event('image_gen', user_id=user_id, metadata={'command': cmd, 'source': 'line'})
-    except Exception as e:
-        logger.debug(f"[EventTracker] image_gen track skipped: {e}")
-    handle_sync_text_command(event)
-
 def async_admin_maimai_update_task(event):
     """管理员触发的maimai更新任务 - 在webtask_queue中执行"""
     user_id = event.source.user_id
@@ -2251,16 +2173,8 @@ def get_bot_status(user_id):
     total_memory = round(memory.total / (1024**3), 1)  # GB
     memory_used_gb = round(memory.used / (1024**3), 1)  # GB
 
-    # 线程安全地读取统计数据
     with stats_lock:
         total_tasks = STATS['tasks_processed']
-        total_time = STATS['response_time']
-
-    # 计算平均响应时间
-    if total_tasks > 0:
-        avg_response = f"{round(total_time / total_tasks, 1)} ms"
-    else:
-        avg_response = "N/A"
 
     return generate_bot_status_flex(
         uptime_str=uptime_str,
@@ -2268,7 +2182,7 @@ def get_bot_status(user_id):
         memory_percent=memory_percent,
         memory_used_gb=memory_used_gb,
         total_memory=total_memory,
-        avg_response_time=avg_response,
+        total_tasks=total_tasks,
         user_id=user_id
     )
 
@@ -3393,345 +3307,6 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
 # ==================== 消息处理 ====================
 
 # Web任务路由规则 (需要网络请求的耗时任务)
-WEB_TASK_ROUTES = {
-    # 精确匹配规则
-    'exact': {
-        "maimai update": async_maimai_update_task,
-        "update": async_maimai_update_task,
-        "friend list": async_get_friend_list_task,
-        "friends": async_get_friend_list_task,
-    },
-    # 前缀匹配规则
-    'prefix': {
-        "friend-rcd ": async_generate_friend_record_task,
-        "search-record ": async_get_song_record_by_id_task,
-    },
-    # 后缀匹配规则
-    'suffix': {
-        "のレコード": async_get_song_record_task,
-        "song-record": async_get_song_record_task,
-        "record": async_get_song_record_task,
-    }
-}
-
-def show_loading(user_id):
-    """在私聊中显示加载动画"""
-    try:
-        with ApiClient(configuration) as api_client:
-            MessagingApi(api_client).show_loading_animation(
-                ShowLoadingAnimationRequest(chatId=user_id, loadingSeconds=20)
-            )
-    except Exception:
-        pass
-
-def route_to_web_queue(event):
-    """
-    路由消息到Web任务队列
-
-    Args:
-        event: LINE消息事件
-
-    Returns:
-        bool: True表示已路由到web队列, False表示不是web任务
-    """
-    user_message = event.message.text.strip()
-    user_id = event.source.user_id
-
-    # 检查精确匹配的web任务
-    if user_message in WEB_TASK_ROUTES['exact']:
-        task_func = WEB_TASK_ROUTES['exact'][user_message]
-
-        # 频率限制检查
-        if check_rate_limit(user_id, task_func.__name__):
-            smart_reply(user_id, event.reply_token, rate_limit_msg(user_id), configuration)
-            return True
-
-        try:
-            # 生成任务ID
-            task_id = f"user_{user_id}_{datetime.now().timestamp()}"
-
-            # 获取用户昵称
-            nickname = get_user_nickname_wrapper(user_id, use_cache=True)
-
-            # 添加到任务追踪
-            with task_tracking_lock:
-                task_tracking['queued'].append({
-                    'id': task_id,
-                    'function': task_func.__name__,
-                    'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'user_id': user_id,
-                    'nickname': nickname
-                })
-
-            show_loading(user_id)
-            webtask_queue.put_nowait((task_func, (event,), task_id))
-            return True
-        except queue.Full:
-            smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
-            return True
-
-    # 检查前缀匹配的web任务
-    for prefix, task_func in WEB_TASK_ROUTES['prefix'].items():
-        if user_message.startswith(prefix):
-            # 频率限制检查
-            if check_rate_limit(user_id, task_func.__name__):
-                smart_reply(user_id, event.reply_token, rate_limit_msg(user_id), configuration)
-                return True
-
-            try:
-                # 生成任务ID
-                task_id = f"user_{user_id}_{datetime.now().timestamp()}"
-
-                # 获取用户昵称
-                nickname = get_user_nickname_wrapper(user_id, use_cache=True)
-
-                # 添加到任务追踪
-                with task_tracking_lock:
-                    task_tracking['queued'].append({
-                        'id': task_id,
-                        'function': task_func.__name__,
-                        'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        'user_id': user_id,
-                        'nickname': nickname
-                    })
-
-                show_loading(user_id)
-                webtask_queue.put_nowait((task_func, (event,), task_id))
-                return True
-            except queue.Full:
-                smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
-                return True
-
-    # 检查后缀匹配的web任务
-    for suffix, task_func in WEB_TASK_ROUTES['suffix'].items():
-        if user_message.endswith(suffix):
-            # 频率限制检查
-            if check_rate_limit(user_id, task_func.__name__):
-                smart_reply(user_id, event.reply_token, rate_limit_msg(user_id), configuration)
-                return True
-
-            try:
-                # 生成任务ID
-                task_id = f"user_{user_id}_{datetime.now().timestamp()}"
-
-                # 获取用户昵称
-                nickname = get_user_nickname_wrapper(user_id, use_cache=True)
-
-                # 添加到任务追踪
-                with task_tracking_lock:
-                    task_tracking['queued'].append({
-                        'id': task_id,
-                        'function': task_func.__name__,
-                        'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        'user_id': user_id,
-                        'nickname': nickname
-                    })
-
-                show_loading(user_id)
-                webtask_queue.put_nowait((task_func, (event,), task_id))
-                return True
-            except queue.Full:
-                smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
-                return True
-
-    # 不是web任务,返回False
-    return False
-
-# 图片生成任务路由规则
-IMAGE_TASK_ROUTES = {
-    # 精确匹配规则 - 这些命令会生成图片
-    'exact': {},
-    # 前缀匹配规则
-    'prefix': [],
-    # 后缀匹配规则
-    'suffix': [
-        ("ってどんな曲", "info", "song-info"),
-        ("の達成状況", "achievement"),
-        ("のレコード", "song-record", "record"),
-        ("のバージョンリスト", "version-list"),
-        ("の定数リスト", "のレベルリスト", "level-list")
-    ],
-    # B系列命令 (生成图片)
-    'b_commands': {
-        "b50", "best50",
-        "b40", "best40",
-        "b35", "best35",
-        "b15", "best15",
-        "ab35", "allb35",
-        "ab50", "allb50",
-        "apb50", "ap50",
-        "fdxb50", "fdx50",
-        "rct50", "r50",
-        "idealb50", "idlb50",
-        "unknown"
-    }
-}
-
-def route_to_image_queue(event):
-    """
-    路由消息到图片生成任务队列
-
-    Args:
-        event: LINE消息事件
-
-    Returns:
-        bool: True表示已路由到image队列, False表示不是图片生成任务
-    """
-    user_message = event.message.text.strip()
-    user_id = event.source.user_id
-
-    # 剥离末尾过滤后缀（-uc / -up），用于后续匹配
-    msg_for_match = re.sub(r"\s*-(uc|up|c)\s*$", "", user_message)
-
-    # 检查精确匹配的图片生成任务
-    if msg_for_match in IMAGE_TASK_ROUTES['exact']:
-        # 频率限制检查 - 使用消息类型作为任务类型
-        if check_rate_limit(user_id, f"image:{user_message}"):
-            smart_reply(user_id, event.reply_token, rate_limit_msg(user_id), configuration)
-            return True
-
-        try:
-            task_id = f"image_{user_id}_{datetime.now().timestamp()}"
-            nickname = get_user_nickname_wrapper(user_id, use_cache=True)
-
-            with task_tracking_lock:
-                task_tracking['queued'].append({
-                    'id': task_id,
-                    'function': 'async_generate_image_task',
-                    'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'user_id': user_id,
-                    'nickname': nickname
-                })
-
-            show_loading(user_id)
-            image_queue.put_nowait((async_generate_image_task, (event,), task_id))
-            return True
-        except queue.Full:
-            smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
-            return True
-
-    # 检查后缀匹配的图片生成任务（用剥离过滤后缀后的消息匹配）
-    for suffixes in IMAGE_TASK_ROUTES['suffix']:
-        for suffix in suffixes:
-            if msg_for_match.endswith(suffix):
-                try:
-                    task_id = f"image_{user_id}_{datetime.now().timestamp()}"
-                    nickname = get_user_nickname_wrapper(user_id, use_cache=True)
-
-                    with task_tracking_lock:
-                        task_tracking['queued'].append({
-                            'id': task_id,
-                            'function': 'async_generate_image_task',
-                            'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                            'user_id': user_id,
-                            'nickname': nickname
-                        })
-
-                    show_loading(user_id)
-                    image_queue.put_nowait((async_generate_image_task, (event,), task_id))
-                    return True
-                except queue.Full:
-                    smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
-                    return True
-
-    # 检查レコードリスト (带数字的)
-    if re.match(r".+(のレコードリスト|record-list)[ 　]*\d*$", user_message):
-        try:
-            task_id = f"image_{user_id}_{datetime.now().timestamp()}"
-            nickname = get_user_nickname_wrapper(user_id, use_cache=True)
-
-            with task_tracking_lock:
-                task_tracking['queued'].append({
-                    'id': task_id,
-                    'function': 'async_generate_image_task',
-                    'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'user_id': user_id,
-                    'nickname': nickname
-                })
-
-            show_loading(user_id)
-            image_queue.put_nowait((async_generate_image_task, (event,), task_id))
-            return True
-        except queue.Full:
-            smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
-            return True
-
-    # 检查 B 系列命令
-    first_word = re.split(r"[ \n]", user_message.lower(), 1)[0]
-    if first_word in IMAGE_TASK_ROUTES['b_commands']:
-        # 频率限制检查 - B系列命令使用统一的限制
-        if check_rate_limit(user_id, "image:b_series"):
-            smart_reply(user_id, event.reply_token, rate_limit_msg(user_id), configuration)
-            return True
-
-        try:
-            task_id = f"image_{user_id}_{datetime.now().timestamp()}"
-            nickname = get_user_nickname_wrapper(user_id, use_cache=True)
-
-            with task_tracking_lock:
-                task_tracking['queued'].append({
-                    'id': task_id,
-                    'function': 'async_generate_image_task',
-                    'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'user_id': user_id,
-                    'nickname': nickname
-                })
-
-            show_loading(user_id)
-            image_queue.put_nowait((async_generate_image_task, (event,), task_id))
-            return True
-        except queue.Full:
-            smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
-            return True
-
-    # 检查 ランダム曲 / random-song
-    if user_message.startswith("random"):
-        try:
-            task_id = f"image_{user_id}_{datetime.now().timestamp()}"
-            nickname = get_user_nickname_wrapper(user_id, use_cache=True)
-
-            with task_tracking_lock:
-                task_tracking['queued'].append({
-                    'id': task_id,
-                    'function': 'async_generate_image_task',
-                    'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'user_id': user_id,
-                    'nickname': nickname
-                })
-
-            show_loading(user_id)
-            image_queue.put_nowait((async_generate_image_task, (event,), task_id))
-            return True
-        except queue.Full:
-            smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
-            return True
-
-    # 检查难度评级进度命令（如 "13sss+進捗", "14AP progress", "15SSS進捗-uc"）
-    if re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)\s*(?:-(uc|up|c))?\s*$", user_message.lower()):
-        try:
-            task_id = f"image_{user_id}_{datetime.now().timestamp()}"
-            nickname = get_user_nickname_wrapper(user_id, use_cache=True)
-
-            with task_tracking_lock:
-                task_tracking['queued'].append({
-                    'id': task_id,
-                    'function': 'async_generate_image_task',
-                    'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'user_id': user_id,
-                    'nickname': nickname
-                })
-
-            show_loading(user_id)
-            image_queue.put_nowait((async_generate_image_task, (event,), task_id))
-            return True
-        except queue.Full:
-            smart_reply(user_id, event.reply_token, access_error(user_id), configuration)
-            return True
-
-    # 不是图片生成任务
-    return False
-
-
 def handle_accept_perm_request(user_id: str, request_id: str) -> TextMessage:
     """
     处理接受权限请求的命令
@@ -3936,160 +3511,36 @@ def has_non_bot_mention(event) -> bool:
     return False
 
 
-# 仅限本人使用的命令——对账号/数据"做动作"，无法代他人执行。
-# 注意：纯查询类（record / b50 / plate / level-list 等）不在此列表，允许 @ 他人查询。
-_SELF_ONLY_EXACT_COMMANDS = {
-    "maimai update", "update",
-    "bind", "rebind",
-    "unbind", "unbind confirm",
-}
-_SELF_ONLY_REGEX = re.compile(
-    r"^(成績エクスポート|成绩导出|export)\s+(json|xml)\s*$",
-    re.IGNORECASE,
-)
 
 
-def is_self_only_command(text: str) -> bool:
-    """命令是否对发起者本人的账号/数据做动作（不能 @ 别人代办）。"""
-    if not text:
-        return False
-    stripped = text.strip()
-    if stripped.lower() in _SELF_ONLY_EXACT_COMMANDS:
-        return True
-    if _SELF_ONLY_REGEX.match(stripped):
-        return True
-    return False
+# ============================================================
+# 命令派发 / Command Dispatch
+# 替代散落在 main.py 的 6 个分发表：WEB_TASK_ROUTES / IMAGE_TASK_ROUTES /
+# RANK_COMMANDS（仍保留为数据）/ COMMAND_MAP / SPECIAL_RULES / 内联 if-block
+# 设计：modules/command_router.py
+# ============================================================
+
+def show_loading(user_id):
+    """在私聊中显示加载动画（队列任务入队前调用）"""
+    try:
+        with ApiClient(configuration) as api_client:
+            MessagingApi(api_client).show_loading_animation(
+                ShowLoadingAnimationRequest(chatId=user_id, loadingSeconds=20)
+            )
+    except Exception:
+        pass
 
 
-@handler.add(MessageEvent, message=TextMessageContent)
-def handle_text_message(event):
-    """
-    文本消息处理入口
-
-    根据消息类型智能路由:
-    - Web任务 → webtask_queue (网络请求，如 maimai_update)
-    - 图片生成任务 → image_queue (图片生成，如 b50 等)
-    - 其他任务 → 同步处理 (快速文本响应)
-    """
-    # 标记消息为已读（使用 webhook 提供的 token）
-    mark_as_read_token = getattr(event.message, 'mark_as_read_token', None)
-    mark_message_as_read(mark_as_read_token, event.source.user_id)
-
-    # 检查 mention 情况 - @ALL 或多个 @ 时直接忽略不回复
-    if check_mention_filter(event):
-        return
-
-    # 清理消息文本中的 mention 特殊字符（LINE 的 mention 格式是 \ufffd@显示名\ufffd）
-    # 移除所有不可见的 Unicode 字符和 @ 后的用户名
-    original_text = event.message.text
-    cleaned_text = original_text
-
-    # 如果有 mention 信息，使用官方 API 提供的索引精确删除
-    # 参考: https://developers.line.biz/en/docs/messaging-api/receiving-messages/
-    # 注意：会删除所有 mention 文本（包括 @bot 和 @user）
-    if hasattr(event.message, 'mention') and event.message.mention and event.message.mention.mentionees:
-        # 从后往前删除，避免索引偏移问题
-        # mentionees 数组包含 index（起始位置）和 length（长度）属性
-        for mentionee in reversed(event.message.mention.mentionees):
-            if hasattr(mentionee, 'index') and hasattr(mentionee, 'length'):
-                start = mentionee.index
-                end = start + mentionee.length
-                # 精确删除 mention 文本（包括 @bot，支持包含空格的用户名）
-                cleaned_text = cleaned_text[:start] + cleaned_text[end:]
-
-    # 删除不可见字符（在删除 mention 之后，避免影响索引）
-    cleaned_text = re.sub(r'[\ufffd]', '', cleaned_text)
-    # 归一化空白：mention 卡在命令中间删除后会留下双空格，
-    # 否则 `maimai update` 这类精确匹配命令识别不出
-    cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
-
-    # 替换 event.message.text 用于命令匹配
-    event.message.text = cleaned_text
-
-    if original_text != cleaned_text:
-        logger.debug(f"[TextCleaning] Cleaned mention: original='{original_text}', cleaned='{cleaned_text}'")
-
-    # ============================================================
-    # mention 一级拦截（统一在路由前处理，避免下游 dispatcher 各自
-    # 重复判定或静默 fallback）
-    # ============================================================
-    if has_non_bot_mention(event):
-        uid = event.source.user_id
-
-        # 拦截 1：@ 别人但用了仅限本人的命令（update / bind / unbind / export 等）
-        if is_self_only_command(cleaned_text):
-            logger.info(f"[Mention] Rejected self-only command via mention: user_id={uid}, cmd={cleaned_text!r}")
-            with stats_lock:
-                STATS['tasks_processed'] += 1
-            smart_reply(uid, event.reply_token, cannot_do_for_others(uid), configuration)
-            return
-
-        # 拦截 2：@ 了未注册用户。原本下游 extract_single_mention 会
-        # 静默返回 None，dispatcher 把 id_use 回退到 user_id，导致
-        # 查询走 self 路径——这里改成主动拒绝。
-        if extract_single_mention(event, uid) is None:
-            logger.info(f"[Mention] Rejected query for unregistered mentioned user: user_id={uid}, cmd={cleaned_text!r}")
-            with stats_lock:
-                STATS['tasks_processed'] += 1
-            smart_reply(uid, event.reply_token, mention_error(uid), configuration)
-            return
-
-    # 检查是否是web任务
-    if route_to_web_queue(event):
-        return
-
-    # 检查是否是图片生成任务
-    if route_to_image_queue(event):
-        return
-
-    # 同步处理其他文本命令
-    handle_sync_text_command(event)
-
-
-# ==================== 任务处理函数 ====================
-
-def handle_sync_text_command(event):
-    """
-    同步处理文本命令 - 直接在主线程执行
-
-    命令分类：
-    1. 基础命令 - donate, unbind, profile, friend list
-    2. 模糊匹配命令 - 歌曲查询、Rating 对照、达成情况等
-    3. B 系列命令 - b50, rct50, apb50 等
-    4. 特殊命令 - bind, language, calc
-    5. 管理员命令 - dxdata update, devtoken
-    """
-    # 记录开始时间以统计响应时间
-    start_time = time.time()
-
-    def tracked_reply(user_id, reply_token, reply_message, addition=True):
-        """包装 smart_reply 并更新统计"""
-        # 计算响应时间
-        response_time = (time.time() - start_time) * 1000  # 转换为毫秒
-
-        # 更新统计
-        with stats_lock:
-            STATS['tasks_processed'] += 1
-            STATS['response_time'] += response_time
-            logger.debug(f"[Sync] ✓ Command processed: total={STATS['tasks_processed']}, avg_time={STATS['response_time']/STATS['tasks_processed']:.1f}ms")
-
-        return smart_reply(user_id, reply_token, reply_message, configuration, addition)
-
-    user_message = event.message.text.strip()
+def _build_command_context(event, cleaned_text):
+    """从 event + 已清洗文本构造 CommandContext"""
     user_id = event.source.user_id
     source_type = getattr(event.source, 'type', 'user')
-    # ========================================
-    # 用户上下文初始化
-    # ========================================
-
-    # 检查 @ mention（提取被提到的用户 ID）
     mentioned_user_id = extract_single_mention(event, user_id)
+    has_other = has_non_bot_mention(event)
 
-    # 初始化用户版本和目标用户
     _cur_user = get_user(user_id)
     if _cur_user:
         mai_ver = _cur_user.get("version", "jp")
-        # 只有当 mentioned_user_id 存在且已注册时才使用
         id_use = mentioned_user_id if mentioned_user_id else user_id
         _target_user = get_user(id_use) if id_use != user_id else _cur_user
         mai_ver_use = _target_user.get("version", "jp") if _target_user else mai_ver
@@ -4098,286 +3549,430 @@ def handle_sync_text_command(event):
         mai_ver = "jp"
         mai_ver_use = "jp"
 
-    # ========================================
-    # 0. Unbind 命令特殊处理（需要二次确认）
-    # ========================================
-    UNBIND_COMMANDS = ["unbind"]
-    if user_message in UNBIND_COMMANDS:
-        # 第一步：返回确认提示
-        reply_message = TextMessage(text=get_multilingual_text(unbind_confirm_text, user_id))
-        return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+    return CommandContext(
+        event=event, text=cleaned_text, user_id=user_id,
+        source_type=source_type, reply_token=event.reply_token,
+        mentioned_user_id=mentioned_user_id,
+        has_other_mention=has_other, id_use=id_use,
+        mai_ver=mai_ver, mai_ver_use=mai_ver_use,
+    )
 
-    UNBIND_CONFIRM_COMMANDS = ["unbind confirm"]
-    if user_message in UNBIND_CONFIRM_COMMANDS:
-        # 第二步：执行解绑操作
-        reply_message = user_unbind(user_id)
-        return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
 
-    # ========================================
-    # 1. 基础命令 - 精确匹配
-    # ========================================
-    COMMAND_MAP = {
-        # 捐赠
-        "donate": lambda: donate_message,
+def _bump_stats():
+    with stats_lock:
+        STATS['tasks_processed'] += 1
 
-        # 账户管理
-        "profile": lambda: get_user_info(user_id, source_type),
-        "getme": lambda: get_user_info(user_id, source_type),
 
-        # 系统状态
-        "status": lambda: get_bot_status(user_id),
-    }
+def _run_sync_handler(cmd, ctx):
+    """同步执行 sync/image handler 并 reply（image worker 也会调到这里）"""
+    reply = cmd.handler(ctx)
+    if reply is not None:
+        _bump_stats()
+        smart_reply(ctx.user_id, ctx.reply_token, reply, configuration, cmd.addition)
 
-    if user_message in COMMAND_MAP:
-        reply_message = COMMAND_MAP[user_message]()
-        return tracked_reply(user_id, event.reply_token, reply_message)
 
-    # ========================================
-    # 2. 模糊匹配命令 - 规则匹配
-    # ========================================
-    SPECIAL_RULES = [
-        # 排行榜（rank/ranking [jp/intl]）
-        (lambda msg: re.match(r"^(rank|ranking)(\s+(jp|intl))?$", msg),
-         lambda msg: get_ranking(user_id, id_use, re.match(r"^(rank|ranking)(\s+(jp|intl))?$", msg).group(3))),
+def _image_worker_task(cmd, ctx):
+    """image worker 真正执行的入口：track + 调 handler + reply"""
+    try:
+        track_event('image_gen', user_id=ctx.user_id,
+                    metadata={'command': cmd.name, 'source': 'line'})
+    except Exception as e:
+        logger.debug(f"[EventTracker] image_gen track skipped: {e}")
+    _run_sync_handler(cmd, ctx)
 
-        # 歌曲搜索（通过ID）
-        (lambda msg: msg.startswith("search ") and len(msg.split()) == 2 and len(msg.split()[1]) == 6,
-         lambda msg: asyncio.run(search_song_by_id(user_id, msg.split()[1], mai_ver))),
 
-        # Calc （通过ID）
-        (lambda msg: msg.startswith("calc-song ") and len(msg.split()) == 2 and len(msg.split()[1]) == 6,
-         lambda msg: calc_by_id(user_id, msg.split()[1], mai_ver)),
+def _enqueue_task(cmd, ctx, target_queue, lane_name, payload):
+    """通用入队 + task_tracking + show_loading + queue.Full 回退"""
+    try:
+        task_id = f"{lane_name}_{ctx.user_id}_{datetime.now().timestamp()}"
+        nickname = get_user_nickname_wrapper(ctx.user_id, use_cache=True)
+        with task_tracking_lock:
+            task_tracking['queued'].append({
+                'id': task_id,
+                'function': cmd.name or cmd.handler.__name__,
+                'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'user_id': ctx.user_id,
+                'nickname': nickname,
+            })
+        show_loading(ctx.user_id)
+        target_queue.put_nowait((*payload, task_id))
+    except queue.Full:
+        smart_reply(ctx.user_id, ctx.reply_token, access_error(ctx.user_id), configuration)
 
-        # 艺术家搜索（artist <keyword> [page]）
-        (lambda msg: msg.startswith("artist ") and len(msg.split()) >= 2,
-         lambda msg: search_by_artist(
-             user_id,
-             ' '.join(msg.split()[1:-1]) if msg.split()[-1].isdigit() and len(msg.split()) >= 3 else ' '.join(msg.split()[1:]),
-             mai_ver,
-             int(msg.split()[-1]) if msg.split()[-1].isdigit() and len(msg.split()) >= 3 else 1,
-             source_type)),
 
-        # 谱面设计师搜索（designer <keyword> [page]）
-        (lambda msg: msg.startswith("designer ") and len(msg.split()) >= 2,
-         lambda msg: search_by_designer(
-             user_id,
-             ' '.join(msg.split()[1:-1]) if msg.split()[-1].isdigit() and len(msg.split()) >= 3 else ' '.join(msg.split()[1:]),
-             mai_ver,
-             int(msg.split()[-1]) if msg.split()[-1].isdigit() and len(msg.split()) >= 3 else 1,
-             source_type)),
+def dispatch_command(ctx):
+    """扫 COMMANDS 表，找到第一个命中的命令并按 queue 派发。"""
+    for cmd in COMMANDS:
+        m = cmd.try_match(ctx.text)
+        if m is None:
+            continue
+        ctx.match = m
 
-        # 歌曲信息查询
-        (lambda msg: msg.endswith(("ってどんな曲", "info", "song-info")),
-         lambda msg: asyncio.run(search_song(user_id, re.sub(r"\s*(ってどんな曲|info|song-info)$", "", msg).strip(), mai_ver))),
+        # 拦截 1：@ 别人但用了仅限本人的命令
+        if cmd.self_only and ctx.has_other_mention:
+            _bump_stats()
+            smart_reply(ctx.user_id, ctx.reply_token,
+                        cannot_do_for_others(ctx.user_id), configuration)
+            return True
 
-        # 随机歌曲
-        (lambda msg: msg.startswith("random"),
-         lambda msg: asyncio.run(random_song(user_id, re.sub(r"^(random)", "", msg).strip(), mai_ver))),
+        # 拦截 2：mention_queryable 命令 + @ 了未注册用户
+        if (cmd.mention_queryable and ctx.has_other_mention
+                and ctx.mentioned_user_id is None):
+            _bump_stats()
+            smart_reply(ctx.user_id, ctx.reply_token,
+                        mention_error(ctx.user_id), configuration)
+            return True
 
-        # Rating 对照表
-        (lambda msg: msg.startswith(("rc ", "RC ", "Rc ")),
-         lambda msg: handle_rc_command(msg, user_id)),
+        # 频率限制
+        if cmd.rate_limit_key is not None:
+            if check_rate_limit(ctx.user_id, cmd.rate_limit_key):
+                smart_reply(ctx.user_id, ctx.reply_token,
+                            rate_limit_msg(ctx.user_id), configuration)
+                return True
 
-        # 成绩导出（export json / export xml / 成績エクスポート json / 成绩导出 xml）
-        (lambda msg: re.match(r"^(成績エクスポート|成绩导出|export)\s+(json|xml)\s*$", msg, re.IGNORECASE) is not None,
-         lambda msg: handle_export_command(
-             user_id,
-             re.match(r"^(成績エクスポート|成绩导出|export)\s+(json|xml)\s*$", msg, re.IGNORECASE).group(2).lower())),
+        # 派发
+        if cmd.queue == QUEUE_SYNC:
+            _run_sync_handler(cmd, ctx)
+        elif cmd.queue == QUEUE_IMAGE:
+            _enqueue_task(cmd, ctx, image_queue, "image",
+                          (_image_worker_task, (cmd, ctx)))
+        elif cmd.queue == QUEUE_WEB:
+            # web handler 签名 (event) → 兼容现有 async_*_task
+            _enqueue_task(cmd, ctx, webtask_queue, "web",
+                          (cmd.handler, (ctx.event,)))
+        return True
+    return False
 
-        # 版本达成情况（支持 -uc/-up 过滤）
-        (lambda msg: re.sub(r"\s*-(uc|up|c)\s*$", "", msg).endswith(("の達成状況", "achievement")),
-         lambda msg: asyncio.run(generate_plate_rcd(
-             user_id, id_use,
-             re.sub(r"\s*(の達成状況|achievement)$", "", re.sub(r"\s*-(uc|up|c)\s*$", "", msg)).strip(),
-             mai_ver_use,
-             filter_mode="uncleared" if re.search(r"-uc\s*$", msg) else ("unplayed" if re.search(r"-up\s*$", msg) else ("cleared" if re.search(r"-c\s*$", msg) else None))))),
 
-        # 等级成绩列表
-        (lambda msg: re.match(r".+(のレコードリスト|record-list|records)[ 　]*\d*$", msg),
-         lambda msg: asyncio.run(generate_level_records(
-             user_id,
-             id_use,
-             re.sub(r"\s*(のレコードリスト|record-list|records)[ 　]*\d*$", "", msg).strip(),
-             mai_ver_use,
-             int(re.search(r"(\d+)$", msg).group(1)) if re.search(r"(\d+)$", msg) else 1))),
+# ---- sync/image 命令 handlers，签名 (ctx) -> Optional[Message] ----
 
-        # 版本歌曲列表
-        (lambda msg: msg.endswith(("のバージョンリスト", "version-list")),
-         lambda msg: asyncio.run(generate_version_songs(user_id, re.sub(r"\s*\+\s*", " PLUS", re.sub(r"(のバージョンリスト|version-list)$", "", msg)).strip(), mai_ver))),
+def cmd_donate(ctx):
+    return donate_message
 
-        # 定数查询
-        (lambda msg: msg.endswith(("の定数リスト", "のレベルリスト", "level-list")),
-         lambda msg: asyncio.run(generate_level_rank_progress(user_id, user_id, re.sub(r"\s*(の定数リスト|のレベルリスト|level-list)$", "", msg), ver=mai_ver))),
+def cmd_profile(ctx):
+    return get_user_info(ctx.user_id, ctx.source_type)
 
-        # 难度+评级达成情况（如 "13sss+進捗", "14AP progress-uc", "15SSS進捗 -up"）
-        (lambda msg: re.match(r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)\s*(?:-(uc|up|c))?\s*$", msg.lower()),
-         lambda msg: asyncio.run(generate_level_rank_progress(
-             user_id,
-             id_use,
-             re.match(r"^(\d+\+?)", msg.lower()).group(1),
-             re.search(r"(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)", msg.lower()).group(1),
-             mai_ver_use,
-             filter_mode="uncleared" if re.search(r"-uc\s*$", msg.lower()) else ("unplayed" if re.search(r"-up\s*$", msg.lower()) else ("cleared" if re.search(r"-c\s*$", msg.lower()) else None))))),
+def cmd_status(ctx):
+    return get_bot_status(ctx.user_id)
 
-        # 权限请求管理
-        (lambda msg: msg.startswith("accept-perm-request "),
-         lambda msg: handle_accept_perm_request(user_id, re.sub(r"^accept-perm-request ", "", msg).strip())),
+def cmd_unbind_prompt(ctx):
+    return TextMessage(text=get_multilingual_text(unbind_confirm_text, ctx.user_id))
 
-        (lambda msg: msg.startswith("reject-perm-request "),
-         lambda msg: handle_reject_perm_request(user_id, re.sub(r"^reject-perm-request ", "", msg).strip()))
-    ]
+def cmd_unbind_execute(ctx):
+    return user_unbind(ctx.user_id)
 
-    for cond, func in SPECIAL_RULES:
-        if cond(user_message):
-            reply_message = func(user_message)
-            return tracked_reply(user_id, event.reply_token, reply_message)
+def cmd_ranking(ctx):
+    ver_arg = ctx.match.group(3) if ctx.match else None
+    return get_ranking(ctx.user_id, ctx.id_use, ver_arg)
 
-    # ========================================
-    # 3. B 系列命令 - 成绩排行
-    # ========================================
-    first_word = re.split(r"[ \n]", user_message.lower(), 1)[0]
-    rest_text = re.split(r"[ \n]", user_message.lower(), 1)[1] if re.search(r"[ \n]", user_message) else ""
+def cmd_search_by_id(ctx):
+    return asyncio.run(search_song_by_id(ctx.user_id, ctx.match.group(1), ctx.mai_ver))
 
-    for aliases, mode in RANK_COMMANDS.items():
-        if first_word in aliases:
-            reply_message = asyncio.run(generate_records(user_id, id_use, mode, rest_text, mai_ver_use))
-            return tracked_reply(user_id, event.reply_token, reply_message)
+def cmd_calc_song(ctx):
+    return calc_by_id(ctx.user_id, ctx.match.group(1), ctx.mai_ver)
 
-    # ========================================
-    # 4. SEGA ID 绑定
-    # ========================================
-    BIND_COMMANDS = ["bind"]
-    if user_message.lower() in BIND_COMMANDS:
-        # 检查是否在群聊中发送
-        source_type = getattr(event.source, 'type', 'user')
-        if source_type != 'user':
-            # 在群聊中，返回警告消息
-            reply_message = TextMessage(text=get_multilingual_text(bind_group_warning_text, user_id))
-            return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+def cmd_artist(ctx):
+    parts = ctx.text.split()
+    if parts[-1].isdigit() and len(parts) >= 3:
+        keyword = ' '.join(parts[1:-1]); page = int(parts[-1])
+    else:
+        keyword = ' '.join(parts[1:]); page = 1
+    return search_by_artist(ctx.user_id, keyword, ctx.mai_ver, page, ctx.source_type)
 
-        # 检查是否已经绑定账号
-        add_user(user_id)
-        user_data = get_user(user_id) or {}
-        has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
+def cmd_designer(ctx):
+    parts = ctx.text.split()
+    if parts[-1].isdigit() and len(parts) >= 3:
+        keyword = ' '.join(parts[1:-1]); page = int(parts[-1])
+    else:
+        keyword = ' '.join(parts[1:]); page = 1
+    return search_by_designer(ctx.user_id, keyword, ctx.mai_ver, page, ctx.source_type)
 
-        if has_account:
-            # 已经绑定过账号，提示先解绑
-            reply_message = TextMessage(text=get_multilingual_text(already_bound_text, user_id))
-            return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+def cmd_song_info(ctx):
+    keyword = re.sub(r"\s*(ってどんな曲|info|song-info)$", "", ctx.text).strip()
+    return asyncio.run(search_song(ctx.user_id, keyword, ctx.mai_ver))
 
-        # 返回绑定链接
-        bind_url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(user_id)}"
-        buttons_template = ButtonsTemplate(
-            title=sega_bind_title_text,
-            text=sega_bind_description_text,
-            actions=[URIAction(
-                label=sega_bind_button_text,
-                uri=bind_url
-            )]
-        )
-        reply_message = TemplateMessage(
-            alt_text=sega_bind_alt_text,
-            template=buttons_template
-        )
+def cmd_random_song(ctx):
+    keyword = re.sub(r"^random", "", ctx.text).strip()
+    return asyncio.run(random_song(ctx.user_id, keyword, ctx.mai_ver))
 
-        return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+def cmd_rc(ctx):
+    return handle_rc_command(ctx.text, ctx.user_id)
 
-    # ========================================
-    # 5 账号重新绑定 (rebind)
-    # ========================================
-    REBIND_COMMANDS = ["rebind"]
-    if user_message.lower() in REBIND_COMMANDS:
-        # 检查是否在群聊中发送
-        source_type = getattr(event.source, 'type', 'user')
-        if source_type != 'user':
-            reply_message = TextMessage(text=get_multilingual_text(rebind_group_warning_text, user_id))
-            return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+def cmd_export(ctx):
+    fmt = ctx.match.group(2).lower()
+    return handle_export_command(ctx.user_id, fmt)
 
-        # 检查用户是否已绑定账号
-        user_data = get_user(user_id) or {}
-        has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
+def cmd_plate(ctx):
+    msg = ctx.text
+    title = re.sub(r"\s*(の達成状況|achievement)$", "",
+                   re.sub(r"\s*-(uc|up|c)\s*$", "", msg)).strip()
+    filter_mode = ("uncleared" if re.search(r"-uc\s*$", msg) else
+                   "unplayed" if re.search(r"-up\s*$", msg) else
+                   "cleared" if re.search(r"-c\s*$", msg) else None)
+    return asyncio.run(generate_plate_rcd(
+        ctx.user_id, ctx.id_use, title, ctx.mai_ver_use, filter_mode=filter_mode))
 
-        if not has_account:
-            reply_message = TextMessage(text=get_multilingual_text(rebind_not_bound_text, user_id))
-            return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+def cmd_level_records(ctx):
+    msg = ctx.text
+    level = re.sub(r"\s*(のレコードリスト|record-list|records)[ 　]*\d*$", "", msg).strip()
+    pm = re.search(r"(\d+)$", msg)
+    page = int(pm.group(1)) if pm else 1
+    return asyncio.run(generate_level_records(
+        ctx.user_id, ctx.id_use, level, ctx.mai_ver_use, page))
 
-        rebind_url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(user_id)}&mode=rebind"
+def cmd_version_songs(ctx):
+    msg = ctx.text
+    title = re.sub(r"\s*\+\s*", " PLUS",
+                   re.sub(r"(のバージョンリスト|version-list)$", "", msg)).strip()
+    return asyncio.run(generate_version_songs(ctx.user_id, title, ctx.mai_ver))
 
-        buttons_template = ButtonsTemplate(
-            title=get_multilingual_text(rebind_title_alt_text, user_id),
-            text=get_multilingual_text(rebind_description_text, user_id),
-            actions=[URIAction(
-                label=get_multilingual_text(rebind_button_text, user_id),
-                uri=rebind_url
-            )]
-        )
-        reply_message = TemplateMessage(
-            alt_text=get_multilingual_text(rebind_title_alt_text, user_id),
-            template=buttons_template
-        )
+def cmd_level_rank_list(ctx):
+    """の定数リスト / のレベルリスト / level-list
+    旧实现传 user_id 而非 id_use（即使 @ 别人也查自己），保留以维持原行为。"""
+    level = re.sub(r"\s*(の定数リスト|のレベルリスト|level-list)$", "", ctx.text)
+    return asyncio.run(generate_level_rank_progress(
+        ctx.user_id, ctx.user_id, level, ver=ctx.mai_ver))
 
-        return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+def cmd_level_rank_progress(ctx):
+    """难度 + 评级 + 进度，如 \"13sss+進捗\" / \"14AP progress -uc\""""
+    msg_lower = ctx.text.lower()
+    level = re.match(r"^(\d+\+?)", msg_lower).group(1)
+    rank = re.search(r"(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)",
+                     msg_lower).group(1)
+    filter_mode = ("uncleared" if re.search(r"-uc\s*$", msg_lower) else
+                   "unplayed" if re.search(r"-up\s*$", msg_lower) else
+                   "cleared" if re.search(r"-c\s*$", msg_lower) else None)
+    return asyncio.run(generate_level_rank_progress(
+        ctx.user_id, ctx.id_use, level, rank, ctx.mai_ver_use,
+        filter_mode=filter_mode))
 
-    # ========================================
-    # 5b 个人设置 (settings)
-    # ========================================
-    SETTINGS_COMMANDS = ["settings"]
-    if user_message.lower() in SETTINGS_COMMANDS:
-        # 检查是否在群聊中发送
-        source_type = getattr(event.source, 'type', 'user')
-        if source_type != 'user':
-            reply_message = TextMessage(text=get_multilingual_text(settings_group_warning_text, user_id))
-            return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+def cmd_b_records(ctx):
+    """b50 / best50 / ab50 / ... → generate_records；mode 由 RANK_COMMANDS 解析"""
+    msg_lower = ctx.text.lower()
+    splits = re.split(r"[ \n]", msg_lower, 1)
+    first = splits[0]
+    rest = splits[1] if len(splits) > 1 else ""
+    mode = None
+    for aliases, mode_value in RANK_COMMANDS.items():
+        if first in aliases:
+            mode = mode_value
+            break
+    if mode is None:
+        return input_error(ctx.user_id)  # matcher 保证不会到这
+    return asyncio.run(generate_records(
+        ctx.user_id, ctx.id_use, mode, rest, ctx.mai_ver_use))
 
-        # 检查用户是否已绑定账号
-        user_data = get_user(user_id) or {}
-        has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
+def cmd_accept_perm(ctx):
+    rid = re.sub(r"^accept-perm-request ", "", ctx.text, flags=re.IGNORECASE).strip()
+    return handle_accept_perm_request(ctx.user_id, rid)
 
-        if not has_account:
-            reply_message = TextMessage(text=get_multilingual_text(rebind_not_bound_text, user_id))
-            return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+def cmd_reject_perm(ctx):
+    rid = re.sub(r"^reject-perm-request ", "", ctx.text, flags=re.IGNORECASE).strip()
+    return handle_reject_perm_request(ctx.user_id, rid)
 
-        settings_url = f"https://{DOMAIN}/linebot/settings?token={generate_settings_token(user_id)}"
+def cmd_calc_notes(ctx):
+    """calc <tap> <hold> <slide> [touch] <break>"""
+    try:
+        num = list(map(int, ctx.text[5:].split()))
+        if len(num) == 4:
+            num = [num[0], num[1], num[2], 0, num[3]]
+        if len(num) != 5:
+            raise ValueError
+        notes = dict(zip(['tap', 'hold', 'slide', 'touch', 'break'], num))
+        return generate_calc_result_flex(notes, get_note_score(notes))
+    except Exception:
+        return input_error(ctx.user_id)
 
-        buttons_template = ButtonsTemplate(
-            title=get_multilingual_text(settings_title_alt_text, user_id),
-            text=get_multilingual_text(settings_description_text, user_id),
-            actions=[URIAction(
-                label=get_multilingual_text(settings_button_text, user_id),
-                uri=settings_url
-            )]
-        )
-        reply_message = TemplateMessage(
-            alt_text=get_multilingual_text(settings_title_alt_text, user_id),
-            template=buttons_template
-        )
 
-        return tracked_reply(user_id, event.reply_token, reply_message, addition=False)
+# ---- bind / rebind / settings 共用小工具 ----
 
-    # ========================================
-    # 6. Calc 计算器
-    # ========================================
-    if user_message.startswith("calc "):
-        try:
-            num = list(map(int, user_message[5:].split()))
-            if len(num) == 4:
-                num = [num[0], num[1], num[2], 0, num[3]]
-            if len(num) != 5:
-                raise ValueError
-            notes = dict(zip(['tap', 'hold', 'slide', 'touch', 'break'], num))
-            scores = get_note_score(notes)
-            reply_message = generate_calc_result_flex(notes, scores)
-        except Exception:
-            reply_message = input_error(user_id)
-        return tracked_reply(user_id, event.reply_token, reply_message)
+def _check_private_or_warn(ctx, warn_text_dict):
+    if ctx.source_type != 'user':
+        return TextMessage(text=get_multilingual_text(warn_text_dict, ctx.user_id))
+    return None
 
-    # ========================================
-    # 默认：未匹配任何命令
-    # ========================================
-    return
+def _has_full_account(user_data):
+    return all(k in user_data for k in ['sega_id', 'sega_pwd', 'version'])
 
-#位置信息处理
-@handler.add(MessageEvent, message=LocationMessageContent)
+def cmd_bind(ctx):
+    warn = _check_private_or_warn(ctx, bind_group_warning_text)
+    if warn is not None:
+        return warn
+    add_user(ctx.user_id)
+    if _has_full_account(get_user(ctx.user_id) or {}):
+        return TextMessage(text=get_multilingual_text(already_bound_text, ctx.user_id))
+    url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(ctx.user_id)}"
+    return TemplateMessage(
+        alt_text=sega_bind_alt_text,
+        template=ButtonsTemplate(
+            title=sega_bind_title_text, text=sega_bind_description_text,
+            actions=[URIAction(label=sega_bind_button_text, uri=url)],
+        ),
+    )
+
+def cmd_rebind(ctx):
+    warn = _check_private_or_warn(ctx, rebind_group_warning_text)
+    if warn is not None:
+        return warn
+    if not _has_full_account(get_user(ctx.user_id) or {}):
+        return TextMessage(text=get_multilingual_text(rebind_not_bound_text, ctx.user_id))
+    url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(ctx.user_id)}&mode=rebind"
+    return TemplateMessage(
+        alt_text=get_multilingual_text(rebind_title_alt_text, ctx.user_id),
+        template=ButtonsTemplate(
+            title=get_multilingual_text(rebind_title_alt_text, ctx.user_id),
+            text=get_multilingual_text(rebind_description_text, ctx.user_id),
+            actions=[URIAction(label=get_multilingual_text(rebind_button_text, ctx.user_id), uri=url)],
+        ),
+    )
+
+def cmd_settings(ctx):
+    warn = _check_private_or_warn(ctx, settings_group_warning_text)
+    if warn is not None:
+        return warn
+    if not _has_full_account(get_user(ctx.user_id) or {}):
+        return TextMessage(text=get_multilingual_text(rebind_not_bound_text, ctx.user_id))
+    url = f"https://{DOMAIN}/linebot/settings?token={generate_settings_token(ctx.user_id)}"
+    return TemplateMessage(
+        alt_text=get_multilingual_text(settings_title_alt_text, ctx.user_id),
+        template=ButtonsTemplate(
+            title=get_multilingual_text(settings_title_alt_text, ctx.user_id),
+            text=get_multilingual_text(settings_description_text, ctx.user_id),
+            actions=[URIAction(label=get_multilingual_text(settings_button_text, ctx.user_id), uri=url)],
+        ),
+    )
+
+
+# ---- B 系列命令的 first-word 集合（从 RANK_COMMANDS 自动展开）----
+_B_COMMAND_WORDS = tuple(sorted({alias for aliases in RANK_COMMANDS for alias in aliases}))
+
+
+# ---- 命令注册表 ----
+# 顺序：web > image > sync。同一文本不应被多个命令命中，命中即停。
+# self_only=True 集合与旧 _SELF_ONLY_EXACT_COMMANDS 保持一致（preserves prior behavior）。
+COMMANDS = [
+    # ============ Web tasks ============
+    Command(Exact("maimai update", "update"),
+            async_maimai_update_task, queue=QUEUE_WEB,
+            self_only=True, rate_limit_key="async_maimai_update_task",
+            name="maimai_update"),
+    Command(Exact("friend list", "friends"),
+            async_get_friend_list_task, queue=QUEUE_WEB,
+            rate_limit_key="async_get_friend_list_task",
+            name="friend_list"),
+    Command(Prefix("friend-rcd "),
+            async_generate_friend_record_task, queue=QUEUE_WEB,
+            rate_limit_key="async_generate_friend_record_task",
+            name="friend_rcd"),
+    Command(Prefix("search-record "),
+            async_get_song_record_by_id_task, queue=QUEUE_WEB,
+            rate_limit_key="async_get_song_record_by_id_task",
+            name="search_record"),
+    Command(Suffix("のレコード", "song-record", "record"),
+            async_get_song_record_task, queue=QUEUE_WEB,
+            mention_queryable=True,
+            rate_limit_key="async_get_song_record_task",
+            name="song_record"),
+
+    # ============ Image tasks ============
+    Command(Regex(r".+(のレコードリスト|record-list|records)[ 　]*\d*$"),
+            cmd_level_records, queue=QUEUE_IMAGE, mention_queryable=True,
+            name="level_records"),
+    Command(Regex(
+        r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)\s*(?:-(uc|up|c))?\s*$",
+        re.IGNORECASE),
+            cmd_level_rank_progress, queue=QUEUE_IMAGE, mention_queryable=True,
+            name="level_rank_progress"),
+    Command(Suffix("ってどんな曲", "info", "song-info"),
+            cmd_song_info, queue=QUEUE_IMAGE,
+            name="song_info"),
+    Command(Regex(r"^.+(の達成状況|achievement)(\s*-(uc|up|c))?\s*$"),
+            cmd_plate, queue=QUEUE_IMAGE, mention_queryable=True,
+            name="plate"),
+    Command(Suffix("のバージョンリスト", "version-list"),
+            cmd_version_songs, queue=QUEUE_IMAGE,
+            name="version_songs"),
+    Command(Suffix("の定数リスト", "のレベルリスト", "level-list"),
+            cmd_level_rank_list, queue=QUEUE_IMAGE,
+            name="level_rank_list"),
+    Command(FirstWord(*_B_COMMAND_WORDS),
+            cmd_b_records, queue=QUEUE_IMAGE, mention_queryable=True,
+            rate_limit_key="image:b_series",
+            name="b_records"),
+    Command(Prefix("random"),
+            cmd_random_song, queue=QUEUE_IMAGE,
+            name="random_song"),
+
+    # ============ Sync commands ============
+    Command(Exact("unbind"), cmd_unbind_prompt,
+            self_only=True, addition=False, name="unbind_prompt"),
+    Command(Exact("unbind confirm"), cmd_unbind_execute,
+            self_only=True, addition=False, name="unbind_execute"),
+    Command(Exact("bind"), cmd_bind,
+            self_only=True, addition=False, name="bind"),
+    Command(Exact("rebind"), cmd_rebind,
+            self_only=True, addition=False, name="rebind"),
+    Command(Exact("settings"), cmd_settings,
+            self_only=True, addition=False, name="settings"),
+
+    Command(Exact("donate"), cmd_donate, name="donate"),
+    Command(Exact("profile", "getme"), cmd_profile, name="profile"),
+    Command(Exact("status"), cmd_status, name="status"),
+
+    Command(Regex(r"^(rank|ranking)(\s+(jp|intl))?$"),
+            cmd_ranking, name="ranking"),
+    Command(Regex(r"^search\s+(\S{6})$"),
+            cmd_search_by_id, name="search_by_id"),
+    Command(Regex(r"^calc-song\s+(\S{6})$"),
+            cmd_calc_song, name="calc_song"),
+    Command(Prefix("artist "), cmd_artist, name="artist"),
+    Command(Prefix("designer "), cmd_designer, name="designer"),
+    Command(Prefix("rc "), cmd_rc, name="rc"),
+
+    Command(Regex(r"^(成績エクスポート|成绩导出|export)\s+(json|xml)\s*$",
+                  re.IGNORECASE),
+            cmd_export, self_only=True, name="export"),
+
+    Command(Prefix("accept-perm-request "), cmd_accept_perm, name="accept_perm"),
+    Command(Prefix("reject-perm-request "), cmd_reject_perm, name="reject_perm"),
+
+    Command(Prefix("calc "), cmd_calc_notes, name="calc_notes"),
+]
+
+
+@handler.add(MessageEvent, message=TextMessageContent)
+def handle_text_message(event):
+    """文本消息入口：mention 清洗 → 构建 CommandContext → dispatch_command。
+
+    所有匹配/拦截/queue 路由逻辑都收敛到 dispatch_command（见 COMMANDS 表 +
+    modules/command_router.py）。
+    """
+    mark_message_as_read(getattr(event.message, 'mark_as_read_token', None),
+                         event.source.user_id)
+
+    # @ALL / 3+ mention → 忽略
+    if check_mention_filter(event):
+        return
+    # 清洗 mention 文本（按 mentionee.index/length 精确删除）+ 归一空白
+    original_text = event.message.text
+    cleaned_text = original_text
+    if hasattr(event.message, 'mention') and event.message.mention and event.message.mention.mentionees:
+        for mentionee in reversed(event.message.mention.mentionees):
+            if hasattr(mentionee, 'index') and hasattr(mentionee, 'length'):
+                start = mentionee.index
+                end = start + mentionee.length
+                cleaned_text = cleaned_text[:start] + cleaned_text[end:]
+    cleaned_text = re.sub(r'[\ufffd]', '', cleaned_text)
+    cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+    event.message.text = cleaned_text  # 兼容下游 async_*_task 读 event.message.text
+
+    if original_text != cleaned_text:
+        logger.debug(f"[TextCleaning] Cleaned mention: original='{original_text}', cleaned='{cleaned_text}'")
+
+    dispatch_command(_build_command_context(event, cleaned_text))
+
+# ==================== 任务处理函数 ====================
+
 def handle_location_message(event):
     """
     位置消息处理 - 异步获取附近机厅
@@ -4496,16 +4091,8 @@ def handle_postback(event):
         # 创建模拟事件，使用 postback data 作为消息文本
         mock_event = MockMessageEvent(event, postback_data)
 
-        # 检查是否是web任务
-        if route_to_web_queue(mock_event):
-            return
-
-        # 检查是否是图片生成任务
-        if route_to_image_queue(mock_event):
-            return
-
-        # 同步处理文本命令（走和 MessageEvent 相同的逻辑）
-        handle_sync_text_command(mock_event)
+        # 走和 MessageEvent 相同的派发逻辑
+        dispatch_command(_build_command_context(mock_event, postback_data))
 
     except Exception as e:
         logger.error(f"[Postback] ✗ Error processing postback: user_id={user_id}, data={postback_data}, error={e}")
@@ -4682,13 +4269,8 @@ def admin_panel():
     # 获取线程信息
     thread_count = threading.active_count()
 
-    # 线程安全地读取统计数据
     with stats_lock:
         total_tasks = STATS['tasks_processed']
-        total_time = STATS['response_time']
-
-    # 计算平均响应时间
-    avg_response = round(total_time / total_tasks if total_tasks > 0 else 0, 1)
 
     stats = {
         'total_users': total_users,
@@ -4713,7 +4295,6 @@ def admin_panel():
         'max_queue_size': MAX_QUEUE_SIZE,
         'thread_count': thread_count,
         'total_tasks_processed': total_tasks,
-        'avg_response_time': avg_response,
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
@@ -6719,7 +6300,6 @@ def api_get_task(task_id):
                         "success": True,
                         "task_id": task_id,
                         "status": "running",
-                        "start_time": task.get('start_time')
                     })
 
             # 检查任务是否在队列中
@@ -6729,8 +6309,7 @@ def api_get_task(task_id):
                         "success": True,
                         "task_id": task_id,
                         "status": "queued",
-                        "queued_time": task.get('queued_time'),
-                        "queue_position": task_tracking['queued'].index(task) + 1
+                        "queue_position": task_tracking['queued'].index(task) + 1,
                     })
 
             # 检查任务是否已完成
@@ -6740,10 +6319,7 @@ def api_get_task(task_id):
                         "success": True,
                         "task_id": task_id,
                         "status": "completed",
-                        "start_time": task.get('start_time'),
-                        "end_time": task.get('end_time'),
-                        "duration": task.get('duration'),
-                        "result": task.get('result', 'success')
+                        "result": task.get('result', 'success'),
                     })
 
         # 任务不存在
@@ -7089,7 +6665,7 @@ def api_v2_generate_record_image(user_id):
         gc.collect(0)
 
         logger.info(f"[API] v2 Image generated: user_id={user_id}, command={command}, token_id={token_info['token_id']}")
-        track_event('image_gen', user_id=user_id, metadata={'command': _classify_image_command(command)})
+        track_event('image_gen', user_id=user_id, metadata={'command': command, 'source': 'api'})
         return _send_image_response(buf)
 
     except Exception as e:

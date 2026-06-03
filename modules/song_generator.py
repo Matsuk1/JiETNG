@@ -1,7 +1,6 @@
 from PIL import Image, ImageDraw
 from modules.record_generator import create_thumbnail_in_line, _get_difficulty_color, generate_cover
 from modules.image_manager import *
-from modules.config_loader import ICON_TYPE_DIR
 
 def song_info_generate(song_json, played_data = [], timezone_offset=9, ver="jp", bg_filter=None):
     img1 = resize_by_width(_render_basic_info_image(song_json, ver), 900)

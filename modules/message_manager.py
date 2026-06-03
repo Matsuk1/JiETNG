@@ -2352,17 +2352,17 @@ def generate_rc_flex(level: float, rc_data: list, user_id=None):
         contents=FlexContainer.from_dict(bubble)
     )
 
-def generate_bot_status_flex(uptime_str, cpu_percent, memory_percent, memory_used_gb, total_memory, avg_response_time, user_id=None):
+def generate_bot_status_flex(uptime_str, cpu_percent, memory_percent, memory_used_gb, total_memory, total_tasks, user_id=None):
     """
     生成 Bot 状态信息 Flex Message
 
     Args:
         uptime_str: 运行时长字符串
         cpu_percent: CPU 使用率
-        memory_percent: 内存使用率百分比（已弃用）
-        memory_used_gb: 已使用内存（已弃用）
-        total_memory: 总内存（已弃用）
-        avg_response_time: 平均响应时间字符串
+        memory_percent: 内存使用率百分比（已弃用，参数保留兼容）
+        memory_used_gb: 已使用内存（已弃用，参数保留兼容）
+        total_memory: 总内存（已弃用，参数保留兼容）
+        total_tasks: 累计处理任务数
         user_id: 用户ID（用于多语言）
 
     Returns:
@@ -2387,10 +2387,10 @@ def generate_bot_status_flex(uptime_str, cpu_percent, memory_percent, memory_use
             'en': 'CPU Usage',
             'zh': 'CPU 使用率'
         },
-        'response': {
-            'ja': '平均応答',
-            'en': 'Avg Response',
-            'zh': '平均响应'
+        'tasks': {
+            'ja': '処理タスク',
+            'en': 'Tasks Processed',
+            'zh': '已处理任务'
         }
     }
 
@@ -2449,21 +2449,21 @@ def generate_bot_status_flex(uptime_str, cpu_percent, memory_percent, memory_use
             "type": "separator",
             "margin": "md"
         },
-        # Average Response Time
+        # Tasks Processed
         {
             "type": "box",
             "layout": "horizontal",
             "contents": [
                 {
                     "type": "text",
-                    "text": texts['response'][lang],
+                    "text": texts['tasks'][lang],
                     "size": "xs",
                     "color": "#666666",
                     "flex": 0
                 },
                 {
                     "type": "text",
-                    "text": avg_response_time,
+                    "text": str(total_tasks),
                     "size": "sm",
                     "weight": "bold",
                     "color": "#AF52DE",
