@@ -248,7 +248,7 @@ RANK_COMMANDS = {
     ("fdxb50", "fdx50"): "fdxb50",
     ("rct50", "r50"): "rct50",
     ("idealb50", "idlb50"): "idlb50",
-    ("unknown", "unkn"): "unknown",
+    ("unknown",): "unknown",
 }
 
 # 启用 CSRF 保护
@@ -3511,8 +3511,6 @@ def has_non_bot_mention(event) -> bool:
     return False
 
 
-
-
 # ============================================================
 # 命令派发 / Command Dispatch
 # 替代散落在 main.py 的 6 个分发表：WEB_TASK_ROUTES / IMAGE_TASK_ROUTES /
@@ -3925,8 +3923,8 @@ COMMANDS = [
             cmd_search_by_id, name="search_by_id"),
     Command(Regex(r"^calc-song\s+(\S{6})$"),
             cmd_calc_song, name="calc_song"),
-    Command(Prefix("artist "), cmd_artist, name="artist"),
-    Command(Prefix("designer "), cmd_designer, name="designer"),
+    Command(Prefix("artist "), cmd_artist, name="search_by_artist"),
+    Command(Prefix("designer "), cmd_designer, name="search_by_designer"),
     Command(Prefix("rc "), cmd_rc, name="rc"),
 
     Command(Regex(r"^(成績エクスポート|成绩导出|export)\s+(json|xml)\s*$",
