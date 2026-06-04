@@ -249,7 +249,8 @@ def _compute_business_stats() -> tuple[dict, bool]:
     ok = True
     out = {
         'dau': 0, 'wau': 0, 'mau': 0, 'stickiness': 0.0,
-        'today_new_users': 0, 'today_image_calls': 0, 'today_webhook_msgs': 0,
+        'today_new_users': 0, 'today_image_calls': 0, 'today_sync_cmd_calls': 0,
+        'today_webhook_msgs': 0,
         'today_bindings': 0, 'today_unbinds': 0,
         'today_sync_total': 0, 'today_sync_success': 0, 'sync_success_rate': 0.0,
         'image_command_breakdown': [],
@@ -285,6 +286,8 @@ def _compute_business_stats() -> tuple[dict, bool]:
         """)
         out['today_image_calls'] = _scalar(cursor,
             "SELECT COUNT(*) FROM events WHERE event_type='image_gen' AND ts >= CURDATE()")
+        out['today_sync_cmd_calls'] = _scalar(cursor,
+            "SELECT COUNT(*) FROM events WHERE event_type='sync_cmd' AND ts >= CURDATE()")
         out['today_webhook_msgs'] = _scalar(cursor,
             "SELECT COUNT(*) FROM events WHERE event_type='line_webhook' AND ts >= CURDATE()")
         # today_bindings：今日全部绑定动作（首绑 + 重绑），按 distinct user_id 去重

@@ -2179,8 +2179,9 @@ def get_bot_status(user_id):
     except Exception:
         dxdata_date = "N/A"
 
-    # 今日任务数（复用 business_stats 30s 缓存）
-    tasks_today = get_business_stats().get('today_image_calls', 0)
+    # 今日任务数 = image_gen + sync_cmd（复用 business_stats 30s 缓存）
+    bs = get_business_stats()
+    tasks_today = bs.get('today_image_calls', 0) + bs.get('today_sync_cmd_calls', 0)
 
     return generate_bot_status_flex(
         uptime_str=uptime_str,
@@ -3569,6 +3570,13 @@ def _bump_stats():
 
 def _run_sync_handler(cmd, ctx):
     """同步执行 sync/image handler 并 reply（image worker 也会调到这里）"""
+    # 只为真正的 sync queue 命令打点；image queue 已在 _image_worker_task 里打过 image_gen
+    if cmd.queue == QUEUE_SYNC:
+        try:
+            track_event('sync_cmd', user_id=ctx.user_id,
+                        metadata={'command': cmd.name, 'source': 'line'})
+        except Exception as e:
+            logger.debug(f"[EventTracker] sync_cmd track skipped: {e}")
     reply = cmd.handler(ctx)
     if reply is not None:
         _bump_stats()
