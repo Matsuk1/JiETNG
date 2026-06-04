@@ -980,27 +980,34 @@
       <!-- Image command breakdown -->
       {% if stats.image_command_breakdown %}
       {% set cmd_labels = {
-        'b50': 'Best 50',
-        'b40': 'Best 40',
-        'b35': 'Best 35',
-        'b15': 'Best 15',
-        'ab35': 'All Best 35',
-        'ab50': 'All Best 50',
-        'apb50': 'AP Best 50',
-        'fdxb50': 'FDX Best 50',
-        'rct50': 'Recent 50',
-        'idealb50': 'Ideal Best 50',
-        'unknown': 'Unknown',
-        'song-info': 'Song Info',
-        'song-record': 'Song Record',
-        'song-record-id': 'Song Record (ID)',
-        'friend-rcd': 'Friend Record',
-        'plate': 'Plate',
-        'progress': 'Progress',
-        'level-list': 'Level List',
-        'version-list': 'Version List',
-        'record-list': 'Record List',
-        'random': 'Random Song'
+        'b_records':           'B-Records (best/ap/fdx/rct/ideal/unknown)',
+        'song_info':           'Song Info',
+        'plate':               'Plate',
+        'version_songs':       'Version Songs',
+        'level_rank_list':     'Level / Constant List',
+        'level_rank_progress': 'Level + Rank Progress',
+        'level_records':       'Level Records',
+        'random_song':         'Random Song',
+        'song-record':         'Song Record',
+        'song-record-id':      'Song Record (ID)',
+        'friend-rcd':          'Friend Record',
+        'song-info':           'Song Info (API)',
+        'progress':            'Progress (API)',
+        'level-list':          'Level List (API)',
+        'b50':         'Best 50 (legacy)',
+        'b40':         'Best 40 (legacy)',
+        'b35':         'Best 35 (legacy)',
+        'b15':         'Best 15 (legacy)',
+        'ab35':        'All Best 35 (legacy)',
+        'ab50':        'All Best 50 (legacy)',
+        'apb50':       'AP Best 50 (legacy)',
+        'fdxb50':      'FDX Best 50 (legacy)',
+        'rct50':       'Recent 50 (legacy)',
+        'idealb50':    'Ideal Best 50 (legacy)',
+        'unknown':     'Unknown (legacy)',
+        'random':      'Random Song (legacy)',
+        'version-list': 'Version List (legacy)',
+        'record-list':  'Record List (legacy)'
       } %}
       <div class="section">
         <div class="section-title" id="breakdown-title">Image calls breakdown (today)</div>
@@ -3523,13 +3530,24 @@
     }
 
     var _cmdLabels = {
-      'b50': 'Best 50', 'b40': 'Best 40', 'b35': 'Best 35', 'b15': 'Best 15',
-      'ab35': 'All Best 35', 'ab50': 'All Best 50', 'apb50': 'AP Best 50',
-      'fdxb50': 'FDX Best 50', 'rct50': 'Recent 50', 'idealb50': 'Ideal Best 50',
-      'unknown': 'Unknown', 'song-info': 'Song Info', 'song-record': 'Song Record',
-      'song-record-id': 'Song Record (ID)', 'friend-rcd': 'Friend Record',
-      'plate': 'Plate', 'progress': 'Progress', 'level-list': 'Level List',
-      'version-list': 'Version List', 'record-list': 'Record List', 'random': 'Random Song'
+      // 新版命令路由（cmd.name，snake_case）
+      'b_records': 'B-Records (best/ap/fdx/rct/ideal/unknown)',
+      'song_info': 'Song Info', 'plate': 'Plate',
+      'version_songs': 'Version Songs', 'level_rank_list': 'Level / Constant List',
+      'level_rank_progress': 'Level + Rank Progress',
+      'level_records': 'Level Records', 'random_song': 'Random Song',
+      // web async tasks + API 端点
+      'song-record': 'Song Record', 'song-record-id': 'Song Record (ID)',
+      'friend-rcd': 'Friend Record', 'song-info': 'Song Info (API)',
+      'progress': 'Progress (API)', 'level-list': 'Level List (API)',
+      // 历史数据（重构前事件，可能仍在 DB）
+      'b50': 'Best 50 (legacy)', 'b40': 'Best 40 (legacy)',
+      'b35': 'Best 35 (legacy)', 'b15': 'Best 15 (legacy)',
+      'ab35': 'All Best 35 (legacy)', 'ab50': 'All Best 50 (legacy)',
+      'apb50': 'AP Best 50 (legacy)', 'fdxb50': 'FDX Best 50 (legacy)',
+      'rct50': 'Recent 50 (legacy)', 'idealb50': 'Ideal Best 50 (legacy)',
+      'unknown': 'Unknown (legacy)', 'random': 'Random Song (legacy)',
+      'version-list': 'Version List (legacy)', 'record-list': 'Record List (legacy)'
     };
 
     function _loadDateData(date) {
