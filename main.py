@@ -3985,6 +3985,7 @@ def handle_text_message(event):
 
 # ==================== 任务处理函数 ====================
 
+@handler.add(MessageEvent, message=LocationMessageContent)
 def handle_location_message(event):
     """
     位置消息处理 - 异步获取附近机厅
