@@ -1052,65 +1052,8 @@ def _parse_distance_meters(s: str) -> float:
     return value * 1000 if m.group(2).lower() == 'km' else value
 
 
-async def get_nearby_maimai_stores_merged(lat, lng):
-    """同时拉 jp 与 intl 两个数据源，合并去重 + 按距离排序。
-
-    返回规则：
-      - 两端都 MAINTENANCE → 返回 "MAINTENANCE"
-      - 仅一端 MAINTENANCE / 异常 / 空 → 用另一端的数据
-      - 两端都有数据 → 按 (name, address) 去重，按距离升序
-    """
-    results = await asyncio.gather(
-        get_nearby_maimai_stores(lat, lng, "jp"),
-        get_nearby_maimai_stores(lat, lng, "intl"),
-        return_exceptions=True,
-    )
-    jp_stores, intl_stores = results
-
-    if isinstance(jp_stores, Exception):
-        logger.error(f"[Stores] jp fetch failed: {jp_stores}")
-        jp_stores = []
-    if isinstance(intl_stores, Exception):
-        logger.error(f"[Stores] intl fetch failed: {intl_stores}")
-        intl_stores = []
-
-    jp_maint = jp_stores == "MAINTENANCE"
-    intl_maint = intl_stores == "MAINTENANCE"
-    if jp_maint and intl_maint:
-        return "MAINTENANCE"
-
-    merged = []
-    if not jp_maint and isinstance(jp_stores, list):
-        merged.extend(jp_stores)
-    if not intl_maint and isinstance(intl_stores, list):
-        merged.extend(intl_stores)
-
-    # 去重：同名 + 同地址只留先到的一条（跨语言名称的同一机厅难以可靠识别，
-    # 这里只 dedupe 严格相同的项；先到的保持优先）
-    seen = set()
-    unique = []
-    for s in merged:
-        key = (s.get('name', '').strip(), s.get('address', '').strip())
-        if not key[0] or key in seen:
-            continue
-        seen.add(key)
-        unique.append(s)
-
-    unique.sort(key=lambda s: _parse_distance_meters(s.get('distance', '')))
-    return unique
-
-
-async def get_nearby_maimai_stores(lat, lng, ver="jp"):
-    """异步版本的 get_nearby_maimai_stores
-
-    Args:
-        lat: 纬度
-        lng: 经度
-        ver: 版本 (jp/intl)
-
-    Returns:
-        list: 店铺列表
-    """
+async def _fetch_stores_for_ver(lat, lng, ver):
+    """单一版本的店铺查询（jp=gm96 / intl=gm98）。内部 helper。"""
     version_num = "98" if ver == "intl" else "96"
     url = f"https://location.am-all.net/alm/location?gm={version_num}&lat={lat}&lng={lng}"
 
@@ -1158,3 +1101,57 @@ async def get_nearby_maimai_stores(lat, lng, ver="jp"):
             })
 
         return stores
+
+
+async def get_nearby_maimai_stores(lat, lng):
+    """异步查询附近机厅 —— 同时拉 jp + intl 两数据源合并去重 + 按距离升序排序。
+
+    返回规则：
+      - 两端都 MAINTENANCE → "MAINTENANCE"
+      - 仅一端 MAINTENANCE / 异常 → 用另一端的数据
+      - 按 (name, address) 严格去重；按距离升序（无法解析的距离排到末尾）
+
+    Args:
+        lat: 纬度
+        lng: 经度
+
+    Returns:
+        list[dict] 店铺列表，或 "MAINTENANCE" 字符串
+    """
+    results = await asyncio.gather(
+        _fetch_stores_for_ver(lat, lng, "jp"),
+        _fetch_stores_for_ver(lat, lng, "intl"),
+        return_exceptions=True,
+    )
+    jp_stores, intl_stores = results
+
+    if isinstance(jp_stores, Exception):
+        logger.error(f"[Stores] jp fetch failed: {jp_stores}")
+        jp_stores = []
+    if isinstance(intl_stores, Exception):
+        logger.error(f"[Stores] intl fetch failed: {intl_stores}")
+        intl_stores = []
+
+    jp_maint = jp_stores == "MAINTENANCE"
+    intl_maint = intl_stores == "MAINTENANCE"
+    if jp_maint and intl_maint:
+        return "MAINTENANCE"
+
+    merged = []
+    if not jp_maint and isinstance(jp_stores, list):
+        merged.extend(jp_stores)
+    if not intl_maint and isinstance(intl_stores, list):
+        merged.extend(intl_stores)
+
+    # 去重：同名 + 同地址只留先到的一条（跨语言同店难可靠识别，仅去严格相同项）
+    seen = set()
+    unique = []
+    for s in merged:
+        key = (s.get('name', '').strip(), s.get('address', '').strip())
+        if not key[0] or key in seen:
+            continue
+        seen.add(key)
+        unique.append(s)
+
+    unique.sort(key=lambda s: _parse_distance_meters(s.get('distance', '')))
+    return unique

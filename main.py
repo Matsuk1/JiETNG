@@ -3998,8 +3998,7 @@ def handle_location_message(event):
     lng = event.message.longitude
     user_id = event.source.user_id
 
-    # 同时查 jp + intl 两个数据源，合并去重 + 按距离排序
-    stores = asyncio.run(get_nearby_maimai_stores_merged(lat, lng))
+    stores = asyncio.run(get_nearby_maimai_stores(lat, lng))
 
     # 检查维护状态
     if stores == "MAINTENANCE":
