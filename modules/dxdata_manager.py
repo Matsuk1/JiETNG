@@ -3,8 +3,13 @@ import json
 import os
 import copy
 import hashlib
-from datetime import datetime
+import logging
+import threading
+import time
+from datetime import datetime, timedelta
 from modules.config_loader import MAIMAI_VERSION, DXDATA_VERSION_FILE, OVERRIDE_FILE, apply_override
+
+logger = logging.getLogger(__name__)
 
 def merge_json(source, target):
     """递归合并两个 JSON 结构（dict / list / 基础类型）"""
@@ -363,3 +368,67 @@ def generate_song_unique_id(image_name, chart_type, title):
     short_id = hash_obj.digest()[:3].hex()
 
     return short_id
+
+
+# ----------------------------------------------------------------------------
+# 定时更新调度器：每周日 22:00（服务器本地时间）自动跑一次
+# ----------------------------------------------------------------------------
+
+_weekly_thread = None
+_weekly_thread_lock = threading.Lock()
+
+
+def _seconds_until_next_sunday_2200() -> float:
+    """计算距离下一个 周日 22:00（服务器本地时间）的秒数。"""
+    now = datetime.now()
+    # weekday(): Monday=0 … Sunday=6
+    days_ahead = (6 - now.weekday()) % 7
+    target = (now + timedelta(days=days_ahead)).replace(
+        hour=22, minute=0, second=0, microsecond=0,
+    )
+    if target <= now:
+        target += timedelta(days=7)  # 今天 22:00 已过，跳到下周日
+    return (target - now).total_seconds()
+
+
+def start_weekly_update_scheduler(urls, save_to=None):
+    """启动每周日 22:00 自动跑 update_dxdata_with_comparison 的后台线程。
+    幂等：重复调用不会起多个线程。
+
+    Args:
+        urls: 传给 update_dxdata_with_comparison 的 url 参数
+        save_to: 传给 update_dxdata_with_comparison 的本地保存路径
+    """
+    global _weekly_thread
+    with _weekly_thread_lock:
+        if _weekly_thread is not None and _weekly_thread.is_alive():
+            return
+
+        def _loop():
+            while True:
+                try:
+                    sleep_s = _seconds_until_next_sunday_2200()
+                    target = datetime.now() + timedelta(seconds=sleep_s)
+                    logger.info(
+                        f"[DxData] Next weekly update at "
+                        f"{target.strftime('%Y-%m-%d %H:%M:%S')} ({int(sleep_s)}s)"
+                    )
+                    time.sleep(sleep_s)
+                    logger.info("[DxData] → Running weekly auto-update")
+                    result = update_dxdata_with_comparison(urls, save_to)
+                    diff = (result or {}).get('diff', {})
+                    logger.info(
+                        f"[DxData] ✓ Weekly update done: "
+                        f"songs +{diff.get('songs_added', 0)}, "
+                        f"sheets +{diff.get('sheets_added', 0)}"
+                    )
+                except Exception as e:
+                    logger.error(f"[DxData] ✗ Weekly update failed: {e}", exc_info=True)
+                    # 失败后稍睡 60s 再算下一次，避免极端情况下错误循环
+                    time.sleep(60)
+
+        _weekly_thread = threading.Thread(
+            target=_loop, daemon=True, name="WeeklyDxdataUpdate",
+        )
+        _weekly_thread.start()
+        logger.info("[DxData] ✓ Weekly update scheduler started")

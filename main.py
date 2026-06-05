@@ -107,7 +107,7 @@ from modules.tip_ad_manager import (
     get_tip_ad_by_id
 )
 from modules.maimai_manager import *
-from modules.dxdata_manager import update_dxdata_with_comparison
+from modules.dxdata_manager import update_dxdata_with_comparison, start_weekly_update_scheduler as start_dxdata_weekly_update
 from modules.record_manager import *
 from modules.devtoken_manager import (
     verify_dev_token,
@@ -7033,6 +7033,9 @@ if __name__ == "__main__":
     # 启动定期清理线程（图床 + 成绩导出）
     _start_periodic_cleanup()
     start_export_cleanup()
+
+    # 启动 dxdata 每周日 22:00 自动更新（服务器本地时间）
+    start_dxdata_weekly_update(DXDATA_URL, DXDATA_FILE)
 
     # 启动内存管理器
     memory_manager.start()
