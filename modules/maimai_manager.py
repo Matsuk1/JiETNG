@@ -294,23 +294,47 @@ async def login_to_maimai(sega_id: str, password: str, ver="jp", aime=0):
 
     else:  # jp
         async with aiohttp.ClientSession(connector=connector) as session:
-            try:
-                async with session.get("https://maimaidx.jp/maimai-mobile/login/") as response:
-                    if response.status == 503:
-                        logger.warning("[Maimai] ⚠ Server maintenance (503): server=JP")
-                        return "MAINTENANCE"
-                    response.raise_for_status()
-                    html = await response.text()
-            except Exception as e:
-                logger.error(f"[Maimai] ✗ Failed to access JP login page: error={e}")
-                raise
+            # 偶发抖动重试（SEGA 偶尔返回不含 token 的页面 / 瞬时网络错）
+            token = None
+            last_status = None
+            last_html_len = 0
+            last_snippet = ""
+            for attempt in range(3):
+                try:
+                    async with session.get("https://maimaidx.jp/maimai-mobile/login/") as response:
+                        last_status = response.status
+                        if response.status == 503:
+                            logger.warning("[Maimai] ⚠ Server maintenance (503): server=JP")
+                            return "MAINTENANCE"
+                        response.raise_for_status()
+                        html = await response.text()
 
-            # 异步解析 HTML 获取 token
-            dom = await asyncio.to_thread(etree.HTML, html)
-            token_list = dom.xpath('//input[@name="token"]/@value')
-            if not token_list:
-                raise Exception("Unable to fetch login token")
-            token = token_list[0]
+                    last_html_len = len(html or "")
+                    dom = await asyncio.to_thread(etree.HTML, html)
+                    token_list = dom.xpath('//input[@name="token"]/@value')
+                    if token_list:
+                        token = token_list[0]
+                        if attempt > 0:
+                            logger.info(f"[Maimai] ✓ JP login token recovered on attempt {attempt + 1}")
+                        break
+                    last_snippet = (html or "")[:200].replace("\n", " ")
+                    logger.warning(
+                        f"[Maimai] ⚠ JP login token missing (attempt {attempt + 1}/3): "
+                        f"status={last_status}, html_len={last_html_len}, snippet={last_snippet!r}"
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"[Maimai] ⚠ JP login page fetch failed (attempt {attempt + 1}/3): {e}"
+                    )
+
+                if attempt < 2:
+                    await asyncio.sleep(1.5)
+
+            if not token:
+                raise Exception(
+                    f"Unable to fetch login token after 3 attempts "
+                    f"(last_status={last_status}, last_html_len={last_html_len})"
+                )
 
             # POST 登录
             async with session.post(
