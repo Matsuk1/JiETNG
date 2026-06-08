@@ -1,12 +1,12 @@
 ---
 layout: home
-title: JiETNG -『maimai でらっくす』LINE-Bot for JP & Intl Servers
+title: JiETNG · maimai DX Score Tracker ·『maimai でらっくす』JP / INTL LINE Bot
 titleTemplate: false
 
 hero:
   name: "JiETNG"
-  text: "maimai でらっくす<br>Score Management Tool"
-  tagline: Professional LINE bot for score management supporting both Japanese and International servers
+  text: "maimai DX<br>Score Tracker"
+  tagline: LINE bot for『maimai でらっくす』· JP & INTL servers · Free rating calculator · Best 50 / B50 chart generator
   image:
     src: /hero-image.svg
     alt: JiETNG Logo

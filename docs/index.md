@@ -1,12 +1,12 @@
 ---
 layout: home
-title: JiETNG -『maimai でらっくす』LINE-Bot for JP & Intl Servers
+title: 舞萌DX 查分器 · JiETNG ·『maimai でらっくす』日服 / 国际服 LINE 机器人
 titleTemplate: false
 
 hero:
   name: "JiETNG"
-  text: "maimai でらっくす<br>成绩管理工具"
-  tagline: 支持日服和国际服的成绩管理用 LINE 机器人
+  text: "舞萌DX 查分器<br>maimai でらっくす"
+  tagline: 同时支持日服 (JP) 与国际服 (INTL) 的查分机器人 · 免费 Rating 计算 · B50 / Best 50 成绩图生成
   image:
     src: /hero-image.svg
     alt: JiETNG Logo
@@ -79,9 +79,9 @@ features:
 }
 </style>
 
-## 为什么选择 JiETNG？
+## 为什么选择 JiETNG 这款舞萌 DX 查分器？
 
-JiETNG 是同时支持 『maimai でらっくす』 日服和国际服的查分机器人，为休闲玩家和硬核竞技者都提供强大功能。
+JiETNG 是同时支持 **『maimai でらっくす』日服 (JP) 与国际服 (INTL)** 的查分机器人 / LINE Bot，提供成绩查询、Rating 计算、Best 50 (B50) 图生成、Recent 50 历史、牌子（极 / 将 / 神 / 舞舞）进度追踪——休闲玩家和硬核竞技者都用得上。
 
 ## 快速开始
 

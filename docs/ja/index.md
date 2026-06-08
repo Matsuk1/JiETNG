@@ -1,12 +1,12 @@
 ---
 layout: home
-title: JiETNG -『maimai でらっくす』LINE-Bot for JP & Intl Servers
+title: JiETNG ·『maimai でらっくす』スコア管理ボット · 国内版 / 海外版 LINE Bot
 titleTemplate: false
 
 hero:
   name: "JiETNG"
-  text: "maimai でらっくす<br>スコア管理ツール"
-  tagline: 国内版と海外版の両方に対応したプロフェッショナルな LINE スコア管理ボット
+  text: "maimai でらっくす<br>スコア管理ボット"
+  tagline: 国内版 (JP) / 海外版 (INTL) 両対応の LINE ボット · 無料レーティング計算 · Best 50 / B50 スコア画像生成
   image:
     src: /hero-image.svg
     alt: JiETNG Logo

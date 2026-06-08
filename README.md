@@ -1,12 +1,12 @@
-# JiETNG - LINE Bot
+# JiETNG · 舞萌DX 查分器 LINE 机器人
 
 <div align="center">
 
 <img src="./assets/pics/logo.png" alt="Logo" width="100" />
 
-**Maimai DX 音游成绩追踪与数据管理系统**
+**舞萌DX 查分器 ·『maimai でらっくす』音游成绩追踪与数据管理系统**
 
-支持日服和国际服
+同时支持 maimai 日服 (JP) 与国际服 (INTL) · 免费 Rating 计算 · B50 / Best 50 成绩图生成
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.1.0-green.svg)](https://flask.palletsprojects.com/)

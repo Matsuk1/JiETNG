@@ -4,8 +4,8 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 // https://vitepress.dev/reference/site-config
 export default withMermaid(defineConfig({
   title: "JiETNG",
-  description: "『maimai でらっくす』Score Management Bot",
-  titleTemplate: ":title | JiETNG -『maimai でらっくす』LINE-Bot for JP & Intl Servers",
+  description: "JiETNG · 舞萌DX 查分器 / maimai でらっくす スコア管理ボット — 支持日服与国际服的 LINE 机器人，免费 Rating 计算器和 B50 成绩图生成。",
+  titleTemplate: ":title | JiETNG · 舞萌DX 查分器 / maimai でらっくす Score Tracker",
 
   cleanUrls: true,
 
@@ -114,7 +114,7 @@ export default withMermaid(defineConfig({
     root: {
       label: '简体中文',
       lang: 'zh-CN',
-      description: 'JiETNG - 支持日服和国际服的『maimai でらっくす』查分机器人。免费的 Rating 计算器和 Best 50 图表生成器。'
+      description: '舞萌DX 查分器 — JiETNG 是支持日服 (JP) 与国际服 (INTL) 的『maimai でらっくす』查分机器人 / LINE Bot，免费 Rating 计算器、Best 50 / B50 成绩图生成、牌子进度追踪、Recent 50 历史查询。'
     },
     en: {
       label: 'English',
@@ -249,19 +249,38 @@ export default withMermaid(defineConfig({
     ['link', { rel: 'apple-touch-icon', href: '/logo.svg' }],
     ['meta', { name: 'theme-color', content: '#2563eb' }],
 
-    // Google Search Console 验证
+    // 站长验证（中文搜索引擎；申请到 token 后填进 content）
     ['meta', { name: 'google-site-verification', content: '7wQ3HIU-rk6iSNe441mvYPgkZwuotIB3PlOx6r3xOm8' }],
+    // ['meta', { name: 'baidu-site-verification', content: 'codeva-XXXXXXXX' }],   // https://ziyuan.baidu.com/
+    // ['meta', { name: 'msvalidate.01',           content: 'XXXXXXXXXXXXXXXX' }],   // https://www.bing.com/webmasters
+    // ['meta', { name: '360-site-verification',   content: 'XXXXXXXXXXXXXXXX' }],
+    // ['meta', { name: 'sogou_site_verification', content: 'XXXXXXXXXXXXXXXX' }],
 
-    // SEO meta标签
-    ['meta', { name: 'keywords', content: 'maimai, maimai でらっくす, maimaiでらっくす, maimai bot, score tracker, rating calculator, best 50, b50, LINE bot, 舞萌DX, 舞萌, 成绩管理, 查分器, スコア管理, レーティング計算, maimaiDXボット, ベスト50, 日本サーバー, 国際サーバー, 日本版, 海外版, 日版, 国际版, maimaiDX bot, rhythm game, arcade game tracker, Japanese server, International server, 日服, 国际服' }],
-    ['meta', { name: 'description', content: 'JiETNG -『maimai でらっくす』score management bot for LINE supporting both Japanese and International servers. Free rating calculator and best 50 chart generator.' }],
+    // SEO meta 标签（含中/日/英三语长尾，覆盖典型搜索词）
+    ['meta', { name: 'keywords', content: [
+      // 核心 - 中文（最常搜）
+      '舞萌DX查分器', '舞萌查分器', 'maimai查分器', 'maimai 查分', 'maimai dx 查分器',
+      '舞萌DX', '舞萌', '舞萌dx', 'maimaiDX bot',
+      '舞萌国服', '舞萌日服', '舞萌国际服', 'maimai 日服', 'maimai 国际服', '日版', '国际版', '日服', '国际服',
+      '舞萌成绩', 'B50 查分', 'b50', 'best 50', 'rating 计算', 'Rating 查询', '牌子进度', '极将神舞舞', '段位查询',
+      // 核心 - 日文
+      'maimai でらっくす', 'maimai DX', 'maimaiでらっくす', 'スコア管理', 'スコア管理ボット', 'レーティング計算',
+      'ベスト50', 'ベストスコア', 'maimaiDXボット', '日本サーバー', '国際サーバー', '海外版',
+      // 核心 - 英文
+      'maimai', 'maimai bot', 'maimai dx score tracker', 'score tracker', 'rating calculator',
+      'best 50 generator', 'LINE bot', 'rhythm game', 'arcade game tracker',
+      'Japanese server', 'International server', 'JP server', 'INTL server',
+      // 项目名
+      'JiETNG', 'JiETNG bot',
+    ].join(', ') }],
+    ['meta', { name: 'description', content: 'JiETNG · 舞萌DX 查分器 — 支持日服 (JP) 与国际服 (INTL) 的『maimai でらっくす』查分机器人 / LINE Bot，免费 Rating 计算器、Best 50 / B50 成绩图生成、牌子进度追踪、Recent 50 历史查询。' }],
     ['meta', { name: 'author', content: 'Matsuki' }],
 
     // Open Graph
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: 'JiETNG' }],
-    ['meta', { property: 'og:title', content: 'JiETNG -『maimai でらっくす』Score Management Bot' }],
-    ['meta', { property: 'og:description', content: '『maimai でらっくす』score management bot supporting both Japanese and International servers.' }],
+    ['meta', { property: 'og:title', content: 'JiETNG · 舞萌DX 查分器 / maimai でらっくす Score Tracker' }],
+    ['meta', { property: 'og:description', content: '舞萌DX 查分器 LINE 机器人，支持日服 / 国际服，免费 Rating 计算与 B50 成绩图生成。' }],
     ['meta', { property: 'og:image', content: 'https://jietng.matsuk1.com/og-image.png' }],
     ['meta', { property: 'og:image:width', content: '1200' }],
     ['meta', { property: 'og:image:height', content: '630' }],
@@ -270,9 +289,32 @@ export default withMermaid(defineConfig({
 
     // Twitter Card
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { name: 'twitter:title', content: 'JiETNG -『maimai でらっくす』Score Management Bot' }],
-    ['meta', { name: 'twitter:description', content: '『maimai でらっくす』score management bot supporting both Japanese and International servers.' }],
-    ['meta', { name: 'twitter:image', content: 'https://jietng.matsuk1.com/og-image.png' }]
+    ['meta', { name: 'twitter:title', content: 'JiETNG · 舞萌DX 查分器 / maimai でらっくす Score Tracker' }],
+    ['meta', { name: 'twitter:description', content: '舞萌DX 查分器 LINE 机器人，支持日服 / 国际服，免费 Rating 计算与 B50 成绩图生成。' }],
+    ['meta', { name: 'twitter:image', content: 'https://jietng.matsuk1.com/og-image.png' }],
+
+    // JSON-LD 结构化数据（让 Google 知道这是个 WebApplication，不是普通博客）
+    ['script', { type: 'application/ld+json' }, JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebApplication',
+      'name': 'JiETNG',
+      'alternateName': ['舞萌DX 查分器', 'maimai DX Score Tracker', 'maimai でらっくす スコア管理ボット'],
+      'url': 'https://jietng.matsuk1.com',
+      'description': '舞萌DX 查分器 LINE 机器人，支持 maimai でらっくす 日服与国际服的成绩查询、Rating 计算、Best 50 图生成、牌子进度追踪。',
+      'applicationCategory': 'GameApplication',
+      'operatingSystem': 'Any (LINE)',
+      'inLanguage': ['zh-CN', 'ja', 'en'],
+      'offers': {
+        '@type': 'Offer',
+        'price': '0',
+        'priceCurrency': 'JPY'
+      },
+      'author': {
+        '@type': 'Person',
+        'name': 'Matsuki',
+        'url': 'https://github.com/Matsuk1'
+      }
+    }) ]
   ],
 
   // Mermaid 配置
