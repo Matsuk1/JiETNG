@@ -1,6 +1,7 @@
 """异步客户端 / Async client（与 sync 客户端 API 形态完全一致，方法都 async）。"""
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Mapping, Optional, Tuple
 
 import httpx
@@ -37,6 +38,21 @@ class AsyncUsersResource(_BaseAsyncResource):
 
     async def trigger_sync(self, user_id: str) -> dict:
         return await self._client._request("POST", f"/users/{user_id}/tasks")
+
+    async def trigger_sync_and_wait(
+        self,
+        user_id: str,
+        *,
+        timeout: float = 300.0,
+        interval: float = 3.0,
+    ) -> dict:
+        task = await self.trigger_sync(user_id)
+        task_id = task.get("task_id") or task.get("id")
+        if not task_id:
+            raise ValueError("sync response did not include task_id")
+        final = await self._client.tasks.wait(task_id, timeout=timeout, interval=interval)
+        final.setdefault("user_id", user_id)
+        return final
 
     async def get_rebind_url(self, user_id: str) -> dict:
         return await self._client._request("GET", f"/users/{user_id}/rebind-url")
@@ -100,6 +116,25 @@ class AsyncSongsResource(_BaseAsyncResource):
 class AsyncTasksResource(_BaseAsyncResource):
     async def get(self, task_id: str) -> dict:
         return await self._client._request("GET", f"/tasks/{task_id}")
+
+    async def wait(
+        self,
+        task_id: str,
+        *,
+        timeout: float = 300.0,
+        interval: float = 3.0,
+    ) -> dict:
+        deadline = asyncio.get_running_loop().time() + timeout
+        while True:
+            payload = await self.get(task_id)
+            status = payload.get("status")
+            if status == "completed":
+                return payload
+            if status not in {"queued", "running"}:
+                return payload
+            if asyncio.get_running_loop().time() >= deadline:
+                raise TimeoutError(f"task {task_id} did not complete within {timeout:g}s")
+            await asyncio.sleep(interval)
 
 
 class AsyncVersionsResource(_BaseAsyncResource):

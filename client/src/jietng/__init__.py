@@ -23,7 +23,7 @@ See https://jietng.matsuk1.com/developer-api for API details and how to
 obtain an access token.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from .client import jietngClient
 from .async_client import AsyncjietngClient

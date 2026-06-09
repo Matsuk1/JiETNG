@@ -1,6 +1,7 @@
 """同步客户端 / Sync client."""
 from __future__ import annotations
 
+import time
 from typing import Any, Mapping, Optional, Tuple
 
 import httpx
@@ -49,6 +50,25 @@ class UsersResource(_BaseResource):
     def trigger_sync(self, user_id: str) -> dict:
         """``POST /users/{user_id}/tasks`` —— 触发一次 maimai 数据拉取（异步入队）。"""
         return self._client._request("POST", f"/users/{user_id}/tasks")
+
+    def trigger_sync_and_wait(
+        self,
+        user_id: str,
+        *,
+        timeout: float = 300.0,
+        interval: float = 3.0,
+    ) -> dict:
+        """触发同步并轮询等待完成。
+
+        返回最终任务状态 payload。超时抛 ``TimeoutError``。
+        """
+        task = self.trigger_sync(user_id)
+        task_id = task.get("task_id") or task.get("id")
+        if not task_id:
+            raise ValueError("sync response did not include task_id")
+        final = self._client.tasks.wait(task_id, timeout=timeout, interval=interval)
+        final.setdefault("user_id", user_id)
+        return final
 
     def get_rebind_url(self, user_id: str) -> dict:
         """``GET /users/{user_id}/rebind-url``"""
@@ -129,6 +149,30 @@ class TasksResource(_BaseResource):
     def get(self, task_id: str) -> dict:
         """``GET /tasks/{task_id}``"""
         return self._client._request("GET", f"/tasks/{task_id}")
+
+    def wait(
+        self,
+        task_id: str,
+        *,
+        timeout: float = 300.0,
+        interval: float = 3.0,
+    ) -> dict:
+        """轮询任务直到完成或超时。
+
+        JiETNG 任务状态通常为 ``queued`` / ``running`` / ``completed``。
+        ``completed`` 直接返回；超时抛 ``TimeoutError``。
+        """
+        deadline = time.monotonic() + timeout
+        while True:
+            payload = self.get(task_id)
+            status = payload.get("status")
+            if status == "completed":
+                return payload
+            if status not in {"queued", "running"}:
+                return payload
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f"task {task_id} did not complete within {timeout:g}s")
+            time.sleep(interval)
 
 
 class VersionsResource(_BaseResource):

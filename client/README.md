@@ -32,9 +32,9 @@ with jietngClient(token="your_token") as client:
     with open("b50.png", "wb") as f:
         f.write(png)
 
-    # 触发后台同步
-    task = client.users.trigger_sync("U1234567890")
-    print("queued:", task["task_id"])
+    # 触发后台同步并等待完成
+    task = client.users.trigger_sync_and_wait("U1234567890", timeout=300)
+    print("sync status:", task["status"])
 
     # 导出成绩为 JSON / XML，文件名由服务端推荐（含玩家名 + 时间戳）
     path = client.exports.save("U1234567890", fmt="json")
@@ -50,6 +50,9 @@ from jietng import AsyncjietngClient
 async def main():
     async with AsyncjietngClient(token="your_token") as client:
         print(await client.songs.search("PANDORA", ver="jp", max_results=3))
+        task = await client.users.trigger_sync_and_wait("U1234567890", timeout=300)
+        print("sync status:", task["status"])
+
         png = await client.images.plate("U1234567890", title="真神")
         with open("plate.png", "wb") as f:
             f.write(png)
@@ -61,10 +64,10 @@ asyncio.run(main())
 
 | 命名空间 | 主要方法 |
 |---|---|
-| `client.users` | `list / get / create / delete / trigger_sync / bind / update_bind / get_rebind_url / get_settings_url` |
+| `client.users` | `list / get / create / delete / trigger_sync / trigger_sync_and_wait / bind / update_bind / get_rebind_url / get_settings_url` |
 | `client.permissions` | `request / list_requests / accept / reject / revoke / revoke_self` |
 | `client.songs` | `search / info` |
-| `client.tasks` | `get` |
+| `client.tasks` | `get / wait` |
 | `client.versions` | `list` |
 | `client.dxdata` | `get` |
 | `client.images` | `user_song / records / plate / achievement` |

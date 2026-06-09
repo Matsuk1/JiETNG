@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jietng-discord-bot"
+version = "0.1.0"
+description = "Discord bot for the JiETNG maimai DX score API."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "discord.py>=2.4,<3",
+    "jietng>=0.1.1",
+]
+
+[project.scripts]
+jietng-discord-bot = "jietng_discord_bot.bot:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
