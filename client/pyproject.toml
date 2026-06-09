@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jietng"
+version = "0.1.0"
+description = "Python SDK for the JiETNG maimai DX (舞萌DX) score management API."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Matsuki", email = "matsuk1@proton.me" }]
+requires-python = ">=3.8"
+dependencies = ["httpx>=0.25"]
+keywords = [
+    "maimai", "maimai-dx", "舞萌DX", "舞萌查分器", "查分器",
+    "rating-calculator", "best-50", "b50", "score-tracker",
+    "line-bot", "jietng",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Games/Entertainment",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://jietng.matsuk1.com"
+Repository = "https://github.com/Matsuk1/JiETNG"
+Documentation = "https://jietng.matsuk1.com/developer-api"
+Issues = "https://github.com/Matsuk1/JiETNG/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+jietng = ["py.typed"]

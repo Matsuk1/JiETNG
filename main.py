@@ -19,6 +19,7 @@ import copy
 import asyncio
 import aiohttp
 import urllib3
+from urllib.parse import quote as _url_quote
 import time
 import subprocess
 import gc
@@ -33,13 +34,14 @@ from io import BytesIO
 
 from flask import (
     Flask,
+    Response,
     request,
     render_template,
     redirect,
     session,
     jsonify,
     send_file,
-    send_from_directory
+    send_from_directory,
 )
 from flask_wtf.csrf import CSRFProtect
 
@@ -138,7 +140,14 @@ from modules.message_manager import *
 
 # Image processing
 from modules.image_uploader import smart_upload, _start_periodic_cleanup
-from modules.export_manager import export_records, start_periodic_cleanup as start_export_cleanup
+from modules.export_manager import (
+    export_records,
+    start_periodic_cleanup as start_export_cleanup,
+    build_payload as _export_build_payload,
+    to_json_bytes as _export_to_json,
+    to_xml_bytes as _export_to_xml,
+    _build_friendly_name as _export_friendly_name,
+)
 from modules.command_router import (
     Exact, Prefix, Suffix, Regex, FirstWord,
     Command, CommandContext,
@@ -6989,6 +6998,67 @@ def api_v2_generate_achievement(user_id):
 
     except Exception as e:
         logger.error(f"[API] ✗ Generate achievement error: user_id={user_id}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
+@app.route("/api/v2/users/<user_id>/export", methods=["GET"])
+@csrf.exempt
+@require_dev_token
+def api_v2_export_records(user_id):
+    """
+    导出用户成绩数据 API (v2)
+
+    需要 Bearer Token 认证
+
+    参数:
+    - fmt: 导出格式，json (默认) 或 xml
+
+    返回:
+    - application/json 或 application/xml；Content-Disposition: attachment
+    - 文件名: JiETNG-{玩家名}-{时间戳}.{json|xml}
+    """
+    try:
+        token_info = request.token_info
+
+        has_permission, result = check_user_permission(user_id, token_info['token_id'])
+        if not has_permission:
+            return result
+
+        _udata = result
+        if "personal_info" not in _udata:
+            return jsonify({"error": "User info not found, please sync first"}), 404
+
+        fmt = (request.args.get('fmt', 'json') or 'json').strip().lower()
+        if fmt not in ('json', 'xml'):
+            return jsonify({"error": "Invalid format",
+                            "message": "fmt must be 'json' or 'xml'"}), 400
+
+        payload = _export_build_payload(user_id)
+        recs = payload.get('records', {}) or {}
+        if not recs.get('best') and not recs.get('recent'):
+            return jsonify({"error": "No records to export, please sync first"}), 404
+
+        content = _export_to_json(payload) if fmt == 'json' else _export_to_xml(payload)
+        friendly_name = _export_friendly_name(payload.get('profile'), fmt)
+        mimetype = 'application/json' if fmt == 'json' else 'application/xml'
+
+        logger.info(f"[API] v2 Export generated: user_id={user_id}, fmt={fmt}, "
+                    f"bytes={len(content)}, token_id={token_info['token_id']}")
+        track_event('image_gen', user_id=user_id,
+                    metadata={'command': f'export-{fmt}', 'source': 'api'})
+
+        return Response(
+            content,
+            mimetype=mimetype,
+            headers={
+                # RFC 6266 filename* 支持 CJK 文件名
+                'Content-Disposition': f"attachment; filename*=UTF-8''{_url_quote(friendly_name)}",
+                'Content-Length': str(len(content)),
+            },
+        )
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Export records error: user_id={user_id}, error={e}", exc_info=True)
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
 
