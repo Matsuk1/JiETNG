@@ -23,7 +23,7 @@ class _BaseResource:
     """资源基类，仅持有 client 引用。"""
     __slots__ = ("_client",)
 
-    def __init__(self, client: "JiETNGClient"):
+    def __init__(self, client: "jietngClient"):
         self._client = client
 
 
@@ -219,14 +219,14 @@ class ExportsResource(_BaseResource):
 # 主 client
 # ============================================================
 
-class JiETNGClient:
+class jietngClient:
     """同步 JiETNG API 客户端。
 
     Example::
 
-        from jietng import JiETNGClient
+        from jietng import jietngClient
 
-        client = JiETNGClient(token="your_token")
+        client = jietngClient(token="your_token")
         users = client.users.list()
         b50_png = client.images.records("U123", command="b50")
         with open("b50.png", "wb") as f:
@@ -265,7 +265,7 @@ class JiETNGClient:
 
     # ---- context manager ----
 
-    def __enter__(self) -> "JiETNGClient":
+    def __enter__(self) -> "jietngClient":
         return self
 
     def __exit__(self, *exc: Any) -> None:

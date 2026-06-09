@@ -1,13 +1,13 @@
 """最小用例：同步客户端 / Minimal sync usage."""
 import os
 
-from jietng import JiETNGClient, NotFoundError
+from jietng import jietngClient, NotFoundError
 
 TOKEN = os.environ["JIETNG_TOKEN"]
 USER_ID = os.environ.get("JIETNG_USER_ID", "U0000000000000000000000000000000")
 
 
-with JiETNGClient(token=TOKEN) as client:
+with jietngClient(token=TOKEN) as client:
     # 列出已注册用户
     print("Users:", client.users.list().get("count"))
 

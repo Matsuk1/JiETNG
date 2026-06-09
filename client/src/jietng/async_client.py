@@ -18,7 +18,7 @@ from ._http import (
 class _BaseAsyncResource:
     __slots__ = ("_client",)
 
-    def __init__(self, client: "AsyncJiETNGClient"):
+    def __init__(self, client: "AsyncjietngClient"):
         self._client = client
 
 
@@ -167,16 +167,16 @@ class AsyncExportsResource(_BaseAsyncResource):
 # 主 async client
 # ============================================================
 
-class AsyncJiETNGClient:
+class AsyncjietngClient:
     """异步 JiETNG API 客户端。
 
     Example::
 
         import asyncio
-        from jietng import AsyncJiETNGClient
+        from jietng import AsyncjietngClient
 
         async def main():
-            async with AsyncJiETNGClient(token="your_token") as client:
+            async with AsyncjietngClient(token="your_token") as client:
                 users = await client.users.list()
                 png = await client.images.records("U123", command="b50")
 
@@ -212,7 +212,7 @@ class AsyncJiETNGClient:
         self.images = AsyncImagesResource(self)
         self.exports = AsyncExportsResource(self)
 
-    async def __aenter__(self) -> "AsyncJiETNGClient":
+    async def __aenter__(self) -> "AsyncjietngClient":
         return self
 
     async def __aexit__(self, *exc: Any) -> None:

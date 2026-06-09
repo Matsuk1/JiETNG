@@ -1,6 +1,6 @@
 """异常类型 / Exception hierarchy.
 
-All API failures raise a subclass of :class:`JiETNGError`. Use specific
+All API failures raise a subclass of :class:`jietngError`. Use specific
 subclasses (``NotFoundError``, ``RateLimitedError`` …) to handle expected
 failure modes; fall back to ``APIError`` for the generic case.
 """
@@ -9,11 +9,11 @@ from __future__ import annotations
 from typing import Any, Optional
 
 
-class JiETNGError(Exception):
+class jietngError(Exception):
     """SDK 基类异常。所有错误最终都是它或其子类。"""
 
 
-class APIError(JiETNGError):
+class APIError(jietngError):
     """HTTP API 返回了非 2xx。
 
     Attributes:

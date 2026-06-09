@@ -2,14 +2,14 @@
 import asyncio
 import os
 
-from jietng import AsyncJiETNGClient, NotFoundError
+from jietng import AsyncjietngClient, NotFoundError
 
 
 async def main() -> None:
     token = os.environ["JIETNG_TOKEN"]
     user_id = os.environ.get("JIETNG_USER_ID", "U0000000000000000000000000000000")
 
-    async with AsyncJiETNGClient(token=token) as client:
+    async with AsyncjietngClient(token=token) as client:
         print("Users:", (await client.users.list()).get("count"))
 
         try:

@@ -21,9 +21,9 @@ JiETNG API 通过 Bearer Token 鉴权。申请方式见 <https://jietng.matsuk1.
 ### 同步
 
 ```python
-from jietng import JiETNGClient
+from jietng import jietngClient
 
-with JiETNGClient(token="your_token") as client:
+with jietngClient(token="your_token") as client:
     users = client.users.list()
     print(users["count"], "registered users")
 
@@ -45,10 +45,10 @@ with JiETNGClient(token="your_token") as client:
 
 ```python
 import asyncio
-from jietng import AsyncJiETNGClient
+from jietng import AsyncjietngClient
 
 async def main():
-    async with AsyncJiETNGClient(token="your_token") as client:
+    async with AsyncjietngClient(token="your_token") as client:
         print(await client.songs.search("PANDORA", ver="jp", max_results=3))
         png = await client.images.plate("U1234567890", title="真神")
         with open("plate.png", "wb") as f:
@@ -77,7 +77,7 @@ asyncio.run(main())
 所有 HTTP 非 2xx 状态都会抛 `APIError` 子类。可以按需 catch 具体类型：
 
 ```python
-from jietng import JiETNGClient, NotFoundError, PermissionDeniedError, RateLimitedError, QueueFullError
+from jietng import jietngClient, NotFoundError, PermissionDeniedError, RateLimitedError, QueueFullError
 
 try:
     png = client.images.records("U_unknown", command="b50")
@@ -94,7 +94,7 @@ except QueueFullError:
 完整异常层级：
 
 ```
-JiETNGError                  # 基类
+jietngError                  # 基类
 └─ APIError                  # 任意 HTTP 非 2xx
    ├─ ValidationError        # 400
    ├─ AuthenticationError    # 401
@@ -110,7 +110,7 @@ JiETNGError                  # 基类
 ## 自定义
 
 ```python
-client = JiETNGClient(
+client = jietngClient(
     token="your_token",
     base_url="https://your-self-hosted.example.com/api/v2",   # 自托管时
     timeout=60.0,

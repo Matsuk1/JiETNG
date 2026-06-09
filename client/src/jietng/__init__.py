@@ -2,19 +2,19 @@
 
 Quick start::
 
-    from jietng import JiETNGClient
+    from jietng import jietngClient
 
-    client = JiETNGClient(token="your_token_here")
+    client = jietngClient(token="your_token_here")
     users = client.users.list()
     b50_png = client.images.records("U1234567890", command="b50")
 
 Async usage::
 
     import asyncio
-    from jietng import AsyncJiETNGClient
+    from jietng import AsyncjietngClient
 
     async def main():
-        async with AsyncJiETNGClient(token="your_token_here") as client:
+        async with AsyncjietngClient(token="your_token_here") as client:
             png = await client.images.records("U1234567890", command="b50")
 
     asyncio.run(main())
@@ -25,12 +25,12 @@ obtain an access token.
 
 __version__ = "0.1.0"
 
-from .client import JiETNGClient
-from .async_client import AsyncJiETNGClient
+from .client import jietngClient
+from .async_client import AsyncjietngClient
 from .exceptions import (
     APIError,
     AuthenticationError,
-    JiETNGError,
+    jietngError,
     NotFoundError,
     PermissionDeniedError,
     QueueFullError,
@@ -41,9 +41,9 @@ from .exceptions import (
 
 __all__ = [
     "__version__",
-    "JiETNGClient",
-    "AsyncJiETNGClient",
-    "JiETNGError",
+    "jietngClient",
+    "AsyncjietngClient",
+    "jietngError",
     "APIError",
     "AuthenticationError",
     "PermissionDeniedError",
