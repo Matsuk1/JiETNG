@@ -1253,12 +1253,132 @@ def linebot_perms_revoke():
 
 
 DEMO_CORS_ORIGIN = "https://jietng.matsuk1.com"
+MAIMAI_SESSION_CORS_ORIGINS = {
+    "https://maimaidx.jp",
+    "https://maimaidx-eng.com",
+}
 
 def _demo_cors(response):
     response.headers["Access-Control-Allow-Origin"] = DEMO_CORS_ORIGIN
     response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return response
+
+def _maimai_session_cors(response):
+    origin = request.headers.get("Origin")
+    if origin in MAIMAI_SESSION_CORS_ORIGINS:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Vary"] = "Origin"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+def _normalize_session_profile(profile: dict, ver: str) -> dict:
+    base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
+    rating = str(profile.get("rating", "0")).strip() or "0"
+    try:
+        rating_int = int(rating)
+    except (TypeError, ValueError):
+        rating_int = 0
+
+    return {
+        "name": str(profile.get("name", "NAME_ERROR")).strip()[:64] or "NAME_ERROR",
+        "rating": rating,
+        "rating_block_path": get_rating_image_path(rating_int),
+        "cource_rank_url": profile.get("cource_rank_url") or profile.get("course_rank_url") or "N/A",
+        "class_rank_url": profile.get("class_rank_url") or "N/A",
+        "icon_url": profile.get("icon_url") or "N/A",
+        "nameplate_url": profile.get("nameplate_url") or "N/A",
+        "trophy_url": profile.get("trophy_url") or f"{base}/img/trophy_rainbow.png",
+        "trophy_content": str(profile.get("trophy_content", "N/A")).strip()[:80] or "N/A",
+    }
+
+def _normalize_session_records(records: list) -> list:
+    valid_difficulties = {"basic", "advanced", "expert", "master", "remaster"}
+    valid_types = {"std", "dx", "utage"}
+    normalized = []
+
+    for record in records[:3000]:
+        if not isinstance(record, dict):
+            continue
+        name = str(record.get("name", "")).strip()
+        score = str(record.get("score", "")).strip()
+        difficulty = str(record.get("difficulty", "")).strip().lower()
+        music_type = str(record.get("type", "")).strip().lower()
+        if not name or not score or difficulty not in valid_difficulties or music_type not in valid_types:
+            continue
+
+        normalized.append({
+            "name": name[:160],
+            "difficulty": difficulty,
+            "type": music_type,
+            "score": score if score.endswith("%") else f"{score}%",
+            "dx_score": str(record.get("dx_score", "N/A")).replace(",", "").strip(),
+            "score_icon": str(record.get("score_icon", "")).strip().lower(),
+            "combo_icon": str(record.get("combo_icon", "")).strip().lower(),
+            "sync_icon": str(record.get("sync_icon", "")).strip().lower(),
+        })
+
+    return normalized
+
+def _generate_session_image_from_payload(data: dict):
+    ver = data.get("version", "jp")
+    if ver not in ("jp", "intl"):
+        raise ValueError("Invalid version")
+
+    cmd_type = str(data.get("cmd_type", data.get("type", "best50"))).strip().lower()
+    valid_cmd_types = {"best50", "best40", "best35", "best15", "allb35", "allb50", "apb50", "fdxb50", "idlb50"}
+    if cmd_type not in valid_cmd_types:
+        cmd_type = "best50"
+
+    command = str(data.get("command", "")).strip()
+    try:
+        timezone_offset = int(data.get("timezone", 9))
+        timezone_offset = max(-12, min(14, timezone_offset))
+    except (TypeError, ValueError):
+        timezone_offset = 9
+
+    profile = data.get("profile")
+    records_payload = data.get("records", {})
+    raw_records = records_payload.get("best") if isinstance(records_payload, dict) else None
+    if not isinstance(profile, dict) or not isinstance(raw_records, list):
+        raise ValueError("Missing profile or records.best")
+
+    records = _normalize_session_records(raw_records)
+    if not records:
+        raise ValueError("No valid records")
+
+    user_info = _normalize_session_profile(profile, ver)
+    song_record = get_detailed_info(records, ver=ver, recent_type=(cmd_type == "best40"))
+    up_songs, down_songs, details = select_records(song_record, type=cmd_type, command=command, ver=ver)
+    if not up_songs and not down_songs:
+        raise ValueError("No records matched")
+
+    profile_img = generate_profile(user_info)
+    records_img = generate_records_picture(up_songs, down_songs, title=cmd_type.upper(), ver=ver, details=details)
+    result = compose_images([profile_img, records_img], timezone_offset=timezone_offset)
+    filename = f"jietng_{ver}_{cmd_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+    return result, filename
+
+@app.route("/api/web/session-image", methods=["POST", "OPTIONS"])
+@csrf.exempt
+def api_web_session_image():
+    if request.method == "OPTIONS":
+        return _maimai_session_cors(app.make_response(("", 204)))
+
+    data = request.get_json(silent=True) or {}
+    try:
+        result, filename = _generate_session_image_from_payload(data)
+        buf = BytesIO()
+        result.save(buf, "PNG")
+        buf.seek(0)
+        response = send_file(buf, mimetype="image/png", as_attachment=False, download_name=filename)
+        return _maimai_session_cors(response)
+    except ValueError as e:
+        return _maimai_session_cors(jsonify({"error": str(e)})), 400
+    except Exception as e:
+        logger.error(f"[SessionImage] ✗ Failed to generate image: {e}", exc_info=True)
+        return _maimai_session_cors(jsonify({"error": "Failed to generate image"})), 500
 
 @app.route("/linebot/demo", methods=["POST", "OPTIONS"])
 @csrf.exempt

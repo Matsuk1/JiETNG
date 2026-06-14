@@ -39,7 +39,8 @@ export default withMermaid(defineConfig({
       { text: '首页', link: '/' },
       { text: '指南', link: '/guide/getting-started' },
       { text: '功能', link: '/features/search' },
-      { text: '命令', link: '/commands/basic' }
+      { text: '命令', link: '/commands/basic' },
+      { text: '网页书签', link: '/bookmarklet' }
     ],
 
     // 侧边栏
@@ -48,7 +49,8 @@ export default withMermaid(defineConfig({
         text: '开始使用',
         items: [
           { text: '快速开始', link: '/guide/getting-started' },
-          { text: '在线体验', link: '/demo' }
+          { text: '在线体验', link: '/demo' },
+          { text: '网页书签工具', link: '/bookmarklet' }
         ]
       },
       {
@@ -126,14 +128,16 @@ export default withMermaid(defineConfig({
           { text: 'Home', link: '/en/' },
           { text: 'Guide', link: '/en/guide/getting-started' },
           { text: 'Features', link: '/en/features/search' },
-          { text: 'Commands', link: '/en/commands/basic' }
+          { text: 'Commands', link: '/en/commands/basic' },
+          { text: 'Bookmarklet', link: '/en/bookmarklet' }
         ],
         sidebar: [
           {
             text: 'Getting Started',
             items: [
               { text: 'Quick Start', link: '/en/guide/getting-started' },
-              { text: 'Try It Online', link: '/en/demo' }
+              { text: 'Try It Online', link: '/en/demo' },
+              { text: 'Bookmarklet Tool', link: '/en/bookmarklet' }
             ]
           },
           {
@@ -188,14 +192,16 @@ export default withMermaid(defineConfig({
           { text: 'ホーム', link: '/ja/' },
           { text: 'ガイド', link: '/ja/guide/getting-started' },
           { text: '機能', link: '/ja/features/search' },
-          { text: 'コマンド', link: '/ja/commands/basic' }
+          { text: 'コマンド', link: '/ja/commands/basic' },
+          { text: 'ブックマークレット', link: '/ja/bookmarklet' }
         ],
         sidebar: [
           {
             text: '始めに',
             items: [
               { text: 'クイックスタート', link: '/ja/guide/getting-started' },
-              { text: '体験する', link: '/ja/demo' }
+              { text: '体験する', link: '/ja/demo' },
+              { text: 'ブックマークレット', link: '/ja/bookmarklet' }
             ]
           },
           {
