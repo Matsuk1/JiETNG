@@ -83,14 +83,6 @@ onMounted(async () => {
     inset 0 1px 0 rgba(255, 255, 255, .45);
 }
 
-.bookmarklet-card::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 4px;
-  background: linear-gradient(90deg, #2563eb, #14b8a6, #f59e0b);
-}
-
 .bookmarklet-logo {
   position: relative;
   width: 72px;
@@ -113,13 +105,13 @@ onMounted(async () => {
 
 .bookmarklet-card h2 {
   margin: 0 0 6px;
-  border: 0;
-  border-bottom: 0;
+  border: 0 !important;
+  border-bottom: 0 !important;
   padding: 0;
   font-size: 24px;
   line-height: 1.25;
-  text-decoration: none;
-  box-shadow: none;
+  text-decoration: none !important;
+  box-shadow: none !important;
 }
 
 .bookmarklet-card p {
@@ -139,7 +131,8 @@ onMounted(async () => {
   border-radius: 11px;
   transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease;
   font-weight: 700;
-  text-decoration: none;
+  border-bottom: 0 !important;
+  text-decoration: none !important;
 }
 
 .bookmarklet-button {
@@ -157,6 +150,7 @@ onMounted(async () => {
 .bookmarklet-button:hover {
   color: #fff;
   box-shadow: 0 14px 28px rgba(37, 99, 235, .32);
+  text-decoration: none !important;
 }
 
 .bookmarklet-button::before {
@@ -192,18 +186,21 @@ onMounted(async () => {
   font-size: 13px;
 }
 
+html.dark .bookmarklet-card,
 .dark .bookmarklet-card {
-  background: linear-gradient(135deg, rgba(37, 99, 235, .16), rgba(255, 255, 255, .06));
+  background: linear-gradient(135deg, rgba(37, 99, 235, .20), rgba(30, 41, 59, .92));
   box-shadow:
     0 18px 46px rgba(0, 0, 0, .30),
     inset 0 1px 0 rgba(255, 255, 255, .08);
 }
 
+html.dark .bookmarklet-logo,
 .dark .bookmarklet-logo {
   border-color: rgba(255, 255, 255, .12);
   background: rgba(255, 255, 255, .08);
 }
 
+html.dark .bookmarklet-copy,
 .dark .bookmarklet-copy {
   background: rgba(255, 255, 255, .06);
 }

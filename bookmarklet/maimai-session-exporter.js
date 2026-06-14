@@ -401,14 +401,27 @@
 
   async function generateImage(payload) {
     status("Generating image...");
-    const response = await fetch(imageApiUrl, {
-      method: "POST",
-      mode: "cors",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    let response;
+    try {
+      response = await fetch(imageApiUrl, {
+        method: "POST",
+        mode: "cors",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        throw new Error("Image generation timed out. Please refresh the page and try again.");
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       let message = `image api failed: ${response.status}`;
