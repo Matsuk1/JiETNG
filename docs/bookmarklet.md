@@ -108,6 +108,7 @@ onMounted(async () => {
   border: 0 !important;
   border-bottom: 0 !important;
   padding: 0;
+  color: var(--vp-c-text-1);
   font-size: 24px;
   line-height: 1.25;
   text-decoration: none !important;
@@ -138,8 +139,8 @@ onMounted(async () => {
 .bookmarklet-button {
   margin-top: 6px;
   color: #fff;
-  background: linear-gradient(135deg, #2563eb, #0891b2);
-  box-shadow: 0 10px 22px rgba(37, 99, 235, .26);
+  background: #111827;
+  box-shadow: 0 10px 22px rgba(17, 24, 39, .18);
 }
 
 .bookmarklet-button:hover,
@@ -149,7 +150,8 @@ onMounted(async () => {
 
 .bookmarklet-button:hover {
   color: #fff;
-  box-shadow: 0 14px 28px rgba(37, 99, 235, .32);
+  background: #020617;
+  box-shadow: 0 14px 28px rgba(17, 24, 39, .24);
   text-decoration: none !important;
 }
 
@@ -159,7 +161,7 @@ onMounted(async () => {
   height: 18px;
   margin-right: 8px;
   background: url('/logo.svg') center / contain no-repeat;
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,.18));
+  filter: grayscale(1) brightness(0) invert(1) drop-shadow(0 1px 1px rgba(0,0,0,.18));
 }
 
 .bookmarklet-copy {
@@ -203,6 +205,25 @@ html.dark .bookmarklet-logo,
 html.dark .bookmarklet-copy,
 .dark .bookmarklet-copy {
   background: rgba(255, 255, 255, .06);
+}
+
+html.dark .bookmarklet-button,
+.dark .bookmarklet-button {
+  color: #fff;
+  background: #111827;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .26);
+}
+
+html.dark .bookmarklet-button:hover,
+.dark .bookmarklet-button:hover {
+  color: #fff;
+  background: #020617;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, .34);
+}
+
+html.dark .bookmarklet-button::before,
+.dark .bookmarklet-button::before {
+  filter: grayscale(1) brightness(0) invert(1) drop-shadow(0 1px 1px rgba(0,0,0,.18));
 }
 
 @media (max-width: 640px) {
