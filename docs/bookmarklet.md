@@ -77,8 +77,7 @@ onMounted(async () => {
   padding: 22px;
   border: 1px solid color-mix(in srgb, var(--vp-c-brand-1) 18%, var(--vp-c-divider));
   border-radius: 18px;
-  background:
-    linear-gradient(135deg, rgba(37, 99, 235, .10), rgba(20, 184, 166, .06) 46%, var(--vp-c-bg-soft) 100%);
+  background: linear-gradient(135deg, rgba(37, 99, 235, .08), rgba(255, 255, 255, .92));
   box-shadow:
     0 18px 46px rgba(15, 23, 42, .12),
     inset 0 1px 0 rgba(255, 255, 255, .45);
@@ -115,9 +114,12 @@ onMounted(async () => {
 .bookmarklet-card h2 {
   margin: 0 0 6px;
   border: 0;
+  border-bottom: 0;
   padding: 0;
   font-size: 24px;
   line-height: 1.25;
+  text-decoration: none;
+  box-shadow: none;
 }
 
 .bookmarklet-card p {
@@ -191,8 +193,7 @@ onMounted(async () => {
 }
 
 .dark .bookmarklet-card {
-  background:
-    linear-gradient(135deg, rgba(37, 99, 235, .18), rgba(20, 184, 166, .10) 44%, rgba(15, 23, 42, .82) 100%);
+  background: linear-gradient(135deg, rgba(37, 99, 235, .16), rgba(255, 255, 255, .06));
   box-shadow:
     0 18px 46px rgba(0, 0, 0, .30),
     inset 0 1px 0 rgba(255, 255, 255, .08);
