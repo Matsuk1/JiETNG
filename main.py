@@ -1354,6 +1354,14 @@ def _generate_session_image_from_payload(data: dict):
     if not up_songs and not down_songs:
         raise ValueError("No records matched")
 
+    matched_count = sum(1 for record in song_record if record.get("version") != "UNKNOWN")
+    new_count = sum(1 for record in song_record if record.get("new_song") is True)
+    old_count = sum(1 for record in song_record if record.get("new_song") is False)
+    logger.info(
+        "[SessionImage] Records selected: ver=%s, type=%s, raw=%s, normalized=%s, matched=%s, old=%s, new=%s, up=%s, down=%s",
+        ver, cmd_type, len(raw_records), len(records), matched_count, old_count, new_count, len(up_songs), len(down_songs)
+    )
+
     profile_img = generate_profile(user_info)
     records_img = generate_records_picture(up_songs, down_songs, title=cmd_type.upper(), ver=ver, details=details)
     result = compose_images([profile_img, records_img], timezone_offset=timezone_offset)

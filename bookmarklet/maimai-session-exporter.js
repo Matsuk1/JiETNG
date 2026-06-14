@@ -187,6 +187,18 @@
       .filter(Boolean);
   }
 
+  function xpathNodes(context, expression) {
+    const doc = context.ownerDocument || context;
+    const result = doc.evaluate(expression, context, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+    return Array.from({ length: result.snapshotLength }, (_, index) => result.snapshotItem(index));
+  }
+
+  function xpathText(context, expression) {
+    return xpathNodes(context, expression)
+      .map((node) => (node.textContent || "").trim())
+      .filter(Boolean);
+  }
+
   function iconName(src) {
     if (!src) return "";
     return src
@@ -301,16 +313,17 @@
 
   function parseBestRecords(doc, difficulty) {
     const records = [];
-    const blocks = doc.querySelectorAll("div.w_450");
+    const blocks = xpathNodes(doc, '//div[contains(@class, "w_450")]');
     for (const block of blocks) {
-      const name = textOf(block.querySelector(".music_name_block"));
-      const score = textOf(block.querySelector(".music_score_block.w_112"));
+      const name = xpathText(block, './/div[contains(@class, "music_name_block")]/text()')[0] || "";
+      const score = xpathText(block, './/div[contains(@class, "music_score_block") and contains(@class, "w_112")]/text()')[0] || "";
       if (!name || !score) continue;
 
-      const dxBlock = block.querySelector(".music_score_block.w_190");
-      const dxScore = textOf(dxBlock).replace(/,/g, "") || "N/A";
-      const type = musicType(block.querySelector("img.music_kind_icon")?.getAttribute("src") || "");
-      const icons = Array.from(block.querySelectorAll("img.h_30")).map((img) => iconName(img.getAttribute("src") || ""));
+      const dxImg = xpathNodes(block, './/div[contains(@class, "music_score_block") and contains(@class, "w_190")]/img')[0];
+      const dxScore = (dxImg?.nextSibling?.textContent || "N/A").trim().replace(/,/g, "") || "N/A";
+      const typeIcon = xpathNodes(block, './/img[contains(@class, "music_kind_icon")]')[0]?.getAttribute("src") || "";
+      const type = musicType(typeIcon);
+      const icons = xpathNodes(block, './/img[contains(@class, "h_30")]').map((img) => iconName(img.getAttribute("src") || ""));
 
       records.push({
         name,
