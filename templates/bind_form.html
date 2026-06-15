@@ -50,12 +50,14 @@
     }
 
     .bind-type-help {
-      display: block;
-      margin-top: 6px;
+      display: none;
       color: var(--text-tertiary);
       font-size: 11px;
       line-height: 1.45;
-      text-align: right;
+    }
+
+    .bind-type-help.active {
+      display: flex;
     }
 
     input[type="submit"] {
@@ -147,13 +149,13 @@
 
         <div class="list-item">
           <label for="bind_type" id="label-bind-type">連携方式</label>
-          <div class="list-item-info" style="align-items: flex-end;">
-            <select id="bind_type" name="bind_type" required>
-              <option value="sega" id="opt-bind-sega">SEGA アカウント</option>
-              <option value="import_token" id="opt-bind-import">Import Token のみ</option>
-            </select>
-            <span class="bind-type-help" id="bind-type-help"></span>
-          </div>
+          <select id="bind_type" name="bind_type" required>
+            <option value="sega" id="opt-bind-sega">SEGA アカウント</option>
+            <option value="import_token" id="opt-bind-import">Import Token のみ</option>
+          </select>
+        </div>
+        <div class="list-item bind-type-help" id="bind-type-help">
+          SEGA ID を保存せず、書き出しツールから成績をアップロードします。
         </div>
         {% endif %}
 
@@ -420,7 +422,10 @@
       document.getElementById('password').required = !importOnly;
 
       const help = document.getElementById('bind-type-help');
-      if (help) help.textContent = importOnly ? t.bindTypeImportHelp : '';
+      if (help) {
+        help.textContent = t.bindTypeImportHelp;
+        help.classList.toggle('active', importOnly);
+      }
 
       document.getElementById('submit-btn').value = mode === 'rebind'
         ? t.submitBtnRebind

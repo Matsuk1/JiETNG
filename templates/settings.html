@@ -301,69 +301,62 @@
       background: var(--card-bg);
     }
 
-    .token-help {
-      padding: 0 16px 12px;
-      color: var(--text-tertiary);
-      font-size: 12px;
-      line-height: 1.55;
-    }
-
-    .token-actions {
+    .token-panel .list-panel-header {
       display: flex;
-      gap: 8px;
-      padding: 0 12px 12px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
     }
 
-    .token-actions button,
-    .token-result button {
-      border: 1px solid transparent;
-      border-radius: var(--radius-md);
-      padding: 9px 12px;
-      font-size: 13px;
+    .token-help {
+      max-width: 280px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.45;
+      text-align: right;
+    }
+
+    .token-action-btn {
+      appearance: none;
+      -webkit-appearance: none;
+      border: none;
+      background: transparent;
+      color: var(--accent-color);
+      font: inherit;
+      font-size: 14px;
       font-weight: 600;
+      line-height: 1.2;
+      padding: 4px 0;
       cursor: pointer;
-      transition: background-color var(--transition-base),
-                  border-color var(--transition-base),
-                  color var(--transition-base),
-                  opacity var(--transition-base);
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
-    .btn-primary-small {
-      background: var(--accent-color);
-      color: #fff;
-      border-color: var(--accent-color);
+    .token-action-btn:hover {
+      opacity: 0.75;
     }
 
-    .btn-primary-small:hover {
-      opacity: 0.86;
-    }
-
-    .btn-primary-small:disabled {
+    .token-action-btn:disabled {
       cursor: not-allowed;
       opacity: 0.55;
     }
 
     .token-result {
       display: none;
-      margin: 0 12px 12px;
-      padding: 12px;
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      background: var(--surface-bg);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
     }
 
     .token-result.active {
-      display: block;
+      display: flex;
+    }
+
+    .token-result .list-item-info {
+      gap: 6px;
     }
 
     .token-value {
-      margin: 8px 0;
-      padding: 9px;
-      border-radius: var(--radius-sm);
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      color: var(--text-color);
+      width: 100%;
+      color: var(--text-secondary);
       font-size: 12px;
       line-height: 1.45;
       word-break: break-all;
@@ -376,31 +369,6 @@
       color: var(--text-tertiary);
       font-size: 13px;
       background: var(--card-bg);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .btn-primary-small {
-        background: #2A2A2A;
-        border-color: #3A3A3A;
-        color: var(--text-color);
-      }
-
-      .btn-primary-small:hover {
-        background: #343434;
-        border-color: #484848;
-        opacity: 1;
-      }
-
-      .token-result {
-        background: #101010;
-        border-color: #2A2A2A;
-      }
-
-      .token-value {
-        background: #171717;
-        border-color: #2F2F2F;
-        color: #EDEDED;
-      }
     }
 
     @media (max-width: 600px) {
@@ -416,6 +384,16 @@
       h2 {
         font-size: 20px;
         margin-bottom: 24px;
+      }
+
+      .token-panel .list-panel-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .token-help {
+        max-width: none;
+        text-align: left;
       }
     }
   </style>
@@ -549,17 +527,25 @@
     {% endif %}
 
     <div class="list-panel token-panel">
-      <div class="list-panel-header" id="import-token-title">成績インポートToken</div>
-      <div class="token-help" id="import-token-help">
-        外部ツールから加工済みの成績JSONをJiETNGへアップロードするためのTokenです。
+      <div class="list-panel-header">
+        <span id="import-token-title">成績インポートToken</span>
+        <span class="token-help" id="import-token-help">
+          外部ツールから加工済みの成績JSONをJiETNGへアップロードするためのTokenです。
+        </span>
       </div>
-      <div id="import-token-result" class="token-result">
-        <div class="list-item-label" id="import-token-result-title">Token（今回のみ表示）</div>
-        <div class="token-value" id="import-token-value"></div>
-        <button type="button" class="btn-primary-small" id="import-token-copy-btn" onclick="copyImportToken()">コピー</button>
+      <div class="list-item token-result" id="import-token-result">
+        <div class="list-item-info">
+          <span class="list-item-label" id="import-token-result-title">Token（今回のみ表示）</span>
+          <span class="token-value" id="import-token-value"></span>
+        </div>
+        <button type="button" class="token-action-btn" id="import-token-copy-btn" onclick="copyImportToken()">コピー</button>
       </div>
-      <div class="token-actions">
-        <button type="button" class="btn-primary-small" id="import-token-create-btn" onclick="createImportToken()">Tokenを生成</button>
+      <div class="list-item">
+        <div class="list-item-info">
+          <span class="list-item-label" id="import-token-create-label">新しいToken</span>
+          <span class="list-item-meta" id="import-token-create-meta">生成後、Tokenは一度だけ表示されます。</span>
+        </div>
+        <button type="button" class="token-action-btn" id="import-token-create-btn" onclick="createImportToken()">Tokenを生成</button>
       </div>
       <div id="import-token-list">
         {% if import_tokens %}
@@ -606,6 +592,8 @@
         importTokenTitle: '成績インポートToken',
         importTokenHelp: '外部ツールから加工済みの成績JSONをJiETNGへアップロードするためのTokenです。',
         importTokenCreate: 'Tokenを生成',
+        importTokenCreateLabel: '新しいToken',
+        importTokenCreateMeta: '生成後、Tokenは一度だけ表示されます。',
         importTokenResultTitle: 'Token（今回のみ表示）',
         importTokenCopy: 'コピー',
         importTokenCopied: 'コピーしました',
@@ -636,6 +624,8 @@
         importTokenTitle: 'Record Import Token',
         importTokenHelp: 'Use this token to upload processed record JSON from external tools to JiETNG.',
         importTokenCreate: 'Generate Token',
+        importTokenCreateLabel: 'New Token',
+        importTokenCreateMeta: 'After generation, the token is shown only once.',
         importTokenResultTitle: 'Token (shown only once)',
         importTokenCopy: 'Copy',
         importTokenCopied: 'Copied',
@@ -666,6 +656,8 @@
         importTokenTitle: '成绩导入 Token',
         importTokenHelp: '用于让外部工具把加工后的成绩 JSON 上传到 JiETNG。',
         importTokenCreate: '生成 Token',
+        importTokenCreateLabel: '新的 Token',
+        importTokenCreateMeta: '生成后，Token 只会显示这一次。',
         importTokenResultTitle: 'Token（只显示这一次）',
         importTokenCopy: '复制',
         importTokenCopied: '已复制',
@@ -765,6 +757,10 @@
       if (help) help.textContent = t.importTokenHelp;
       const createBtn = document.getElementById('import-token-create-btn');
       if (createBtn && !createBtn.disabled) createBtn.textContent = t.importTokenCreate;
+      const createLabel = document.getElementById('import-token-create-label');
+      if (createLabel) createLabel.textContent = t.importTokenCreateLabel;
+      const createMeta = document.getElementById('import-token-create-meta');
+      if (createMeta) createMeta.textContent = t.importTokenCreateMeta;
       const resultTitle = document.getElementById('import-token-result-title');
       if (resultTitle) resultTitle.textContent = t.importTokenResultTitle;
       const copyBtn = document.getElementById('import-token-copy-btn');
