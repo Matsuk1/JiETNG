@@ -3,8 +3,24 @@
 
   const SUPPORTED_HOSTS = new Set(["maimaidx.jp", "maimaidx-eng.com"]);
   const DIFFICULTIES = ["basic", "advanced", "expert", "master", "remaster"];
+  const RECORD_TYPES = [
+    ["best50", "B50"],
+    ["best40", "B40"],
+    ["best35", "B35"],
+    ["best15", "B15"],
+    ["allb35", "AB35"],
+    ["allb50", "AB50"],
+    ["apb50", "AP50"],
+    ["fdxb50", "FDX50"],
+    ["idlb50", "IDLB50"],
+  ];
 
-  const state = { payload: null };
+  const state = {
+    payload: null,
+    profile: null,
+    best: null,
+    collectPromise: null,
+  };
 
   const host = location.hostname;
   const isSupportedHost = SUPPORTED_HOSTS.has(host);
@@ -12,6 +28,9 @@
   const baseUrl = `${location.origin}${basePath}`;
   const version = host === "maimaidx-eng.com" ? "intl" : "jp";
   const imageApiUrl = window.JIETNG_SESSION_IMAGE_API || "https://jietng-endpoint.matsuk1.com/api/web/session-image";
+  const cacheKey = `jietng:maimai-session:${version}:best-records:v1`;
+  const uiCacheKey = `jietng:maimai-session:${version}:ui:v1`;
+  const previewCacheKey = `jietng:maimai-session:${version}:preview:v1`;
 
   function createPanel() {
     const old = document.getElementById("jietng-bookmarklet-panel");
@@ -67,6 +86,48 @@
         line-height: 1;
       }
       #jietng-bookmarklet-panel main { padding: 12px; }
+      #jietng-bookmarklet-controls {
+        display: grid;
+        gap: 9px;
+        margin-bottom: 10px;
+      }
+      #jietng-bookmarklet-controls label {
+        display: grid;
+        gap: 4px;
+        color: #4b5563;
+        font-size: 12px;
+        font-weight: 650;
+      }
+      #jietng-bookmarklet-controls select,
+      #jietng-bookmarklet-controls input {
+        width: 100%;
+        min-height: 34px;
+        border: 1px solid rgba(17,24,39,.16);
+        border-radius: 8px;
+        background: #ffffff;
+        color: #111827;
+        font: 13px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        padding: 6px 8px;
+        outline: none;
+      }
+      #jietng-bookmarklet-controls select:focus,
+      #jietng-bookmarklet-controls input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37,99,235,.14);
+      }
+      #jietng-bookmarklet-generate {
+        min-height: 36px;
+        background: #111827;
+        border-color: #111827;
+        color: #ffffff;
+        font-weight: 750;
+      }
+      #jietng-bookmarklet-generate:disabled,
+      #jietng-bookmarklet-controls select:disabled,
+      #jietng-bookmarklet-controls input:disabled {
+        cursor: not-allowed;
+        opacity: .58;
+      }
       #jietng-bookmarklet-status {
         color: #374151;
         font-weight: 650;
@@ -149,16 +210,96 @@
         <button type="button" title="Close" aria-label="Close">×</button>
       </header>
       <main>
+        <div id="jietng-bookmarklet-controls">
+          <label>
+            Type
+            <select id="jietng-bookmarklet-type">
+              ${RECORD_TYPES.map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}
+            </select>
+          </label>
+          <label>
+            Command
+            <input id="jietng-bookmarklet-command" type="text" inputmode="text" autocomplete="off" placeholder="-lv 13 -diff mas -page 2">
+          </label>
+          <button id="jietng-bookmarklet-generate" type="button">Generate</button>
+        </div>
         <div id="jietng-bookmarklet-status">Ready</div>
       </main>
     `;
     panel.querySelector("header button").addEventListener("click", () => panel.remove());
     document.body.appendChild(panel);
+    restoreUiState();
+    document.getElementById("jietng-bookmarklet-type")?.addEventListener("change", saveUiState);
+    document.getElementById("jietng-bookmarklet-command")?.addEventListener("input", saveUiState);
   }
 
   function status(text) {
     const node = document.getElementById("jietng-bookmarklet-status");
     if (node) node.textContent = text;
+  }
+
+  function currentOptions() {
+    return {
+      cmdType: document.getElementById("jietng-bookmarklet-type")?.value || "best50",
+      command: document.getElementById("jietng-bookmarklet-command")?.value?.trim() || "",
+    };
+  }
+
+  function setControlsDisabled(disabled) {
+    for (const id of ["jietng-bookmarklet-type", "jietng-bookmarklet-command", "jietng-bookmarklet-generate"]) {
+      const node = document.getElementById(id);
+      if (node) node.disabled = disabled;
+    }
+  }
+
+  function restoreUiState() {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(uiCacheKey) || "null");
+      if (!cached) return;
+      const typeNode = document.getElementById("jietng-bookmarklet-type");
+      const commandNode = document.getElementById("jietng-bookmarklet-command");
+      if (typeNode && RECORD_TYPES.some(([value]) => value === cached.cmdType)) typeNode.value = cached.cmdType;
+      if (commandNode && typeof cached.command === "string") commandNode.value = cached.command;
+    } catch (_) {
+      sessionStorage.removeItem(uiCacheKey);
+    }
+  }
+
+  function saveUiState() {
+    try {
+      sessionStorage.setItem(uiCacheKey, JSON.stringify(currentOptions()));
+    } catch (_) {
+      // Ignore storage quota/private mode failures.
+    }
+  }
+
+  function loadCachedSessionData() {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+      if (cached?.profile && Array.isArray(cached?.best) && cached.best.length) {
+        state.profile = cached.profile;
+        state.best = cached.best;
+        return {
+          profile: cached.profile,
+          best: cached.best,
+        };
+      }
+    } catch (_) {
+      sessionStorage.removeItem(cacheKey);
+    }
+    return null;
+  }
+
+  function saveCachedSessionData(profile, best) {
+    try {
+      sessionStorage.setItem(cacheKey, JSON.stringify({
+        captured_at: new Date().toISOString(),
+        profile,
+        best,
+      }));
+    } catch (_) {
+      // Ignore storage quota/private mode failures; in-memory cache still works.
+    }
   }
 
   function makeButton(label, onClick, primary = false) {
@@ -349,25 +490,25 @@
     return `jietng_maimai_${payload.version}_${safeName}_${stamp}.${extension}`;
   }
 
-  function downloadBlob(blob, payload, extension = "png") {
+  function downloadImage(source, payload, extension = "png") {
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
+    const shouldRevoke = source instanceof Blob;
+    link.href = shouldRevoke ? URL.createObjectURL(source) : source;
     link.download = filenameFor(payload, extension);
     document.body.appendChild(link);
     link.click();
     setTimeout(() => {
-      URL.revokeObjectURL(link.href);
+      if (shouldRevoke) URL.revokeObjectURL(link.href);
       link.remove();
     }, 1000);
   }
 
-  function showImagePreview(blob, payload) {
+  function showImagePreview(source, payload) {
     const old = document.getElementById("jietng-bookmarklet-preview");
     if (old) old.remove();
-    const panel = document.getElementById("jietng-bookmarklet-panel");
-    if (panel) panel.remove();
 
-    const url = URL.createObjectURL(blob);
+    const shouldRevoke = source instanceof Blob;
+    const url = shouldRevoke ? URL.createObjectURL(source) : source;
     const overlay = document.createElement("section");
     overlay.id = "jietng-bookmarklet-preview";
     overlay.innerHTML = `
@@ -384,19 +525,51 @@
     overlay.querySelector("img").src = url;
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay) {
-        URL.revokeObjectURL(url);
+        if (shouldRevoke) URL.revokeObjectURL(url);
         overlay.remove();
       }
     });
 
     const actionNode = overlay.querySelector("#jietng-bookmarklet-preview-actions");
-    actionNode.appendChild(makeButton("Download", () => downloadBlob(blob, payload)));
+    actionNode.appendChild(makeButton("Download", () => downloadImage(source, payload)));
     actionNode.appendChild(makeButton("Close", () => {
-      URL.revokeObjectURL(url);
+      if (shouldRevoke) URL.revokeObjectURL(url);
       overlay.remove();
     }));
 
     document.body.appendChild(overlay);
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener("load", () => resolve(reader.result));
+      reader.addEventListener("error", () => reject(reader.error));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function saveCachedPreview(blob, payload) {
+    try {
+      sessionStorage.setItem(previewCacheKey, JSON.stringify({
+        captured_at: new Date().toISOString(),
+        payload,
+        image_data_url: await blobToDataUrl(blob),
+      }));
+    } catch (_) {
+      // Ignore storage quota/private mode failures; the current overlay still works.
+    }
+  }
+
+  function restoreCachedPreview() {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(previewCacheKey) || "null");
+      if (!cached?.image_data_url || !cached?.payload) return;
+      showImagePreview(cached.image_data_url, cached.payload);
+      status("Restored previous image. Generate again to update it.");
+    } catch (_) {
+      sessionStorage.removeItem(previewCacheKey);
+    }
   }
 
   async function generateImage(payload) {
@@ -435,31 +608,63 @@
     }
 
     const blob = await response.blob();
+    await saveCachedPreview(blob, payload);
     showImagePreview(blob, payload);
   }
 
-  async function run() {
-    createPanel();
-    if (!isSupportedHost) {
-      status("Wrong page");
-      return;
+  async function collectSessionData() {
+    if (state.profile && state.best) {
+      status(`Using cached ${state.best.length} records...`);
+      return {
+        profile: state.profile,
+        best: state.best,
+      };
+    }
+    const cached = loadCachedSessionData();
+    if (cached) {
+      status(`Using cached ${cached.best.length} records...`);
+      return cached;
+    }
+    if (state.collectPromise) {
+      return state.collectPromise;
     }
 
-    status("Collecting profile...");
+    state.collectPromise = (async () => {
+      status("Collecting profile...");
 
-    const [playerDoc, collectionDoc, nameplateDoc, trophyDoc] = await Promise.all([
-      fetchPage("/playerData/"),
-      fetchPage("/collection/"),
-      fetchPage("/collection/nameplate/"),
-      fetchPage("/collection/trophy/"),
-    ]);
-    const profile = parseProfile(playerDoc, collectionDoc, nameplateDoc, trophyDoc, document);
+      const [playerDoc, collectionDoc, nameplateDoc, trophyDoc] = await Promise.all([
+        fetchPage("/playerData/"),
+        fetchPage("/collection/"),
+        fetchPage("/collection/nameplate/"),
+        fetchPage("/collection/trophy/"),
+      ]);
+      const profile = parseProfile(playerDoc, collectionDoc, nameplateDoc, trophyDoc, document);
 
-    status("Collecting best records...");
-    const bestDocs = await Promise.all(
-      DIFFICULTIES.map((_, index) => fetchPage(`/record/musicGenre/search/?genre=99&diff=${index}`))
-    );
-    const best = bestDocs.flatMap((doc, index) => parseBestRecords(doc, DIFFICULTIES[index]));
+      status("Collecting best records...");
+      const bestDocs = await Promise.all(
+        DIFFICULTIES.map((_, index) => fetchPage(`/record/musicGenre/search/?genre=99&diff=${index}`))
+      );
+      const best = bestDocs.flatMap((doc, index) => parseBestRecords(doc, DIFFICULTIES[index]));
+
+      state.profile = profile;
+      state.best = best;
+      saveCachedSessionData(profile, best);
+      return { profile, best };
+    })();
+
+    try {
+      return await state.collectPromise;
+    } catch (error) {
+      state.collectPromise = null;
+      throw error;
+    }
+  }
+
+  async function generateFromPage() {
+    const options = currentOptions();
+    saveUiState();
+    setControlsDisabled(true);
+    const { profile, best } = await collectSessionData();
     status(`Generating image from ${best.length} records...`);
 
     state.payload = {
@@ -468,7 +673,8 @@
       captured_at: new Date().toISOString(),
       origin: location.origin,
       version,
-      cmd_type: "best50",
+      cmd_type: options.cmdType,
+      command: options.command,
       profile,
       records: {
         best,
@@ -478,7 +684,25 @@
     await generateImage(state.payload);
   }
 
-  run().catch((error) => {
-    status(`Failed: ${error?.message || String(error)}`);
-  });
+  function run() {
+    createPanel();
+    if (!isSupportedHost) {
+      status("Wrong page");
+      setControlsDisabled(true);
+      return;
+    }
+
+    document.getElementById("jietng-bookmarklet-generate")?.addEventListener("click", () => {
+      generateFromPage()
+        .catch((error) => {
+          status(`Failed: ${error?.message || String(error)}`);
+        })
+        .finally(() => {
+          setControlsDisabled(false);
+        });
+    });
+    restoreCachedPreview();
+  }
+
+  run();
 })();

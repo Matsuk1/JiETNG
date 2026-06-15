@@ -28,7 +28,8 @@ This bookmarklet runs on the official maimai DX mobile website. It uses your cur
    - `https://maimaidx.jp/maimai-mobile/home/`
    - `https://maimaidx-eng.com/maimai-mobile/home/`
 3. Click the saved bookmark while staying on the official page.
-4. Wait for generation to finish, then view the image in the page overlay.
+4. Select a B-series type, optionally enter filters such as `-lv 13 -diff mas`, then click **Generate**.
+5. Wait for generation to finish, then view the image in the page overlay. Further generations in the same browser tab, or opening the bookmarklet again after refreshing, restore the last overlay and reuse the already collected records.
 
 If dragging is inconvenient in your browser, click **Copy bookmark URL**, create a bookmark manually, and paste the copied `javascript:...` content into the URL field.
 

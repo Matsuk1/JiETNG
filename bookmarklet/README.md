@@ -4,6 +4,15 @@ This tool runs inside the logged-in maimai DX mobile site and uses the current
 browser session to collect profile and best records, then renders a score image
 inside an overlay on the original maimai page.
 
+The panel can generate B-series record images from the same collected Best
+records without re-fetching the maimai pages: `B50`, `B40`, `B35`, `B15`,
+`AB35`, `AB50`, `AP50`, `FDX50`, and `IDLB50`. It also accepts the same filter
+string used by the native b-records command, such as `-lv 13 -diff mas`. The
+collected records are cached in `sessionStorage`, so refreshing the same browser
+tab and opening the bookmarklet again still reuses the cached records. The last
+selected options and generated preview are also restored when the bookmarklet is
+opened again in that tab.
+
 It does not read or ask for SEGA ID passwords. The browser sends existing
 maimaidx cookies to same-origin maimai pages.
 
@@ -50,6 +59,7 @@ The bookmarklet sends this JSON shape to JiETNG:
   "origin": "https://maimaidx.jp",
   "version": "jp",
   "cmd_type": "best50",
+  "command": "-lv 13 -diff mas",
   "profile": {
     "name": "player",
     "rating": "15000"
