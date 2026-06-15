@@ -138,10 +138,11 @@
         min-width: 0;
       }
       #jietng-bookmarklet-token-row.saved {
-        grid-template-columns: 1fr auto;
+        grid-template-columns: 1fr auto auto;
       }
       #jietng-bookmarklet-token-row.saved input,
       #jietng-bookmarklet-token-row:not(.saved) #jietng-bookmarklet-token-state,
+      #jietng-bookmarklet-token-row:not(.saved) #jietng-bookmarklet-upload-token,
       #jietng-bookmarklet-token-row:not(.saved) #jietng-bookmarklet-change-token,
       #jietng-bookmarklet-token-row.saved #jietng-bookmarklet-save-token {
         display: none;
@@ -182,6 +183,9 @@
         background: #f9fafb;
         border-color: rgba(17,24,39,.22);
       }
+      #jietng-bookmarklet-upload-token {
+        color: #047857;
+      }
       #jietng-bookmarklet-auto-upload-row {
         display: flex;
         align-items: center;
@@ -197,6 +201,7 @@
       }
       #jietng-bookmarklet-generate:disabled,
       #jietng-bookmarklet-save-token:disabled,
+      #jietng-bookmarklet-upload-token:disabled,
       #jietng-bookmarklet-change-token:disabled,
       #jietng-bookmarklet-controls select:disabled,
       #jietng-bookmarklet-controls input:disabled {
@@ -309,6 +314,7 @@
               <input id="jietng-bookmarklet-import-token" type="password" inputmode="text" autocomplete="off" placeholder="jit_...">
               <span id="jietng-bookmarklet-token-state">Saved</span>
               <button id="jietng-bookmarklet-save-token" class="token-action" type="button">Save</button>
+              <button id="jietng-bookmarklet-upload-token" class="token-action" type="button">Upload</button>
               <button id="jietng-bookmarklet-change-token" class="token-action" type="button">Replace</button>
             </div>
           </label>
@@ -329,6 +335,7 @@
     document.getElementById("jietng-bookmarklet-command")?.addEventListener("input", saveUiState);
     document.getElementById("jietng-bookmarklet-auto-upload")?.addEventListener("change", saveUiState);
     document.getElementById("jietng-bookmarklet-save-token")?.addEventListener("click", () => saveImportToken(true));
+    document.getElementById("jietng-bookmarklet-upload-token")?.addEventListener("click", () => uploadSavedImportToken());
     document.getElementById("jietng-bookmarklet-change-token")?.addEventListener("click", changeImportToken);
     restoreImportToken();
   }
@@ -357,6 +364,7 @@
       "jietng-bookmarklet-command",
       "jietng-bookmarklet-import-token",
       "jietng-bookmarklet-save-token",
+      "jietng-bookmarklet-upload-token",
       "jietng-bookmarklet-change-token",
       "jietng-bookmarklet-auto-upload",
       "jietng-bookmarklet-generate",
@@ -851,6 +859,26 @@
       }
     })();
     return initialImportUploadPromise;
+  }
+
+  async function uploadSavedImportToken() {
+    if (!currentImportToken()) {
+      uploadStatus("Import token is empty. Skipped upload.");
+      return;
+    }
+
+    const button = document.getElementById("jietng-bookmarklet-upload-token");
+    if (button) button.disabled = true;
+    try {
+      localStorage.removeItem(importUploadKey);
+      uploadStatus("Uploading records...");
+      const { profile, best, recent } = await collectSessionData();
+      await uploadImportPayload(buildImportPayload(profile, best, recent));
+    } catch (error) {
+      uploadStatus(`Upload failed: ${error?.message || String(error)}`);
+    } finally {
+      if (button) button.disabled = false;
+    }
   }
 
   function safeFilenamePart(value) {
