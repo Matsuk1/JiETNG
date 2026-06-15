@@ -1094,7 +1094,6 @@
           setControlsDisabled(false);
         });
     });
-    restoreCachedPreview();
     ensureInitialImportUpload("open");
   }
 
