@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from modules.maimai_manager import get_rating_image_path
 from modules.record_manager import write_record
 from modules.user_db import get_user, save_user
 
@@ -92,10 +93,15 @@ def _transform_processed_record(record: dict) -> dict:
 
 def _transform_profile(profile: dict) -> dict:
     profile = profile or {}
+    rating = str(profile.get("rating", "0"))
+    try:
+        rating_int = int(float(rating))
+    except (TypeError, ValueError):
+        rating_int = 0
     out = {
         "name": profile.get("name") or "Imported",
-        "rating": str(profile.get("rating", "0")),
-        "rating_block_path": profile.get("rating_block_path") or "N/A",
+        "rating": rating,
+        "rating_block_path": get_rating_image_path(rating_int),
         "trophy_content": profile.get("trophy") or profile.get("trophy_content") or "N/A",
         "trophy_url": profile.get("trophy_url") or "N/A",
         "icon_url": profile.get("icon_url") or "N/A",

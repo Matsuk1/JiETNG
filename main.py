@@ -1182,6 +1182,11 @@ Token not provided. <br />
                 'is_owner': False,
             })
 
+    import_tokens = [
+        item for item in (list_import_tokens(user_id) or [])
+        if item.get("note") == "settings"
+    ]
+
     return render_template(
         "settings.html",
         user_language=user_language,
@@ -1193,7 +1198,7 @@ Token not provided. <br />
         custom_bg_filename=custom_bg_filename,
         perm_token=generate_perm_token(user_id),
         perm_list=perm_list,
-        import_tokens=list_import_tokens(user_id) or [],
+        import_tokens=import_tokens,
     )
 
 

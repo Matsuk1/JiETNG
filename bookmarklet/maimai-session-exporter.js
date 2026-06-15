@@ -161,6 +161,17 @@
         min-width: 48px;
         min-height: 34px;
         padding: 6px 8px;
+        border: 1px solid rgba(17,24,39,.14);
+        border-radius: 8px;
+        background: #ffffff;
+        color: #111827;
+        font-weight: 650;
+      }
+      #jietng-bookmarklet-save-token:hover,
+      #jietng-bookmarklet-change-token:hover,
+      #jietng-bookmarklet-clear-token:hover {
+        background: #f9fafb;
+        border-color: rgba(17,24,39,.22);
       }
       #jietng-bookmarklet-auto-upload-row {
         display: flex;
@@ -746,7 +757,6 @@
       maimai_version: version,
       profile: {
         name: profile?.name || "Imported",
-        rating_block_path: profile?.rating_block_path,
         trophy: profile?.trophy_content || "N/A",
         trophy_url: profile?.trophy_url,
         trophy_content: profile?.trophy_content || "N/A",
