@@ -160,13 +160,19 @@
       #jietng-bookmarklet-save-token,
       #jietng-bookmarklet-change-token {
         min-width: 48px;
-        min-height: 34px;
-        padding: 6px 8px;
+        height: 34px;
+        min-height: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 8px;
         border: 1px solid rgba(17,24,39,.14);
         border-radius: 8px;
         background: #ffffff;
         color: #111827;
+        font-size: 12px;
         font-weight: 650;
+        line-height: 1;
       }
       #jietng-bookmarklet-save-token:hover,
       #jietng-bookmarklet-change-token:hover {
