@@ -49,6 +49,15 @@
       display: none;
     }
 
+    .bind-type-help {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      line-height: 1.45;
+      text-align: right;
+    }
+
     input[type="submit"] {
       width: 100%;
       padding: 13px;
@@ -135,14 +144,25 @@
             <option value="zh" id="opt-lang-zh">简体中文</option>
           </select>
         </div>
-        {% endif %}
 
         <div class="list-item">
+          <label for="bind_type" id="label-bind-type">連携方式</label>
+          <div class="list-item-info" style="align-items: flex-end;">
+            <select id="bind_type" name="bind_type" required>
+              <option value="sega" id="opt-bind-sega">SEGA アカウント</option>
+              <option value="import_token" id="opt-bind-import">Import Token のみ</option>
+            </select>
+            <span class="bind-type-help" id="bind-type-help"></span>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="list-item sega-field">
           <label for="segaid" id="label-segaid">セガID</label>
           <input type="text" id="segaid" name="segaid" required {% if mode == 'rebind' %}value="{{ segaid }}" readonly{% endif %} />
         </div>
 
-        <div class="list-item">
+        <div class="list-item sega-field">
           <label for="password" id="label-password">パスワード</label>
           <input type="password" id="password" name="password" required {% if mode == 'rebind' %}value="{{ password }}"{% endif %} />
         </div>
@@ -155,7 +175,7 @@
           </select>
         </div>
 
-        <div class="list-item" id="aime-container" {% if mode == 'rebind' and version == 'intl' %}style="display: none;"{% endif %}>
+        <div class="list-item sega-field" id="aime-container" {% if mode == 'rebind' and version == 'intl' %}style="display: none;"{% endif %}>
           <label for="aime" id="label-aime">Aime</label>
           <select id="aime" name="aime">
             <option value="0" {% if mode != 'rebind' or aime == 0 %}selected{% endif %}>1</option>
@@ -237,7 +257,12 @@
         labelAime: 'Aime',
         labelTimezone: 'タイムゾーン',
         labelLanguage: '言語',
+        labelBindType: '連携方式',
+        optBindSega: 'SEGA アカウント',
+        optBindImport: 'Import Token のみ',
+        bindTypeImportHelp: 'SEGA ID を保存せず、書き出しツールから成績をアップロードします。',
         submitBtn: '連携',
+        submitBtnImport: 'Tokenを生成',
         submitBtnRebind: '更新',
         noticeTitle: 'ご利用に関するご注意'
       },
@@ -254,7 +279,12 @@
         labelAime: 'Aime',
         labelTimezone: 'Timezone',
         labelLanguage: 'Language',
+        labelBindType: 'Link Type',
+        optBindSega: 'SEGA Account',
+        optBindImport: 'Import Token Only',
+        bindTypeImportHelp: 'Do not save SEGA credentials. Upload records from an export tool instead.',
         submitBtn: 'Bind',
+        submitBtnImport: 'Generate Token',
         submitBtnRebind: 'Update',
         noticeTitle: 'Notice'
       },
@@ -271,7 +301,12 @@
         labelAime: 'Aime',
         labelTimezone: '时区',
         labelLanguage: '语言',
+        labelBindType: '绑定方式',
+        optBindSega: 'SEGA 账号',
+        optBindImport: '仅使用 Import Token',
+        bindTypeImportHelp: '不保存 SEGA 账号密码，之后通过导出工具上传成绩。',
         submitBtn: '绑定',
+        submitBtnImport: '生成 Token',
         submitBtnRebind: '更新',
         noticeTitle: '使用须知'
       }
@@ -299,12 +334,19 @@
       const labelLanguage = document.getElementById('label-language');
       if (labelLanguage) labelLanguage.textContent = t.labelLanguage;
 
+      const labelBindType = document.getElementById('label-bind-type');
+      if (labelBindType) labelBindType.textContent = t.labelBindType;
+      const optBindSega = document.getElementById('opt-bind-sega');
+      if (optBindSega) optBindSega.textContent = t.optBindSega;
+      const optBindImport = document.getElementById('opt-bind-import');
+      if (optBindImport) optBindImport.textContent = t.optBindImport;
+
       // Update version options
       document.getElementById('opt-jp').textContent = t.optJp;
       document.getElementById('opt-intl').textContent = t.optIntl;
 
       // Update submit button
-      document.getElementById('submit-btn').value = mode === 'rebind' ? t.submitBtnRebind : t.submitBtn;
+      updateBindTypeUi();
 
       // Update notice title
       document.getElementById('notice-title').textContent = t.noticeTitle;
@@ -346,6 +388,13 @@
       const verSelect = document.getElementById('ver');
       const aimeContainer = document.getElementById('aime-container');
       const aimeSelect = document.getElementById('aime');
+      const bindType = document.getElementById('bind_type')?.value || 'sega';
+
+      if (bindType === 'import_token') {
+        aimeContainer.style.display = 'none';
+        aimeSelect.value = '0';
+        return;
+      }
 
       if (verSelect.value === 'intl') {
         // intl 版本：隐藏 Aime 容器，设置值为 0
@@ -355,6 +404,28 @@
         // jp 版本：显示 Aime 容器
         aimeContainer.style.display = 'flex';
       }
+    }
+
+    function updateBindTypeUi() {
+      const lang = document.getElementById('language')?.value || '{{ user_language }}' || 'ja';
+      const t = translations[lang];
+      const mode = '{{ mode }}' || 'bind';
+      const bindType = document.getElementById('bind_type')?.value || 'sega';
+      const importOnly = mode !== 'rebind' && bindType === 'import_token';
+
+      document.querySelectorAll('.sega-field').forEach(el => {
+        el.style.display = importOnly ? 'none' : 'flex';
+      });
+      document.getElementById('segaid').required = !importOnly;
+      document.getElementById('password').required = !importOnly;
+
+      const help = document.getElementById('bind-type-help');
+      if (help) help.textContent = importOnly ? t.bindTypeImportHelp : '';
+
+      document.getElementById('submit-btn').value = mode === 'rebind'
+        ? t.submitBtnRebind
+        : (importOnly ? t.submitBtnImport : t.submitBtn);
+      toggleAimeContainer();
     }
 
     // 提交时显示 loading 遮罩，使用 fetch 避免 LINE WKWebView 页面导航冻结渲染
@@ -385,6 +456,11 @@
       const verSelect = document.getElementById('ver');
       verSelect.addEventListener('change', toggleAimeContainer);
 
+      const bindTypeSelect = document.getElementById('bind_type');
+      if (bindTypeSelect) {
+        bindTypeSelect.addEventListener('change', updateBindTypeUi);
+      }
+
       // 初始化 Aime 容器显示状态
       toggleAimeContainer();
 
@@ -397,6 +473,8 @@
           updateLanguage(this.value);
         });
       }
+
+      updateBindTypeUi();
 
       // bind 模式下自动检测用户时区
       if (mode !== 'rebind') {

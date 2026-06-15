@@ -12,6 +12,14 @@
       {% else %}
       設定保存完了 | JiETNG
       {% endif %}
+    {% elif mode == 'import_token' %}
+      {% if language == 'en' %}
+      Import Token Created | JiETNG
+      {% elif language == 'zh' %}
+      Import Token 已生成 | JiETNG
+      {% else %}
+      Import Token 作成完了 | JiETNG
+      {% endif %}
     {% elif mode == 'rebind' %}
       {% if language == 'en' %}
       Update Successful | JiETNG
@@ -86,6 +94,56 @@
       text-align: center;
     }
 
+    .token-result {
+      margin: 20px 0 28px;
+      padding: 14px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: var(--surface-bg);
+      text-align: left;
+    }
+
+    .token-label {
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .token-value {
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: var(--card-bg);
+      color: var(--text-color);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      word-break: break-all;
+      user-select: all;
+    }
+
+    .copy-btn {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--accent-color);
+      border-radius: var(--radius-md);
+      background: var(--accent-color);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .copy-btn {
+        background: #2A2A2A;
+        border-color: #3A3A3A;
+        color: var(--text-color);
+      }
+    }
+
     /* 移动端优化 */
     @media (max-width: 600px) {
       body {
@@ -122,6 +180,14 @@
         {% else %}
         設定保存完了
         {% endif %}
+      {% elif mode == 'import_token' %}
+        {% if language == 'en' %}
+        Import Token Created
+        {% elif language == 'zh' %}
+        Import Token 已生成
+        {% else %}
+        Import Token 作成完了
+        {% endif %}
       {% elif mode == 'rebind' %}
         {% if language == 'en' %}
         Update Successful
@@ -150,6 +216,14 @@
         {% else %}
         設定が正常に保存されました。
         {% endif %}
+      {% elif mode == 'import_token' %}
+        {% if language == 'en' %}
+        Save this token in the bookmarklet. Your JiETNG profile will be initialized after the first record upload.
+        {% elif language == 'zh' %}
+        请把这个 Token 保存到书签工具里。第一次上传成绩后，JiETNG 会初始化你的用户资料。
+        {% else %}
+        この Token をブックマークレットに保存してください。初回の成績アップロード後、JiETNG のユーザーデータが初期化されます。
+        {% endif %}
       {% elif mode == 'rebind' %}
         {% if language == 'en' %}
         Your account settings have been successfully updated.
@@ -168,6 +242,30 @@
         {% endif %}
       {% endif %}
     </p>
+
+    {% if mode == 'import_token' and import_token %}
+    <div class="token-result">
+      <div class="token-label">
+        {% if language == 'en' %}
+        Token shown only once
+        {% elif language == 'zh' %}
+        Token 只显示这一次
+        {% else %}
+        Token は今回のみ表示されます
+        {% endif %}
+      </div>
+      <div class="token-value" id="import-token-value">{{ import_token }}</div>
+      <button type="button" class="copy-btn" id="copy-token-btn">
+        {% if language == 'en' %}
+        Copy Token
+        {% elif language == 'zh' %}
+        复制 Token
+        {% else %}
+        Tokenをコピー
+        {% endif %}
+      </button>
+    </div>
+    {% endif %}
 
     <div class="notice" style="margin-top: 28px; text-align: left;">
       {% if language == 'en' %}
@@ -191,5 +289,15 @@
       {% endif %}
     </div>
   </div>
+  {% if mode == 'import_token' and import_token %}
+  <script>
+    document.getElementById('copy-token-btn')?.addEventListener('click', async function() {
+      const value = document.getElementById('import-token-value')?.textContent || '';
+      if (!value) return;
+      await navigator.clipboard.writeText(value);
+      this.textContent = {% if language == 'en' %}'Copied'{% elif language == 'zh' %}'已复制'{% else %}'コピーしました'{% endif %};
+    });
+  </script>
+  {% endif %}
 </body>
 </html>

@@ -899,6 +899,7 @@ Token not provided. <br />
         return render_template("error.html", message=token_invalid_message, language="ja"), 400
 
     if request.method == "POST":
+        bind_type = request.form.get("bind_type", "sega")
         segaid = request.form.get("segaid")
         password = request.form.get("password")
         user_version = request.form.get("ver", "jp")
@@ -925,6 +926,40 @@ Token not provided. <br />
                 "zh": "已绑定 SEGA 账号。如需重新绑定，请先使用 unbind 命令解除绑定。"
             }
             return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
+
+        if mode == "bind" and bind_type == "import_token":
+            try:
+                timezone_int = int(user_timezone)
+            except (ValueError, TypeError):
+                timezone_int = 9
+
+            if user_version not in ("jp", "intl"):
+                user_version = "jp"
+
+            user_data.update({
+                "language": user_language,
+                "timezone": timezone_int,
+                "version": user_version,
+                "auth_type": "import_token",
+                "import_only": True,
+                "import_only_created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            })
+            for key in ("sega_id", "sega_pwd", "aime"):
+                user_data.pop(key, None)
+            save_user(user_id, user_data)
+
+            token_result = create_import_token(user_id, note="bookmarklet")
+            if not token_result:
+                return render_template("error.html", message="Failed to create import token.", language=user_language), 500
+
+            track_event('user_bind', user_id=user_id, metadata={'version': user_version, 'import_only': True})
+            return render_template(
+                "success.html",
+                language=user_language,
+                mode="import_token",
+                import_token=token_result["token"],
+                import_token_id=token_result["token_id"],
+            )
 
         # 在 rebind 模式下，验证 segaid 必须与现有的一致
         if mode == "rebind":
@@ -1067,7 +1102,8 @@ Token not provided. <br />
 
     # 检查用户是否已绑定账号
     has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
-    if not has_account:
+    has_import_only_access = bool(user_data.get("import_only") or user_data.get("auth_type") == "import_token" or user_data.get("import_tokens"))
+    if not has_account and not has_import_only_access:
         error_messages = {
             "ja": "アカウントが連携されていません。",
             "en": "No account is linked.",
@@ -4033,6 +4069,13 @@ def _check_private_or_warn(ctx, warn_text_dict):
 def _has_full_account(user_data):
     return all(k in user_data for k in ['sega_id', 'sega_pwd', 'version'])
 
+def _can_open_settings(user_data):
+    return _has_full_account(user_data) or bool(
+        user_data.get("import_only")
+        or user_data.get("auth_type") == "import_token"
+        or user_data.get("import_tokens")
+    )
+
 def cmd_bind(ctx):
     warn = _check_private_or_warn(ctx, bind_group_warning_text)
     if warn is not None:
@@ -4069,7 +4112,7 @@ def cmd_settings(ctx):
     warn = _check_private_or_warn(ctx, settings_group_warning_text)
     if warn is not None:
         return warn
-    if not _has_full_account(get_user(ctx.user_id) or {}):
+    if not _can_open_settings(get_user(ctx.user_id) or {}):
         return TextMessage(text=get_multilingual_text(rebind_not_bound_text, ctx.user_id))
     url = f"https://{DOMAIN}/linebot/settings?token={generate_settings_token(ctx.user_id)}"
     return TemplateMessage(

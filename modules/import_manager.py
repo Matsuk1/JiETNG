@@ -144,6 +144,14 @@ def import_processed_payload(user_id: str, payload: dict, source: str = "api_imp
     user_data["version"] = version
     user_data["personal_info"] = _transform_profile(payload.get("profile") or {})
     user_data["last_update"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    user_data.setdefault("created_at", user_data["last_update"])
+    user_data.setdefault("language", "ja")
+    user_data.setdefault("timezone", 9)
+    if user_data.get("import_only") or user_data.get("auth_type") == "import_token":
+        user_data["auth_type"] = "import_token"
+        user_data["import_only"] = True
+        user_data.setdefault("import_only_created_at", user_data.get("created_at"))
+        user_data["import_only_initialized_at"] = user_data["last_update"]
     user_data["last_import"] = {
         "source": source,
         "imported_at": user_data["last_update"],

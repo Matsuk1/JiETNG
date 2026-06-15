@@ -127,13 +127,36 @@
       }
       #jietng-bookmarklet-token-row {
         display: grid;
-        grid-template-columns: 1fr auto auto;
+        grid-template-columns: 1fr auto;
         gap: 6px;
       }
       #jietng-bookmarklet-token-row input {
         min-width: 0;
       }
+      #jietng-bookmarklet-token-row.saved {
+        grid-template-columns: 1fr auto auto;
+      }
+      #jietng-bookmarklet-token-row.saved input,
+      #jietng-bookmarklet-token-row:not(.saved) #jietng-bookmarklet-token-state,
+      #jietng-bookmarklet-token-row:not(.saved) #jietng-bookmarklet-change-token,
+      #jietng-bookmarklet-token-row:not(.saved) #jietng-bookmarklet-clear-token,
+      #jietng-bookmarklet-token-row.saved #jietng-bookmarklet-save-token {
+        display: none;
+      }
+      #jietng-bookmarklet-token-state {
+        min-height: 34px;
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        border: 1px solid rgba(17,24,39,.12);
+        border-radius: 8px;
+        background: #f3f4f6;
+        color: #374151;
+        font-size: 12px;
+        font-weight: 700;
+      }
       #jietng-bookmarklet-save-token,
+      #jietng-bookmarklet-change-token,
       #jietng-bookmarklet-clear-token {
         min-width: 48px;
         min-height: 34px;
@@ -154,6 +177,7 @@
       }
       #jietng-bookmarklet-generate:disabled,
       #jietng-bookmarklet-save-token:disabled,
+      #jietng-bookmarklet-change-token:disabled,
       #jietng-bookmarklet-clear-token:disabled,
       #jietng-bookmarklet-controls select:disabled,
       #jietng-bookmarklet-controls input:disabled {
@@ -264,7 +288,9 @@
             Import Token
             <div id="jietng-bookmarklet-token-row">
               <input id="jietng-bookmarklet-import-token" type="password" inputmode="text" autocomplete="off" placeholder="jit_...">
+              <span id="jietng-bookmarklet-token-state">Saved</span>
               <button id="jietng-bookmarklet-save-token" type="button">Save</button>
+              <button id="jietng-bookmarklet-change-token" type="button">Replace</button>
               <button id="jietng-bookmarklet-clear-token" type="button">Clear</button>
             </div>
           </label>
@@ -285,6 +311,7 @@
     document.getElementById("jietng-bookmarklet-command")?.addEventListener("input", saveUiState);
     document.getElementById("jietng-bookmarklet-auto-upload")?.addEventListener("change", saveUiState);
     document.getElementById("jietng-bookmarklet-save-token")?.addEventListener("click", saveImportToken);
+    document.getElementById("jietng-bookmarklet-change-token")?.addEventListener("click", changeImportToken);
     document.getElementById("jietng-bookmarklet-clear-token")?.addEventListener("click", clearImportToken);
     restoreImportToken();
   }
@@ -313,6 +340,7 @@
       "jietng-bookmarklet-command",
       "jietng-bookmarklet-import-token",
       "jietng-bookmarklet-save-token",
+      "jietng-bookmarklet-change-token",
       "jietng-bookmarklet-clear-token",
       "jietng-bookmarklet-auto-upload",
       "jietng-bookmarklet-generate",
@@ -345,19 +373,32 @@
     }
   }
 
+  function setImportTokenSaved(saved) {
+    const row = document.getElementById("jietng-bookmarklet-token-row");
+    const input = document.getElementById("jietng-bookmarklet-import-token");
+    if (row) row.classList.toggle("saved", Boolean(saved));
+    if (input && saved) input.value = "";
+  }
+
   function restoreImportToken() {
     try {
       const token = localStorage.getItem(importTokenKey) || "";
-      const node = document.getElementById("jietng-bookmarklet-import-token");
-      if (node) node.value = token;
+      setImportTokenSaved(Boolean(token));
       uploadStatus(token ? "Import token saved. Records will upload automatically." : "");
     } catch (_) {
+      setImportTokenSaved(false);
       uploadStatus("");
     }
   }
 
   function currentImportToken() {
-    return document.getElementById("jietng-bookmarklet-import-token")?.value?.trim() || "";
+    const typed = document.getElementById("jietng-bookmarklet-import-token")?.value?.trim() || "";
+    if (typed) return typed;
+    try {
+      return localStorage.getItem(importTokenKey) || "";
+    } catch (_) {
+      return "";
+    }
   }
 
   function saveImportToken() {
@@ -365,14 +406,26 @@
     try {
       if (token) {
         localStorage.setItem(importTokenKey, token);
+        setImportTokenSaved(true);
         uploadStatus("Import token saved. Records will upload automatically.");
       } else {
         localStorage.removeItem(importTokenKey);
+        setImportTokenSaved(false);
         uploadStatus("Import token cleared.");
       }
     } catch (_) {
       uploadStatus("Failed to save import token in this browser.");
     }
+  }
+
+  function changeImportToken() {
+    setImportTokenSaved(false);
+    const node = document.getElementById("jietng-bookmarklet-import-token");
+    if (node) {
+      node.value = "";
+      node.focus();
+    }
+    uploadStatus("Enter a new import token, then save it.");
   }
 
   function clearImportToken() {
@@ -383,6 +436,7 @@
     } catch (_) {
       // Ignore private mode failures.
     }
+    setImportTokenSaved(false);
     uploadStatus("Import token cleared.");
   }
 
@@ -868,6 +922,7 @@
     const blob = await response.blob();
     await saveCachedPreview(blob, payload);
     showImagePreview(blob, payload);
+    status("Image ready.");
   }
 
   async function collectSessionData() {
