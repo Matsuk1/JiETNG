@@ -179,6 +179,42 @@ def revoke_import_token(user_id: str, token_id: str | None = None) -> int:
     return revoked
 
 
+def delete_revoked_import_token(user_id: str, token_id: str) -> bool:
+    user_data = get_user(user_id)
+    if not user_data:
+        return False
+
+    tokens = user_data.get("import_tokens", [])
+    if not isinstance(tokens, list):
+        return False
+
+    kept_tokens = []
+    deleted = False
+    for item in tokens:
+        if (
+            isinstance(item, dict)
+            and item.get("token_id") == token_id
+            and item.get("revoked")
+        ):
+            deleted = True
+            continue
+        kept_tokens.append(item)
+
+    if not deleted:
+        return False
+
+    user_data["import_tokens"] = kept_tokens
+    save_user(user_id, user_data)
+
+    with _index_lock:
+        index = _load_index()
+        if token_id in index:
+            del index[token_id]
+            _save_index(index)
+
+    return True
+
+
 def verify_import_token(token: str) -> Optional[dict]:
     if not token or not token.startswith(_TOKEN_PREFIX):
         return None

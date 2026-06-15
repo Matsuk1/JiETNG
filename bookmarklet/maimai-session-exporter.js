@@ -34,6 +34,9 @@
   const uiCacheKey = `jietng:maimai-session:${version}:ui:v1`;
   const previewCacheKey = `jietng:maimai-session:${version}:preview:v1`;
   const importTokenKey = "jietng:import-token:v1";
+  const importUploadKey = `jietng:import-upload:${version}:v1`;
+  let replacingImportToken = false;
+  let initialImportUploadPromise = null;
 
   function createPanel() {
     const old = document.getElementById("jietng-bookmarklet-panel");
@@ -134,12 +137,11 @@
         min-width: 0;
       }
       #jietng-bookmarklet-token-row.saved {
-        grid-template-columns: 1fr auto auto;
+        grid-template-columns: 1fr auto;
       }
       #jietng-bookmarklet-token-row.saved input,
       #jietng-bookmarklet-token-row:not(.saved) #jietng-bookmarklet-token-state,
       #jietng-bookmarklet-token-row:not(.saved) #jietng-bookmarklet-change-token,
-      #jietng-bookmarklet-token-row:not(.saved) #jietng-bookmarklet-clear-token,
       #jietng-bookmarklet-token-row.saved #jietng-bookmarklet-save-token {
         display: none;
       }
@@ -156,8 +158,7 @@
         font-weight: 700;
       }
       #jietng-bookmarklet-save-token,
-      #jietng-bookmarklet-change-token,
-      #jietng-bookmarklet-clear-token {
+      #jietng-bookmarklet-change-token {
         min-width: 48px;
         min-height: 34px;
         padding: 6px 8px;
@@ -168,8 +169,7 @@
         font-weight: 650;
       }
       #jietng-bookmarklet-save-token:hover,
-      #jietng-bookmarklet-change-token:hover,
-      #jietng-bookmarklet-clear-token:hover {
+      #jietng-bookmarklet-change-token:hover {
         background: #f9fafb;
         border-color: rgba(17,24,39,.22);
       }
@@ -189,7 +189,6 @@
       #jietng-bookmarklet-generate:disabled,
       #jietng-bookmarklet-save-token:disabled,
       #jietng-bookmarklet-change-token:disabled,
-      #jietng-bookmarklet-clear-token:disabled,
       #jietng-bookmarklet-controls select:disabled,
       #jietng-bookmarklet-controls input:disabled {
         cursor: not-allowed;
@@ -302,7 +301,6 @@
               <span id="jietng-bookmarklet-token-state">Saved</span>
               <button id="jietng-bookmarklet-save-token" type="button">Save</button>
               <button id="jietng-bookmarklet-change-token" type="button">Replace</button>
-              <button id="jietng-bookmarklet-clear-token" type="button">Clear</button>
             </div>
           </label>
           <label id="jietng-bookmarklet-auto-upload-row">
@@ -321,9 +319,8 @@
     document.getElementById("jietng-bookmarklet-type")?.addEventListener("change", saveUiState);
     document.getElementById("jietng-bookmarklet-command")?.addEventListener("input", saveUiState);
     document.getElementById("jietng-bookmarklet-auto-upload")?.addEventListener("change", saveUiState);
-    document.getElementById("jietng-bookmarklet-save-token")?.addEventListener("click", saveImportToken);
+    document.getElementById("jietng-bookmarklet-save-token")?.addEventListener("click", () => saveImportToken(true));
     document.getElementById("jietng-bookmarklet-change-token")?.addEventListener("click", changeImportToken);
-    document.getElementById("jietng-bookmarklet-clear-token")?.addEventListener("click", clearImportToken);
     restoreImportToken();
   }
 
@@ -352,7 +349,6 @@
       "jietng-bookmarklet-import-token",
       "jietng-bookmarklet-save-token",
       "jietng-bookmarklet-change-token",
-      "jietng-bookmarklet-clear-token",
       "jietng-bookmarklet-auto-upload",
       "jietng-bookmarklet-generate",
     ]) {
@@ -389,6 +385,7 @@
     const input = document.getElementById("jietng-bookmarklet-import-token");
     if (row) row.classList.toggle("saved", Boolean(saved));
     if (input && saved) input.value = "";
+    if (saved) replacingImportToken = false;
   }
 
   function restoreImportToken() {
@@ -405,6 +402,7 @@
   function currentImportToken() {
     const typed = document.getElementById("jietng-bookmarklet-import-token")?.value?.trim() || "";
     if (typed) return typed;
+    if (replacingImportToken) return "";
     try {
       return localStorage.getItem(importTokenKey) || "";
     } catch (_) {
@@ -412,15 +410,17 @@
     }
   }
 
-  function saveImportToken() {
-    const token = currentImportToken();
+  function saveImportToken(uploadAfterSave = true) {
+    const token = document.getElementById("jietng-bookmarklet-import-token")?.value?.trim() || currentImportToken();
     try {
       if (token) {
         localStorage.setItem(importTokenKey, token);
         setImportTokenSaved(true);
         uploadStatus("Import token saved. Records will upload automatically.");
+        if (uploadAfterSave) ensureInitialImportUpload("save");
       } else {
         localStorage.removeItem(importTokenKey);
+        localStorage.removeItem(importUploadKey);
         setImportTokenSaved(false);
         uploadStatus("Import token cleared.");
       }
@@ -430,25 +430,20 @@
   }
 
   function changeImportToken() {
+    replacingImportToken = true;
+    try {
+      localStorage.removeItem(importTokenKey);
+      localStorage.removeItem(importUploadKey);
+    } catch (_) {
+      // Ignore private mode failures.
+    }
     setImportTokenSaved(false);
     const node = document.getElementById("jietng-bookmarklet-import-token");
     if (node) {
       node.value = "";
       node.focus();
     }
-    uploadStatus("Enter a new import token, then save it.");
-  }
-
-  function clearImportToken() {
-    const node = document.getElementById("jietng-bookmarklet-import-token");
-    if (node) node.value = "";
-    try {
-      localStorage.removeItem(importTokenKey);
-    } catch (_) {
-      // Ignore private mode failures.
-    }
-    setImportTokenSaved(false);
-    uploadStatus("Import token cleared.");
+    uploadStatus("Saved token removed. Enter a new import token, then save it.");
   }
 
   function loadCachedSessionData() {
@@ -805,7 +800,48 @@
     }
 
     uploadStatus(`Uploaded ${body.best_count ?? payload.records.best.length} best and ${body.recent_count ?? payload.records.recent.length} recent records.`);
+    rememberImportUpload(payload, body);
     return body;
+  }
+
+  function hasImportUploadRecord() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(importUploadKey) || "null");
+      return Boolean(cached?.uploaded_at);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function rememberImportUpload(payload, responseBody = {}) {
+    try {
+      localStorage.setItem(importUploadKey, JSON.stringify({
+        uploaded_at: new Date().toISOString(),
+        profile_name: payload.profile?.name || "",
+        best_count: responseBody.best_count ?? payload.records.best.length,
+        recent_count: responseBody.recent_count ?? payload.records.recent.length,
+      }));
+    } catch (_) {
+      // Upload succeeded; localStorage may be unavailable in private mode.
+    }
+  }
+
+  function ensureInitialImportUpload(reason = "open") {
+    if (!isSupportedHost || !currentImportToken() || hasImportUploadRecord()) return null;
+    if (initialImportUploadPromise) return initialImportUploadPromise;
+
+    initialImportUploadPromise = (async () => {
+      try {
+        uploadStatus(reason === "save" ? "Uploading records after save..." : "Uploading records for the first time...");
+        const { profile, best, recent } = await collectSessionData();
+        await uploadImportPayload(buildImportPayload(profile, best, recent));
+      } catch (error) {
+        uploadStatus(`Upload failed: ${error?.message || String(error)}`);
+      } finally {
+        initialImportUploadPromise = null;
+      }
+    })();
+    return initialImportUploadPromise;
   }
 
   function safeFilenamePart(value) {
@@ -1016,7 +1052,9 @@
 
     if (options.autoUpload && currentImportToken()) {
       try {
-        saveImportToken();
+        if (document.getElementById("jietng-bookmarklet-import-token")?.value?.trim()) {
+          saveImportToken(false);
+        }
         await uploadImportPayload(buildImportPayload(profile, best, recent));
       } catch (error) {
         uploadStatus(`Upload failed: ${error?.message || String(error)}`);
@@ -1048,6 +1086,7 @@
         });
     });
     restoreCachedPreview();
+    ensureInitialImportUpload("open");
   }
 
   run();

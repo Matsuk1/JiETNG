@@ -151,6 +151,7 @@ from modules.export_manager import (
 from modules.import_manager import import_processed_payload, ImportValidationError
 from modules.import_token_manager import (
     create_import_token,
+    delete_revoked_import_token,
     list_import_tokens,
     revoke_import_token,
     verify_import_token,
@@ -1182,11 +1183,6 @@ Token not provided. <br />
                 'is_owner': False,
             })
 
-    import_tokens = [
-        item for item in (list_import_tokens(user_id) or [])
-        if item.get("note") == "settings"
-    ]
-
     return render_template(
         "settings.html",
         user_language=user_language,
@@ -1198,7 +1194,7 @@ Token not provided. <br />
         custom_bg_filename=custom_bg_filename,
         perm_token=generate_perm_token(user_id),
         perm_list=perm_list,
-        import_tokens=import_tokens,
+        import_tokens=list_import_tokens(user_id) or [],
     )
 
 
@@ -1243,6 +1239,11 @@ def manage_import_tokens():
     token_id = data.get("token_id")
     if not token_id:
         return jsonify({"error": "Missing parameter", "message": "token_id is required"}), 400
+    if data.get("action") == "delete":
+        deleted = delete_revoked_import_token(user_id, token_id)
+        if not deleted:
+            return jsonify({"error": "Token not found", "message": "Only revoked import tokens can be deleted"}), 404
+        return jsonify({"success": True, "user_id": user_id, "token_id": token_id, "deleted": True})
     revoked = revoke_import_token(user_id, token_id=token_id)
     if not revoked:
         return jsonify({"error": "Token not found", "message": "No active import token was revoked"}), 404
@@ -1365,7 +1366,9 @@ def linebot_perms_revoke():
         return jsonify({"error": "User not found"}), 404
 
     if _udata.get('registered_via_token') == token_id_to_revoke:
-        return jsonify({"error": "Cannot revoke owner permission"}), 403
+        edit_user_value(user_id, "registered_via_token", None, operation=4)
+        logger.info(f"[Permission] Web revoke owner: token_id={token_id_to_revoke}, user_id={user_id}")
+        return jsonify({"success": True, "revoked_owner": True})
 
     dev_tokens = load_dev_tokens()
     if token_id_to_revoke not in dev_tokens:

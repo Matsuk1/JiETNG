@@ -301,6 +301,13 @@
       background: var(--card-bg);
     }
 
+    .perm-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
     .token-panel .list-panel-header {
       display: flex;
       align-items: center;
@@ -515,7 +522,12 @@
           <span class="list-item-meta">{{ item.token_id }}</span>
         </div>
         {% if item.is_owner %}
-        <span class="badge" id="perm-owner-label">作成者</span>
+        <div class="perm-actions">
+          <span class="badge perm-owner-label">作成者</span>
+          <button class="btn-danger"
+                  onclick="revokePermission('{{ item.token_id }}', this)"
+                  id="perm-btn-{{ item.token_id }}">撤廃</button>
+        </div>
         {% else %}
         <button class="btn-danger"
                 onclick="revokePermission('{{ item.token_id }}', this)"
@@ -556,7 +568,11 @@
               <span class="list-item-meta">{{ item.token_id }} · {{ item.created_at or "-" }}{% if item.last_used %} · last {{ item.last_used }}{% endif %}</span>
             </div>
             {% if item.revoked %}
-            <span class="badge import-token-revoked-label">Revoked</span>
+            <div class="perm-actions">
+              <span class="badge import-token-revoked-label">Revoked</span>
+              <button type="button" class="btn-danger import-token-delete-btn"
+                      onclick="deleteImportToken('{{ item.token_id }}', this)">削除</button>
+            </div>
             {% else %}
             <button type="button" class="btn-danger import-token-revoke-btn"
                     onclick="revokeImportToken('{{ item.token_id }}', this)">撤廃</button>
@@ -600,9 +616,12 @@
         importTokenEmpty: 'まだTokenはありません。',
         importTokenRevoke: '撤廃',
         importTokenRevoked: 'Revoked',
+        importTokenDelete: '削除',
         importTokenCreateError: 'Tokenの生成に失敗しました。',
         importTokenRevokeConfirm: 'このインポートTokenを撤廃しますか？',
         importTokenRevokeError: '撤廃に失敗しました。',
+        importTokenDeleteConfirm: 'この撤廃済みTokenを削除しますか？',
+        importTokenDeleteError: '削除に失敗しました。',
       },
       en: {
         pageTitle: 'Settings | JiETNG',
@@ -632,9 +651,12 @@
         importTokenEmpty: 'No tokens yet.',
         importTokenRevoke: 'Revoke',
         importTokenRevoked: 'Revoked',
+        importTokenDelete: 'Delete',
         importTokenCreateError: 'Failed to generate token.',
         importTokenRevokeConfirm: 'Revoke this import token?',
         importTokenRevokeError: 'Failed to revoke.',
+        importTokenDeleteConfirm: 'Delete this revoked import token?',
+        importTokenDeleteError: 'Failed to delete.',
       },
       zh: {
         pageTitle: '设置 | JiETNG',
@@ -664,9 +686,12 @@
         importTokenEmpty: '还没有 Token。',
         importTokenRevoke: '撤销',
         importTokenRevoked: '已撤销',
+        importTokenDelete: '删除',
         importTokenCreateError: '生成 Token 失败。',
         importTokenRevokeConfirm: '确定撤销这个导入 Token 吗？',
         importTokenRevokeError: '撤销失败。',
+        importTokenDeleteConfirm: '确定删除这个已撤销的导入 Token 吗？',
+        importTokenDeleteError: '删除失败。',
       }
     };
 
@@ -773,13 +798,16 @@
       document.querySelectorAll('.import-token-revoked-label').forEach(el => {
         el.textContent = t.importTokenRevoked;
       });
+      document.querySelectorAll('.import-token-delete-btn').forEach(btn => {
+        if (!btn.disabled) btn.textContent = t.importTokenDelete;
+      });
     }
 
     function updatePermPanel(lang) {
       const pt = permTranslations[lang] || permTranslations.ja;
       const panelTitle = document.getElementById('perm-panel-title');
       if (panelTitle) panelTitle.textContent = pt.panelTitle;
-      document.querySelectorAll('.badge').forEach(el => el.textContent = pt.ownerLabel);
+      document.querySelectorAll('.perm-owner-label').forEach(el => el.textContent = pt.ownerLabel);
       document.querySelectorAll('[id^="perm-btn-"]').forEach(el => {
         if (!el.disabled) el.textContent = pt.revokeBtn;
       });
@@ -903,6 +931,34 @@
         }
       } catch (e) {
         alert(t.importTokenRevokeError);
+        btn.disabled = false;
+      }
+    }
+
+    async function deleteImportToken(tokenId, btn) {
+      const lang = document.getElementById('language').value || 'ja';
+      const t = translations[lang] || translations.ja;
+      if (!confirm(t.importTokenDeleteConfirm)) return;
+      btn.disabled = true;
+      try {
+        const res = await fetch('/linebot/settings/import_tokens?token=' + encodeURIComponent(settingsToken()), {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token_id: tokenId, action: 'delete' }),
+        });
+        if (!res.ok) throw new Error();
+        const item = document.getElementById('import-token-item-' + tokenId);
+        if (item) item.remove();
+        const list = document.getElementById('import-token-list');
+        if (list && !list.querySelector('.list-item')) {
+          const empty = document.createElement('div');
+          empty.className = 'token-empty';
+          empty.id = 'import-token-empty';
+          empty.textContent = t.importTokenEmpty;
+          list.appendChild(empty);
+        }
+      } catch (e) {
+        alert(t.importTokenDeleteError);
         btn.disabled = false;
       }
     }
