@@ -738,19 +738,25 @@
 
   function buildImportPayload(profile, best, recent) {
     const rating = Number(String(profile?.rating || "0").trim());
+    const generatedAt = new Date().toISOString().slice(0, 19);
     return {
       format: "JiETNGExport",
       schema_version: 2,
-      generated_at: new Date().toISOString().slice(0, 19),
+      generated_at: generatedAt,
       maimai_version: version,
       profile: {
         name: profile?.name || "Imported",
+        rating_block_path: profile?.rating_block_path,
         trophy: profile?.trophy_content || "N/A",
+        trophy_url: profile?.trophy_url,
+        trophy_content: profile?.trophy_content || "N/A",
         rating: Number.isFinite(rating) ? rating : 0,
         nameplate_url: profile?.nameplate_url,
         icon_url: profile?.icon_url,
         class_rank_url: profile?.class_rank_url,
+        cource_rank_url: profile?.cource_rank_url || profile?.course_rank_url,
         course_rank_url: profile?.cource_rank_url || profile?.course_rank_url,
+        last_update: generatedAt,
       },
       records: {
         best: best.map(transformRecordForImport),

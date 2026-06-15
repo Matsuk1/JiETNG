@@ -95,7 +95,9 @@ def _transform_profile(profile: dict) -> dict:
     out = {
         "name": profile.get("name") or "Imported",
         "rating": str(profile.get("rating", "0")),
+        "rating_block_path": profile.get("rating_block_path") or "N/A",
         "trophy_content": profile.get("trophy") or profile.get("trophy_content") or "N/A",
+        "trophy_url": profile.get("trophy_url") or "N/A",
         "icon_url": profile.get("icon_url") or "N/A",
         "nameplate_url": profile.get("nameplate_url") or "N/A",
         "class_rank_url": profile.get("class_rank_url") or "N/A",
@@ -141,8 +143,9 @@ def import_processed_payload(user_id: str, payload: dict, source: str = "api_imp
     if version not in ("jp", "intl"):
         version = "jp"
 
+    profile = _transform_profile(payload.get("profile") or {})
     user_data["version"] = version
-    user_data["personal_info"] = _transform_profile(payload.get("profile") or {})
+    user_data["personal_info"] = profile
     user_data["last_update"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user_data.setdefault("created_at", user_data["last_update"])
     user_data.setdefault("language", "ja")
@@ -156,6 +159,7 @@ def import_processed_payload(user_id: str, payload: dict, source: str = "api_imp
         "source": source,
         "imported_at": user_data["last_update"],
         "schema_version": payload.get("schema_version"),
+        "profile": profile,
         "best_count": len(best) if has_best else None,
         "recent_count": len(recent) if has_recent else None,
     }
@@ -165,4 +169,5 @@ def import_processed_payload(user_id: str, payload: dict, source: str = "api_imp
         "best_count": len(best) if has_best else None,
         "recent_count": len(recent) if has_recent else None,
         "version": version,
+        "profile": profile,
     }
