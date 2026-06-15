@@ -148,6 +148,13 @@ from modules.export_manager import (
     to_xml_bytes as _export_to_xml,
     _build_friendly_name as _export_friendly_name,
 )
+from modules.import_manager import import_processed_payload, ImportValidationError
+from modules.import_token_manager import (
+    create_import_token,
+    list_import_tokens,
+    revoke_import_token,
+    verify_import_token,
+)
 from modules.command_router import (
     Exact, Prefix, Suffix, Regex, FirstWord,
     Command, CommandContext,
@@ -508,6 +515,38 @@ def require_dev_token(f):
         # 将 token 信息添加到 request 对象中
         request.token_info = token_info
 
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def require_import_token(f):
+    """验证用户成绩导入 token；通过后 request.import_token_info 包含 user_id/token_id。"""
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({
+                "error": "No authorization header",
+                "message": "Authorization header is required"
+            }), 401
+
+        parts = auth_header.split()
+        if len(parts) != 2 or parts[0].lower() != 'bearer':
+            return jsonify({
+                "error": "Invalid authorization header",
+                "message": "Authorization header must be in format: Bearer <token>"
+            }), 401
+
+        token_info = verify_import_token(parts[1])
+        if not token_info:
+            return jsonify({
+                "error": "Invalid token",
+                "message": "Import token is invalid or has been revoked"
+            }), 401
+
+        request.import_token_info = token_info
         return f(*args, **kwargs)
 
     return decorated_function
@@ -1115,7 +1154,55 @@ Token not provided. <br />
         custom_bg_filename=custom_bg_filename,
         perm_token=generate_perm_token(user_id),
         perm_list=perm_list,
+        import_tokens=list_import_tokens(user_id) or [],
     )
+
+
+def _settings_user_id_from_request():
+    token = request.args.get("token")
+    if not token:
+        data = request.get_json(silent=True) or {}
+        token = data.get("settings_token") or data.get("token")
+    if not token:
+        return None
+    try:
+        user_id = get_user_id_from_settings_token(token)
+        return user_id if user_exists(user_id) else None
+    except Exception:
+        return None
+
+
+@app.route("/linebot/settings/import_tokens", methods=["POST", "DELETE"])
+@csrf.exempt
+def manage_import_tokens():
+    """settings 页面用：生成或撤销用户成绩导入 token。"""
+    user_id = _settings_user_id_from_request()
+    if not user_id:
+        return jsonify({"error": "Invalid token", "message": "Settings token is invalid"}), 401
+
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        note = data.get("note", "settings")
+        result = create_import_token(user_id, note=note)
+        if not result:
+            return jsonify({"error": "User not found"}), 404
+        return jsonify({
+            "success": True,
+            "user_id": user_id,
+            "token_id": result["token_id"],
+            "token": result["token"],
+            "created_at": result["created_at"],
+            "message": "Import token generated. This token is shown only once.",
+        }), 201
+
+    data = request.get_json(silent=True) or {}
+    token_id = data.get("token_id")
+    if not token_id:
+        return jsonify({"error": "Missing parameter", "message": "token_id is required"}), 400
+    revoked = revoke_import_token(user_id, token_id=token_id)
+    if not revoked:
+        return jsonify({"error": "Token not found", "message": "No active import token was revoked"}), 404
+    return jsonify({"success": True, "user_id": user_id, "token_id": token_id, "revoked": revoked})
 
 
 @app.route("/linebot/settings/custom_bg", methods=["POST", "DELETE"])
@@ -7187,6 +7274,50 @@ def api_v2_export_records(user_id):
 
     except Exception as e:
         logger.error(f"[API] ✗ Export records error: user_id={user_id}, error={e}", exc_info=True)
+        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+
+
+@app.route("/api/v2/import/records", methods=["POST"])
+@csrf.exempt
+@require_import_token
+def api_v2_import_records():
+    """
+    用用户导入 token 上传加工后的成绩 JSON。
+
+    Authorization: Bearer <import_token>
+    Body: modules.export_manager.build_payload 生成的 JSON 结构
+    """
+    token_info = request.import_token_info
+    user_id = token_info["user_id"]
+    try:
+        payload = request.get_json(force=True, silent=False)
+        result = import_processed_payload(
+            user_id,
+            payload,
+            source=f"import_token:{token_info.get('token_id')}",
+        )
+        logger.info(
+            "[API] Import records: user_id=%s, token_id=%s, best=%s, recent=%s",
+            user_id, token_info.get("token_id"), result["best_count"], result["recent_count"]
+        )
+        track_event('record_import', user_id=user_id, metadata={
+            'token_id': token_info.get('token_id'),
+            'best_count': result['best_count'],
+            'recent_count': result['recent_count'],
+            'version': result['version'],
+        })
+        return jsonify({
+            "success": True,
+            "user_id": user_id,
+            "best_count": result["best_count"],
+            "recent_count": result["recent_count"],
+            "version": result["version"],
+            "message": "Records imported successfully.",
+        })
+    except ImportValidationError as e:
+        return jsonify({"error": "Invalid payload", "message": str(e)}), 400
+    except Exception as e:
+        logger.error(f"[API] ✗ Import records error: user_id={user_id}, error={e}", exc_info=True)
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
 

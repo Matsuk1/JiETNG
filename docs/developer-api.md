@@ -957,6 +957,76 @@ LINE 用户会收到权限请求的 FlexMessage 通知，可以直接在 LINE �
 2. 消息包含请求者信息和两个按钮："承認"（批准）和"拒否"（拒绝）
 3. 点击按钮后，系统会自动处理请求
 
+## 成绩导入 Token
+
+成绩导入 Token 是用户级 Token，用于让外部工具把**加工后的成绩 JSON**上传到 JiETNG。它不是开发者 Token，也不能读取用户信息或生成图片。
+
+用户可以通过 LINE 发送 `settings`，在设置页的“成绩导入 Token”区域生成或撤销 Token。Token 明文只在生成后显示一次，服务器只保存哈希。
+
+### 上传加工后的成绩 JSON
+
+```http
+POST /api/v2/import/records
+Authorization: Bearer <import_token>
+Content-Type: application/json
+```
+
+请求体使用 `/api/v2/users/<user_id>/export?fmt=json` 返回的同一类加工后结构：
+
+```json
+{
+  "format": "JiETNGExport",
+  "schema_version": 2,
+  "maimai_version": "jp",
+  "profile": {
+    "name": "player",
+    "rating": 15000,
+    "trophy": "舞舞舞"
+  },
+  "records": {
+    "best": [
+      {
+        "title": "Song Title",
+        "type": "DX",
+        "difficulty": "Master",
+        "achievement": 100.5,
+        "rank": "SSS+",
+        "dx_score": 1234,
+        "dx_score_max": 1234,
+        "combo": "AP+",
+        "sync": "FDX+"
+      }
+    ],
+    "recent": []
+  }
+}
+```
+
+示例：
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer jit_xxx" \
+  -H "Content-Type: application/json" \
+  --data @records.json \
+  https://jietng-endpoint.matsuk1.com/api/v2/import/records
+```
+
+响应：
+
+```json
+{
+  "success": true,
+  "user_id": "U123456",
+  "best_count": 50,
+  "recent_count": 0,
+  "version": "jp",
+  "message": "Records imported successfully."
+}
+```
+
+导入会替换该用户当前的 best / recent 成绩快照。空数组会清空对应成绩表，避免旧数据混入。
+
 ## 错误处理
 
 ### 401 Unauthorized
@@ -1054,6 +1124,7 @@ LINE 用户会收到权限请求的 FlexMessage 通知，可以直接在 LINE �
 | `/tasks/<task_id>` | GET | 查询任务状态 | 任何 Token |
 | `/songs/search` | GET | 搜索歌曲 | 任何 Token |
 | `/versions` | GET | 获取版本列表 | 任何 Token |
+| `/api/v2/import/records` | POST | 上传加工后的成绩 JSON | 用户导入 Token |
 
 ### 权限管理端点
 

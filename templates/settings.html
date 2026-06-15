@@ -296,6 +296,70 @@
       to { transform: rotate(360deg); }
     }
 
+    .token-panel {
+      margin-top: 28px;
+    }
+
+    .token-help {
+      padding: 0 16px 12px;
+      color: var(--text-tertiary);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .token-actions {
+      display: flex;
+      gap: 8px;
+      padding: 0 12px 12px;
+    }
+
+    .token-actions button,
+    .token-result button {
+      border: 0;
+      border-radius: var(--radius-md);
+      padding: 9px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-primary-small {
+      background: var(--accent-color);
+      color: #fff;
+    }
+
+    .token-result {
+      display: none;
+      margin: 0 12px 12px;
+      padding: 12px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: var(--surface-bg);
+    }
+
+    .token-result.active {
+      display: block;
+    }
+
+    .token-value {
+      margin: 8px 0;
+      padding: 9px;
+      border-radius: var(--radius-sm);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+      font-size: 12px;
+      line-height: 1.45;
+      word-break: break-all;
+      user-select: all;
+    }
+
+    .token-empty {
+      padding: 12px 16px;
+      color: var(--text-tertiary);
+      font-size: 13px;
+    }
+
     @media (max-width: 600px) {
       body {
         padding: 16px;
@@ -440,6 +504,41 @@
       {% endfor %}
     </div>
     {% endif %}
+
+    <div class="list-panel token-panel">
+      <div class="list-panel-header" id="import-token-title">成績インポートToken</div>
+      <div class="token-help" id="import-token-help">
+        外部ツールから加工済みの成績JSONをJiETNGへアップロードするためのTokenです。
+      </div>
+      <div id="import-token-result" class="token-result">
+        <div class="list-item-label" id="import-token-result-title">Token（今回のみ表示）</div>
+        <div class="token-value" id="import-token-value"></div>
+        <button type="button" class="btn-primary-small" id="import-token-copy-btn" onclick="copyImportToken()">コピー</button>
+      </div>
+      <div class="token-actions">
+        <button type="button" class="btn-primary-small" id="import-token-create-btn" onclick="createImportToken()">Tokenを生成</button>
+      </div>
+      <div id="import-token-list">
+        {% if import_tokens %}
+          {% for item in import_tokens %}
+          <div class="list-item" id="import-token-item-{{ item.token_id }}">
+            <div class="list-item-info">
+              <span class="list-item-label">{{ item.note or item.token_id }}</span>
+              <span class="list-item-meta">{{ item.token_id }} · {{ item.created_at or "-" }}{% if item.last_used %} · last {{ item.last_used }}{% endif %}</span>
+            </div>
+            {% if item.revoked %}
+            <span class="badge import-token-revoked-label">Revoked</span>
+            {% else %}
+            <button type="button" class="btn-danger import-token-revoke-btn"
+                    onclick="revokeImportToken('{{ item.token_id }}', this)">撤廃</button>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="token-empty" id="import-token-empty">まだTokenはありません。</div>
+        {% endif %}
+      </div>
+    </div>
   </div>
 
   <script>
@@ -461,6 +560,18 @@
         deleteCustomBgBtn: '削除',
         deleteCustomBgConfirm: 'カスタム背景を削除しますか？',
         submitBtn: '保存',
+        importTokenTitle: '成績インポートToken',
+        importTokenHelp: '外部ツールから加工済みの成績JSONをJiETNGへアップロードするためのTokenです。',
+        importTokenCreate: 'Tokenを生成',
+        importTokenResultTitle: 'Token（今回のみ表示）',
+        importTokenCopy: 'コピー',
+        importTokenCopied: 'コピーしました',
+        importTokenEmpty: 'まだTokenはありません。',
+        importTokenRevoke: '撤廃',
+        importTokenRevoked: 'Revoked',
+        importTokenCreateError: 'Tokenの生成に失敗しました。',
+        importTokenRevokeConfirm: 'このインポートTokenを撤廃しますか？',
+        importTokenRevokeError: '撤廃に失敗しました。',
       },
       en: {
         pageTitle: 'Settings | JiETNG',
@@ -479,6 +590,18 @@
         deleteCustomBgBtn: 'Delete',
         deleteCustomBgConfirm: 'Delete your custom background?',
         submitBtn: 'Save',
+        importTokenTitle: 'Record Import Token',
+        importTokenHelp: 'Use this token to upload processed record JSON from external tools to JiETNG.',
+        importTokenCreate: 'Generate Token',
+        importTokenResultTitle: 'Token (shown only once)',
+        importTokenCopy: 'Copy',
+        importTokenCopied: 'Copied',
+        importTokenEmpty: 'No tokens yet.',
+        importTokenRevoke: 'Revoke',
+        importTokenRevoked: 'Revoked',
+        importTokenCreateError: 'Failed to generate token.',
+        importTokenRevokeConfirm: 'Revoke this import token?',
+        importTokenRevokeError: 'Failed to revoke.',
       },
       zh: {
         pageTitle: '设置 | JiETNG',
@@ -497,6 +620,18 @@
         deleteCustomBgBtn: '删除',
         deleteCustomBgConfirm: '确定删除自定义背景吗？',
         submitBtn: '保存',
+        importTokenTitle: '成绩导入 Token',
+        importTokenHelp: '用于让外部工具把加工后的成绩 JSON 上传到 JiETNG。',
+        importTokenCreate: '生成 Token',
+        importTokenResultTitle: 'Token（只显示这一次）',
+        importTokenCopy: '复制',
+        importTokenCopied: '已复制',
+        importTokenEmpty: '还没有 Token。',
+        importTokenRevoke: '撤销',
+        importTokenRevoked: '已撤销',
+        importTokenCreateError: '生成 Token 失败。',
+        importTokenRevokeConfirm: '确定撤销这个导入 Token 吗？',
+        importTokenRevokeError: '撤销失败。',
       }
     };
 
@@ -575,7 +710,30 @@
       const uploadBtn = document.getElementById('upload-btn');
       if (uploadBtn) uploadBtn.textContent = t.uploadBtn;
       document.getElementById('submit-btn').value = t.submitBtn;
+      updateImportTokenPanel(lang);
       updatePermPanel(lang);
+    }
+
+    function updateImportTokenPanel(lang) {
+      const t = translations[lang] || translations.ja;
+      const title = document.getElementById('import-token-title');
+      if (title) title.textContent = t.importTokenTitle;
+      const help = document.getElementById('import-token-help');
+      if (help) help.textContent = t.importTokenHelp;
+      const createBtn = document.getElementById('import-token-create-btn');
+      if (createBtn && !createBtn.disabled) createBtn.textContent = t.importTokenCreate;
+      const resultTitle = document.getElementById('import-token-result-title');
+      if (resultTitle) resultTitle.textContent = t.importTokenResultTitle;
+      const copyBtn = document.getElementById('import-token-copy-btn');
+      if (copyBtn && !copyBtn.dataset.copied) copyBtn.textContent = t.importTokenCopy;
+      const empty = document.getElementById('import-token-empty');
+      if (empty) empty.textContent = t.importTokenEmpty;
+      document.querySelectorAll('.import-token-revoke-btn').forEach(btn => {
+        if (!btn.disabled) btn.textContent = t.importTokenRevoke;
+      });
+      document.querySelectorAll('.import-token-revoked-label').forEach(el => {
+        el.textContent = t.importTokenRevoked;
+      });
     }
 
     function updatePermPanel(lang) {
@@ -617,6 +775,95 @@
         }
       } catch (e) {
         alert(pt.revokeError);
+        btn.disabled = false;
+      }
+    }
+
+    function settingsToken() {
+      return new URLSearchParams(window.location.search).get('token') || '';
+    }
+
+    async function createImportToken() {
+      const lang = document.getElementById('language').value || 'ja';
+      const t = translations[lang] || translations.ja;
+      const btn = document.getElementById('import-token-create-btn');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/linebot/settings/import_tokens?token=' + encodeURIComponent(settingsToken()), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note: 'settings' }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || '');
+
+        const result = document.getElementById('import-token-result');
+        document.getElementById('import-token-value').textContent = data.token;
+        result.classList.add('active');
+
+        const empty = document.getElementById('import-token-empty');
+        if (empty) empty.remove();
+        const list = document.getElementById('import-token-list');
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        item.id = 'import-token-item-' + data.token_id;
+        item.innerHTML = '<div class="list-item-info">'
+          + '<span class="list-item-label">settings</span>'
+          + '<span class="list-item-meta">' + data.token_id + ' · ' + data.created_at + '</span>'
+          + '</div>'
+          + '<button type="button" class="btn-danger import-token-revoke-btn">'
+          + t.importTokenRevoke + '</button>';
+        item.querySelector('button').addEventListener('click', function() {
+          revokeImportToken(data.token_id, this);
+        });
+        list.prepend(item);
+      } catch (e) {
+        alert(t.importTokenCreateError + (e.message ? '\n' + e.message : ''));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = t.importTokenCreate;
+      }
+    }
+
+    async function copyImportToken() {
+      const lang = document.getElementById('language').value || 'ja';
+      const t = translations[lang] || translations.ja;
+      const value = document.getElementById('import-token-value').textContent;
+      if (!value) return;
+      await navigator.clipboard.writeText(value);
+      const btn = document.getElementById('import-token-copy-btn');
+      btn.textContent = t.importTokenCopied;
+      btn.dataset.copied = '1';
+      setTimeout(() => {
+        delete btn.dataset.copied;
+        btn.textContent = t.importTokenCopy;
+      }, 1400);
+    }
+
+    async function revokeImportToken(tokenId, btn) {
+      const lang = document.getElementById('language').value || 'ja';
+      const t = translations[lang] || translations.ja;
+      if (!confirm(t.importTokenRevokeConfirm)) return;
+      btn.disabled = true;
+      try {
+        const res = await fetch('/linebot/settings/import_tokens?token=' + encodeURIComponent(settingsToken()), {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token_id: tokenId }),
+        });
+        if (!res.ok) throw new Error();
+        const item = document.getElementById('import-token-item-' + tokenId);
+        if (item) item.remove();
+        const list = document.getElementById('import-token-list');
+        if (list && !list.querySelector('.list-item')) {
+          const empty = document.createElement('div');
+          empty.className = 'token-empty';
+          empty.id = 'import-token-empty';
+          empty.textContent = t.importTokenEmpty;
+          list.appendChild(empty);
+        }
+      } catch (e) {
+        alert(t.importTokenRevokeError);
         btn.disabled = false;
       }
     }
