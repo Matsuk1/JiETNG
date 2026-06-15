@@ -131,6 +131,7 @@
       #jietng-bookmarklet-token-row {
         display: grid;
         grid-template-columns: 1fr auto;
+        align-items: center;
         gap: 6px;
       }
       #jietng-bookmarklet-token-row input {
@@ -157,11 +158,14 @@
         font-size: 12px;
         font-weight: 700;
       }
-      #jietng-bookmarklet-save-token,
-      #jietng-bookmarklet-change-token {
+      #jietng-bookmarklet-token-row .token-action {
+        appearance: none;
+        -webkit-appearance: none;
+        box-sizing: border-box;
         min-width: 48px;
         height: 34px;
         min-height: 0;
+        max-height: 34px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -174,8 +178,7 @@
         font-weight: 650;
         line-height: 1;
       }
-      #jietng-bookmarklet-save-token:hover,
-      #jietng-bookmarklet-change-token:hover {
+      #jietng-bookmarklet-token-row .token-action:hover {
         background: #f9fafb;
         border-color: rgba(17,24,39,.22);
       }
@@ -305,8 +308,8 @@
             <div id="jietng-bookmarklet-token-row">
               <input id="jietng-bookmarklet-import-token" type="password" inputmode="text" autocomplete="off" placeholder="jit_...">
               <span id="jietng-bookmarklet-token-state">Saved</span>
-              <button id="jietng-bookmarklet-save-token" type="button">Save</button>
-              <button id="jietng-bookmarklet-change-token" type="button">Replace</button>
+              <button id="jietng-bookmarklet-save-token" class="token-action" type="button">Save</button>
+              <button id="jietng-bookmarklet-change-token" class="token-action" type="button">Replace</button>
             </div>
           </label>
           <label id="jietng-bookmarklet-auto-upload-row">
