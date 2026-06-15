@@ -13,6 +13,11 @@ tab and opening the bookmarklet again still reuses the cached records. The last
 selected options and generated preview are also restored when the bookmarklet is
 opened again in that tab.
 
+If the user saves a JiETNG import token in the panel, the bookmarklet stores it
+in browser `localStorage` and automatically uploads the processed Best and
+Recent records to `/api/v2/import/records` after collecting data. Uploading
+reuses the same cached records and does not fetch maimai pages again.
+
 It does not read or ask for SEGA ID passwords. The browser sends existing
 maimaidx cookies to same-origin maimai pages.
 
@@ -102,3 +107,11 @@ Allowed CORS origins are the two official maimai mobile origins:
 The endpoint returns `image/png` and does not write records to the database.
 The bookmarklet converts the PNG response into a local blob URL and displays it
 in an overlay on the source maimai page.
+
+Optional record import:
+
+```http
+POST https://jietng-endpoint.matsuk1.com/api/v2/import/records
+Authorization: Bearer <import_token>
+Content-Type: application/json
+```

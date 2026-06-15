@@ -28,8 +28,9 @@ description: JiETNG maimai DX 网页书签工具，使用当前 maimai 官方网
    - `https://maimaidx.jp/maimai-mobile/home/`
    - `https://maimaidx-eng.com/maimai-mobile/home/`
 3. 在官方页面点击刚才保存的书签。
-4. 选择 B 系列类型，可选填写 `-lv 13 -diff mas` 这类筛选参数，然后点击 **Generate**。
-5. 等待生成完成，在页面弹窗中查看图片；同一浏览器标签页内再次生成，或刷新后再打开书签，都会恢复上次浮层并复用已读取的成绩数据。
+4. 可选填写 settings 页面生成的导入 Token。保存后会保留在当前浏览器，并在生成时自动上传成绩。
+5. 选择 B 系列类型，可选填写 `-lv 13 -diff mas` 这类筛选参数，然后点击 **Generate**。
+6. 等待生成完成，在页面弹窗中查看图片；同一浏览器标签页内再次生成，或刷新后再打开书签，都会恢复上次浮层并复用已读取的成绩数据。
 
 如果你的浏览器不方便拖拽按钮，可以点击 **复制书签地址**，然后手动新建书签，把 URL 设置为复制出来的 `javascript:...` 内容。
 

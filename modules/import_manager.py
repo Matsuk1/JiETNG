@@ -116,18 +116,26 @@ def import_processed_payload(user_id: str, payload: dict, source: str = "api_imp
     if not isinstance(records, dict):
         raise ImportValidationError("payload.records is required")
 
+    has_best = "best" in records
+    has_recent = "recent" in records
     best_source = records.get("best", [])
     recent_source = records.get("recent", [])
-    if not isinstance(best_source, list) or not isinstance(recent_source, list):
-        raise ImportValidationError("records.best and records.recent must be arrays")
-    if not best_source and not recent_source:
+    if not has_best and not has_recent:
+        raise ImportValidationError("records.best or records.recent is required")
+    if has_best and not isinstance(best_source, list):
+        raise ImportValidationError("records.best must be an array")
+    if has_recent and not isinstance(recent_source, list):
+        raise ImportValidationError("records.recent must be an array")
+    if has_best and has_recent and not best_source and not recent_source:
         raise ImportValidationError("payload contains no records")
 
-    best = [_transform_processed_record(item) for item in best_source]
-    recent = [_transform_processed_record(item) for item in recent_source]
+    best = [_transform_processed_record(item) for item in best_source] if has_best else []
+    recent = [_transform_processed_record(item) for item in recent_source] if has_recent else []
 
-    write_record(user_id, best, recent=False)
-    write_record(user_id, recent, recent=True)
+    if has_best:
+        write_record(user_id, best, recent=False)
+    if has_recent:
+        write_record(user_id, recent, recent=True)
 
     version = str(payload.get("maimai_version") or payload.get("version") or user_data.get("version") or "jp").lower()
     if version not in ("jp", "intl"):
@@ -140,13 +148,13 @@ def import_processed_payload(user_id: str, payload: dict, source: str = "api_imp
         "source": source,
         "imported_at": user_data["last_update"],
         "schema_version": payload.get("schema_version"),
-        "best_count": len(best),
-        "recent_count": len(recent),
+        "best_count": len(best) if has_best else None,
+        "recent_count": len(recent) if has_recent else None,
     }
     save_user(user_id, user_data)
 
     return {
-        "best_count": len(best),
-        "recent_count": len(recent),
+        "best_count": len(best) if has_best else None,
+        "recent_count": len(recent) if has_recent else None,
         "version": version,
     }

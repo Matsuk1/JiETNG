@@ -19,6 +19,7 @@
     payload: null,
     profile: null,
     best: null,
+    recent: null,
     collectPromise: null,
   };
 
@@ -28,9 +29,11 @@
   const baseUrl = `${location.origin}${basePath}`;
   const version = host === "maimaidx-eng.com" ? "intl" : "jp";
   const imageApiUrl = window.JIETNG_SESSION_IMAGE_API || "https://jietng-endpoint.matsuk1.com/api/web/session-image";
-  const cacheKey = `jietng:maimai-session:${version}:best-records:v1`;
+  const importApiUrl = window.JIETNG_IMPORT_API || "https://jietng-endpoint.matsuk1.com/api/v2/import/records";
+  const cacheKey = `jietng:maimai-session:${version}:records:v2`;
   const uiCacheKey = `jietng:maimai-session:${version}:ui:v1`;
   const previewCacheKey = `jietng:maimai-session:${version}:preview:v1`;
+  const importTokenKey = "jietng:import-token:v1";
 
   function createPanel() {
     const old = document.getElementById("jietng-bookmarklet-panel");
@@ -122,7 +125,36 @@
         color: #ffffff;
         font-weight: 750;
       }
+      #jietng-bookmarklet-token-row {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 6px;
+      }
+      #jietng-bookmarklet-token-row input {
+        min-width: 0;
+      }
+      #jietng-bookmarklet-save-token,
+      #jietng-bookmarklet-clear-token {
+        min-width: 48px;
+        min-height: 34px;
+        padding: 6px 8px;
+      }
+      #jietng-bookmarklet-auto-upload-row {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: #4b5563;
+        font-size: 12px;
+        font-weight: 650;
+      }
+      #jietng-bookmarklet-auto-upload-row input {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+      }
       #jietng-bookmarklet-generate:disabled,
+      #jietng-bookmarklet-save-token:disabled,
+      #jietng-bookmarklet-clear-token:disabled,
       #jietng-bookmarklet-controls select:disabled,
       #jietng-bookmarklet-controls input:disabled {
         cursor: not-allowed;
@@ -131,6 +163,13 @@
       #jietng-bookmarklet-status {
         color: #374151;
         font-weight: 650;
+      }
+      #jietng-bookmarklet-upload-status {
+        margin-top: 5px;
+        color: #6b7280;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.4;
       }
       #jietng-bookmarklet-preview {
         position: fixed;
@@ -221,9 +260,22 @@
             Command
             <input id="jietng-bookmarklet-command" type="text" inputmode="text" autocomplete="off" placeholder="-lv 13 -diff mas -page 2">
           </label>
+          <label>
+            Import Token
+            <div id="jietng-bookmarklet-token-row">
+              <input id="jietng-bookmarklet-import-token" type="password" inputmode="text" autocomplete="off" placeholder="jit_...">
+              <button id="jietng-bookmarklet-save-token" type="button">Save</button>
+              <button id="jietng-bookmarklet-clear-token" type="button">Clear</button>
+            </div>
+          </label>
+          <label id="jietng-bookmarklet-auto-upload-row">
+            <input id="jietng-bookmarklet-auto-upload" type="checkbox" checked>
+            Auto upload records
+          </label>
           <button id="jietng-bookmarklet-generate" type="button">Generate</button>
         </div>
         <div id="jietng-bookmarklet-status">Ready</div>
+        <div id="jietng-bookmarklet-upload-status"></div>
       </main>
     `;
     panel.querySelector("header button").addEventListener("click", () => panel.remove());
@@ -231,6 +283,10 @@
     restoreUiState();
     document.getElementById("jietng-bookmarklet-type")?.addEventListener("change", saveUiState);
     document.getElementById("jietng-bookmarklet-command")?.addEventListener("input", saveUiState);
+    document.getElementById("jietng-bookmarklet-auto-upload")?.addEventListener("change", saveUiState);
+    document.getElementById("jietng-bookmarklet-save-token")?.addEventListener("click", saveImportToken);
+    document.getElementById("jietng-bookmarklet-clear-token")?.addEventListener("click", clearImportToken);
+    restoreImportToken();
   }
 
   function status(text) {
@@ -238,15 +294,29 @@
     if (node) node.textContent = text;
   }
 
+  function uploadStatus(text) {
+    const node = document.getElementById("jietng-bookmarklet-upload-status");
+    if (node) node.textContent = text || "";
+  }
+
   function currentOptions() {
     return {
       cmdType: document.getElementById("jietng-bookmarklet-type")?.value || "best50",
       command: document.getElementById("jietng-bookmarklet-command")?.value?.trim() || "",
+      autoUpload: document.getElementById("jietng-bookmarklet-auto-upload")?.checked !== false,
     };
   }
 
   function setControlsDisabled(disabled) {
-    for (const id of ["jietng-bookmarklet-type", "jietng-bookmarklet-command", "jietng-bookmarklet-generate"]) {
+    for (const id of [
+      "jietng-bookmarklet-type",
+      "jietng-bookmarklet-command",
+      "jietng-bookmarklet-import-token",
+      "jietng-bookmarklet-save-token",
+      "jietng-bookmarklet-clear-token",
+      "jietng-bookmarklet-auto-upload",
+      "jietng-bookmarklet-generate",
+    ]) {
       const node = document.getElementById(id);
       if (node) node.disabled = disabled;
     }
@@ -258,8 +328,10 @@
       if (!cached) return;
       const typeNode = document.getElementById("jietng-bookmarklet-type");
       const commandNode = document.getElementById("jietng-bookmarklet-command");
+      const autoUploadNode = document.getElementById("jietng-bookmarklet-auto-upload");
       if (typeNode && RECORD_TYPES.some(([value]) => value === cached.cmdType)) typeNode.value = cached.cmdType;
       if (commandNode && typeof cached.command === "string") commandNode.value = cached.command;
+      if (autoUploadNode && typeof cached.autoUpload === "boolean") autoUploadNode.checked = cached.autoUpload;
     } catch (_) {
       sessionStorage.removeItem(uiCacheKey);
     }
@@ -273,15 +345,58 @@
     }
   }
 
+  function restoreImportToken() {
+    try {
+      const token = localStorage.getItem(importTokenKey) || "";
+      const node = document.getElementById("jietng-bookmarklet-import-token");
+      if (node) node.value = token;
+      uploadStatus(token ? "Import token saved. Records will upload automatically." : "");
+    } catch (_) {
+      uploadStatus("");
+    }
+  }
+
+  function currentImportToken() {
+    return document.getElementById("jietng-bookmarklet-import-token")?.value?.trim() || "";
+  }
+
+  function saveImportToken() {
+    const token = currentImportToken();
+    try {
+      if (token) {
+        localStorage.setItem(importTokenKey, token);
+        uploadStatus("Import token saved. Records will upload automatically.");
+      } else {
+        localStorage.removeItem(importTokenKey);
+        uploadStatus("Import token cleared.");
+      }
+    } catch (_) {
+      uploadStatus("Failed to save import token in this browser.");
+    }
+  }
+
+  function clearImportToken() {
+    const node = document.getElementById("jietng-bookmarklet-import-token");
+    if (node) node.value = "";
+    try {
+      localStorage.removeItem(importTokenKey);
+    } catch (_) {
+      // Ignore private mode failures.
+    }
+    uploadStatus("Import token cleared.");
+  }
+
   function loadCachedSessionData() {
     try {
       const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
-      if (cached?.profile && Array.isArray(cached?.best) && cached.best.length) {
+      if (cached?.profile && Array.isArray(cached?.best) && cached.best.length && Array.isArray(cached?.recent)) {
         state.profile = cached.profile;
         state.best = cached.best;
+        state.recent = cached.recent;
         return {
           profile: cached.profile,
           best: cached.best,
+          recent: cached.recent,
         };
       }
     } catch (_) {
@@ -290,12 +405,13 @@
     return null;
   }
 
-  function saveCachedSessionData(profile, best) {
+  function saveCachedSessionData(profile, best, recent) {
     try {
       sessionStorage.setItem(cacheKey, JSON.stringify({
         captured_at: new Date().toISOString(),
         profile,
         best,
+        recent,
       }));
     } catch (_) {
       // Ignore storage quota/private mode failures; in-memory cache still works.
@@ -480,6 +596,148 @@
     return records;
   }
 
+  function parseRecentRecords(doc) {
+    const records = [];
+    const blocks = xpathNodes(doc, '//div[contains(@class, "p_10") and contains(@class, "t_l")]');
+    for (const block of blocks) {
+      const nameTexts = xpathText(block, './/div[contains(@class, "basic_block") and contains(@class, "break")]/text()');
+      const name = nameTexts[1] || nameTexts[0] || "";
+      const score = textOf(xpathNodes(block, './/div[contains(@class, "playlog_achievement_txt")]')[0]);
+      if (!name || !score) continue;
+
+      const scoreIcon = iconName(xpathNodes(block, './/img[contains(@class, "playlog_scorerank")]')[0]?.getAttribute("src") || "")
+        .replace(/plus/g, "p");
+      const dxScore = textOf(xpathNodes(block, './/div[contains(@class, "playlog_score_block")]//div[contains(@class, "white")]')[0])
+        .replace(/,/g, "") || "?";
+      const typeIcon = xpathNodes(block, './/img[contains(@class, "playlog_music_kind_icon")]')[0]?.getAttribute("src") || "";
+      const type = musicType(typeIcon);
+      const diffIcon = iconName(xpathNodes(block, './/img[contains(@class, "playlog_diff")]')[0]?.getAttribute("src") || "");
+      const difficulty = diffIcon.startsWith("diff_") ? diffIcon.replace(/^diff_/, "") : "unknown";
+      const icons = xpathNodes(block, './/img[contains(@class, "h_35") and contains(@class, "m_5") and contains(@class, "f_l")]')
+        .map((img) => iconName(img.getAttribute("src") || ""));
+
+      records.push({
+        name,
+        difficulty,
+        type,
+        score,
+        dx_score: dxScore,
+        score_icon: scoreIcon || "?",
+        combo_icon: (icons[0] || "back").replace("fc_dummy", "back").replace(/plus/g, "p"),
+        sync_icon: (icons[1] || "back").replace("sync_dummy", "back").replace("fsd", "fdx").replace(/plus/g, "p"),
+      });
+    }
+    return records;
+  }
+
+  const RANK_MAP = {
+    sssp: "SSS+", sss: "SSS",
+    ssp: "SS+", ss: "SS",
+    sp: "S+", s: "S",
+    aaa: "AAA", aa: "AA", a: "A",
+    bbb: "BBB", bb: "BB", b: "B",
+    c: "C", d: "D",
+  };
+  const COMBO_MAP = { app: "AP+", ap: "AP", fcp: "FC+", fc: "FC" };
+  const SYNC_MAP = { fdxp: "FDX+", fdx: "FDX", fsp: "FS+", fs: "FS", sync: "Sync" };
+  const TYPE_MAP = { dx: "DX", std: "Standard", utage: "Utage" };
+  const DIFF_MAP = {
+    basic: "Basic",
+    advanced: "Advanced",
+    expert: "Expert",
+    master: "Master",
+    remaster: "Re:Master",
+    utage: "Utage",
+  };
+
+  function parseAchievement(score) {
+    const value = Number(String(score || "").replace("%", "").trim());
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function parseDxScorePair(value) {
+    const match = String(value || "").match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);
+    if (!match) return {};
+    return {
+      dx_score: Number(match[1]),
+      dx_score_max: Number(match[2]),
+    };
+  }
+
+  function transformRecordForImport(record) {
+    const out = {
+      title: record.name,
+      type: TYPE_MAP[record.type] || record.type,
+      difficulty: DIFF_MAP[record.difficulty] || record.difficulty,
+      achievement: parseAchievement(record.score),
+      rank: RANK_MAP[record.score_icon] || record.score_icon,
+      ...parseDxScorePair(record.dx_score),
+    };
+
+    const combo = COMBO_MAP[record.combo_icon];
+    if (combo) out.combo = combo;
+    const sync = SYNC_MAP[record.sync_icon];
+    if (sync) out.sync = sync;
+
+    return Object.fromEntries(Object.entries(out).filter(([, value]) => value !== undefined && value !== null && value !== ""));
+  }
+
+  function buildImportPayload(profile, best, recent) {
+    const rating = Number(String(profile?.rating || "0").trim());
+    return {
+      format: "JiETNGExport",
+      schema_version: 2,
+      generated_at: new Date().toISOString().slice(0, 19),
+      maimai_version: version,
+      profile: {
+        name: profile?.name || "Imported",
+        trophy: profile?.trophy_content || "N/A",
+        rating: Number.isFinite(rating) ? rating : 0,
+        nameplate_url: profile?.nameplate_url,
+        icon_url: profile?.icon_url,
+        class_rank_url: profile?.class_rank_url,
+        course_rank_url: profile?.cource_rank_url || profile?.course_rank_url,
+      },
+      records: {
+        best: best.map(transformRecordForImport),
+        recent: recent.map(transformRecordForImport),
+      },
+    };
+  }
+
+  async function uploadImportPayload(payload) {
+    const token = currentImportToken();
+    if (!token) {
+      uploadStatus("Import token is empty. Skipped upload.");
+      return null;
+    }
+
+    uploadStatus("Uploading records...");
+    const response = await fetch(importApiUrl, {
+      method: "POST",
+      mode: "cors",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    let body = null;
+    try {
+      body = await response.json();
+    } catch (_) {
+      body = {};
+    }
+
+    if (!response.ok || body?.success === false) {
+      throw new Error(body?.message || body?.error || `import api failed: ${response.status}`);
+    }
+
+    uploadStatus(`Uploaded ${body.best_count ?? payload.records.best.length} best and ${body.recent_count ?? payload.records.recent.length} recent records.`);
+    return body;
+  }
+
   function safeFilenamePart(value) {
     return String(value || "maimai").replace(/[\\/:*?"<>|\s]+/g, "_").slice(0, 40);
   }
@@ -614,15 +872,16 @@
 
   async function collectSessionData() {
     if (state.profile && state.best) {
-      status(`Using cached ${state.best.length} records...`);
+      status(`Using cached ${state.best.length} best and ${(state.recent || []).length} recent records...`);
       return {
         profile: state.profile,
         best: state.best,
+        recent: state.recent || [],
       };
     }
     const cached = loadCachedSessionData();
     if (cached) {
-      status(`Using cached ${cached.best.length} records...`);
+      status(`Using cached ${cached.best.length} best and ${cached.recent.length} recent records...`);
       return cached;
     }
     if (state.collectPromise) {
@@ -640,16 +899,19 @@
       ]);
       const profile = parseProfile(playerDoc, collectionDoc, nameplateDoc, trophyDoc, document);
 
-      status("Collecting best records...");
-      const bestDocs = await Promise.all(
-        DIFFICULTIES.map((_, index) => fetchPage(`/record/musicGenre/search/?genre=99&diff=${index}`))
-      );
+      status("Collecting records...");
+      const [recentDoc, ...bestDocs] = await Promise.all([
+        fetchPage("/record/"),
+        ...DIFFICULTIES.map((_, index) => fetchPage(`/record/musicGenre/search/?genre=99&diff=${index}`)),
+      ]);
       const best = bestDocs.flatMap((doc, index) => parseBestRecords(doc, DIFFICULTIES[index]));
+      const recent = parseRecentRecords(recentDoc);
 
       state.profile = profile;
       state.best = best;
-      saveCachedSessionData(profile, best);
-      return { profile, best };
+      state.recent = recent;
+      saveCachedSessionData(profile, best, recent);
+      return { profile, best, recent };
     })();
 
     try {
@@ -664,7 +926,7 @@
     const options = currentOptions();
     saveUiState();
     setControlsDisabled(true);
-    const { profile, best } = await collectSessionData();
+    const { profile, best, recent } = await collectSessionData();
     status(`Generating image from ${best.length} records...`);
 
     state.payload = {
@@ -680,6 +942,19 @@
         best,
       },
     };
+
+    if (options.autoUpload && currentImportToken()) {
+      try {
+        saveImportToken();
+        await uploadImportPayload(buildImportPayload(profile, best, recent));
+      } catch (error) {
+        uploadStatus(`Upload failed: ${error?.message || String(error)}`);
+      }
+    } else if (options.autoUpload) {
+      uploadStatus("Import token is empty. Skipped upload.");
+    } else {
+      uploadStatus("");
+    }
 
     await generateImage(state.payload);
   }

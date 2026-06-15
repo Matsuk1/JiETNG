@@ -525,26 +525,29 @@ def require_import_token(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        if request.method == "OPTIONS":
+            return f(*args, **kwargs)
+
         auth_header = request.headers.get('Authorization')
         if not auth_header:
-            return jsonify({
+            return _maimai_session_cors(jsonify({
                 "error": "No authorization header",
                 "message": "Authorization header is required"
-            }), 401
+            })), 401
 
         parts = auth_header.split()
         if len(parts) != 2 or parts[0].lower() != 'bearer':
-            return jsonify({
+            return _maimai_session_cors(jsonify({
                 "error": "Invalid authorization header",
                 "message": "Authorization header must be in format: Bearer <token>"
-            }), 401
+            })), 401
 
         token_info = verify_import_token(parts[1])
         if not token_info:
-            return jsonify({
+            return _maimai_session_cors(jsonify({
                 "error": "Invalid token",
                 "message": "Import token is invalid or has been revoked"
-            }), 401
+            })), 401
 
         request.import_token_info = token_info
         return f(*args, **kwargs)
@@ -1357,7 +1360,7 @@ def _maimai_session_cors(response):
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Vary"] = "Origin"
     response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response
 
 def _normalize_session_profile(profile: dict, ver: str) -> dict:
@@ -7277,7 +7280,7 @@ def api_v2_export_records(user_id):
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
 
-@app.route("/api/v2/import/records", methods=["POST"])
+@app.route("/api/v2/import/records", methods=["POST", "OPTIONS"])
 @csrf.exempt
 @require_import_token
 def api_v2_import_records():
@@ -7287,6 +7290,9 @@ def api_v2_import_records():
     Authorization: Bearer <import_token>
     Body: modules.export_manager.build_payload 生成的 JSON 结构
     """
+    if request.method == "OPTIONS":
+        return _maimai_session_cors(app.make_response(("", 204)))
+
     token_info = request.import_token_info
     user_id = token_info["user_id"]
     try:
@@ -7306,19 +7312,19 @@ def api_v2_import_records():
             'recent_count': result['recent_count'],
             'version': result['version'],
         })
-        return jsonify({
+        return _maimai_session_cors(jsonify({
             "success": True,
             "user_id": user_id,
             "best_count": result["best_count"],
             "recent_count": result["recent_count"],
             "version": result["version"],
             "message": "Records imported successfully.",
-        })
+        }))
     except ImportValidationError as e:
-        return jsonify({"error": "Invalid payload", "message": str(e)}), 400
+        return _maimai_session_cors(jsonify({"error": "Invalid payload", "message": str(e)})), 400
     except Exception as e:
         logger.error(f"[API] ✗ Import records error: user_id={user_id}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+        return _maimai_session_cors(jsonify({"error": "Internal server error", "message": str(e)})), 500
 
 
 if __name__ == "__main__":
