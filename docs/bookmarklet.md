@@ -28,8 +28,8 @@ description: JiETNG maimai DX 网页书签工具，使用当前 maimai 官方网
    - `https://maimaidx.jp/maimai-mobile/home/`
    - `https://maimaidx-eng.com/maimai-mobile/home/`
 3. 在官方页面点击刚才保存的书签。
-4. 可选填写 `settings` 页面生成的 Import Token。保存后会保留在当前浏览器，并可手动上传成绩；如果本地没有上传记录，打开书签时也会自动上传一次。
-5. 选择 B 系列类型，可选填写 `-lv 13 -diff mas` 这类筛选参数，然后点击 **Generate**。
+4. 可选填写 `settings` 页面生成的 Import Token。保存后会保留在当前浏览器，需要上传成绩时点击 **Upload**。
+5. 选择 **B50** 或 **AP50**，然后点击 **Generate**。
 6. 等待生成完成，在页面弹窗中查看图片。图片生成超过 15 秒会提示超时，可刷新后重试。
 
 ## 当前行为
@@ -38,7 +38,7 @@ description: JiETNG maimai DX 网页书签工具，使用当前 maimai 官方网
 - 成绩图直接显示在官方页面上，不跳转到 JiETNG 站点，也不会强制下载。
 - 预览区在书签主面板上方，生成后提供下载与关闭按钮。
 - 刷新官方页面后再次打开书签，浮层会保留在页面上，但不会立刻显示旧缓存图片。
-- 保存 Import Token 不等于每次生成都强制上传；需要上传时可使用 Upload 按钮。
+- 点击 Generate 只生成图片，不上传成绩；需要上传时可使用 Upload 按钮。
 - 上传内容是加工后的 `profile`、`best`、`recent` 数据，服务端不会接收 SEGA 密码。
 
 ## Import Token

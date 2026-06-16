@@ -5,14 +5,7 @@
   const DIFFICULTIES = ["basic", "advanced", "expert", "master", "remaster"];
   const RECORD_TYPES = [
     ["best50", "B50"],
-    ["best40", "B40"],
-    ["best35", "B35"],
-    ["best15", "B15"],
-    ["allb35", "AB35"],
-    ["allb50", "AB50"],
     ["apb50", "AP50"],
-    ["fdxb50", "FDX50"],
-    ["idlb50", "IDLB50"],
   ];
 
   const state = {
@@ -34,9 +27,7 @@
   const uiCacheKey = `jietng:maimai-session:${version}:ui:v1`;
   const previewCacheKey = `jietng:maimai-session:${version}:preview:v1`;
   const importTokenKey = "jietng:import-token:v1";
-  const importUploadKey = `jietng:import-upload:${version}:v1`;
   let replacingImportToken = false;
-  let initialImportUploadPromise = null;
 
   function createPanel() {
     const old = document.getElementById("jietng-bookmarklet-panel");
@@ -186,19 +177,6 @@
       #jietng-bookmarklet-upload-token {
         color: #047857;
       }
-      #jietng-bookmarklet-auto-upload-row {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        color: #4b5563;
-        font-size: 12px;
-        font-weight: 650;
-      }
-      #jietng-bookmarklet-auto-upload-row input {
-        width: 16px;
-        height: 16px;
-        margin: 0;
-      }
       #jietng-bookmarklet-generate:disabled,
       #jietng-bookmarklet-save-token:disabled,
       #jietng-bookmarklet-upload-token:disabled,
@@ -305,10 +283,6 @@
             </select>
           </label>
           <label>
-            Command
-            <input id="jietng-bookmarklet-command" type="text" inputmode="text" autocomplete="off" placeholder="-lv 13 -diff mas -page 2">
-          </label>
-          <label>
             Import Token
             <div id="jietng-bookmarklet-token-row">
               <input id="jietng-bookmarklet-import-token" type="password" inputmode="text" autocomplete="off" placeholder="jit_...">
@@ -317,10 +291,6 @@
               <button id="jietng-bookmarklet-upload-token" class="token-action" type="button">Upload</button>
               <button id="jietng-bookmarklet-change-token" class="token-action" type="button">Replace</button>
             </div>
-          </label>
-          <label id="jietng-bookmarklet-auto-upload-row">
-            <input id="jietng-bookmarklet-auto-upload" type="checkbox" checked>
-            Auto upload records
           </label>
           <button id="jietng-bookmarklet-generate" type="button">Generate</button>
         </div>
@@ -332,9 +302,7 @@
     document.body.appendChild(panel);
     restoreUiState();
     document.getElementById("jietng-bookmarklet-type")?.addEventListener("change", saveUiState);
-    document.getElementById("jietng-bookmarklet-command")?.addEventListener("input", saveUiState);
-    document.getElementById("jietng-bookmarklet-auto-upload")?.addEventListener("change", saveUiState);
-    document.getElementById("jietng-bookmarklet-save-token")?.addEventListener("click", () => saveImportToken(true));
+    document.getElementById("jietng-bookmarklet-save-token")?.addEventListener("click", () => saveImportToken());
     document.getElementById("jietng-bookmarklet-upload-token")?.addEventListener("click", () => uploadSavedImportToken());
     document.getElementById("jietng-bookmarklet-change-token")?.addEventListener("click", changeImportToken);
     restoreImportToken();
@@ -353,20 +321,16 @@
   function currentOptions() {
     return {
       cmdType: document.getElementById("jietng-bookmarklet-type")?.value || "best50",
-      command: document.getElementById("jietng-bookmarklet-command")?.value?.trim() || "",
-      autoUpload: document.getElementById("jietng-bookmarklet-auto-upload")?.checked !== false,
     };
   }
 
   function setControlsDisabled(disabled) {
     for (const id of [
       "jietng-bookmarklet-type",
-      "jietng-bookmarklet-command",
       "jietng-bookmarklet-import-token",
       "jietng-bookmarklet-save-token",
       "jietng-bookmarklet-upload-token",
       "jietng-bookmarklet-change-token",
-      "jietng-bookmarklet-auto-upload",
       "jietng-bookmarklet-generate",
     ]) {
       const node = document.getElementById(id);
@@ -379,11 +343,7 @@
       const cached = JSON.parse(sessionStorage.getItem(uiCacheKey) || "null");
       if (!cached) return;
       const typeNode = document.getElementById("jietng-bookmarklet-type");
-      const commandNode = document.getElementById("jietng-bookmarklet-command");
-      const autoUploadNode = document.getElementById("jietng-bookmarklet-auto-upload");
       if (typeNode && RECORD_TYPES.some(([value]) => value === cached.cmdType)) typeNode.value = cached.cmdType;
-      if (commandNode && typeof cached.command === "string") commandNode.value = cached.command;
-      if (autoUploadNode && typeof cached.autoUpload === "boolean") autoUploadNode.checked = cached.autoUpload;
     } catch (_) {
       sessionStorage.removeItem(uiCacheKey);
     }
@@ -409,7 +369,7 @@
     try {
       const token = localStorage.getItem(importTokenKey) || "";
       setImportTokenSaved(Boolean(token));
-      uploadStatus(token ? "Import token saved. Records will upload automatically." : "");
+      uploadStatus(token ? "Import token saved. Use Upload to send records." : "");
     } catch (_) {
       setImportTokenSaved(false);
       uploadStatus("");
@@ -427,17 +387,15 @@
     }
   }
 
-  function saveImportToken(uploadAfterSave = true) {
+  function saveImportToken() {
     const token = document.getElementById("jietng-bookmarklet-import-token")?.value?.trim() || currentImportToken();
     try {
       if (token) {
         localStorage.setItem(importTokenKey, token);
         setImportTokenSaved(true);
-        uploadStatus("Import token saved. Records will upload automatically.");
-        if (uploadAfterSave) ensureInitialImportUpload("save");
+        uploadStatus("Import token saved. Use Upload to send records.");
       } else {
         localStorage.removeItem(importTokenKey);
-        localStorage.removeItem(importUploadKey);
         setImportTokenSaved(false);
         uploadStatus("Import token cleared.");
       }
@@ -450,7 +408,6 @@
     replacingImportToken = true;
     try {
       localStorage.removeItem(importTokenKey);
-      localStorage.removeItem(importUploadKey);
     } catch (_) {
       // Ignore private mode failures.
     }
@@ -817,48 +774,7 @@
     }
 
     uploadStatus(`Uploaded ${body.best_count ?? payload.records.best.length} best and ${body.recent_count ?? payload.records.recent.length} recent records.`);
-    rememberImportUpload(payload, body);
     return body;
-  }
-
-  function hasImportUploadRecord() {
-    try {
-      const cached = JSON.parse(localStorage.getItem(importUploadKey) || "null");
-      return Boolean(cached?.uploaded_at);
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function rememberImportUpload(payload, responseBody = {}) {
-    try {
-      localStorage.setItem(importUploadKey, JSON.stringify({
-        uploaded_at: new Date().toISOString(),
-        profile_name: payload.profile?.name || "",
-        best_count: responseBody.best_count ?? payload.records.best.length,
-        recent_count: responseBody.recent_count ?? payload.records.recent.length,
-      }));
-    } catch (_) {
-      // Upload succeeded; localStorage may be unavailable in private mode.
-    }
-  }
-
-  function ensureInitialImportUpload(reason = "open") {
-    if (!isSupportedHost || !currentImportToken() || hasImportUploadRecord()) return null;
-    if (initialImportUploadPromise) return initialImportUploadPromise;
-
-    initialImportUploadPromise = (async () => {
-      try {
-        uploadStatus(reason === "save" ? "Uploading records after save..." : "Uploading records for the first time...");
-        const { profile, best, recent } = await collectSessionData();
-        await uploadImportPayload(buildImportPayload(profile, best, recent));
-      } catch (error) {
-        uploadStatus(`Upload failed: ${error?.message || String(error)}`);
-      } finally {
-        initialImportUploadPromise = null;
-      }
-    })();
-    return initialImportUploadPromise;
   }
 
   async function uploadSavedImportToken() {
@@ -870,7 +786,6 @@
     const button = document.getElementById("jietng-bookmarklet-upload-token");
     if (button) button.disabled = true;
     try {
-      localStorage.removeItem(importUploadKey);
       uploadStatus("Uploading records...");
       const { profile, best, recent } = await collectSessionData();
       await uploadImportPayload(buildImportPayload(profile, best, recent));
@@ -1070,7 +985,7 @@
     const options = currentOptions();
     saveUiState();
     setControlsDisabled(true);
-    const { profile, best, recent } = await collectSessionData();
+    const { profile, best } = await collectSessionData();
     status(`Generating image from ${best.length} records...`);
 
     state.payload = {
@@ -1080,28 +995,14 @@
       origin: location.origin,
       version,
       cmd_type: options.cmdType,
-      command: options.command,
+      command: "",
       profile,
       records: {
         best,
       },
     };
 
-    if (options.autoUpload && currentImportToken()) {
-      try {
-        if (document.getElementById("jietng-bookmarklet-import-token")?.value?.trim()) {
-          saveImportToken(false);
-        }
-        await uploadImportPayload(buildImportPayload(profile, best, recent));
-      } catch (error) {
-        uploadStatus(`Upload failed: ${error?.message || String(error)}`);
-      }
-    } else if (options.autoUpload) {
-      uploadStatus("Import token is empty. Skipped upload.");
-    } else {
-      uploadStatus("");
-    }
-
+    uploadStatus(currentImportToken() ? "Generate does not upload records. Use Upload when needed." : "");
     await generateImage(state.payload);
   }
 
@@ -1122,7 +1023,6 @@
           setControlsDisabled(false);
         });
     });
-    ensureInitialImportUpload("open");
   }
 
   run();

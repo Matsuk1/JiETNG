@@ -1,22 +1,18 @@
 # JiETNG maimai session image bookmarklet
 
-This tool runs inside the logged-in maimai DX mobile site and uses the current
-browser session to collect profile and best records, then renders a score image
-inside an overlay on the original maimai page.
+This bookmarklet runs inside the logged-in maimai DX mobile site and uses the
+current browser session to collect profile, Best records, and Recent records.
+It then renders a score image inside an overlay on the original maimai page.
 
-The panel can generate B-series record images from the same collected Best
-records without re-fetching the maimai pages: `B50`, `B40`, `B35`, `B15`,
-`AB35`, `AB50`, `AP50`, `FDX50`, and `IDLB50`. It also accepts the same filter
-string used by the native b-records command, such as `-lv 13 -diff mas`. The
-collected records are cached in `sessionStorage`, so refreshing the same browser
-tab and opening the bookmarklet again still reuses the cached records. The last
-selected options and generated preview are also restored when the bookmarklet is
-opened again in that tab.
+The panel intentionally exposes only two image modes:
 
-If the user saves a JiETNG import token in the panel, the bookmarklet stores it
-in browser `localStorage` and automatically uploads the processed Best and
-Recent records to `/api/v2/import/records` after collecting data. Uploading
-reuses the same cached records and does not fetch maimai pages again.
+- `B50`
+- `AP50`
+
+Generate only creates the image. It does not upload records. If the user saves a
+JiETNG Import Token in the panel, records can be uploaded explicitly with the
+Upload button. Upload sends processed Best and Recent records to
+`/api/v2/import/records` and reuses cached page data when available.
 
 It does not read or ask for SEGA ID passwords. The browser sends existing
 maimaidx cookies to same-origin maimai pages.
@@ -32,8 +28,8 @@ Supported official domains:
 2. Create a browser bookmark.
 3. Set the bookmark URL to the generated code in `dist/bookmarklet.txt`.
 4. Click the bookmark while staying on the maimai mobile site.
-5. The bookmarklet collects records and shows the generated PNG image in an
-   overlay on the same maimai page.
+5. Select `B50` or `AP50`, then click Generate.
+6. Use Upload only when you want to send records to JiETNG with an Import Token.
 
 The same bookmarklet also supports the international site:
 `https://maimaidx-eng.com/maimai-mobile/home/`.
@@ -50,11 +46,12 @@ The generated URL is written to:
 
 ```text
 bookmarklet/dist/bookmarklet.txt
+docs/public/bookmarklet/maimai-session-image.txt
 ```
 
 ## Payload schema
 
-The bookmarklet sends this JSON shape to JiETNG:
+The bookmarklet sends this JSON shape to JiETNG for image generation:
 
 ```json
 {
@@ -64,7 +61,7 @@ The bookmarklet sends this JSON shape to JiETNG:
   "origin": "https://maimaidx.jp",
   "version": "jp",
   "cmd_type": "best50",
-  "command": "-lv 13 -diff mas",
+  "command": "",
   "profile": {
     "name": "player",
     "rating": "15000"
@@ -108,7 +105,7 @@ The endpoint returns `image/png` and does not write records to the database.
 The bookmarklet converts the PNG response into a local blob URL and displays it
 in an overlay on the source maimai page.
 
-Optional record import:
+Optional manual record import:
 
 ```http
 POST https://jietng-endpoint.matsuk1.com/api/v2/import/records

@@ -28,8 +28,8 @@ This bookmarklet runs on the official maimai DX mobile website. It uses your cur
    - `https://maimaidx.jp/maimai-mobile/home/`
    - `https://maimaidx-eng.com/maimai-mobile/home/`
 3. Click the saved bookmark while staying on the official page.
-4. Optionally enter the Import Token generated from the `settings` page. After saving it, the bookmarklet keeps it in this browser. It can upload records manually, and will upload once on open if no local upload record exists.
-5. Select a B-series type, optionally enter filters such as `-lv 13 -diff mas`, then click **Generate**.
+4. Optionally enter the Import Token generated from the `settings` page. After saving it, the bookmarklet keeps it in this browser. Click **Upload** when you want to upload records.
+5. Select **B50** or **AP50**, then click **Generate**.
 6. Wait for generation to finish, then view the image in the page overlay. If image generation takes more than 15 seconds, the bookmarklet shows a timeout message and asks you to refresh and retry.
 
 ## Current Behavior
@@ -38,7 +38,7 @@ This bookmarklet runs on the official maimai DX mobile website. It uses your cur
 - Shows the image directly on the official page. It does not redirect to JiETNG and does not force a download.
 - The preview panel appears above the main bookmarklet panel, with Download and Close actions after generation.
 - Reopening after refresh keeps the overlay, but does not immediately show the old cached image.
-- Saving an Import Token does not force every Generate action to upload. Use the Upload button when you want to upload.
+- Generate only creates an image and never uploads records. Use the Upload button when you want to upload.
 - Uploads contain processed `profile`, `best`, and `recent` data, never the SEGA password.
 
 ## Import Token
