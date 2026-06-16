@@ -282,7 +282,7 @@ function writeCookie() {
       <p v-if="error" class="error-msg">{{ error }}</p>
     </form>
     <label class="save-creds"><input type="checkbox" v-model="saveCreds" @change="onSaveCredsChange" />记住账号信息</label>
-    <p class="notice">{{ saveCreds ? '你的账号信息将保存在浏览器 Cookie 中，仅存储于你的设备上，不会上传至服务器。本服务由个人运营，与 SEGA 官方无关。' : '你的账号信息仅用于本次请求，不会被存储。本服务由个人运营，与 SEGA 官方无关。' }}</p>
+    <p class="notice">{{ saveCreds ? '你的账号信息会发送到 JiETNG 后端用于本次生成，并额外保存在本浏览器 Cookie 中方便下次填写；不会作为绑定账号保存。本服务由个人运营，与 SEGA 官方无关。' : '你的账号信息会发送到 JiETNG 后端用于本次生成，不会作为绑定账号保存。本服务由个人运营，与 SEGA 官方无关。' }}</p>
   </div>
 
   <div class="demo-card result-card" v-if="imageUrl">

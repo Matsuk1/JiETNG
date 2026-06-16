@@ -41,7 +41,7 @@ The bot syncs profile, Best records, Recent records, and related data from the s
 settings
 ```
 
-Create an Import Token in the settings page, then install the [bookmarklet](/en/bookmarklet). Open the official maimai mobile site, click the bookmarklet, generate an image, and upload best / recent / profile data when needed.
+Create an Import Token in the settings page, then install the [bookmarklet](/en/bookmarklet). Open the official maimai mobile site, click the bookmarklet, generate a B50 / AP50 image, and click **Upload** when you want to upload best / recent / profile data.
 
 Import Token plaintext is shown only once. The settings page can list tokens, revoke active tokens, and delete revoked tokens.
 

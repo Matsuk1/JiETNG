@@ -82,7 +82,7 @@ JiETNG は **maimai でらっくす / maimai DX** 向けのスコア管理 Bot �
 ## クイックスタート
 
 1. JiETNG LINE Bot を追加します。
-2. 個別チャットで `bind` を送信します。SEGA アカウント連携、または Import Token のみのモードを選べます。
+2. 個別チャットで `bind` を送信します。SEGA アカウント連携、または Import Token モードを選べます。
 3. `maimai update` で公式データを同期するか、[ブックマークレット](/ja/bookmarklet)で公式サイトから取り込みます。
 4. `b50`、`record`、`13.6 records`、`真極 achievement` などを試します。
 

@@ -1,11 +1,11 @@
 ---
 title: ブックマークレットツール
-description: maimai 公式サイトの現在のログイン状態を使ってスコア画像生成と加工済み成績アップロードを行う JiETNG ブックマークレット。
+description: maimai 公式サイトの現在のログイン状態を使って B50 / AP50 画像生成と加工済み成績の手動アップロードを行う JiETNG ブックマークレット。
 ---
 
 # JiETNG ブックマークレットツール
 
-このブックマークレットは maimai DX 公式モバイルサイト上で動作します。現在のブラウザのログイン状態を使ってプロフィール、Best レコード、Recent レコードを読み取り、JiETNG API でスコア画像を生成します。SEGA ID のパスワードを読み取ったり入力させたりすることはありません。
+このブックマークレットは maimai DX 公式モバイルサイト上で動作します。現在のブラウザのログイン状態を使ってプロフィール、Best レコード、Recent レコードを読み取り、JiETNG API で B50 / AP50 画像を生成します。SEGA ID のパスワードを読み取ったり入力させたりすることはありません。
 
 <div class="bookmarklet-installer">
   <div class="bookmarklet-card">

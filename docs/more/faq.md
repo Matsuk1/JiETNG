@@ -5,15 +5,15 @@
 不一定。JiETNG 现在支持两种方式：
 
 - 绑定 SEGA 账号后使用 `maimai update` 自动同步。
-- 不绑定 SEGA 账号，只使用 Import Token 和网页书签上传成绩。
+- 使用 Import Token 导入模式，通过网页书签上传成绩。
 
 如果你希望 Bot 主动从 maimai NET 同步，仍然需要完整 SEGA 绑定。
 
 ## 如何开始？
 
 1. 私聊 Bot 发送 `bind`。
-2. 在网页中选择绑定 SEGA 账号，或选择“不绑定但使用 Import Token”。
-3. SEGA 用户发送 `maimai update`；Import Token 用户打开 `settings` 生成 token 后使用[网页书签工具](/bookmarklet)。
+2. 在网页中选择绑定 SEGA 账号，或选择 Import Token 导入模式。
+3. SEGA 用户发送 `maimai update`；导入模式用户打开 `settings` 生成 token 后使用[网页书签工具](/bookmarklet)。
 4. 发送 `b50`、`rct50`、`record`、`achievement` 等命令查看成绩。
 
 ## 可以在聊天里输入 SEGA 密码吗？

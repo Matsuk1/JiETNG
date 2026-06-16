@@ -99,7 +99,7 @@ POST /api/v2/users/<user_id>/tasks
 GET /api/v2/tasks/<task_id>
 ```
 
-该接口将用户同步加入队列并返回任务 ID。仅适用于已绑定完整 SEGA 账号的用户。Import Token 用户应调用导入 API 上传成绩。
+该接口将用户同步加入队列并返回任务 ID。仅适用于已绑定完整 SEGA 账号的用户。导入模式用户应调用导入 API 上传成绩。
 
 ## 图片与查询端点
 

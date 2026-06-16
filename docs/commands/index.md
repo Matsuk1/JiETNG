@@ -11,7 +11,7 @@ description: JiETNG 命令大全，包含舞萌DX / maimai B50、查分、レー
 
 | 命令 | 说明 |
 |------|------|
-| `bind` | 生成绑定链接，可绑定 SEGA 账号或创建 Import Token 用户 |
+| `bind` | 生成绑定链接，可绑定 SEGA 账号或选择 Import Token 导入模式 |
 | `rebind` | 修改已绑定 SEGA 账号的密码、版本、Aime |
 | `settings` | 打开设置页，修改偏好并管理 Import Token |
 | `profile` / `getme` | 查看账号资料与绑定状态 |

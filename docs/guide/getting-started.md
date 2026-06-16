@@ -20,7 +20,7 @@ bind
 Bot 会发送一个网页按钮。打开后可以选择：
 
 - **绑定 SEGA 账号**：填写 SEGA ID、密码、服务器版本（`jp` 或 `intl`）、语言与 Aime。
-- **不绑定但使用 Import Token**：创建仅依赖导入数据的账号，适合只想通过网页书签上传成绩的用户。
+- **Import Token 导入模式**：不绑定 SEGA 账号，创建仅依赖导入数据的账号，适合只想通过网页书签上传成绩的用户。
 
 绑定链接会过期；过期后重新发送 `bind` 即可获取新链接。
 
@@ -42,7 +42,7 @@ update
 
 Bot 会从对应版本的 maimai NET 同步资料、Best 记录、Recent 记录等数据。这个命令只能查询自己。
 
-### Import Token 用户
+### 导入模式用户
 
 发送：
 
@@ -50,7 +50,7 @@ Bot 会从对应版本的 maimai NET 同步资料、Best 记录、Recent 记录�
 settings
 ```
 
-在设置页生成 Import Token，然后到[网页书签工具](/bookmarklet)页面保存书签。登录 maimai 官方移动站后点击书签，即可在原页面生成成绩图，并可保存 token 后上传 best / recent / profile 数据。
+在设置页生成 Import Token，然后到[网页书签工具](/bookmarklet)页面保存书签。登录 maimai 官方移动站后点击书签，即可在原页面生成 B50 / AP50 图片；保存 token 后，需要上传成绩时点击 **Upload** 上传 best / recent / profile 数据。
 
 Import Token 明文只显示一次。设置页可以查看所有 token、撤销 token，并删除已撤销 token。
 

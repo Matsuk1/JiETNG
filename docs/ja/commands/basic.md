@@ -8,7 +8,7 @@
 bind
 ```
 
-個別チャットで連携リンクを送信します。SEGA 連携と Import Token のみのモードに対応しています。
+個別チャットで連携リンクを送信します。SEGA 連携と Import Token モードに対応しています。
 
 ```text
 rebind

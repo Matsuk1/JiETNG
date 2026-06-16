@@ -86,7 +86,7 @@ JiETNG 是面向 **maimai でらっくす / 舞萌DX** 的查分器和 LINE 成�
 ## 快速开始
 
 1. 添加 JiETNG LINE Bot。
-2. 私聊发送 `bind`，选择绑定 SEGA 账号，或选择“不绑定但使用 Import Token”。
+2. 私聊发送 `bind`，选择绑定 SEGA 账号，或选择 Import Token 导入模式。
 3. 发送 `maimai update` 同步官方数据，或使用[网页书签工具](/bookmarklet)从官方网页读取并上传成绩。
 4. 发送 `b50`、`record`、`13.6のレコードリスト`、`真極の達成状況` 等命令查看结果。
 

@@ -1,11 +1,11 @@
 ---
 title: Bookmarklet Tool
-description: JiETNG maimai DX bookmarklet that uses the current official maimai session to generate score images and upload processed records.
+description: JiETNG maimai DX bookmarklet that uses the current official maimai session to generate B50 / AP50 images and manually upload processed records.
 ---
 
 # JiETNG Bookmarklet Tool
 
-This bookmarklet runs on the official maimai DX mobile website. It uses your current browser session to read your profile, Best records, and Recent records, then calls the JiETNG API to generate a score image. It never reads or asks for your SEGA ID password.
+This bookmarklet runs on the official maimai DX mobile website. It uses your current browser session to read your profile, Best records, and Recent records, then calls the JiETNG API to generate a B50 / AP50 image. It never reads or asks for your SEGA ID password.
 
 <div class="bookmarklet-installer">
   <div class="bookmarklet-card">

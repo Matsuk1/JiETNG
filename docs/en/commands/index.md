@@ -11,7 +11,7 @@ This page follows the current command registry. Commands are case-insensitive un
 
 | Command | Description |
 |---------|-------------|
-| `bind` | Create a binding link for SEGA binding or Import Token only mode |
+| `bind` | Create a binding link for SEGA binding or import-only mode |
 | `rebind` | Update SEGA password, version, and Aime |
 | `settings` | Open settings and Import Token management |
 | `profile` / `getme` | Show account profile and binding state |

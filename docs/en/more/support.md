@@ -12,7 +12,7 @@
 
 - Use `bind` in a private chat.
 - Choose the correct server: `jp` or `intl`.
-- If you only want bookmarklet uploads, choose Import Token only mode.
+- If you only want bookmarklet uploads, choose import-only mode.
 
 ### Bookmarklet fails
 

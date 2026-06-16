@@ -281,7 +281,7 @@ function writeCookie() {
       <p v-if="error" class="error-msg">{{ error }}</p>
     </form>
     <label class="save-creds"><input type="checkbox" v-model="saveCreds" @change="onSaveCredsChange" />Remember my credentials</label>
-    <p class="notice">{{ saveCreds ? 'Your credentials are saved in a browser cookie on your device only and are never uploaded to our server. This is an unofficial service with no affiliation to SEGA.' : 'Your credentials are used only for this request and are never stored. This is an unofficial service with no affiliation to SEGA.' }}</p>
+    <p class="notice">{{ saveCreds ? 'Your credentials are sent to the JiETNG backend for this generation and also saved in this browser cookie for autofill. They are not stored as a bound account. This is an unofficial service with no affiliation to SEGA.' : 'Your credentials are sent to the JiETNG backend for this generation and are not stored as a bound account. This is an unofficial service with no affiliation to SEGA.' }}</p>
   </div>
 
   <div class="demo-card result-card" v-if="imageUrl">

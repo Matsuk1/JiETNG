@@ -5,14 +5,14 @@
 Not always. JiETNG supports two modes:
 
 - Bind a SEGA account and use `maimai update`.
-- Use Import Token only and upload records with the bookmarklet.
+- Use import-only mode and upload records with the bookmarklet.
 
 Automatic maimai NET sync requires a full SEGA binding.
 
 ## How do I start?
 
 1. Send `bind` in a private chat.
-2. Bind a SEGA account, or choose Import Token only mode.
+2. Bind a SEGA account, or choose import-only mode.
 3. SEGA users send `maimai update`; Import Token users create a token in `settings` and use the [bookmarklet](/en/bookmarklet).
 4. Try `b50`, `rct50`, `record`, or `achievement`.
 

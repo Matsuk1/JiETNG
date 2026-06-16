@@ -1,11 +1,11 @@
 ---
 title: 网页书签工具
-description: JiETNG maimai DX 网页书签工具，使用当前 maimai 官方网站登录状态生成成绩图并可上传加工后成绩。
+description: JiETNG maimai DX 网页书签工具，使用当前 maimai 官方网站登录状态生成 B50 / AP50 图片，并可手动上传加工后成绩。
 ---
 
 # JiETNG 网页书签工具
 
-这个书签工具会在 maimai DX 官方网站中运行，使用当前浏览器登录状态读取资料、Best 记录与 Recent 记录，然后调用 JiETNG API 生成成绩图。它不会读取或要求输入 SEGA ID 密码。
+这个书签工具会在 maimai DX 官方网站中运行，使用当前浏览器登录状态读取资料、Best 记录与 Recent 记录，然后调用 JiETNG API 生成 B50 / AP50 图片。它不会读取或要求输入 SEGA ID 密码。
 
 <div class="bookmarklet-installer">
   <div class="bookmarklet-card">
@@ -51,7 +51,7 @@ Import Token 在 LINE 私聊发送 `settings` 后进入设置页生成。明文�
 - 撤销正在使用的 Token
 - 删除已撤销 Token
 
-纯 Import Token 账号会在第一次上传成绩时初始化资料与成绩数据。
+导入模式账号会在第一次上传成绩时初始化资料与成绩数据。
 
 如果你的浏览器不方便拖拽按钮，可以点击 **复制书签地址**，然后手动新建书签，把 URL 设置为复制出来的 `javascript:...` 内容。
 

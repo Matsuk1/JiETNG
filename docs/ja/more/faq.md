@@ -5,14 +5,14 @@
 必須ではありません。JiETNG は 2 つのモードに対応しています。
 
 - SEGA アカウントを連携して `maimai update` を使う。
-- Import Token のみでブックマークレットから成績をアップロードする。
+- Import Token モードでブックマークレットから成績をアップロードする。
 
 maimai NET からの自動同期には完全な SEGA 連携が必要です。
 
 ## 始め方は？
 
 1. 個別チャットで `bind` を送信します。
-2. SEGA 連携、または Import Token のみのモードを選びます。
+2. SEGA 連携、または Import Token モードを選びます。
 3. SEGA ユーザーは `maimai update`、Import Token ユーザーは `settings` で token を作成して[ブックマークレット](/ja/bookmarklet)を使います。
 4. `b50`、`rct50`、`record`、`achievement` を試します。
 

@@ -15,7 +15,7 @@ bind
 绑定页支持两种模式：
 
 - 绑定 SEGA 账号，用于 `maimai update` 自动同步。
-- 不绑定 SEGA 账号，仅创建 Import Token 用户，用网页书签上传成绩。
+- 使用导入模式，不绑定 SEGA 账号，只通过 Import Token 和网页书签上传成绩。
 
 ### rebind
 
@@ -31,7 +31,7 @@ rebind
 settings
 ```
 
-发送设置页链接。可修改语言、时区、背景、显示设置，并管理 Import Token。完整绑定用户与 Import Token 用户均可使用。仅限私聊。
+发送设置页链接。可修改语言、时区、背景、显示设置，并管理 Import Token。完整绑定用户与导入模式用户均可使用。仅限私聊。
 
 ### profile / getme
 
@@ -60,7 +60,7 @@ update
 
 从 maimai NET 同步最新成绩。该命令需要完整 SEGA 账号绑定，并且只能用于自己的账号。
 
-Import Token 用户请使用网页书签上传成绩。
+导入模式用户请使用网页书签上传成绩。
 
 ## 数据导出
 

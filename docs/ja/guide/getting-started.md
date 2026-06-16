@@ -20,7 +20,7 @@ bind
 Web ページでは次を選べます。
 
 - **SEGA アカウント連携**：SEGA ID、パスワード、サーバー（`jp` / `intl`）、言語、Aime を入力。
-- **Import Token のみ**：SEGA 連携をせず、取り込みデータだけを使うアカウントを作成。
+- **Import Token モード**：SEGA 連携をせず、取り込みデータだけを使うアカウントを作成。
 
 リンクが期限切れになった場合は、もう一度 `bind` を送信してください。
 
@@ -41,7 +41,7 @@ update
 settings
 ```
 
-設定ページで Import Token を作成し、[ブックマークレット](/ja/bookmarklet)を保存します。公式 maimai モバイルサイトでブックマークレットを実行すると、画像生成と best / recent / profile のアップロードができます。
+設定ページで Import Token を作成し、[ブックマークレット](/ja/bookmarklet)を保存します。公式 maimai モバイルサイトでブックマークレットを実行すると、B50 / AP50 画像を生成できます。best / recent / profile をアップロードしたい場合は **Upload** を押します。
 
 Token の平文は一度だけ表示されます。設定ページでは token の一覧、撤回、撤回済み token の削除ができます。
 

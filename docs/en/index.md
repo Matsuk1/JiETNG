@@ -82,7 +82,7 @@ The project is designed for searches such as `maimai b50`, `maimai DX Rating`, `
 ## Quick Start
 
 1. Add the JiETNG LINE Bot.
-2. Send `bind` in a private chat. Bind a SEGA account, or choose the Import Token only mode.
+2. Send `bind` in a private chat. Bind a SEGA account, or choose import-only mode with an Import Token.
 3. Send `maimai update` to sync official data, or use the [bookmarklet](/en/bookmarklet) on the official maimai site.
 4. Try `b50`, `record`, `13.6 records`, or `真極 achievement`.
 

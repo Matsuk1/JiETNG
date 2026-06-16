@@ -8,7 +8,7 @@ Basic commands cover account management, settings, status, export, and support i
 bind
 ```
 
-Sends a private binding link. The page supports full SEGA binding and Import Token only mode.
+Sends a private binding link. The page supports full SEGA binding and import-only mode with an Import Token.
 
 ```text
 rebind

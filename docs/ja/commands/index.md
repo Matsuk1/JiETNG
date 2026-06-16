@@ -11,7 +11,7 @@ description: JiETNG の maimai B50、スコア管理、レート内訳、プレ�
 
 | コマンド | 説明 |
 |----------|------|
-| `bind` | SEGA 連携または Import Token のみのリンクを作成 |
+| `bind` | SEGA 連携または Import Token モードのリンクを作成 |
 | `rebind` | SEGA パスワード、サーバー、Aime を更新 |
 | `settings` | 設定と Import Token 管理 |
 | `profile` / `getme` | プロフィールと連携状態 |
