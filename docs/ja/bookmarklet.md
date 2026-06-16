@@ -12,10 +12,10 @@ description: maimai 公式サイトの現在のログイン状態を使ってス
     <img src="/logo.svg" alt="JiETNG" class="bookmarklet-logo">
     <div>
       <p class="bookmarklet-eyebrow">Bookmarklet</p>
-      <h2>JiETNG スコア画像</h2>
+      <h2>JiETNG ツールキット</h2>
       <p>下のボタンをブラウザのブックマークバーへドラッグしてください。maimai 公式サイトにログインした後、そのブックマークをクリックすると同じページ上にスコア画像が表示されます。</p>
     </div>
-    <a id="jietng-bookmarklet-link" class="bookmarklet-button" href="#">JiETNG スコア画像</a>
+    <a id="jietng-bookmarklet-link" class="bookmarklet-button" href="#">JiETNG ツールキット</a>
     <button id="jietng-copy-bookmarklet" class="bookmarklet-copy" type="button">ブックマークURLをコピー</button>
     <p id="jietng-copy-status" class="bookmarklet-status"></p>
   </div>
@@ -23,7 +23,7 @@ description: maimai 公式サイトの現在のログイン状態を使ってス
 
 ## 使い方
 
-1. 上の **JiETNG スコア画像** ボタンをブックマークバーへドラッグします。
+1. 上の **JiETNG ツールキット** ボタンをブックマークバーへドラッグします。
 2. 公式 maimai DX サイトを開いてログインします。
    - `https://maimaidx.jp/maimai-mobile/home/`
    - `https://maimaidx-eng.com/maimai-mobile/home/`

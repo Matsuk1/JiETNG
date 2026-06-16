@@ -12,10 +12,10 @@ description: JiETNG maimai DX 网页书签工具，使用当前 maimai 官方网
     <img src="/logo.svg" alt="JiETNG" class="bookmarklet-logo">
     <div>
       <p class="bookmarklet-eyebrow">Bookmarklet</p>
-      <h2>JiETNG 生成成绩图</h2>
+      <h2>JiETNG 工具包</h2>
       <p>把下面的按钮拖到浏览器书签栏。之后在 maimai 官方页面登录后点击它，就会在当前页面弹出成绩图。</p>
     </div>
-    <a id="jietng-bookmarklet-link" class="bookmarklet-button" href="#">JiETNG 成绩图</a>
+    <a id="jietng-bookmarklet-link" class="bookmarklet-button" href="#">JiETNG 工具包</a>
     <button id="jietng-copy-bookmarklet" class="bookmarklet-copy" type="button">复制书签地址</button>
     <p id="jietng-copy-status" class="bookmarklet-status"></p>
   </div>
@@ -23,7 +23,7 @@ description: JiETNG maimai DX 网页书签工具，使用当前 maimai 官方网
 
 ## 使用方法
 
-1. 把上面的 **JiETNG 成绩图** 按钮拖到浏览器书签栏。
+1. 把上面的 **JiETNG 工具包** 按钮拖到浏览器书签栏。
 2. 打开并登录日服或国际服 maimai DX 官方网站：
    - `https://maimaidx.jp/maimai-mobile/home/`
    - `https://maimaidx-eng.com/maimai-mobile/home/`

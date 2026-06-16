@@ -12,10 +12,10 @@ This bookmarklet runs on the official maimai DX mobile website. It uses your cur
     <img src="/logo.svg" alt="JiETNG" class="bookmarklet-logo">
     <div>
       <p class="bookmarklet-eyebrow">Bookmarklet</p>
-      <h2>JiETNG Score Image</h2>
+      <h2>JiETNG Toolkit</h2>
       <p>Drag the button below to your bookmarks bar. After logging in on the official maimai site, click it to open the generated score image on the same page.</p>
     </div>
-    <a id="jietng-bookmarklet-link" class="bookmarklet-button" href="#">JiETNG Score Image</a>
+    <a id="jietng-bookmarklet-link" class="bookmarklet-button" href="#">JiETNG Toolkit</a>
     <button id="jietng-copy-bookmarklet" class="bookmarklet-copy" type="button">Copy bookmark URL</button>
     <p id="jietng-copy-status" class="bookmarklet-status"></p>
   </div>
@@ -23,7 +23,7 @@ This bookmarklet runs on the official maimai DX mobile website. It uses your cur
 
 ## How to Use
 
-1. Drag the **JiETNG Score Image** button above to your bookmarks bar.
+1. Drag the **JiETNG Toolkit** button above to your bookmarks bar.
 2. Open and log in to one of the official maimai DX sites:
    - `https://maimaidx.jp/maimai-mobile/home/`
    - `https://maimaidx-eng.com/maimai-mobile/home/`
