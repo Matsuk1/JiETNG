@@ -1,12 +1,12 @@
 ---
 layout: home
-title: JiETNG · maimai DX Score Tracker ·『maimai でらっくす』JP / INTL LINE Bot
+title: JiETNG · maimai B50 / DX Rating Breakdown · JP / INTL Score Tracker
 titleTemplate: false
 
 hero:
   name: "JiETNG"
   text: "maimai DX<br>Score Tracker"
-  tagline: LINE bot for『maimai でらっくす』· JP & INTL servers · Free rating calculator · Best 50 / B50 chart generator
+  tagline: LINE bot for JP and INTL maimai DX · B50 / Best 50 / Recent 50 / DX Rating / rating breakdown / bookmarklet import
   image:
     src: /hero-image.svg
     alt: JiETNG Logo
@@ -15,88 +15,82 @@ hero:
       text: Get Started
       link: /en/guide/getting-started
     - theme: alt
-      text: Online Demo
-      link: /en/demo
+      text: Bookmarklet
+      link: /en/bookmarklet
     - theme: alt
       text: GitHub
       link: https://github.com/Matsuk1/JiETNG
 
 features:
   - icon: 📊
-    title: Score System
-    details: Automatically generate score charts with detailed achievement tracking and rating calculations.
+    title: Score Images
+    details: Generate B50, B40, Best 35/15, All Best, AP Best, FDX Best, Recent 50, and Ideal Best images.
     link: /en/commands/record
-    linkText: Learn more
+    linkText: Record commands
 
-  - icon: 🔍
-    title: Advanced Score Search
-    details: Search and filter your scores with powerful queries. Support for level, rating, DX score, and achievement rate filters.
+  - icon: 🔎
+    title: Precise Filters
+    details: Filter by level, constant, achievement, DX score, chart type, difficulty, version, and page.
     link: /en/features/search
-    linkText: Learn more
+    linkText: Search features
 
-  - icon: 👥
-    title: Friend System
-    details: View in-game friends' scores, compare performance, and improve your competitive play.
-
-  - icon: 🌐
-    title: Multi-Language Support
-    details: Full support for Japanese, English, and Chinese languages with seamless switching between them.
-    link: /en/guide/getting-started
-    linkText: Learn more
-
-  - icon: 🔒
-    title: Privacy & Security
-    details: Your data is encrypted and stored securely. We never share your information with third parties.
-    link: /en/more/privacy
-    linkText: Privacy Policy
+  - icon: 🧩
+    title: Two Data Sources
+    details: Sync through a bound SEGA account, or upload processed records with an Import Token and the bookmarklet.
+    link: /en/bookmarklet
+    linkText: Bookmarklet
 
   - icon: 🏆
-    title: Plate Progress Tracking
-    details: Track your progress towards completing various plate challenges (極, 将, 神, 舞舞) with visual progress indicators.
+    title: Progress Tracking
+    details: Track plate progress, level targets, and cleared / unplayed / uncleared states.
+    link: /en/commands/
+    linkText: Command list
 
-  - icon: 🚀
-    title: Fast & Reliable
-    details: Optimized performance with caching, rate limiting, and efficient data processing for quick responses.
+  - icon: 🌐
+    title: JP and INTL
+    details: Supports both Japanese and International maimai NET data, with Chinese, English, and Japanese docs.
+    link: /en/guide/getting-started
+    linkText: Quick start
 
-  - icon: 💝
-    title: Free & Open Development
-    details: Community-driven development with regular updates, bug fixes, and feature requests from users.
+  - icon: 🔐
+    title: Export and API
+    details: Includes settings, JSON/XML export, Import Tokens, developer tokens, and permission APIs.
+    link: /en/developer-api
+    linkText: API docs
 ---
 
 <style>
-.VPFeature {
-  cursor: pointer;
-}
-
+.VPFeature { cursor: pointer; }
 .VPFeature:hover .icon {
-  transform: scale(1.2) rotate(5deg);
-  transition: transform 0.3s ease;
+  transform: scale(1.12) rotate(4deg);
+  transition: transform 0.2s ease;
 }
-
 .vp-doc h2 {
   border-top: none;
   padding-top: 24px;
 }
 </style>
 
-## Why Choose JiETNG?
+## What Is JiETNG?
 
-JiETNG is a『maimai でらっくす』score management bot supporting both Japanese and International servers, offering powerful features for both casual players and hardcore competitors.
+JiETNG is a **maimai DX / maimai でらっくす** score tracker and LINE bot. It can sync records from maimai NET through a bound SEGA account, or receive processed records uploaded by the browser bookmarklet through an Import Token.
+
+Current major features include B50 / Best 50 images, Recent 50, DX Rating and rating breakdown views, song/chart lookup, level and constant lists, plate progress, friend record lookup, nearby arcade search, JSON/XML export, developer APIs, and Import Token upload.
+
+The project is designed for searches such as `maimai b50`, `maimai DX Rating`, `maimai rating breakdown`, and `maimai score tracker`.
 
 ## Quick Start
 
-Get started with JiETNG in three simple steps:
+1. Add the JiETNG LINE Bot.
+2. Send `bind` in a private chat. Bind a SEGA account, or choose the Import Token only mode.
+3. Send `maimai update` to sync official data, or use the [bookmarklet](/en/bookmarklet) on the official maimai site.
+4. Try `b50`, `record`, `13.6 records`, or `真極 achievement`.
 
-1. **Add the Bot** - Add JiETNG to your LINE account2. **Bind Your Account** - Link your SEGA ID securely
-3. **Start Tracking** - Use `maimai update` to sync your scores
+[Read the guide →](/en/guide/getting-started)
 
-[Get Started Now →](/en/guide/getting-started)
+## Support
 
-## Community & Support
-
-Need help or want to contribute?
-
-- 📖 [Read the Documentation](/en/guide/getting-started)
-- 💬 [Join our Discord](https://discord.gg/NXxFn9T8Xz)
-- 🐛 [Report Issues](https://github.com/Matsuk1/JiETNG/issues)
-- 💝 [Support Development](/en/more/support)
+- [Command reference](/en/commands/)
+- [Developer API](/en/developer-api)
+- [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues)
+- [Discord](https://discord.gg/NXxFn9T8Xz)

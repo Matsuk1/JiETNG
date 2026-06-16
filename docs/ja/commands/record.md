@@ -1,110 +1,110 @@
-# スコアシステム
+---
+title: B50 レコードコマンド
+description: JiETNG の maimai B50、Best 50、Recent 50、DX Rating、レート内訳、レベル進捗、単曲レコードコマンド一覧。
+---
 
-<img src="/b50_example.png" alt="Best 50 スコア例" style="width: 22%; max-width: 400px; min-width: 200px; display: block; margin: 1.5rem auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+# レコードコマンド
 
-## コマンド
+<img src="/b50_example.png" alt="Best 50 Example" style="width: 22%; max-width: 400px; min-width: 200px; display: block; margin: 1.5rem auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
 
-### 基本 Best チャート
+## B 系スコア画像
 
+```text
+b50 / best50
+b40 / best40
+b35 / best35
+b15 / best15
+ab35 / allb35
+ab50 / allb50
+apb50 / ap50
+fdxb50 / fdx50
+rct50 / r50
+idealb50 / idlb50
+unknown
 ```
-b50          # Best 50（旧曲 35 + 新曲 15）
-b40          # Best 40（旧 Rating 計算方式、旧曲 25 + 新曲 15）
-best50 / best40   # 上記の代替コマンド
-```
 
-### バリエーション
-
-```
-b35 / best35              # 旧曲 Best 35 のみ
-b15 / best15              # 新曲 Best 15 のみ
-ab35 / allb35             # All Best 35（バージョン無視）
-ab50 / allb50             # All Best 50（バージョン無視）
-apb50 / ap50              # All Perfect Best 50（AP/AP+ のみ）
-fdxb50 / fdx50            # Full DX Best 50（FDX/FDX+ のみ）
-idealb50 / idlb50         # Ideal Best 50（上位梯度スコアをシミュレート）
-rct50 / r50               # Recent 50（最近 50 回のプレイ）
-unknown / unkn            # バージョン不明の楽曲リスト
-```
+同じメッセージにフィルターを追加できます。
 
 ## フィルター
 
-すべての B 系コマンドは以下のフィルターパラメーターをサポートします：
-
-| パラメーター | 説明 | 例 |
-|------------|------|-----|
-| `-lv [値] [最大値]` | 定数でフィルター。単値は精確一致、双値は範囲 | `-lv 14.7` または `-lv 14 14.9` |
-| `-ra [値] [最大値]` | Rating でフィルター。単値は精確一致、双値は範囲 | `-ra 301` または `-ra 301 312` |
-| `-star [値] [最大値]` | DX 星数でフィルター。単値は精確一致、双値は範囲 | `-star 3` または `-star 3 5` |
-| `-scr [最小値] [最大値]` | 達成率でフィルター（最大値省略可） | `-scr 100.3` または `-scr 99 100` |
-| `-dx [最小値] [最大値]` | DX score % でフィルター（最大値省略可） | `-dx 92` または `-dx 90 95` |
-| `-ver [バージョン...]` | バージョンでフィルター、複数指定可 | `-ver buddies` または `-ver splash splash+` (plus → +) |
-| `-diff [難易度...]` | 難易度でフィルター、複数指定可 | `-diff mas` または `-diff mas rem` |
-| `-type [dx\|std]` | 譜面タイプでフィルター | `-type dx` |
-| `-next` | 次バージョンのグルーピングを使用（現行バージョンの代わり） | `-next` |
-| `-times [倍率]` | 表示件数を倍率でスケーリング（最大 2.5、5 の倍数に切り上げ） | `-times 2` |
-| `-page [n]` | ページ送り | `-page 2` |
-
-::: tip 難易度略語
-`bas` = BASIC、`adv` = ADVANCED、`exp` = EXPERT、`mas` = MASTER、`rem` = Re:MASTER
-:::
-
-::: tip バージョン名
-大文字小文字を区別しません。PLUS バージョンは `+` を使用（例：`splash+`）。複数指定はスペース区切り。
-:::
-
-### 例
-
-```
-b50 -lv 14.7                             # 定数 14.7（精確一致）
-b50 -lv 14 14.9                          # 定数 14.0~14.9
-b50 -ra 301 312                          # Rating 301~312
-b50 -scr 100.3                           # 達成率 ≥100.3%
-b50 -dx 92 95                            # DX score 92%~95%
-b50 -ver buddies -lv 14 14.9             # Buddies バージョンのレベル 14 楽曲
-b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER かつ達成率 ≥100.5%
-b50 -type dx -diff mas                   # DX 譜面の MASTER 難易度
-b50 -times 2                                # 70+30 を表示（デフォルト 35+15 の 2 倍）
-b50 -diff mas -lv 14 14.9 -page 2        # 2 ページ目へ
+```text
+b50 -lv 14.7
+b50 -lv 14 14.9
+b50 -ra 301 312
+b50 -scr 100.3
+b50 -dx 92 95
+b50 -ver buddies -lv 14 14.9
+b50 -diff mas rem -scr 100.5
+b50 -type dx -diff mas
+b50 -times 2
+b50 -page 2
 ```
 
----
+レベル/定数、単曲 Rating、達成率、DX スコア、DX 星、難易度、譜面種別、バージョン、ページ、表示倍率に対応しています。
 
-## 定数クエリ
+## 楽曲レコード
 
-指定難易度のすべての楽曲を内部定数でグループ表示します。
-
-### コマンド形式
-
-```
-13の定数リスト    # 日本語コマンド
-13のレベルリスト  # 日本語コマンド
-13 level-list   # 英語コマンド
+```text
+ヒバナ record
+ヒバナ song-record
+ヒバナのレコード
+search-record 123456
 ```
 
-定数クエリは連携時に設定されたサーバーバージョン（JP または INTL）を自動的に使用します。
+`record` は曲名または別名で検索します。`search-record` は 6 桁の楽曲 ID で検索します。候補が複数ある場合はリストを返します。
 
----
+## レベル / 定数リスト
 
-## 難易度評価達成進捗
-
-指定難易度と評価の譜面達成状況を確認します。
-
-### コマンド形式
-
-```
-13sss+進捗        # 13 難易度 SSS+ 評価進捗
-13+sss progress   # 13+ 難易度 SSS 評価進捗
-15fdx+ progress   # 15 難易度 FDX+ 評価進捗
+```text
+13 records
+13 record-list 2
+13.6 records
+14.7 record-list 2
 ```
 
-### サポートされている評価
+整数はレベル、小数は定数です。末尾の数字はページとして扱われます。
 
-- **評価ランク**：S、S+、SS、SS+、SSS、SSS+
-- **Full Combo**：FC、FC+、AP、AP+
-- **Full Sync**：FDX、FDX+
+## 進捗
 
-::: tip
-- 評価は大文字小文字を区別しません
-- 日本語（進捗）、英語（progress）、中国語（进度）のキーワードをサポート
-- サポートされている難易度：11、11+、12、12+、13、13+、14、14+、15
-:::
+```text
+13sss+ progress
+14AP進捗
+15fdx+ 进度
+14ss+ progress -uc
+14ss+ progress -up
+14ss+ progress -c
+```
+
+目標：`s`、`s+`、`ss`、`ss+`、`sss`、`sss+`、`fc`、`fc+`、`ap`、`ap+`、`fdx`、`fdx+`。
+
+| 接尾辞 | 意味 |
+|--------|------|
+| `-uc` | 未達成 |
+| `-up` | 未プレイ |
+| `-c` | 達成済み |
+
+## プレートとバージョン
+
+```text
+真極の達成状況
+真極 achievement
+真極の達成状況 -uc
+PRiSM PLUSのバージョンリスト
+PRiSM PLUS version-list
+13.6のレベルリスト
+13.6 level-list
+```
+
+プレート進捗も `-uc`、`-up`、`-c` に対応しています。
+
+## メンション
+
+グループでは JiETNG 登録済みユーザーをメンションして成績を参照できます。
+
+```text
+@friend b50
+@friend 13 records
+@friend 14sss+ progress
+```
+
+アカウント、設定、エクスポート、更新コマンドは常に送信者本人にのみ作用します。

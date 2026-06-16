@@ -1,194 +1,54 @@
-# Frequently Asked Questions
+# FAQ
 
-Common questions and answers about using JiETNG.
+## Do I need a SEGA ID?
 
-## Getting Started
+Not always. JiETNG supports two modes:
 
-### What is JiETNG?
+- Bind a SEGA account and use `maimai update`.
+- Use Import Token only and upload records with the bookmarklet.
 
-JiETNG is a LINE bot for 『maimai でらっくす』 players that provides:
-- Score tracking and analysis
-- Best 50 chart generation
-- Song search and discovery
-- Plate progress tracking
-- Friend ranking comparisons
+Automatic maimai NET sync requires a full SEGA binding.
 
-### Do I need to pay to use JiETNG?
+## How do I start?
 
-No! JiETNG is completely **free to use**. However, you can support development through [donations](/en/more/support).
+1. Send `bind` in a private chat.
+2. Bind a SEGA account, or choose Import Token only mode.
+3. SEGA users send `maimai update`; Import Token users create a token in `settings` and use the [bookmarklet](/en/bookmarklet).
+4. Try `b50`, `rct50`, `record`, or `achievement`.
 
+## Can I type my SEGA password in chat?
 
-### Do I need a SEGA ID?
+No. JiETNG never asks you to send a password in LINE chat. Enter it only on the binding web page.
 
-Yes, to use most features you need:
-- A SEGA ID account
-- Access to maimai NET (online score tracking)
-- Binding your account to the bot
+## What is an Import Token?
 
-See [Account Binding](/en/guide/getting-started) for setup instructions.
+An Import Token is a user-level upload credential for processed score JSON. It is not a developer token and cannot access other users.
 
-## Account Binding
+The plaintext token is shown only once. Revoked tokens cannot upload anymore and can be deleted from settings.
 
-### How do I bind my SEGA ID?
+## Why is my B50 not updated?
 
-1. Send `bind` to the bot
-2. Click the binding URL button
-3. Enter your SEGA ID and password on the web form
-4. Select your server version
-5. Confirm binding
+Queries use records currently stored in JiETNG. Run `maimai update`, or upload again with the bookmarklet.
 
-**Important**: Do NOT type your credentials in the chat. Binding is web-based only.
+## Can rebind change my SEGA ID?
 
-See [Account Binding Guide](/en/guide/getting-started) for details.
+No. `rebind` updates password, version, and Aime. To switch to another SEGA ID, use `unbind` and then `bind` again.
 
-### Can I type my SEGA credentials in the chat?
+## Can I export records?
 
-**No.** For security reasons, JiETNG uses web-based binding only. Never type your password in the chat.
+Yes:
 
-### The binding link expired. What do I do?
-
-Binding tokens expire after **2 minutes**. Simply send `bind` again to get a new link.
-
-## Using Features
-
-### How do I generate my Best 50?
-
-Send one of these commands:
-- `b50`
-- `best50`
-
-Bind your SEGA ID before using `b50` and similar commands.
-
-See [Score Commands](/en/commands/record) for details.
-
-### How often should I update my scores?
-
-Update after each play session:
-```
-maimai update
+```text
+export json
+export xml
 ```
 
-This fetches your latest scores from maimai NET.
+The export contains processed profile, Best, Recent, and normalized score fields, not raw database rows.
 
-### How long does score update take?
+## Why does a mention query fail?
 
-Usually 2 to 3 seconds, depending on:
-- Number of songs you've played
-- SEGA server response time
-- Queue wait time (if many users are updating)
+The mentioned user must be registered in JiETNG and have score data. Missing targets do not fall back to your own data.
 
-### Why isn't my latest score showing?
+## How does nearby arcade search work?
 
-1. **Did you update?** Run `maimai update` first
-2. **Check maimai NET**: Is your score on the official site?
-3. **Wait time**: Scores may take a few minutes to appear on maimai NET
-4. **Network issues**: SEGA servers may be slow
-
-## Features and Commands
-
-## Troubleshooting
-
-### "You haven't bound your SEGA ID yet"
-
-**Solution**: Bind your account with `bind` command.
-
-See [Account Binding](/en/guide/getting-started).
-
-### "Failed to update scores"
-
-**Possible causes:**
-- SEGA servers are down
-- Wrong SEGA credentials
-- Network timeout
-- maimai NET maintenance
-
-**Solutions:**
-- Wait a few minutes and try again
-- Verify credentials by logging into maimai NET directly
-- Check SEGA announcements for maintenance
-- Re-bind if credentials changed
-
-### "Song not found"
-
-**Causes:**
-- Song name typo
-- Song doesn't exist in 『maimai でらっくす』
-- Wrong version (jp vs intl)
-
-**Solutions:**
-- Try different keywords
-- Check spelling
-- Search on [maimai wiki](https://maimai.fandom.com/)
-- Try Japanese name instead of English (or vice versa)
-
-### Commands not working
-
-**Troubleshooting steps:**
-1. Check spelling and syntax
-2. Verify you're bound (`profile`)
-3. Update scores (`maimai update`)
-4. Check [Command Reference](/en/commands/basic)
-5. Try simpler command first (e.g., `b50` before `b50 -lv 14`)
-
-
-## Community and Support
-
-### How can I report a bug?
-
-1. Check [FAQ](/en/more/faq) (this page)
-2. Search [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues)
-3. If not found, create new issue with:
-   - Description of bug
-   - Steps to reproduce
-   - Screenshots (if applicable)
-   - Your version (JP/International)
-
-### How can I support the project?
-
-- 💰 **Financial Support**: [Donate](/en/more/support)
-- ⭐ **GitHub**: Star the [repository](https://github.com/Matsuk1/JiETNG)
-- 📢 **Share**: Tell friends about JiETNG
-- 📝 **Contribute**: Improve documentation, fix bugs, add features
-- 🐛 **Report**: Help identify and report bugs
-
-See [Support Page](/en/more/support) for details.
-
-## Privacy and Security
-
-### Is my data safe?
-
-Yes! JiETNG:
-- ✅ Encrypts your SEGA credentials
-- ✅ Only accesses public maimai NET data
-- ✅ Does not store chat history
-- ✅ Follows data protection best practices
-
-See [Privacy Policy](/en/more/privacy) for details.
-
-### How do I delete my data?
-
-Send `unbind` to permanently delete all your data from JiETNG.
-
-## Still Have Questions?
-
-### Documentation
-
-- 📖 [Getting Started](/en/guide/getting-started)
-- 📚 [Command Reference](/en/commands/basic)
-- 🔍 [Score Commands](/en/commands/record)
-
-### Community
-
-- 💬 [Discord Server](https://discord.gg/NXxFn9T8Xz)
-- 🐛 [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues)
-- 📧 [Support Page](/en/more/support)
-
----
-
-**Can't find your answer?**
-
-1. Search this FAQ (Ctrl+F / Cmd+F)
-2. Check other [documentation pages](/en/)
-3. Search [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues)
-4. Ask in [Discord](https://discord.gg/NXxFn9T8Xz)
-5. Create new [GitHub Issue](https://github.com/Matsuk1/JiETNG/issues/new)
+Send a LINE location message. JiETNG queries both JP and INTL arcade data sources, merges them, and sorts by distance.

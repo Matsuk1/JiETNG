@@ -1,11 +1,11 @@
 ---
 title: Bookmarklet Tool
-description: JiETNG maimai DX bookmarklet that uses the current maimai official website session to generate a Best 50 score image.
+description: JiETNG maimai DX bookmarklet that uses the current official maimai session to generate score images and upload processed records.
 ---
 
 # JiETNG Bookmarklet Tool
 
-This bookmarklet runs on the official maimai DX mobile website. It uses your current browser session to read your profile and Best records, then calls the JiETNG API to generate a score image. It never reads or asks for your SEGA ID password.
+This bookmarklet runs on the official maimai DX mobile website. It uses your current browser session to read your profile, Best records, and Recent records, then calls the JiETNG API to generate a score image. It never reads or asks for your SEGA ID password.
 
 <div class="bookmarklet-installer">
   <div class="bookmarklet-card">
@@ -28,9 +28,24 @@ This bookmarklet runs on the official maimai DX mobile website. It uses your cur
    - `https://maimaidx.jp/maimai-mobile/home/`
    - `https://maimaidx-eng.com/maimai-mobile/home/`
 3. Click the saved bookmark while staying on the official page.
-4. Optionally enter the import token generated from the settings page. After saving it, the bookmarklet keeps it in this browser and automatically uploads records when generating.
+4. Optionally enter the Import Token generated from the `settings` page. After saving it, the bookmarklet keeps it in this browser. It can upload records manually, and will upload once on open if no local upload record exists.
 5. Select a B-series type, optionally enter filters such as `-lv 13 -diff mas`, then click **Generate**.
-6. Wait for generation to finish, then view the image in the page overlay. Further generations in the same browser tab, or opening the bookmarklet again after refreshing, restore the last overlay and reuse the already collected records.
+6. Wait for generation to finish, then view the image in the page overlay. If image generation takes more than 15 seconds, the bookmarklet shows a timeout message and asks you to refresh and retry.
+
+## Current Behavior
+
+- Supports JP and INTL official domains and detects `jp` / `intl` automatically.
+- Shows the image directly on the official page. It does not redirect to JiETNG and does not force a download.
+- The preview panel appears above the main bookmarklet panel, with Download and Close actions after generation.
+- Reopening after refresh keeps the overlay, but does not immediately show the old cached image.
+- Saving an Import Token does not force every Generate action to upload. Use the Upload button when you want to upload.
+- Uploads contain processed `profile`, `best`, and `recent` data, never the SEGA password.
+
+## Import Token
+
+Send `settings` to the LINE bot and create an Import Token in the settings page. The plaintext token is shown only once.
+
+The settings page can create tokens, revoke active tokens, and delete revoked tokens.
 
 If dragging is inconvenient in your browser, click **Copy bookmark URL**, create a bookmark manually, and paste the copied `javascript:...` content into the URL field.
 

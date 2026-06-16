@@ -1,108 +1,73 @@
 # Basic Commands
 
-## Account Management
+Basic commands cover account management, settings, status, export, and support information. Commands are case-insensitive unless noted.
 
-### Bind
+## Account and Settings
 
-```
+```text
 bind
 ```
 
-Sends a binding link (valid for 2 minutes). Private chat only.
+Sends a private binding link. The page supports full SEGA binding and Import Token only mode.
 
-### Unbind
-
-```
-unbind
-```
-
-Requires confirmation:
-
-```
-unbind confirm
-```
-
-:::danger Warning
-This action is irreversible. All data will be permanently deleted.
-:::
-
-### Rebind Account
-
-```
+```text
 rebind
 ```
 
-Sends a rebind link to update password, version, and Aime. SEGA ID cannot be changed. Private chat only.
+Updates SEGA password, server version, and Aime for fully bound users. It cannot change the SEGA ID.
 
-### Personal Settings
-
-```
+```text
 settings
 ```
 
-Sends a settings link to update timezone, language, background, and other personal settings. Private chat only.
+Opens the settings page. It manages language, timezone, background, display settings, and Import Tokens. Full SEGA users and Import Token users can both use it.
 
-### Update Scores
-
-```
-maimai update
-update
-```
-
-Rate limit: maximum 2 requests per 30 seconds.
-
-### View Binding Info
-
-```
+```text
 profile
 getme
 ```
 
----
+Shows account profile and binding state.
 
-## Calculator
-
-### Achievement Rate Calculator
-
-```
-calc <tap> <hold> <slide> [<touch>] <break>
+```text
+unbind
+unbind confirm
 ```
 
-4 parameters (no touch) or 5 parameters (with touch):
+Deletes stored user data after confirmation.
 
-```
-calc 500 100 200 50        # no touch
-calc 500 100 200 30 50     # with touch
-```
+## Update
 
-### Rating Table
-
-```
-rc 14.7
-RC 14.7
-Rc 14.7
+```text
+maimai update
+update
 ```
 
-Enter a constant (1.0~15.0, one decimal place max) to view the Rating value for each achievement rate.
+Syncs latest records from maimai NET. Requires a full SEGA binding and is self-only.
 
----
+Import Token users should upload through the bookmarklet.
 
-## Leaderboard
+## Export
 
+```text
+export json
+export xml
 ```
+
+Exports processed JiETNG data, not raw database rows. The export includes profile, version, Best records, Recent records, and normalized fields needed to reproduce score images.
+
+## Other Commands
+
+```text
+donate
+status
 rank
-ranking
-rank jp       # JP server leaderboard
-rank intl     # International server leaderboard
+rank jp
+rank intl
 ```
 
----
+`rank` / `ranking` shows DX Rating rankings, optionally scoped to `jp` or `intl`.
 
-## Random Song
+## Scope
 
-```
-random
-random 14        # Random Lv.14 song (14.0~14.5)
-random 14+       # Random Lv.14+ song (14.6~14.9)
-random 14.7      # Random constant 14.7 song
-```
+`bind`, `rebind`, `settings`, `update`, `export`, and `unbind` are self-only. They never operate on mentioned users.

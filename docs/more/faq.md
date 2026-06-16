@@ -1,194 +1,82 @@
 # 常见问题
 
-关于使用 JiETNG 的常见问题和解答。
+## 我必须绑定 SEGA ID 吗？
 
-## 入门
+不一定。JiETNG 现在支持两种方式：
 
-### 什么是 JiETNG？
+- 绑定 SEGA 账号后使用 `maimai update` 自动同步。
+- 不绑定 SEGA 账号，只使用 Import Token 和网页书签上传成绩。
 
-JiETNG 是一个面向 『maimai でらっくす』 玩家的 LINE 机器人，提供以下功能：
-- 成绩追踪和分析
-- Best 50 图表生成
-- 曲目搜索和发现
-- 牌子进度追踪
-- 好友排名对比
+如果你希望 Bot 主动从 maimai NET 同步，仍然需要完整 SEGA 绑定。
 
-### JiETNG 需要付费吗？
+## 如何开始？
 
-不！JiETNG 完全**免费**使用。但是，您可以通过[捐赠](/more/support)支持开发。
+1. 私聊 Bot 发送 `bind`。
+2. 在网页中选择绑定 SEGA 账号，或选择“不绑定但使用 Import Token”。
+3. SEGA 用户发送 `maimai update`；Import Token 用户打开 `settings` 生成 token 后使用[网页书签工具](/bookmarklet)。
+4. 发送 `b50`、`rct50`、`record`、`achievement` 等命令查看成绩。
 
+## 可以在聊天里输入 SEGA 密码吗？
 
-### 我需要 SEGA ID 吗？
+不可以。JiETNG 不会要求你在 LINE 聊天中发送密码。SEGA 账号只应在绑定网页中填写。
 
-是的，要使用大多数功能，您需要：
-- SEGA ID 账户
-- 访问 maimai NET（在线成绩追踪）
-- 将账户绑定到机器人
+## Import Token 是什么？
 
-请参阅[账号绑定](/guide/getting-started)了解设置说明。
+Import Token 是用户级上传凭证，用于把网页书签或第三方工具整理好的成绩 JSON 上传到 JiETNG。它不是开发者 Token，也不能访问其他用户数据。
 
-## 账号绑定
+Token 明文只显示一次。撤销后不能继续上传；已撤销 token 可以在设置页删除。
 
-### 如何绑定我的 SEGA ID？
+## 书签工具会做什么？
 
-1. 向机器人发送 `bind`
-2. 点击绑定 URL 按钮
-3. 在 Web 表单上输入您的 SEGA ID 和密码
-4. 选择您的服务器版本
-5. 确认绑定
+它在官方 maimai 移动站里运行，使用当前浏览器 session 读取资料、Best 与 Recent 记录。生成图片时调用 JiETNG 的图片接口；保存 Import Token 后可以上传加工后的成绩数据。
 
-**重要**: 不要在聊天中输入您的凭据。绑定仅通过 Web 完成。
+它不会读取 SEGA 密码。
 
-详情请参阅[账号绑定指南](/guide/getting-started)。
+## 为什么 `b50` 不是最新？
 
-### 我可以在聊天中输入 SEGA 凭据吗？
+JiETNG 使用服务器中保存的加工后成绩数据。请先确认你已经：
 
-**不可以。** 出于安全原因，JiETNG 仅使用基于 Web 的绑定。切勿在聊天中输入您的密码。
+- 发送 `maimai update`
+- 或重新使用网页书签上传成绩
 
-### 绑定链接过期了，怎么办？
+只发送查询命令不会自动重新爬取官方成绩。
 
-绑定令牌会在 **2 分钟后**过期。只需再次发送 `bind` 获取新链接。
+## `rebind` 能换 SEGA ID 吗？
 
-## 使用功能
+不能。`rebind` 用于更新密码、版本和 Aime。要换成完全不同的 SEGA ID，请先 `unbind` 后重新 `bind`。
 
-### 如何生成我的 Best 50？
+## 可以导出成绩吗？
 
-发送以下任一命令：
-- `b50`
-- `best50`
+可以：
 
-使用 `b50` 等命令前，请先绑定 SEGA ID。
-
-详情请参阅 [成绩命令](/commands/record)。
-
-### 我应该多久更新一次成绩？
-
-每次游玩后更新：
-```
-maimai update
+```text
+export json
+export xml
 ```
 
-这会从 maimai NET 获取您的最新成绩。
+导出内容是加工后的用户资料、Best、Recent 与标准化谱面成绩字段，不是数据库原始数据。
 
-### 成绩更新需要多长时间？
+## @ 提及别人为什么查不到？
 
-通常 2 秒到 3 秒，取决于：
-- 您游玩的曲目数量
-- SEGA 服务器响应时间
-- 队列等待时间（如果有很多用户正在更新）
+被 @ 的用户必须已经注册 JiETNG 且有成绩数据。当前逻辑不会在目标用户不存在时回退到发送者自己的数据。
 
-### 为什么我的最新成绩没有显示？
+## 附近机厅查询的数据来自哪里？
 
-1. **您更新了吗？** 先运行 `maimai update`
-2. **检查 maimai NET**: 您的成绩在官方网站上吗？
-3. **等待时间**: 成绩可能需要几分钟才能出现在 maimai NET 上
-4. **网络问题**: SEGA 服务器可能很慢
+发送 LINE 位置后，JiETNG 会同时查询 JP 与 INTL 两个机厅数据源，合并后按距离筛选最近的一批。
 
-## 功能和命令
+## 删除数据怎么做？
 
-## 故障排除
+发送：
 
-### "您还没有绑定 SEGA ID"
+```text
+unbind
+unbind confirm
+```
 
-**解决方案**: 使用 `bind` 命令绑定您的账户。
+会删除 JiETNG 保存的用户数据。此操作不可恢复。
 
-请参阅[账号绑定](/guide/getting-started)。
+## 遇到问题怎么办？
 
-### "更新成绩失败"
-
-**可能原因**:
-- SEGA 服务器宕机
-- SEGA 凭据错误
-- 网络超时
-- maimai NET 维护
-
-**解决方案**:
-- 等待几分钟后重试
-- 通过直接登录 maimai NET 验证凭据
-- 检查 SEGA 维护公告
-- 如果凭据已更改，重新绑定
-
-### "曲目未找到"
-
-**原因**:
-- 曲名拼写错误
-- 『maimai でらっくす』 中不存在该曲目
-- 版本错误（jp vs intl）
-
-**解决方案**:
-- 尝试不同的关键词
-- 检查拼写
-- 在 [maimai wiki](https://maimai.fandom.com/) 搜索
-- 尝试日语名称而不是英语名称（反之亦然）
-
-### 命令不起作用
-
-**排查步骤**:
-1. 检查拼写和语法
-2. 验证您已绑定（`profile`）
-3. 更新成绩（`maimai update`）
-4. 查看[命令参考](/commands/basic)
-5. 先尝试简单命令（例如，在 `b50 -lv 14` 之前尝试 `b50`）
-
-
-## 社区与支持
-
-### 如何报告 bug？
-
-1. 查看 [FAQ](/more/faq)（本页）
-2. 搜索 [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues)
-3. 如果未找到，创建新 issue：
-   - bug 描述
-   - 复现步骤
-   - 截图（如适用）
-   - 您的版本（日本版/国际版）
-
-### 如何支持项目？
-
-- 💰 **财务支持**: [捐赠](/more/support)
-- ⭐ **GitHub**: 为[仓库](https://github.com/Matsuk1/JiETNG)加星
-- 📢 **分享**: 告诉朋友关于 JiETNG
-- 📝 **贡献**: 改进文档、修复 bug、添加功能
-- 🐛 **报告**: 帮助识别和报告 bug
-
-详情请参阅[支持页面](/more/support)。
-
-## 隐私与安全
-
-### 我的数据安全吗？
-
-是的！JiETNG：
-- ✅ 加密您的 SEGA 凭据
-- ✅ 仅访问公开的 maimai NET 数据
-- ✅ 不存储聊天记录
-- ✅ 遵循数据保护最佳实践
-
-详情请参阅[隐私政策](/more/privacy)。
-
-### 如何删除我的数据？
-
-发送 `unbind` 从 JiETNG 永久删除您的所有数据。
-
-## 还有问题？
-
-### 文档
-
-- 📖 [入门指南](/guide/getting-started)
-- 📚 [命令参考](/commands/basic)
-- 🔍 [成绩命令](/commands/record)
-
-### 社区
-
-- 💬 [Discord 服务器](https://discord.gg/NXxFn9T8Xz)
-- 🐛 [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues)
-- 📧 [支持页面](/more/support)
-
----
-
-**找不到答案？**
-
-1. 搜索此 FAQ（Ctrl+F / Cmd+F）
-2. 查看其他[文档页面](/)
-3. 搜索 [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues)
-4. 在 [Discord](https://discord.gg/NXxFn9T8Xz) 提问
-5. 创建新 [GitHub Issue](https://github.com/Matsuk1/JiETNG/issues/new)
+- 查看[命令大全](/commands/)
+- 在 GitHub 提交 Issue
+- 加入 Discord 反馈

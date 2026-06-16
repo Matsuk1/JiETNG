@@ -1,78 +1,68 @@
-# 歌曲搜索与成绩查询
-
-## 歌曲信息搜索
-
-```
-[歌曲名] info
-[歌曲名] song-info
-[歌曲名] ってどんな曲
-```
-
-模糊匹配，相似度阈值 85%，最多返回 6 首。不区分大小写，特殊符号可省略。
-
-**显示内容：** 歌曲标题（英文/日文）、封面、艺术家、版本、可用难度、谱面定数、谱面类型（Standard / DX）、分类（Genre）
-
+---
+title: 舞萌DX 成绩查询与筛选
+description: JiETNG 支持 maimai B50、定数、等级、DX Rating、达成率、レート内訳和歌曲成绩查询筛选。
 ---
 
-## 版本歌曲列表
+# 成绩查询与搜索
 
-```
-[版本名] version-list
-[版本名] のバージョンリスト
-```
+JiETNG 的查询能力分为三类：成绩图筛选、歌曲搜索、歌曲 ID 查询。
 
-`FESTiVAL+` 会自动识别为 `FESTiVAL PLUS`。
+## 成绩图筛选
 
----
+B 系列命令支持在同一条消息里追加筛选参数：
 
-## 按艺术家搜索
-
-```
-artist [关键词]
-artist [关键词] [页码]
+```text
+b50 -lv 14 14.9 -diff mas rem -scr 100.5
+ab50 -ver buddies -type dx
+rct50 -page 2
+ap50 -lv 13.6
 ```
 
-**显示内容：** 歌曲名称、艺术家名、谱面类型（DX / STD / UTAGE）
+可筛选字段包括等级/定数、单谱 Rating、达成率、DX 分数、DX 星数、难度、谱面类型、版本和页码。
 
-:::warning 仅限私聊
-:::
+筛选结果会继续使用成绩图模板渲染，因此适合用来做“某个定数段的 B50”“只看 MAS/Re:MAS”“只看某版本”等图。
 
----
+## 歌曲搜索
 
-## 按谱师搜索
-
-```
-designer [关键词]
-designer [关键词] [页码]
-```
-
-**显示内容：** 歌曲名称、匹配谱师名及难度标签（如 `Jack [EXP]`）、谱面类型（DX / STD / UTAGE）
-
-:::warning 仅限私聊
-:::
-
----
-
-## 单曲成绩查询
-
-```
-[歌曲名] record
-[歌曲名] song-record
-[歌曲名] のレコード
+```text
+artist Nanahira
+designer Jack
+ヒバナ info
+ヒバナってどんな曲
 ```
 
-**显示内容：** 达成率、DX 分数、完成状态（FC/FC+/AP/AP+）、同步状态（FS/FS+/FDX/FDX+）、Rating 贡献值
+- `artist` 按艺术家名搜索。
+- `designer` 按谱面设计师搜索。
+- `info` / `song-info` / `ってどんな曲` 查询歌曲信息。
+- 关键词大小写不敏感。
 
----
+## 歌曲成绩
 
-## 按等级查看成绩
-
+```text
+ヒバナ record
+ヒバナのレコード
+search-record 123456
 ```
-[等级] record-list
-[等级] records
-[等级] のレコードリスト
-[等级] record-list [页码]
+
+`record` 按歌曲名或别名搜索个人成绩。`search-record` 使用 6 位歌曲 ID 精确查询。
+
+## 等级列表
+
+```text
+13 records
+13.6 record-list
+13.6 level-list
 ```
 
-- 整数（如 `14`）匹配 14.0~14.5，`14+` 匹配 14.6~14.9，小数（如 `14.7`）精确匹配
-- 每页最多 50 首（旧版本 35 + 新版本 15）
+- `records` / `record-list` 输出你的成绩列表。
+- `level-list` / `のレベルリスト` / `の定数リスト` 输出定数/等级相关的歌曲列表与达成进度视图。
+
+## 数据来源
+
+查询结果来自 JiETNG 当前保存的加工后成绩数据。数据可能来自：
+
+- `maimai update` 从 maimai NET 同步
+- 网页书签通过 Import Token 上传
+- 开发者 API 上传的加工后成绩 JSON
+
+如果数据没有更新，查询结果也不会自动重新爬取。需要同步时请手动 `maimai update`，或重新使用网页书签上传。

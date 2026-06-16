@@ -1,102 +1,96 @@
 ---
 layout: home
-title: JiETNG ·『maimai でらっくす』スコア管理ボット · 国内版 / 海外版 LINE Bot
+title: JiETNG · maimai B50 / レート内訳 · JP / INTL スコア管理
 titleTemplate: false
 
 hero:
   name: "JiETNG"
-  text: "maimai でらっくす<br>スコア管理ボット"
-  tagline: 国内版 (JP) / 海外版 (INTL) 両対応の LINE ボット · 無料レーティング計算 · Best 50 / B50 スコア画像生成
+  text: "maimai DX<br>スコア管理"
+  tagline: 国内版 JP と海外版 INTL に対応 · B50 / Best 50 / Recent 50 / DX Rating / レート内訳 / ブックマークレット取り込み
   image:
     src: /hero-image.svg
     alt: JiETNG Logo
   actions:
     - theme: brand
-      text: 始める
+      text: はじめる
       link: /ja/guide/getting-started
     - theme: alt
-      text: オンラインデモ
-      link: /ja/demo
+      text: ブックマークレット
+      link: /ja/bookmarklet
     - theme: alt
       text: GitHub
       link: https://github.com/Matsuk1/JiETNG
 
 features:
   - icon: 📊
-    title: スコアシステム
-    details: スコアチャートを自動生成し、詳細な達成率追跡とレーティング計算に対応。
+    title: スコア画像
+    details: B50、B40、Best 35/15、All Best、AP Best、FDX Best、Recent 50、Ideal Best に対応。
     link: /ja/commands/record
-    linkText: 詳細
+    linkText: コマンドを見る
 
-  - icon: 🔍
-    title: 高度な楽曲検索
-    details: 強力なクエリでスコアを検索・フィルタリング。レベル、レーティング、DXスコア、達成率でのフィルタに対応。
+  - icon: 🔎
+    title: 詳細フィルター
+    details: レベル、定数、達成率、DX スコア、譜面種別、難易度、バージョン、ページで絞り込み。
     link: /ja/features/search
-    linkText: 詳細
+    linkText: 検索機能
 
-  - icon: 👥
-    title: フレンドシステム
-    details: ゲーム内フレンドのスコアを表示し、パフォーマンスを比較して競技力を向上。
-
-  - icon: 🌐
-    title: 多言語対応
-    details: 日本語、英語、中国語に完全対応。言語間のシームレスな切り替えが可能。
-    link: /ja/guide/getting-started
-    linkText: 詳細
-
-  - icon: 🔒
-    title: プライバシー＆セキュリティ
-    details: あなたのデータは暗号化され安全に保存されます。第三者と情報を共有することはありません。
-    link: /ja/more/privacy
-    linkText: プライバシーポリシー
+  - icon: 🧩
+    title: 2つのデータ元
+    details: SEGA アカウント連携による同期、または Import Token とブックマークレットによる取り込み。
+    link: /ja/bookmarklet
+    linkText: ブックマークレット
 
   - icon: 🏆
-    title: プレート進捗追跡
-    details: 各種プレートチャレンジ（極、将、神、舞舞）の進捗を視覚的に追跡。
+    title: 進捗管理
+    details: プレート進捗、レベル別目標、未達成・未プレイ・達成済みの絞り込みに対応。
+    link: /ja/commands/
+    linkText: コマンド一覧
 
-  - icon: 🚀
-    title: 高速＆信頼性
-    details: キャッシング、レート制限、効率的なデータ処理による最適化されたパフォーマンスで高速応答。
+  - icon: 🌐
+    title: JP / INTL
+    details: 国内版と海外版の maimai NET に対応。中文、English、日本語のドキュメントを用意。
+    link: /ja/guide/getting-started
+    linkText: クイックスタート
 
-  - icon: 💝
-    title: 無料＆オープン開発
-    details: コミュニティ主導の開発。定期的なアップデート、バグ修正、ユーザーからの機能リクエストに対応。
+  - icon: 🔐
+    title: エクスポートと API
+    details: 設定ページ、JSON/XML エクスポート、Import Token、開発者 Token、権限 API を提供。
+    link: /ja/developer-api
+    linkText: API
 ---
 
 <style>
-.VPFeature {
-  cursor: pointer;
-}
-
+.VPFeature { cursor: pointer; }
 .VPFeature:hover .icon {
-  transform: scale(1.2) rotate(5deg);
-  transition: transform 0.3s ease;
+  transform: scale(1.12) rotate(4deg);
+  transition: transform 0.2s ease;
 }
-
 .vp-doc h2 {
   border-top: none;
   padding-top: 24px;
 }
 </style>
 
-## なぜJiETNGなのか？
+## JiETNG とは
 
-JiETNGは 『maimai でらっくす』 の国内版と海外版の両方に対応したスコア管理ボットで、カジュアルプレイヤーからハードコアな競技者まで、あらゆるプレイヤーに強力な機能を提供します。
+JiETNG は **maimai でらっくす / maimai DX** 向けのスコア管理 Bot です。SEGA アカウント連携で maimai NET から同期することも、ブラウザのブックマークレットで取得した加工済みデータを Import Token でアップロードすることもできます。
+
+主な機能は B50 / Best 50 画像、Recent 50、DX Rating とレート内訳、楽曲/譜面検索、レベル/定数リスト、プレート進捗、フレンド成績、近くの店舗検索、JSON/XML エクスポート、開発者 API、Import Token です。
+
+`maimai b50`、`maimai レート内訳`、`maimai DX Rating`、`maimai スコア管理` のような検索から見つけやすいツールを目指しています。
 
 ## クイックスタート
 
-3つの簡単なステップでJiETNGを始めましょう：
+1. JiETNG LINE Bot を追加します。
+2. 個別チャットで `bind` を送信します。SEGA アカウント連携、または Import Token のみのモードを選べます。
+3. `maimai update` で公式データを同期するか、[ブックマークレット](/ja/bookmarklet)で公式サイトから取り込みます。
+4. `b50`、`record`、`13.6 records`、`真極 achievement` などを試します。
 
-1. **ボットを追加** - LINEアカウントにJiETNGを追加2. **アカウント連携** - SEGA IDを安全にリンク
-3. **追跡開始** - `maimai update`でスコアを同期
+[ガイドを読む →](/ja/guide/getting-started)
 
-[今すぐ始める →](/ja/guide/getting-started)
+## サポート
 
-## コミュニティ＆サポート
-
-ヘルプが必要ですか？貢献したいですか？
-
-- 📖 [ドキュメントを読む](/ja/guide/getting-started)
-- 💬 [Discordに参加](https://discord.gg/NXxFn9T8Xz)
-- 🐛 [問題を報告](https://github.com/Matsuk1/JiETNG/issues)
-- 💝 [開発をサポート](/ja/more/support)
+- [コマンド一覧](/ja/commands/)
+- [開発者 API](/ja/developer-api)
+- [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues)
+- [Discord](https://discord.gg/NXxFn9T8Xz)

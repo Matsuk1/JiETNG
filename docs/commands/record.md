@@ -1,110 +1,129 @@
-# 成绩系统
+---
+title: B50 成绩命令
+description: JiETNG 舞萌DX 查分器的 B50、Best 50、Recent 50、DX Rating、レート内訳、等级进度和单曲成绩命令说明。
+---
+
+# 成绩命令
 
 <img src="/b50_example.png" alt="Best 50 成绩示例" style="width: 22%; max-width: 400px; min-width: 200px; display: block; margin: 1.5rem auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
 
-## 命令
+## B 系列成绩图
 
-### 基础 Best 图表
-
-```
-b50          # Best 50 图表（旧曲 35 + 新曲 15）
-b40          # Best 40 图表（过去的 Rating 计算方案，旧曲 25 + 新曲 15）
-best50 / best40   # 同上，替代命令
-```
-
-### 变体
-
-```
-b35 / best35              # 仅旧曲 Best 35
-b15 / best15              # 仅新曲 Best 15
-ab35 / allb35             # All Best 35（忽略版本）
-ab50 / allb50             # All Best 50（忽略版本）
-apb50 / ap50              # All Perfect Best 50（仅 AP/AP+ 成绩）
-fdxb50 / fdx50            # Full DX Best 50（仅 FDX/FDX+ 成绩）
-idealb50 / idlb50         # Ideal Best 50（模拟上一梯度成绩）
-rct50 / r50               # Recent 50（最近 50 次游玩）
-unknown / unkn            # 版本未知歌曲列表
+```text
+b50 / best50          # Best 35 + Best 15
+b40 / best40          # 旧版 Rating 结构
+b35 / best35          # 旧曲 Best 35
+b15 / best15          # 新曲 Best 15
+ab35 / allb35         # 不区分版本的 Best 35
+ab50 / allb50         # 不区分版本的 Best 50
+apb50 / ap50          # AP/AP+ 成绩 Best 50
+fdxb50 / fdx50        # FDX/FDX+ 成绩 Best 50
+rct50 / r50           # Recent 50
+idealb50 / idlb50     # 理想分数 Best 50
+unknown               # 版本未知歌曲列表
 ```
 
-## 过滤参数
+这些命令可以直接发送，也可以带筛选参数。
 
-所有 B 系命令均支持以下过滤参数：
+## 筛选参数
 
-| 参数 | 说明 | 示例 |
-|------|------|------|
-| `-lv [值] [最大值]` | 按定数筛选。单值精确匹配，双值为范围 | `-lv 14.7` 或 `-lv 14 14.9` |
-| `-ra [值] [最大值]` | 按 Rating 筛选。单值精确匹配，双值为范围 | `-ra 301` 或 `-ra 301 312` |
-| `-star [值] [最大值]` | 按 DX 星数筛选。单值精确匹配，双值为范围 | `-star 3` 或 `-star 3 5` |
-| `-scr [最小值] [最大值]` | 按达成率筛选（最大值可选） | `-scr 100.3` 或 `-scr 99 100` |
-| `-dx [最小值] [最大值]` | 按 DX score 百分比筛选（最大值可选） | `-dx 92` 或 `-dx 90 95` |
-| `-ver [版本...]` | 按版本筛选，可多选 | `-ver buddies` 或 `-ver splash splash+` (plus → +) |
-| `-diff [难度...]` | 按难度筛选，可多选 | `-diff mas` 或 `-diff mas rem` |
-| `-type [dx\|std]` | 按谱面类型筛选 | `-type dx` |
-| `-next` | 使用下一版本分组替代当前版本分组 | `-next` |
-| `-times [倍率]` | 按倍率缩放显示数量（最大 2.5，向上取整到 5 的倍数） | `-times 2` |
-| `-page [页码]` | 翻页 | `-page 2` |
-
-::: tip 难度简写
-`bas` = BASIC，`adv` = ADVANCED，`exp` = EXPERT，`mas` = MASTER，`rem` = Re:MASTER
-:::
-
-::: tip 版本名称
-不区分大小写，使用 `+` 表示 PLUS 版本（如 `splash+`），多个版本用空格分隔。
-:::
-
-### 示例
-
-```
-b50 -lv 14.7                             # 定数 14.7（精确匹配）
-b50 -lv 14 14.9                          # 定数 14.0~14.9
-b50 -ra 301 312                          # Rating 301~312
-b50 -scr 100.3                           # 达成率 ≥100.3%
-b50 -dx 92 95                            # DX score 92%~95%
-b50 -ver buddies -lv 14 14.9             # Buddies 版本 14 级歌曲
-b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER 且达成率 ≥100.5%
-b50 -type dx -diff mas                   # DX 谱面 MASTER 难度
-b50 -times 2                                # 显示 70+30（默认 35+15 的 2 倍）
-b50 -diff mas -lv 14 14.9 -page 2        # 翻到第 2 页
+```text
+b50 -lv 14.7
+b50 -lv 14 14.9
+b50 -ra 301 312
+b50 -scr 100.3
+b50 -dx 92 95
+b50 -ver buddies -lv 14 14.9
+b50 -diff mas rem -scr 100.5
+b50 -type dx -diff mas
+b50 -times 2
+b50 -page 2
 ```
 
----
+常用参数：
 
-## 定数查询
+| 参数 | 说明 |
+|------|------|
+| `-lv` | 等级或定数，支持单值或范围 |
+| `-ra` | 单谱 Rating 范围 |
+| `-scr` | 达成率下限或范围 |
+| `-dx` | DX 分数百分比范围 |
+| `-star` | DX 星数 |
+| `-diff` | 难度，如 `bas`、`adv`、`exp`、`mas`、`rem` |
+| `-type` | 谱面类型，如 `std`、`dx` |
+| `-ver` | 版本关键字 |
+| `-page` | 页码 |
+| `-times` | 放大默认展示数量 |
 
-查看指定难度等级的所有歌曲，按内部定数分组显示。
+## 单曲成绩
 
-### 命令格式
-
-```
-13の定数リスト    # 日文命令
-13のレベルリスト  # 日文命令
-13 level-list   # 英文命令
-```
-
-定数查询自动使用绑定时设置的服务器版本（JP 或 INTL）。
-
----
-
-## 难度评级达成进度
-
-查看指定难度和评级的谱面达成情况。
-
-### 命令格式
-
-```
-13sss+進捗        # 13 难度 SSS+ 评级进度
-13+sss progress   # 13+ 难度 SSS 评级进度
-15fdx+ progress   # 15 难度 FDX+ 评级进度
+```text
+ヒバナ record
+ヒバナ song-record
+ヒバナのレコード
+search-record 123456
 ```
 
-### 支持的评级
+- `record` / `song-record` / `のレコード` 按曲名或别名搜索。
+- `search-record` 使用 6 位歌曲 ID 查询。
+- 如果搜索结果不唯一，Bot 会返回候选列表。
 
-- **评分等级**：S、S+、SS、SS+、SSS、SSS+
-- **Full Combo**：FC、FC+、AP、AP+
-- **Full Sync**：FDX、FDX+
+## 等级与定数列表
 
-::: tip
-- 评级不区分大小写
-- 支持日文（進捗）、英文（progress）和中文（进度）关键字
-- 支持的难度：11、11+、12、12+、13、13+、14、14+、15
-:::
+```text
+13のレコードリスト
+13 records
+13 record-list 2
+13.6のレコードリスト
+14.7 records 2
+```
+
+整数表示等级，小数表示定数。末尾数字表示页码。
+
+## 等级达成进度
+
+```text
+13sss+ progress
+14AP進捗
+15fdx+ 进度
+14ss+ progress -uc
+14ss+ progress -up
+14ss+ progress -c
+```
+
+支持的目标：`s`、`s+`、`ss`、`ss+`、`sss`、`sss+`、`fc`、`fc+`、`ap`、`ap+`、`fdx`、`fdx+`。
+
+筛选后缀：
+
+| 后缀 | 说明 |
+|------|------|
+| `-uc` | 只看未达成 |
+| `-up` | 只看未游玩 |
+| `-c` | 只看已达成 |
+
+## 牌子与版本
+
+```text
+真極の達成状況
+真極 achievement
+真極の達成状況 -uc
+PRiSM PLUSのバージョンリスト
+PRiSM PLUS version-list
+13.6のレベルリスト
+13.6の定数リスト
+13.6 level-list
+```
+
+牌子达成状况同样支持 `-uc`、`-up`、`-c`。
+
+## @ 提及查询
+
+群聊中可以 @ 已注册用户查询对方成绩：
+
+```text
+@好友 b50
+@好友 13 records
+@好友 14sss+ progress
+```
+
+仅成绩类命令支持 @ 查询。账号、设置、导出、更新等 self-only 命令始终只作用于发送者。

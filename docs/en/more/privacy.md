@@ -1,143 +1,54 @@
 # Privacy Policy
 
-Last Updated: November 2025
-
 ## Overview
 
-JiETNG values your privacy. This privacy policy explains how we collect, use, and protect your personal information.
+JiETNG is a personally maintained maimai DX score management tool. This page describes the data the current project may collect and process.
 
-## Information We Collect
+## Data Sources
 
-### Required Information
+- **SEGA account sync**: the binding page collects SEGA ID, password, server version, and Aime so JiETNG can log in to maimai NET and sync records.
+- **Import Token import**: the settings page creates user Import Tokens. The bookmarklet or trusted tools upload processed `profile`, `best`, and `recent` data.
 
-To provide the service, JiETNG collects the following information:
+## Stored Data
 
-- **SEGA ID Credentials**: Your SEGA ID username and password
-- **LINE User ID**: Used to identify your LINE account
-- **maimai Score Data**: Game data retrieved from the official maimai NET
+JiETNG may store LINE user ID, language/timezone/background settings, encrypted SEGA credentials, server version, Aime, maimai profile display data, Best/Recent records, Import Token hashes and status, developer tokens, permission relationships, command usage events, and error logs.
 
-### Automatically Collected Information
+Import Token plaintext is shown once. The server stores a hash.
 
-- **Command Usage Records**: Commands you use and usage times
-- **Error Logs**: Error information used for debugging and service improvement
+## Usage
 
-## How We Use Your Information
+Data is used to sync or import records, generate score images and progress views, provide settings/export/API features, prevent abuse, debug issues, and maintain service stability.
 
-We use the collected information to:
+## Third Parties
 
-1. **Provide Services**:
-   - Fetch your score data from maimai NET
-   - Generate score charts and statistics
-   - Respond to your commands
+JiETNG interacts with LINE Platform and SEGA maimai NET. The bookmarklet runs on the official maimai mobile page, but uploaded data is processed score data and does not include the SEGA password.
 
-2. **Improve Services**:
-   - Analyze usage patterns to improve features
-   - Debug and fix errors
-   - Optimize performance
+## Delete and Export
 
-3. **Security Purposes**:
-   - Prevent abuse and fraud
-   - Protect service integrity
+```text
+unbind
+unbind confirm
+```
 
-## Data Storage and Security
+deletes stored JiETNG user data.
 
-### Encryption
+```text
+export json
+export xml
+```
 
-- **Password Encryption**: Your SEGA password is stored using industry-standard encryption methods
-- **Transmission Security**: All data transmissions use HTTPS encryption
+exports processed score data, not internal raw database structures.
 
-### Data Retention
+## Security
 
-- **Active Accounts**: We retain your data as long as your account is active
-- **Account Deletion**: When you use the `unbind` command, all stored data is permanently deleted
+- Web pages use HTTPS.
+- SEGA passwords are encrypted at rest.
+- Import Tokens and developer tokens should be treated like passwords.
+- Revoked tokens cannot keep uploading or accessing resources.
 
-### Access Control
+## Contact
 
-- Only the JiETNG system can access your data
-- No manual viewing or access to your personal information
-- We do not share your data with third parties
+- GitHub Issues: [github.com/Matsuk1/JiETNG/issues](https://github.com/Matsuk1/JiETNG/issues)
+- Discord: [Join server](https://discord.gg/NXxFn9T8Xz)
 
-## Third-Party Services
-
-JiETNG interacts with the following third-party services:
-
-- **SEGA maimai NET**: To retrieve your game data
-- **LINE Platform**: For messaging functionality
-
-We do not control the privacy policies of these third parties. Please review their privacy policies for details.
-
-## Your Rights
-
-You have the following rights regarding your data:
-
-### Right to Access
-
-- Use the `profile` command to view stored account information
-
-### Right to Deletion
-
-- Use the `unbind` command to delete all stored data
-- Deletion is immediate and permanent
-
-### Right to Update
-
-- Use the `bind` command to update your credentials
-- Use the `maimai update` command to refresh your score data
-
-## Cookies and Tracking
-
-JiETNG does not use cookies or other tracking technologies.
-
-## Children's Privacy
-
-JiETNG does not knowingly collect information from children under 13 years of age. If you believe we may have collected information from a minor, please contact us.
-
-## Data Breach Notification
-
-In the event of a security breach affecting your data, we will:
-
-1. Immediately investigate the incident
-2. Take measures to mitigate damage
-3. Notify affected users as soon as possible
-
-## Policy Changes
-
-We may update this privacy policy from time to time. Significant changes will be notified through:
-
-- Announcements in the bot
-- Updates to the "Last Updated" date on this page
-
-## Data Portability
-
-You may request to export your data. Please contact the support team to request data export.
-
-## Legal Basis
-
-We process your data based on the following legal grounds:
-
-- **Contractual Necessity**: To provide the services you request
-- **Legitimate Interests**: To improve and protect our services
-- **Consent**: Your use of our services indicates consent to this policy
-
-## International Data Transfer
-
-Your data may be processed on servers outside your country/region. We take appropriate measures to ensure your data is protected.
-
-## Contact Us
-
-If you have any questions or concerns about this privacy policy:
-
-- 📧 GitHub Issues: [github.com/Matsuk1/JiETNG/issues](https://github.com/Matsuk1/JiETNG/issues)
-- 💬 Discord: [Join our Discord server](https://discord.gg/NXxFn9T8Xz)
-
-## Related Policies
-
-- [Terms of Use](/en/more/license)
-- [Support and Help](/en/more/support)
-- [FAQ](/en/more/faq)
-
----
-
-**Effective Date**: December 1, 2025
-
-By using JiETNG, you acknowledge that you have read and understood this privacy policy.
+Effective date: 2026-06-16

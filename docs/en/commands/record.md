@@ -1,110 +1,112 @@
+---
+title: B50 Record Commands
+description: JiETNG maimai DX B50, Best 50, Recent 50, DX Rating, rating breakdown, level progress, and song record command reference.
+---
+
 # Record Commands
 
-<img src="/b50_example.png" alt="Best 50 Score Example" style="width: 22%; max-width: 400px; min-width: 200px; display: block; margin: 1.5rem auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+<img src="/b50_example.png" alt="Best 50 Example" style="width: 22%; max-width: 400px; min-width: 200px; display: block; margin: 1.5rem auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
 
-## Commands
+## B-Series Images
 
-### Basic Best Charts
-
+```text
+b50 / best50
+b40 / best40
+b35 / best35
+b15 / best15
+ab35 / allb35
+ab50 / allb50
+apb50 / ap50
+fdxb50 / fdx50
+rct50 / r50
+idealb50 / idlb50
+unknown
 ```
-b50          # Best 50 (old ver. 35 + new ver. 15)
-b40          # Best 40 (legacy Rating calculation, old ver. 25 + new ver. 15)
-best50 / best40   # Aliases for the above
-```
 
-### Variations
-
-```
-b35 / best35              # Old version Best 35 only
-b15 / best15              # New version Best 15 only
-ab35 / allb35             # All Best 35 (ignore version)
-ab50 / allb50             # All Best 50 (ignore version)
-apb50 / ap50              # All Perfect Best 50 (AP/AP+ scores only)
-fdxb50 / fdx50            # Full DX Best 50 (FDX/FDX+ scores only)
-idealb50 / idlb50         # Ideal Best 50 (simulate previous tier scores)
-rct50 / r50               # Recent 50 plays
-unknown / unkn            # Songs with unknown version
-```
+Filters can be appended to the same command.
 
 ## Filters
 
-All B-series commands support the following filter parameters:
-
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `-lv [value] [max]` | Filter by constant. Single value = exact match; two values = range | `-lv 14.7` or `-lv 14 14.9` |
-| `-ra [value] [max]` | Filter by Rating. Single value = exact match; two values = range | `-ra 301` or `-ra 301 312` |
-| `-star [value] [max]` | Filter by DX star count. Single value = exact match; two values = range | `-star 3` or `-star 3 5` |
-| `-scr [min] [max]` | Filter by achievement rate (max optional) | `-scr 100.3` or `-scr 99 100` |
-| `-dx [min] [max]` | Filter by DX score percentage (max optional) | `-dx 92` or `-dx 90 95` |
-| `-ver [versions...]` | Filter by version, multiple allowed | `-ver buddies` or `-ver splash splash+` (plus → +) |
-| `-diff [difficulties...]` | Filter by difficulty, multiple allowed | `-diff mas` or `-diff mas rem` |
-| `-type [dx\|std]` | Filter by chart type | `-type dx` |
-| `-next` | Use next version grouping instead of current version | `-next` |
-| `-times [multiplier]` | Scale display count by multiplier (max 2.5, rounded up to nearest 5) | `-times 2` |
-| `-page [n]` | Pagination | `-page 2` |
-
-::: tip Difficulty abbreviations
-`bas` = BASIC, `adv` = ADVANCED, `exp` = EXPERT, `mas` = MASTER, `rem` = Re:MASTER
-:::
-
-::: tip Version names
-Case-insensitive. Use `+` for PLUS versions (e.g. `splash+`). Separate multiple versions with spaces.
-:::
-
-### Examples
-
-```
-b50 -lv 14.7                             # Constant 14.7 (exact match)
-b50 -lv 14 14.9                          # Constant 14.0~14.9
-b50 -ra 301 312                          # Rating 301~312
-b50 -scr 100.3                           # Achievement ≥100.3%
-b50 -dx 92 95                            # DX score 92%~95%
-b50 -ver buddies -lv 14 14.9             # Buddies version level 14 songs
-b50 -diff mas rem -scr 100.5             # MASTER/Re:MASTER with achievement ≥100.5%
-b50 -type dx -diff mas                   # DX charts, MASTER difficulty
-b50 -times 2                                # Show 70+30 (2x the default 35+15)
-b50 -diff mas -lv 14 14.9 -page 2        # Go to page 2
+```text
+b50 -lv 14.7
+b50 -lv 14 14.9
+b50 -ra 301 312
+b50 -scr 100.3
+b50 -dx 92 95
+b50 -ver buddies -lv 14 14.9
+b50 -diff mas rem -scr 100.5
+b50 -type dx -diff mas
+b50 -times 2
+b50 -page 2
 ```
 
----
+Supported fields include level/constant, chart rating, achievement, DX score, DX stars, difficulty, chart type, version, page, and display multiplier.
 
-## Internal Level Query
+## Song Records
 
-View all songs for a specified difficulty level, grouped by internal constant.
-
-### Command Format
-
-```
-13の定数リスト    # Japanese command
-13のレベルリスト  # Japanese command
-13 level-list   # English command
+```text
+ヒバナ record
+ヒバナ song-record
+ヒバナのレコード
+search-record 123456
 ```
 
-Level queries automatically use the server version set during binding (JP or INTL).
+`record` searches by title or alias. `search-record` uses a 6-character song ID. If multiple songs match, the bot returns a selectable list.
 
----
+## Level and Constant Lists
 
-## Level & Rank Progress
-
-View achievement progress for a specified difficulty level and rank.
-
-### Command Format
-
-```
-13sss+進捗        # Level 13 SSS+ rank progress
-13+sss progress   # Level 13+ SSS rank progress
-15fdx+ progress   # Level 15 FDX+ rank progress
+```text
+13 records
+13 record-list 2
+13.6 records
+14.7 record-list 2
 ```
 
-### Supported Ranks
+Integers mean levels; decimals mean constants. A trailing number is treated as the page.
 
-- **Score Ranks**: S, S+, SS, SS+, SSS, SSS+
-- **Full Combo**: FC, FC+, AP, AP+
-- **Full Sync**: FDX, FDX+
+## Progress
 
-::: tip
-- Rank names are case-insensitive
-- Supports Japanese (進捗), English (progress), and Chinese (进度) keywords
-- Supported difficulty levels: 11, 11+, 12, 12+, 13, 13+, 14, 14+, 15
-:::
+```text
+13sss+ progress
+14AP進捗
+15fdx+ 进度
+14ss+ progress -uc
+14ss+ progress -up
+14ss+ progress -c
+```
+
+Targets: `s`, `s+`, `ss`, `ss+`, `sss`, `sss+`, `fc`, `fc+`, `ap`, `ap+`, `fdx`, `fdx+`.
+
+Suffixes:
+
+| Suffix | Meaning |
+|--------|---------|
+| `-uc` | Uncleared / not reached |
+| `-up` | Unplayed |
+| `-c` | Cleared / reached |
+
+## Plates and Versions
+
+```text
+真極の達成状況
+真極 achievement
+真極の達成状況 -uc
+PRiSM PLUSのバージョンリスト
+PRiSM PLUS version-list
+13.6のレベルリスト
+13.6 level-list
+```
+
+Plate progress also supports `-uc`, `-up`, and `-c`.
+
+## Mentions
+
+In group chats, mention a registered JiETNG user to query their score data:
+
+```text
+@friend b50
+@friend 13 records
+@friend 14sss+ progress
+```
+
+Only score-related commands support mention queries. Account, settings, export, and update commands are always self-only.

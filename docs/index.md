@@ -1,12 +1,12 @@
 ---
 layout: home
-title: 舞萌DX 查分器 · JiETNG ·『maimai でらっくす』日服 / 国际服 LINE 机器人
+title: 舞萌DX 查分器 · maimai B50 / レート内訳 · JiETNG
 titleTemplate: false
 
 hero:
   name: "JiETNG"
   text: "舞萌DX 查分器<br>maimai でらっくす"
-  tagline: 同时支持日服 (JP) 与国际服 (INTL) 的查分机器人 · 免费 Rating 计算 · B50 / Best 50 成绩图生成
+  tagline: 支持日服 JP 与国际服 INTL · B50 / Best 50 / Recent 50 / DX Rating / レート内訳 / 网页书签导入
   image:
     src: /hero-image.svg
     alt: JiETNG Logo
@@ -15,52 +15,48 @@ hero:
       text: 开始使用
       link: /guide/getting-started
     - theme: alt
-      text: 在线体验
-      link: /demo
+      text: 网页书签
+      link: /bookmarklet
     - theme: alt
       text: GitHub
       link: https://github.com/Matsuk1/JiETNG
 
 features:
   - icon: 📊
-    title: 成绩系统
-    details: 自动生成成绩图表，支持详细的达成率追踪和 Rating 计算。
+    title: 成绩图生成
+    details: 支持 B50、B40、Best 35/15、All Best、AP Best、FDX Best、Recent 50 和理想分数图。
     link: /commands/record
-    linkText: 了解更多
+    linkText: 查看成绩命令
 
-  - icon: 🔍
-    title: 高级成绩搜索
-    details: 使用强大的查询功能搜索和过滤您的成绩。支持按等级、rating、DX分数和达成率过滤。
+  - icon: 🔎
+    title: 精准查询
+    details: 可按等级、定数、达成率、DX 分数、谱面类型、难度、版本与分页筛选成绩。
     link: /features/search
-    linkText: 了解更多
+    linkText: 查看筛选方式
 
-  - icon: 👥
-    title: 好友系统
-    details: 查看游戏内好友的成绩，对比表现，提升竞技水平。
-
-  - icon: 🌐
-    title: 多语言支持
-    details: 完全支持日语、英语和中文，可以无缝切换语言。
-    link: /guide/getting-started
-    linkText: 了解更多
-
-  - icon: 🔒
-    title: 隐私与安全
-    details: 您的数据经过加密并安全存储。我们绝不会与第三方分享您的信息。
-    link: /more/privacy
-    linkText: 隐私政策
+  - icon: 🧩
+    title: 两种数据来源
+    details: 可绑定 SEGA 账号自动同步，也可使用 Import Token 与网页书签上传已加工成绩数据。
+    link: /bookmarklet
+    linkText: 查看书签工具
 
   - icon: 🏆
-    title: 牌子进度追踪
-    details: 追踪您完成各种牌子挑战（极、将、神、舞舞）的进度，提供可视化进度指示器。
+    title: 牌子与进度
+    details: 支持版本达成状况、等级达成进度、未游玩/未达成/已达成筛选。
+    link: /commands/
+    linkText: 查看命令大全
 
-  - icon: 🚀
-    title: 快速可靠
-    details: 通过缓存、速率限制和高效数据处理优化性能，确保快速响应。
+  - icon: 🌐
+    title: 多语言与双版本
+    details: 文档与主要交互支持中文、英文、日文；数据侧支持 JP 与 INTL。
+    link: /guide/getting-started
+    linkText: 快速开始
 
-  - icon: 💝
-    title: 免费开源开发
-    details: 社区驱动开发，定期更新、修复bug，并响应用户的功能请求。
+  - icon: 🔐
+    title: 权限与导出
+    details: 支持用户设置页、数据导出 JSON/XML、开发者 Token 和用户授权。
+    link: /developer-api
+    linkText: 查看 API
 ---
 
 <style>
@@ -69,8 +65,8 @@ features:
 }
 
 .VPFeature:hover .icon {
-  transform: scale(1.2) rotate(5deg);
-  transition: transform 0.3s ease;
+  transform: scale(1.12) rotate(4deg);
+  transition: transform 0.2s ease;
 }
 
 .vp-doc h2 {
@@ -79,24 +75,26 @@ features:
 }
 </style>
 
-## 为什么选择 JiETNG 这款舞萌 DX 查分器？
+## JiETNG 是什么？
 
-JiETNG 是同时支持 **『maimai でらっくす』日服 (JP) 与国际服 (INTL)** 的查分机器人 / LINE Bot，提供成绩查询、Rating 计算、Best 50 (B50) 图生成、Recent 50 历史、牌子（极 / 将 / 神 / 舞舞）进度追踪——休闲玩家和硬核竞技者都用得上。
+JiETNG 是面向 **maimai でらっくす / 舞萌DX** 的查分器和 LINE 成绩管理机器人。它可以从官方 maimai NET 同步成绩，也可以通过网页书签读取当前浏览器会话并上传加工后的成绩数据。
+
+项目当前重点功能包括：B50 / Best 50 成绩图、Recent 50、DX Rating 与レート内訳查看、歌曲/谱面查询、等级与定数列表、版本达成状况、好友成绩查询、附近机厅查询、成绩导出、开发者 API 与 Import Token。
+
+如果你在找“舞萌查分器”“maimai b50”“舞萌DX B50”“レート内訳”或“maimai DX Rating”工具，JiETNG 的目标就是把这些查询集中到一个可在 LINE 和网页书签中使用的服务里。
 
 ## 快速开始
 
-只需三个简单步骤即可开始使用 JiETNG：
+1. 添加 JiETNG LINE Bot。
+2. 私聊发送 `bind`，选择绑定 SEGA 账号，或选择“不绑定但使用 Import Token”。
+3. 发送 `maimai update` 同步官方数据，或使用[网页书签工具](/bookmarklet)从官方网页读取并上传成绩。
+4. 发送 `b50`、`record`、`13.6のレコードリスト`、`真極の達成状況` 等命令查看结果。
 
-1. **添加机器人** - 将 JiETNG 添加到您的 LINE 账号2. **绑定账号** - 安全地关联您的 SEGA ID
-3. **开始追踪** - 使用 `maimai update` 同步您的成绩
-
-[立即开始 →](/guide/getting-started)
+[阅读快速开始 →](/guide/getting-started)
 
 ## 社区与支持
 
-需要帮助或想要贡献？
-
-- 📖 [阅读文档](/guide/getting-started)
-- 💬 [加入 Discord](https://discord.gg/NXxFn9T8Xz)
-- 🐛 [报告问题](https://github.com/Matsuk1/JiETNG/issues)
-- 💝 [支持开发](/more/support)
+- [命令参考](/commands/)
+- [开发者 API](/developer-api)
+- [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues)
+- [Discord](https://discord.gg/NXxFn9T8Xz)

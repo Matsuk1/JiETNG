@@ -59,7 +59,7 @@ JiETNG is the result of extensive development work and represents significant in
 While the source code is proprietary, the **bot service itself is free to use**:
 
 - ✅ Add the bot to your LINE
-- ✅ Bind your SEGA account
+- ✅ Bind your SEGA account, or import records with an Import Token
 - ✅ Track your『maimai でらっくす』scores
 - ✅ Use all features for free
 

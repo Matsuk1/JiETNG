@@ -1,11 +1,14 @@
 import { defineConfig } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
 
+const siteUrl = 'https://jietng.matsuk1.com'
+const siteDescription = 'JiETNG 是支持日服 JP 与国际服 INTL 的舞萌DX / maimai でらっくす 查分器和 LINE Bot，可生成 B50、Best 50、Recent 50、レート内訳、DX Rating 成绩图，并支持网页书签导入。'
+
 // https://vitepress.dev/reference/site-config
 export default withMermaid(defineConfig({
   title: "JiETNG",
-  description: "JiETNG · 舞萌DX 查分器 / maimai でらっくす スコア管理ボット — 支持日服与国际服的 LINE 机器人，免费 Rating 计算器和 B50 成绩图生成。",
-  titleTemplate: ":title | JiETNG · 舞萌DX 查分器 / maimai でらっくす Score Tracker",
+  description: siteDescription,
+  titleTemplate: ":title | JiETNG · 舞萌DX 查分器 / maimai B50 レート内訳",
 
   cleanUrls: true,
 
@@ -19,7 +22,7 @@ export default withMermaid(defineConfig({
 
   // Sitemap 配置（用于 SEO）
   sitemap: {
-    hostname: 'https://jietng.matsuk1.com'
+    hostname: siteUrl
   },
 
   // Markdown 配置
@@ -116,13 +119,13 @@ export default withMermaid(defineConfig({
     root: {
       label: '简体中文',
       lang: 'zh-CN',
-      description: '舞萌DX 查分器 — JiETNG 是支持日服 (JP) 与国际服 (INTL) 的『maimai でらっくす』查分机器人 / LINE Bot，免费 Rating 计算器、Best 50 / B50 成绩图生成、牌子进度追踪、Recent 50 历史查询。'
+      description: '舞萌DX 查分器 — JiETNG 支持日服 JP 与国际服 INTL，提供 maimai B50、Best 50、Recent 50、DX Rating、レート内訳、牌子进度和网页书签导入。'
     },
     en: {
       label: 'English',
       lang: 'en',
       link: '/en/',
-      description: 'JiETNG -『maimai でらっくす』score management bot for LINE supporting both Japanese and International servers.',
+      description: 'JiETNG is a maimai DX score tracker and LINE bot for JP and INTL servers, with B50, Best 50, Recent 50, DX Rating, rate breakdown, and bookmarklet import.',
       themeConfig: {
         nav: [
           { text: 'Home', link: '/en/' },
@@ -186,7 +189,7 @@ export default withMermaid(defineConfig({
       label: '日本語',
       lang: 'ja',
       link: '/ja/',
-      description: 'JiETNG - 国内版と海外版の両方に対応した『maimai でらっくす』スコア管理ボット。無料のレーティング計算機とベスト50チャート生成器。',
+      description: 'JiETNG は国内版 JP と海外版 INTL に対応した maimai でらっくす スコア管理 Bot。B50、Best 50、Recent 50、DX Rating、レート内訳、ブックマークレット取り込みに対応。',
       themeConfig: {
         nav: [
           { text: 'ホーム', link: '/ja/' },
@@ -254,6 +257,10 @@ export default withMermaid(defineConfig({
     ['link', { rel: 'icon', type: 'image/png', href: '/favicon.ico' }],
     ['link', { rel: 'apple-touch-icon', href: '/logo.svg' }],
     ['meta', { name: 'theme-color', content: '#2563eb' }],
+    ['meta', { name: 'application-name', content: 'JiETNG' }],
+    ['meta', { name: 'apple-mobile-web-app-title', content: 'JiETNG' }],
+    ['meta', { name: 'robots', content: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' }],
+    ['meta', { name: 'googlebot', content: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' }],
 
     // 站长验证（中文搜索引擎；申请到 token 后填进 content）
     ['meta', { name: 'google-site-verification', content: '7wQ3HIU-rk6iSNe441mvYPgkZwuotIB3PlOx6r3xOm8' }],
@@ -266,50 +273,64 @@ export default withMermaid(defineConfig({
     ['meta', { name: 'keywords', content: [
       // 核心 - 中文（最常搜）
       '舞萌DX查分器', '舞萌查分器', 'maimai查分器', 'maimai 查分', 'maimai dx 查分器',
+      '舞萌 b50', '舞萌 B50', '舞萌DX B50', '舞萌 成绩图', '舞萌成绩图', '舞萌 rating',
+      '舞萌DX rating', '舞萌DX レート', '舞萌DX レート内訳',
       '舞萌DX', '舞萌', '舞萌dx', 'maimaiDX bot',
       '舞萌国服', '舞萌日服', '舞萌国际服', 'maimai 日服', 'maimai 国际服', '日版', '国际版', '日服', '国际服',
       '舞萌成绩', 'B50 查分', 'b50', 'best 50', 'rating 计算', 'Rating 查询', '牌子进度', '极将神舞舞', '段位查询',
       // 核心 - 日文
       'maimai でらっくす', 'maimai DX', 'maimaiでらっくす', 'スコア管理', 'スコア管理ボット', 'レーティング計算',
+      'レート内訳', 'maimai レート内訳', 'maimai B50', 'maimai b50', 'でらっくすRATING', 'DX Rating',
       'ベスト50', 'ベストスコア', 'maimaiDXボット', '日本サーバー', '国際サーバー', '海外版',
       // 核心 - 英文
       'maimai', 'maimai bot', 'maimai dx score tracker', 'score tracker', 'rating calculator',
+      'maimai b50', 'maimai best 50', 'maimai rating breakdown', 'maimai DX Rating',
       'best 50 generator', 'LINE bot', 'rhythm game', 'arcade game tracker',
       'Japanese server', 'International server', 'JP server', 'INTL server',
       // 项目名
       'JiETNG', 'JiETNG bot',
     ].join(', ') }],
-    ['meta', { name: 'description', content: 'JiETNG · 舞萌DX 查分器 — 支持日服 (JP) 与国际服 (INTL) 的『maimai でらっくす』查分机器人 / LINE Bot，免费 Rating 计算器、Best 50 / B50 成绩图生成、牌子进度追踪、Recent 50 历史查询。' }],
+    ['meta', { name: 'description', content: siteDescription }],
     ['meta', { name: 'author', content: 'Matsuki' }],
 
     // Open Graph
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: 'JiETNG' }],
-    ['meta', { property: 'og:title', content: 'JiETNG · 舞萌DX 查分器 / maimai でらっくす Score Tracker' }],
-    ['meta', { property: 'og:description', content: '舞萌DX 查分器 LINE 机器人，支持日服 / 国际服，免费 Rating 计算与 B50 成绩图生成。' }],
-    ['meta', { property: 'og:image', content: 'https://jietng.matsuk1.com/og-image.png' }],
+    ['meta', { property: 'og:title', content: 'JiETNG · 舞萌DX 查分器 / maimai B50 レート内訳' }],
+    ['meta', { property: 'og:description', content: '支持 JP / INTL 的 maimai DX 查分器：B50、Best 50、Recent 50、DX Rating、レート内訳、牌子进度和网页书签导入。' }],
+    ['meta', { property: 'og:image', content: `${siteUrl}/og-image.png` }],
     ['meta', { property: 'og:image:width', content: '1200' }],
     ['meta', { property: 'og:image:height', content: '630' }],
     ['meta', { property: 'og:image:type', content: 'image/png' }],
-    ['meta', { property: 'og:url', content: 'https://jietng.matsuk1.com' }],
+    ['meta', { property: 'og:url', content: siteUrl }],
+    ['meta', { property: 'og:locale', content: 'zh_CN' }],
+    ['meta', { property: 'og:locale:alternate', content: 'en_US' }],
+    ['meta', { property: 'og:locale:alternate', content: 'ja_JP' }],
 
     // Twitter Card
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { name: 'twitter:title', content: 'JiETNG · 舞萌DX 查分器 / maimai でらっくす Score Tracker' }],
-    ['meta', { name: 'twitter:description', content: '舞萌DX 查分器 LINE 机器人，支持日服 / 国际服，免费 Rating 计算与 B50 成绩图生成。' }],
-    ['meta', { name: 'twitter:image', content: 'https://jietng.matsuk1.com/og-image.png' }],
+    ['meta', { name: 'twitter:title', content: 'JiETNG · 舞萌DX 查分器 / maimai B50 レート内訳' }],
+    ['meta', { name: 'twitter:description', content: 'maimai DX JP / INTL score tracker with B50, Best 50, Recent 50, DX Rating, rate breakdown, and bookmarklet import.' }],
+    ['meta', { name: 'twitter:image', content: `${siteUrl}/og-image.png` }],
+
+    // hreflang for main locale entry points
+    ['link', { rel: 'alternate', hreflang: 'zh-CN', href: `${siteUrl}/` }],
+    ['link', { rel: 'alternate', hreflang: 'en', href: `${siteUrl}/en/` }],
+    ['link', { rel: 'alternate', hreflang: 'ja', href: `${siteUrl}/ja/` }],
+    ['link', { rel: 'alternate', hreflang: 'x-default', href: `${siteUrl}/` }],
 
     // JSON-LD 结构化数据（让 Google 知道这是个 WebApplication，不是普通博客）
     ['script', { type: 'application/ld+json' }, JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'WebApplication',
       'name': 'JiETNG',
-      'alternateName': ['舞萌DX 查分器', 'maimai DX Score Tracker', 'maimai でらっくす スコア管理ボット'],
-      'url': 'https://jietng.matsuk1.com',
-      'description': '舞萌DX 查分器 LINE 机器人，支持 maimai でらっくす 日服与国际服的成绩查询、Rating 计算、Best 50 图生成、牌子进度追踪。',
+      'alternateName': ['舞萌DX 查分器', '舞萌查分器', 'maimai DX Score Tracker', 'maimai B50', 'maimai レート内訳', 'maimai でらっくす スコア管理ボット'],
+      'url': siteUrl,
+      'description': siteDescription,
       'applicationCategory': 'GameApplication',
       'operatingSystem': 'Any (LINE)',
       'inLanguage': ['zh-CN', 'ja', 'en'],
+      'keywords': '舞萌DX查分器, 舞萌查分器, maimai B50, maimai レート内訳, DX Rating, Best 50, Recent 50',
       'offers': {
         '@type': 'Offer',
         'price': '0',
@@ -320,6 +341,15 @@ export default withMermaid(defineConfig({
         'name': 'Matsuki',
         'url': 'https://github.com/Matsuk1'
       }
+    }) ],
+
+    ['script', { type: 'application/ld+json' }, JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      'name': 'JiETNG',
+      'alternateName': ['舞萌DX 查分器', 'maimai DX Score Tracker', 'maimai レート内訳'],
+      'url': siteUrl,
+      'inLanguage': ['zh-CN', 'ja', 'en']
     }) ]
   ],
 

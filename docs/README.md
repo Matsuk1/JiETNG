@@ -1,197 +1,83 @@
 # JiETNG Documentation
 
-This is the official documentation website for JiETNG, built with [VitePress](https://vitepress.dev/).
+This directory contains the VitePress documentation site for JiETNG.
 
-## Setup
-
-1. Install dependencies:
+## Commands
 
 ```bash
 cd docs
 npm install
-```
-
-2. Run development server:
-
-```bash
 npm run docs:dev
-```
-
-
-## Build
-
-Build the static site for production:
-
-```bash
 npm run docs:build
-```
-
-Output will be in `docs/.vitepress/dist/`
-
-## Preview
-
-Preview the production build:
-
-```bash
 npm run docs:preview
 ```
 
-## Deployment
+The production build is generated in:
 
-### GitHub Pages
-
-1. Build the site:
-```bash
-npm run docs:build
+```text
+docs/.vitepress/dist/
 ```
 
-2. Deploy to GitHub Pages:
-```bash
-# Add to your repository
-git add docs/.vitepress/dist -f
-git commit -m "Deploy docs"
-git subtree push --prefix docs/.vitepress/dist origin gh-pages
-```
+## Current Structure
 
-### Vercel/Netlify
-
-Simply connect your GitHub repository. The build settings should be:
-
-- **Build command**: `cd docs && npm install && npm run docs:build`
-- **Output directory**: `docs/.vitepress/dist`
-- **Node version**: 18+
-
-## Project Structure
-
-```
+```text
 docs/
 ├── .vitepress/
-│   ├── config.mts          # Site configuration
+│   ├── config.mts
 │   └── theme/
-│       ├── index.ts        # Theme customization
-│       └── style.css       # Custom styles
-├── guide/                  # Getting started guides
-│   ├── introduction.md
-│   ├── getting-started.md
-│   └── binding.md
-├── features/               # Feature documentation
-│   ├── b50.md
-│   ├── search.md
-│   └── ...
-├── commands/               # Command reference
+├── commands/
 │   ├── basic.md
-│   ├── advanced.md
-│   └── admin.md
-├── more/                   # Additional docs
+│   ├── index.md
+│   └── record.md
+├── features/
+│   └── search.md
+├── guide/
+│   └── getting-started.md
+├── more/
 │   ├── faq.md
+│   ├── license.md
 │   ├── privacy.md
 │   └── support.md
-├── ja/                     # Japanese localization
-├── zh/                     # Chinese localization
-├── index.md                # Homepage
-├── package.json
-└── README.md               # This file
-```
-
-## Writing Documentation
-
-### Creating a New Page
-
-1. Create a Markdown file in the appropriate directory
-2. Add frontmatter if needed:
-
-```md
----
-title: Page Title
-description: Page description
----
-
-# Page Title
-
-Content here...
-```
-
-3. Add the page to the sidebar in `.vitepress/config.mts`
-
-### Using Components
-
-VitePress supports Vue components in Markdown:
-
-```md
-<script setup>
-import CustomComponent from './CustomComponent.vue'
-</script>
-
-<CustomComponent />
-```
-
-### Custom Containers
-
-```md
-::: tip
-This is a tip
-:::
-
-::: warning
-This is a warning
-:::
-
-::: danger
-This is a dangerous warning
-:::
-
-::: details Click to expand
-Hidden content
-:::
-```
-
-### Code Blocks
-
-```md
-```js
-const msg = 'Hello'
-console.log(msg)
-` ` `
-```
-
-With line highlighting:
-
-```md
-```js{2}
-const msg = 'Hello'
-console.log(msg) // [!code highlight]
-` ``
-```
-
-## Multi-Language Support
-
-Add localized content in `ja/` and `zh/` directories with the same structure as root.
-
-Example:
-```
-docs/
-├── guide/
-│   └── introduction.md       # English
+├── en/
+│   └── ...
 ├── ja/
-│   └── guide/
-│       └── introduction.md   # Japanese
-└── zh/
-    └── guide/
-        └── introduction.md   # Chinese
+│   └── ...
+├── public/
+│   ├── bookmarklet/
+│   └── ...
+├── bookmarklet.md
+├── demo.md
+├── developer-api.md
+└── index.md
 ```
 
-## Maintenance
+The root locale is Simplified Chinese. English pages live under `docs/en/`, and Japanese pages live under `docs/ja/`.
 
-### Updating VitePress
+## Content Scope
 
-```bash
-npm update vitepress
+The docs should describe the current JiETNG behavior:
+
+- LINE Bot commands and self-only rules
+- SEGA account binding and `maimai update`
+- Import Token users and bookmarklet uploads
+- B-series score images, filters, record lookup, plate progress, and nearby arcade search
+- Developer API and user Import API
+
+Do not edit generated files under `docs/.vitepress/dist/` or dependency files under `docs/node_modules/`.
+
+## Deployment Notes
+
+The VitePress config uses:
+
+- `base: '/'`
+- sitemap hostname: `https://jietng.matsuk1.com`
+- local search
+- locales: root `zh-CN`, `/en/`, `/ja/`
+
+For hosted builds, use:
+
+```text
+Build command: cd docs && npm install && npm run docs:build
+Output directory: docs/.vitepress/dist
+Node version: 18+
 ```
-
-### Adding Search
-
-Search is enabled by default using VitePress's built-in local search.
-
-## License
-
-Copyright © 2025 - 2026 Matsuki. All Rights Reserved.

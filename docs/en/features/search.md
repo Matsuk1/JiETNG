@@ -1,78 +1,55 @@
-# Song Search and Record Query
-
-## Song Information Search
-
-```
-[song name] info
-[song name] song-info
-[song name] ってどんな曲
-```
-
-Fuzzy matching with 85% similarity threshold, returns up to 6 results. Case-insensitive; special symbols can be omitted.
-
-**Displays:** Song title (English/Japanese), cover art, artist, version, available difficulties, chart constant, chart type (Standard / DX), genre.
-
+---
+title: maimai DX Search and Filtering
+description: JiETNG supports maimai B50 filters, constants, levels, DX Rating, achievement, rating breakdown, and song record search.
 ---
 
-## Songs by Version
+# Search and Filtering
 
-```
-[version name] version-list
-[version name] のバージョンリスト
-```
+JiETNG search is split into score image filters, song search, and song ID lookup.
 
-`FESTiVAL+` is automatically recognized as `FESTiVAL PLUS`.
+## Score Filters
 
----
-
-## Search by Artist
-
-```
-artist [keyword]
-artist [keyword] [page]
+```text
+b50 -lv 14 14.9 -diff mas rem -scr 100.5
+ab50 -ver buddies -type dx
+rct50 -page 2
+ap50 -lv 13.6
 ```
 
-**Displays:** Song title, artist name, chart type (DX / STD / UTAGE)
+You can filter by level/constant, chart rating, achievement, DX score, DX stars, difficulty, chart type, version, and page.
 
-:::warning Private chat only
-:::
+The result is still rendered as a score image, which is useful for constant-range B50, MAS/Re:MAS-only lists, or version-specific views.
 
----
+## Song Search
 
-## Search by Chart Designer
-
-```
-designer [keyword]
-designer [keyword] [page]
-```
-
-**Displays:** Song title, matched designer name with difficulty label (e.g. `Jack [EXP]`), chart type (DX / STD / UTAGE)
-
-:::warning Private chat only
-:::
-
----
-
-## Single Song Record
-
-```
-[song name] record
-[song name] song-record
-[song name] のレコード
+```text
+artist Nanahira
+designer Jack
+ヒバナ info
+ヒバナってどんな曲
 ```
 
-**Displays:** Achievement rate, DX score, combo status (FC/FC+/AP/AP+), sync status (FS/FS+/FDX/FDX+), Rating contribution.
+- `artist` searches by artist.
+- `designer` searches by chart designer.
+- `info` / `song-info` / `ってどんな曲` shows song details.
+- Keywords are case-insensitive.
 
----
+## Song Records
 
-## Records by Level
-
+```text
+ヒバナ record
+ヒバナのレコード
+search-record 123456
 ```
-[level] record-list
-[level] records
-[level] のレコードリスト
-[level] record-list [page]
-```
 
-- Integer (e.g. `14`) matches 14.0~14.5; `14+` matches 14.6~14.9; decimal (e.g. `14.7`) is an exact match
-- Up to 50 songs per page (old ver. 35 + new ver. 15)
+`record` searches your record by title or alias. `search-record` uses the 6-character song ID.
+
+## Data Source
+
+Queries use processed records currently saved in JiETNG. They may come from:
+
+- `maimai update`
+- bookmarklet uploads with Import Token
+- developer API imports
+
+Query commands do not automatically resync official data.

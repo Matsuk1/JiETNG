@@ -1,91 +1,89 @@
-# Quick Start
+# Getting Started
 
-## Prerequisites
+JiETNG supports two data sources: automatic sync from a bound SEGA account, or processed record uploads through an Import Token and the bookmarklet.
 
-- LINE account
-- SEGA ID account (for maimai NET)
-- Access to maimai NET
+## Requirements
 
-## Step 1: Add the Bot
+- A LINE account
+- One data source:
+  - SEGA ID and maimai NET account for `maimai update`
+  - or a JiETNG Import Token for bookmarklet uploads
 
-Search for **@299bylay** on LINE or use the link: [@299bylay](https://line.me/R/ti/p/@299bylay)
+## Bind
 
-## Step 2: Bind Your SEGA ID
+Send this in a private chat:
 
-Send in private chat:
-
-```
+```text
 bind
 ```
 
-Click the button the bot sends to open the binding page. Fill in your SEGA ID, password, server version (`jp` or `intl`), and language, then submit to complete binding.
+The web page lets you choose:
 
-:::warning
-Binding tokens expire after 2 minutes. Send `bind` again to get a new link.
-:::
+- **Bind a SEGA account**: enter SEGA ID, password, server version (`jp` or `intl`), language, and Aime.
+- **Use Import Token without SEGA binding**: create an account that only receives imported records.
 
-## Step 3: Sync Scores
+Binding links expire. Send `bind` again to get a new link.
 
-```
+## Sync or Import Records
+
+### SEGA Account
+
+```text
 maimai update
+update
 ```
 
-## Step 4: Generate Best 50
+The bot syncs profile, Best records, Recent records, and related data from the selected maimai NET version. This command is self-only.
 
-```
-b50
-```
+### Import Token
 
-See [Commands Reference](/en/commands/) for all available commands.
-
----
-
-## Account Management
-
-### Check Binding Status
-
-```
-profile
-getme
-```
-
-### Rebind Account
-
-Update your password, version, and Aime without unbinding (SEGA ID cannot be changed):
-
-```
-rebind
-```
-
-### Personal Settings
-
-Update timezone, language, background, and other personal settings:
-
-```
+```text
 settings
 ```
 
-### Unbind
+Create an Import Token in the settings page, then install the [bookmarklet](/en/bookmarklet). Open the official maimai mobile site, click the bookmarklet, generate an image, and upload best / recent / profile data when needed.
 
+Import Token plaintext is shown only once. The settings page can list tokens, revoke active tokens, and delete revoked tokens.
+
+## Common Commands
+
+```text
+b50
+rct50
+13.6 records
+13sss+ progress
+真極 achievement
+ヒバナ record
+settings
+export json
 ```
+
+See [command reference](/en/commands/) and [record commands](/en/commands/record).
+
+## Settings and Rebind
+
+```text
+settings
+```
+
+Change language, timezone, background, display settings, and Import Tokens.
+
+```text
+rebind
+```
+
+Update SEGA password, version, and Aime. This is only available to users with a full SEGA binding. The SEGA ID itself cannot be changed through rebind.
+
+## Unbind
+
+```text
 unbind
+unbind confirm
 ```
 
-:::warning Data Deletion
-Unbinding will **permanently delete** all stored data, including score records, friend lists, and account information. This action cannot be undone.
-:::
+This deletes stored JiETNG user data and cannot be undone.
 
-### Version Selection
+## JP and INTL
 
-Choose the version that matches where you play:
-
-- **jp** (Japan): Playing at arcades in Japan
-- **intl** (International): Playing outside Japan
-
-You can change the version later via the `rebind` command without unbinding.
-
----
-
-## About JiETNG
-
-JiETNG is a 『maimai でらっくす』 score management bot for LINE. It fetches your play data directly from the official SEGA website and generates score charts, supporting Best 50, level analysis, plate progress tracking, and more. Both Japanese (jp) and International (intl) servers are supported.
+- JP: `https://maimaidx.jp/maimai-mobile/home/`
+- INTL: `https://maimaidx-eng.com/maimai-mobile/home/`

@@ -1,108 +1,93 @@
 # 基础命令
 
-## 账户管理
+基础命令主要用于账号、设置、状态、导出与支持信息。除特别说明外，命令大小写不敏感。
 
-### 绑定
+## 账号与设置
 
-```
+### bind
+
+```text
 bind
 ```
 
-发送后收到绑定链接（有效期 2 分钟）。仅限私聊。
+发送绑定链接。仅限私聊。
 
-### 解绑
+绑定页支持两种模式：
 
-```
-unbind
-```
+- 绑定 SEGA 账号，用于 `maimai update` 自动同步。
+- 不绑定 SEGA 账号，仅创建 Import Token 用户，用网页书签上传成绩。
 
-发送后需确认：
+### rebind
 
-```
-unbind confirm
-```
-
-:::danger 警告
-此操作不可逆，所有数据将被永久删除。
-:::
-
-### 重新绑定账户
-
-```
+```text
 rebind
 ```
 
-发送重新绑定链接，可修改密码、版本、Aime。SEGA ID 无法更改。仅限私聊。
+发送换绑链接，可修改 SEGA 密码、服务器版本与 Aime。仅限已绑定完整 SEGA 账号的用户；SEGA ID 不可更换。仅限私聊。
 
-### 修改个人设置
+### settings
 
-```
+```text
 settings
 ```
 
-发送设置链接，可修改时区、语言、背景等个人设置。仅限私聊。
+发送设置页链接。可修改语言、时区、背景、显示设置，并管理 Import Token。完整绑定用户与 Import Token 用户均可使用。仅限私聊。
 
-### 更新成绩
+### profile / getme
 
-```
-maimai update
-update
-```
-
-频率限制：30 秒内最多 2 次。
-
-### 查看绑定信息
-
-```
+```text
 profile
 getme
 ```
 
----
+查看当前账号资料、绑定状态与服务器版本。
 
-## 计算器
+### unbind
 
-### 达成率计算器
-
-```
-calc <tap> <hold> <slide> [<touch>] <break>
-```
-
-4 个参数（无 touch）或 5 个参数（含 touch）：
-
-```
-calc 500 100 200 50        # 无 touch
-calc 500 100 200 30 50     # 含 touch
+```text
+unbind
+unbind confirm
 ```
 
-### Rating 对照表
+先发送 `unbind` 获取确认提示，再发送 `unbind confirm` 删除保存的数据。此操作不可恢复。
 
+## 数据更新
+
+```text
+maimai update
+update
 ```
-rc 14.7
-RC 14.7
-Rc 14.7
+
+从 maimai NET 同步最新成绩。该命令需要完整 SEGA 账号绑定，并且只能用于自己的账号。
+
+Import Token 用户请使用网页书签上传成绩。
+
+## 数据导出
+
+```text
+export json
+export xml
+成绩导出 json
+成績エクスポート xml
 ```
 
-输入定数（1.0~15.0，最多一位小数），返回各达成率对应的 Rating 值。
+导出的是 JiETNG 加工后的成绩数据，不是数据库原始记录。内容包括用户资料、服务器版本、Best 记录、Recent 记录以及用于复现成绩图所需的标准化字段。
 
----
+## 其他
 
-## 排行榜
-
-```
+```text
+donate
+status
 rank
-ranking
-rank jp       # 日服排行榜
-rank intl     # 国际服排行榜
+rank jp
+rank intl
 ```
 
----
+- `donate`：显示支持开发信息。
+- `status`：显示机器人运行状态。
+- `rank` / `ranking`：查看 DX Rating 排行榜，可指定 `jp` 或 `intl`。
 
-## 随机歌曲
+## 限制
 
-```
-random
-random 14        # 随机 Lv.14 歌曲（14.0~14.5）
-random 14+       # 随机 Lv.14+ 歌曲（14.6~14.9）
-random 14.7      # 随机定数 14.7 歌曲
-```
+- `bind`、`rebind`、`settings`、`update`、`export`、`unbind` 为 self-only 命令，不会查询被 @ 提及的用户。
+- 群聊中如果 @ 不存在或没有 JiETNG 数据的用户，成绩查询不会回退成你的数据。

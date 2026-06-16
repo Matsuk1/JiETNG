@@ -1,91 +1,111 @@
 # 快速开始
 
-## 前提条件
+本页按当前 JiETNG 的实际流程说明如何开始使用。JiETNG 支持两种数据来源：绑定 SEGA 账号自动同步，或使用 Import Token 上传网页书签读取到的加工后成绩。
 
-- LINE 账号
-- SEGA ID 账号（用于 maimai NET）
-- 访问 maimai NET 的权限
+## 准备
 
-## 第一步：添加机器人
+- 一个 LINE 账号
+- 至少一种数据来源：
+  - SEGA ID 与 maimai NET 账号，用于 `maimai update` 自动同步
+  - 或 JiETNG Import Token，用于网页书签上传成绩
 
-在 LINE 中搜索 **@299bylay** 或使用链接：[@299bylay](https://line.me/R/ti/p/@299bylay)
+## 绑定方式
 
-## 第二步：绑定 SEGA ID
+在与 Bot 的私聊中发送：
 
-在私聊中发送：
-
-```
+```text
 bind
 ```
 
-点击机器人发送的按钮打开绑定页面，填写 SEGA ID、密码、服务器版本（`jp` 或 `intl`）和语言，提交后即完成绑定。
+Bot 会发送一个网页按钮。打开后可以选择：
 
-:::warning
-绑定令牌 2 分钟后过期，重新发送 `bind` 可获取新链接。
-:::
+- **绑定 SEGA 账号**：填写 SEGA ID、密码、服务器版本（`jp` 或 `intl`）、语言与 Aime。
+- **不绑定但使用 Import Token**：创建仅依赖导入数据的账号，适合只想通过网页书签上传成绩的用户。
 
-## 第三步：同步成绩
+绑定链接会过期；过期后重新发送 `bind` 即可获取新链接。
 
-```
+## 同步或导入成绩
+
+### SEGA 账号用户
+
+发送：
+
+```text
 maimai update
 ```
 
-## 第四步：生成 Best 50
+别名：
 
-```
-b50
-```
-
-其他命令请参阅[命令大全](/commands/)。
-
----
-
-## 账户管理
-
-### 查看绑定信息
-
-```
-profile
-getme
+```text
+update
 ```
 
-### 重新绑定账户
+Bot 会从对应版本的 maimai NET 同步资料、Best 记录、Recent 记录等数据。这个命令只能查询自己。
 
-无需解绑，即可更新密码、版本、Aime（SEGA ID 不可更改）：
+### Import Token 用户
 
-```
-rebind
-```
+发送：
 
-### 修改个人设置
-
-修改时区、语言、背景等个人设置：
-
-```
+```text
 settings
 ```
 
-### 解除绑定
+在设置页生成 Import Token，然后到[网页书签工具](/bookmarklet)页面保存书签。登录 maimai 官方移动站后点击书签，即可在原页面生成成绩图，并可保存 token 后上传 best / recent / profile 数据。
 
+Import Token 明文只显示一次。设置页可以查看所有 token、撤销 token，并删除已撤销 token。
+
+## 常用命令
+
+```text
+b50
+rct50
+13.6のレコードリスト
+13sss+ progress
+真極の達成状況
+ヒバナ record
+settings
+export json
 ```
+
+更多命令见[命令大全](/commands/)和[成绩命令](/commands/record)。
+
+## 修改设置
+
+发送：
+
+```text
+settings
+```
+
+可修改语言、时区、背景、显示设置，并管理 Import Token。`settings` 仅限私聊使用。
+
+如需修改 SEGA 账号密码、版本或 Aime，发送：
+
+```text
+rebind
+```
+
+`rebind` 只适用于已绑定完整 SEGA 账号的用户，且 SEGA ID 本身不可更换。
+
+## 解除绑定
+
+发送：
+
+```text
 unbind
 ```
 
-:::warning 数据删除
-解除绑定将**永久删除**所有已存储的数据，包括成绩记录、好友列表和账户信息。此操作无法撤销。
-:::
+再发送：
 
-### 版本选择
+```text
+unbind confirm
+```
 
-选择与你实际游玩地点匹配的版本：
+会删除 JiETNG 中保存的用户数据。此操作不可恢复。
 
-- **jp**（日本）：在日本境内的街机上游玩
-- **intl**（国际版）：在日本以外地区游玩
+## JP 与 INTL
 
-可通过 `rebind` 命令修改版本，无需解绑。
+绑定 SEGA 账号时选择 `jp` 或 `intl`。网页书签会根据当前打开的官方域名自动识别：
 
----
-
-## 关于 JiETNG
-
-JiETNG 是一个运行在 LINE 上的 『maimai でらっくす』 成绩管理机器人。它直接从 SEGA 官方网站获取你的游玩数据，生成成绩图表，支持 Best 50、等级分析、牌子进度追踪等功能，同时支持日服（jp）和国际服（intl）。
+- JP：`https://maimaidx.jp/maimai-mobile/home/`
+- INTL：`https://maimaidx-eng.com/maimai-mobile/home/`
