@@ -47,7 +47,7 @@
     style.textContent = `
       #jietng-bookmarklet-panel {
         position: fixed;
-        z-index: 2147483647;
+        z-index: 2147483646;
         right: 16px;
         bottom: 16px;
         width: min(320px, calc(100vw - 32px));
@@ -221,7 +221,7 @@
       }
       #jietng-bookmarklet-preview {
         position: fixed;
-        z-index: 2147483646;
+        z-index: 2147483647;
         inset: 0;
         display: flex;
         align-items: center;

@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 def clean_unbound_users() -> Dict[str, Any]:
     """
     清理未完成绑定的用户
-    删除注册超过1小时且没有 sega_id 或 sega_pwd 字段的账户
+    删除注册超过1小时且既没有 SEGA 凭据、也没有 import-token 身份的账户
     """
     now = datetime.now()
     cutoff = now - timedelta(hours=1)
@@ -39,6 +39,12 @@ def clean_unbound_users() -> Dict[str, Any]:
     users_to_delete = []
     for user_id, value in all_users.items():
         if "sega_id" in value and "sega_pwd" in value:
+            continue
+        if (
+            value.get("import_only")
+            or value.get("auth_type") == "import_token"
+            or value.get("import_tokens")
+        ):
             continue
         # 检查注册时间，未满1小时的跳过
         created_at = value.get('created_at') or value.get('registered_at')
