@@ -814,7 +814,7 @@
         <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
           <span>User Management ({{ total_users }} users)</span>
           <div style="display: flex; gap: 8px;">
-            <button class="btn btn-primary" onclick="loadAllNicknames(this)" style="font-size: 12px;">
+            <button class="btn btn-primary" onclick="loadAllNicknames(this, true)" style="font-size: 12px;">
               Refresh Nicknames
             </button>
             <button class="btn btn-warning" onclick="clearNicknameCache()" style="font-size: 12px;">
@@ -824,9 +824,9 @@
         </div>
 
         <!-- Loading indicator -->
-        <div id="nickname-loading" style="display: flex; align-items: center; justify-content: center; padding: 20px; gap: 12px;">
+        <div id="nickname-loading" style="display: none; align-items: center; justify-content: center; padding: 20px; gap: 12px;">
           <div class="spinner"></div>
-          <span style="color: var(--text-color); opacity: 0.7;">Loading user nicknames...</span>
+          <span style="color: var(--text-color); opacity: 0.7;">Refreshing user nicknames...</span>
         </div>
 
         <input type="text" class="search-box" id="user-search" placeholder="Search by User ID or Nickname..." onkeyup="filterUsers()">
@@ -1839,6 +1839,10 @@
           // 更新昵称
           const nicknameElement = document.querySelector('[data-user-id="' + userId + '"] .user-nickname');
           nicknameElement.textContent = data.nickname;
+          const userItem = document.querySelector('[data-user-id="' + userId + '"]');
+          if (userItem) {
+            userItem.setAttribute('data-nickname', data.nickname.toLowerCase());
+          }
 
           // 显示成功消息
           showToast('✅ User data refreshed', 'success');
@@ -2533,7 +2537,7 @@
     }
 
     function clearNicknameCache() {
-      if (confirm('Clear nickname cache? This will force a refresh from LINE API on next load.')) {
+      if (confirm('Clear nickname cache? Saved nicknames will still be used until you manually refresh from LINE API.')) {
         fetch('/admin/clear_cache', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'}
@@ -2541,7 +2545,7 @@
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            alert('✅ Nickname cache cleared! Refresh the page to reload nicknames.');
+            alert('✅ Nickname cache cleared.');
           } else {
             alert('❌ Error: ' + (data.message || 'Unknown error'));
           }
@@ -2550,20 +2554,22 @@
       }
     }
 
-    // Lazy load nicknames after page loads
-    window.addEventListener('DOMContentLoaded', function() {
-      loadAllNicknames();
-    });
-
-
-    function loadAllNicknames(btn) {
+    function loadAllNicknames(btn, refreshFromLine = false) {
+      if (refreshFromLine && !confirm('Refresh all nicknames from LINE API? This may send one request per user.')) {
+        return;
+      }
       if (btn) {
         btn.classList.add('btn-spinning');
         btn.disabled = true;
       }
+      const loadingIndicator = document.getElementById('nickname-loading');
+      if (loadingIndicator) {
+        loadingIndicator.style.display = 'flex';
+      }
       fetch('/admin/load_nicknames', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'}
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({refresh: refreshFromLine})
       })
       .then(res => res.json())
       .then(data => {
@@ -2572,8 +2578,6 @@
           btn.disabled = false;
         }
         if (data.success) {
-          // 隐藏加载指示器
-          const loadingIndicator = document.getElementById('nickname-loading');
           if (loadingIndicator) {
             loadingIndicator.style.display = 'none';
           }
@@ -2593,12 +2597,11 @@
             }
           }
 
-          if (btn) showToast('✓ Loaded ' + data.count + ' nicknames');
+          if (btn) showToast('✓ ' + (data.refreshed ? 'Refreshed ' : 'Loaded ') + data.count + ' nicknames');
           console.log('Loaded ' + data.count + ' nicknames');
         } else {
           console.error('Failed to load nicknames:', data.message);
           // 隐藏加载指示器即使失败
-          const loadingIndicator = document.getElementById('nickname-loading');
           if (loadingIndicator) {
             loadingIndicator.innerHTML = '<span style="color: var(--danger-color);">⚠️ Failed to load nicknames</span>';
           }
@@ -2611,7 +2614,6 @@
           btn.disabled = false;
         }
         console.error('Error loading nicknames:', err);
-        const loadingIndicator = document.getElementById('nickname-loading');
         if (loadingIndicator) {
           loadingIndicator.innerHTML = '<span style="color: var(--danger-color);">⚠️ Network error</span>';
         }

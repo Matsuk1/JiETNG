@@ -4474,12 +4474,24 @@ def check_admin_auth():
     """检查管理员是否已登录"""
     return session.get('admin_authenticated', False)
 
+def _fallback_user_nickname(user_id):
+    return f"User {user_id[:8]}..."
+
+
+def _is_line_nickname_error(nickname):
+    return bool(nickname and ("Unknown" in nickname or "API Error" in nickname or "Blocked" in nickname))
+
+
 def get_user_nickname_wrapper(user_id, use_cache=True):
     """
     获取用户昵称的wrapper函数
     在main.py中使用,自动传递line_bot_api
     若无法通过LINE API获取昵称,则从用户数据中获取nickname字段
     """
+    stored_nick = get_user_field(user_id, 'nickname')
+    if use_cache and stored_nick:
+        return stored_nick
+
     nickname = None
 
     # 尝试从LINE API获取昵称
@@ -4489,19 +4501,19 @@ def get_user_nickname_wrapper(user_id, use_cache=True):
             nickname = get_user_nickname(user_id, line_bot_api, use_cache)
 
             # 检查是否为错误消息
-            if nickname and ("Unknown" in nickname or "API Error" in nickname or "Blocked" in nickname):
+            if _is_line_nickname_error(nickname):
                 nickname = None
+            elif nickname:
+                edit_user_value(user_id, 'nickname', nickname)
     except Exception as e:
         logger.debug(f"[User] Failed to get LINE nickname: user_id={user_id}, error={e}")
         nickname = None
 
     # 如果LINE API失败,尝试从用户数据获取
-    if not nickname:
-        _stored_nick = get_user_field(user_id, 'nickname')
-        if _stored_nick:
-            nickname = _stored_nick
+    if not nickname and stored_nick:
+        nickname = stored_nick
 
-    return nickname if nickname else f"User {user_id[:8]}..."
+    return nickname if nickname else _fallback_user_nickname(user_id)
 
 @app.route("/admin/panel", methods=["GET", "POST"])
 def admin_panel():
@@ -4522,12 +4534,13 @@ def admin_panel():
     if not check_admin_auth():
         return render_template("admin_login.html")
 
-    # 准备用户数据 - 不获取昵称,使用懒加载
+    # 准备用户数据 - 使用本地保存的昵称,避免打开后台时批量请求 LINE API
     all_users = load_all_users()
     users_data = {}
     for user_id, user_info in all_users.items():
+        nickname = user_info.get('nickname') or _fallback_user_nickname(user_id)
         users_data[user_id] = {
-            'nickname': 'Loading...',  # 初始占位符
+            'nickname': nickname,
             'json_str': json.dumps(user_info, indent=2, ensure_ascii=False)
         }
 
@@ -5407,16 +5420,23 @@ def admin_load_nicknames():
         return jsonify({'error': 'Unauthorized'}), 401
 
     try:
-        # 获取所有用户的昵称
+        data = request.get_json(silent=True) or {}
+        refresh = bool(data.get('refresh'))
+
+        # 默认只读取本地保存的昵称；只有显式刷新才请求 LINE API
         nicknames = {}
-        for user_id in get_all_user_ids():
-            nickname = get_user_nickname_wrapper(user_id, use_cache=True)
-            nicknames[user_id] = nickname
+        if refresh:
+            for user_id in get_all_user_ids():
+                nicknames[user_id] = get_user_nickname_wrapper(user_id, use_cache=False)
+        else:
+            for user_id, user_info in load_all_users().items():
+                nicknames[user_id] = user_info.get('nickname') or _fallback_user_nickname(user_id)
 
         return jsonify({
             'success': True,
             'nicknames': nicknames,
-            'count': len(nicknames)
+            'count': len(nicknames),
+            'refreshed': refresh
         })
 
     except Exception as e:
