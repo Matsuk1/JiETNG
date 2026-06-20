@@ -42,6 +42,7 @@ from flask import (
     jsonify,
     send_file,
     send_from_directory,
+    stream_with_context,
 )
 from flask_wtf.csrf import CSRFProtect
 
@@ -194,6 +195,7 @@ TASK_TIMEOUT_SECONDS = 120
 
 # 搜索结果限制
 MAX_SEARCH_RESULTS = 10
+API_MAX_SEARCH_RESULTS = 50
 
 # ==================== 日志配置 ====================
 
@@ -1844,11 +1846,10 @@ def async_admin_maimai_update_task(event):
 
 # ==================== 主程序入口 ====================
 
-async def maimai_update(user_id, ver="jp"):
+async def _sync_maimai_user_data(user_id, ver="jp"):
     # 记录开始时间
     start_time = time.time()
 
-    messages = []
     func_status = {
         "User Info": True,
         "Best Records": True,
@@ -1857,7 +1858,16 @@ async def maimai_update(user_id, ver="jp"):
 
     _udata = get_user(user_id)
     if not _udata or 'sega_id' not in _udata or 'sega_pwd' not in _udata:
-        return segaid_error(user_id)
+        return {
+            "success": False,
+            "error": "Account not bound",
+            "message": f"User {user_id} has not bound a SEGA account",
+            "status_code": 400,
+            "user_id": user_id,
+            "version": ver,
+            "func_status": func_status,
+            "elapsed_time": time.time() - start_time,
+        }
 
     sega_id = _udata.get('sega_id')
     sega_pwd = _udata.get('sega_pwd')
@@ -1876,9 +1886,27 @@ async def maimai_update(user_id, ver="jp"):
     cookies = await login_to_maimai(sega_id, sega_pwd, ver=ver, aime=aime)
     if cookies is None:
         logger.warning(f"[User] ⚠ Login failed: user_id={user_id}")
-        return segaid_error(user_id)
+        return {
+            "success": False,
+            "error": "Authentication failed",
+            "message": "Invalid SEGA ID or password.",
+            "status_code": 401,
+            "user_id": user_id,
+            "version": ver,
+            "func_status": func_status,
+            "elapsed_time": time.time() - start_time,
+        }
     if cookies == "MAINTENANCE":
-        return maintenance_error(user_id)
+        return {
+            "success": False,
+            "error": "Maintenance",
+            "message": "The official website is under maintenance. Please try again later.",
+            "status_code": 503,
+            "user_id": user_id,
+            "version": ver,
+            "func_status": func_status,
+            "elapsed_time": time.time() - start_time,
+        }
 
     # 使用异步函数并发获取所有数据
     user_info, maimai_records, recent_records = await fetch_all_data(cookies)
@@ -1886,7 +1914,16 @@ async def maimai_update(user_id, ver="jp"):
     if (user_info == "MAINTENANCE" or
         maimai_records == "MAINTENANCE" or
         recent_records == "MAINTENANCE"):
-        return maintenance_error(user_id)
+        return {
+            "success": False,
+            "error": "Maintenance",
+            "message": "The official website is under maintenance. Please try again later.",
+            "status_code": 503,
+            "user_id": user_id,
+            "version": ver,
+            "func_status": func_status,
+            "elapsed_time": time.time() - start_time,
+        }
 
     if not user_info or not maimai_records or not recent_records:
         logger.warning(f"[User] ⚠ Data fetch incomplete: user_id={user_id}, user_info={bool(user_info)}, records={bool(maimai_records)}, recent={bool(recent_records)}")
@@ -1914,45 +1951,52 @@ async def maimai_update(user_id, ver="jp"):
     # 计算耗时
     elapsed_time = time.time() - start_time
 
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if not error:
-        # 记录更新时间
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         edit_user_value(user_id, "last_update", current_time)
 
-        # 获取用户信息
-        user_data = get_user(user_id) or {}
-        username = user_data.get('personal_info', {}).get('name', 'N/A')
-        rating = user_data.get('personal_info', {}).get('rating', 'N/A')
+    user_data = get_user(user_id) or {}
+    username = user_data.get('personal_info', {}).get('name', 'N/A')
+    rating = user_data.get('personal_info', {}).get('rating', 'N/A')
 
-        # 使用 flex message 显示更新结果
-        messages.append(generate_update_result_flex(
+    return {
+        "success": not error,
+        "error": None if not error else "Data fetch incomplete",
+        "message": "Sync completed successfully." if not error else "Sync completed with incomplete data.",
+        "status_code": 200 if not error else 502,
+        "user_id": user_id,
+        "version": ver,
+        "username": username,
+        "rating": rating,
+        "last_update": current_time if not error else user_data.get("last_update"),
+        "elapsed_time": elapsed_time,
+        "func_status": func_status,
+        "best_count": len(maimai_records) if maimai_records else 0,
+        "recent_count": len(recent_records) if recent_records else 0,
+    }
+
+
+async def maimai_update(user_id, ver="jp"):
+    result = await _sync_maimai_user_data(user_id, ver)
+
+    if result.get("error") == "Account not bound" or result.get("error") == "Authentication failed":
+        return segaid_error(user_id)
+    if result.get("error") == "Maintenance":
+        return maintenance_error(user_id)
+
+    messages = [
+        generate_update_result_flex(
             user_id=user_id,
-            username=username,
-            rating=rating,
-            update_time=current_time,
-            elapsed_time=elapsed_time,
-            func_status=func_status,
-            success=True
-        ))
-    else:
-        # 获取用户信息
-        user_data = get_user(user_id) or {}
-        username = user_data.get('personal_info', {}).get('name', 'N/A')
-        rating = user_data.get('personal_info', {}).get('rating', 'N/A')
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            username=result.get("username", "N/A"),
+            rating=result.get("rating", "N/A"),
+            update_time=result.get("last_update") or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            elapsed_time=result.get("elapsed_time", 0),
+            func_status=result.get("func_status", {}),
+            success=bool(result.get("success")),
+        )
+    ]
 
-        # 使用 flex message 显示错误结果
-        messages.append(generate_update_result_flex(
-            user_id=user_id,
-            username=username,
-            rating=rating,
-            update_time=current_time,
-            elapsed_time=elapsed_time,
-            func_status=func_status,
-            success=False
-        ))
-
-    if func_status["Best Records"]:
+    if result.get("func_status", {}).get("Best Records"):
         messages.append(await generate_records(user_id, user_id, ver=ver))
 
     return messages
@@ -4467,6 +4511,8 @@ task_tracking = {
 }
 task_tracking_lock = threading.Lock()
 MAX_COMPLETED_TASKS = 20  # 最多保留20个已完成任务
+api_sync_locks = {}
+api_sync_locks_lock = threading.Lock()
 
 # ==================== 辅助函数 ====================
 
@@ -6047,6 +6093,44 @@ def api_delete_user(user_id):
         }), 500
 
 
+@app.route("/api/v2/users/<user_id>/bind-url", methods=["GET"])
+@app.route("/api/v1/users/<user_id>/bind-url", methods=["GET"])
+@csrf.exempt
+@require_dev_token
+@require_user_permission
+def api_create_bind_url(user_id):
+    """
+    生成绑定 URL API
+
+    需要 Bearer Token 认证并拥有该用户的访问权限
+
+    返回:
+    - bind_url: 绑定页面链接（2分钟有效）
+    - expires_in: token 过期时间（秒）
+    """
+    try:
+        token_info = request.token_info
+        logger.info(f"[API] Create bind URL: user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
+
+        bind_token = generate_bind_token(user_id)
+        bind_url = f"https://{DOMAIN}/linebot/sega_bind?token={bind_token}"
+
+        return jsonify({
+            "success": True,
+            "user_id": user_id,
+            "bind_url": bind_url,
+            "expires_in": 120,
+            "message": "Bind URL generated successfully."
+        }), 201
+
+    except Exception as e:
+        logger.error(f"[API] ✗ Create bind URL error: user_id={user_id}, error={e}", exc_info=True)
+        return jsonify({
+            "error": "Internal server error",
+            "message": str(e)
+        }), 500
+
+
 @app.route("/api/v2/users/<user_id>/rebind-url", methods=["GET"])
 @app.route("/api/v1/users/<user_id>/rebind-url", methods=["GET"])
 @csrf.exempt
@@ -6097,7 +6181,7 @@ def api_create_settings_url(user_id):
     需要 Bearer Token 认证并拥有该用户的访问权限
 
     返回:
-    - settings_url: 绑定页面链接（2分钟有效）
+    - settings_url: 设置页面链接（30分钟有效）
     - expires_in: token 过期时间（秒）
     """
     try:
@@ -6247,68 +6331,96 @@ def api_rebind_user(user_id):
         return jsonify({"error": "Internal server error", "message": str(e)}), 500
 
 
-@app.route("/api/v2/users/<user_id>/tasks", methods=["POST"])
-@app.route("/api/v1/users/<user_id>/tasks", methods=["POST"])
+def _get_api_sync_lock(user_id):
+    with api_sync_locks_lock:
+        lock = api_sync_locks.get(user_id)
+        if lock is None:
+            lock = threading.Lock()
+            api_sync_locks[user_id] = lock
+        return lock
+
+
+def _api_sync_result_payload(result):
+    status_code = int(result.get("status_code") or (200 if result.get("success") else 500))
+    payload = {
+        "success": bool(result.get("success")),
+        "user_id": result.get("user_id"),
+        "version": result.get("version"),
+        "username": result.get("username"),
+        "rating": result.get("rating"),
+        "last_update": result.get("last_update"),
+        "elapsed_time": result.get("elapsed_time"),
+        "func_status": result.get("func_status"),
+        "best_count": result.get("best_count", 0),
+        "recent_count": result.get("recent_count", 0),
+        "message": result.get("message"),
+    }
+    if not result.get("success"):
+        payload["error"] = result.get("error") or "Sync failed"
+    return payload, status_code
+
+
+def _run_api_sync(user_id, ver):
+    return asyncio.run(asyncio.wait_for(
+        _sync_maimai_user_data(user_id, ver),
+        timeout=TASK_TIMEOUT_SECONDS,
+    ))
+
+
+def _get_sync_version(user_id):
+    user_data = get_user(user_id) or {}
+    return user_data.get("version", "jp")
+
+
+@app.route("/api/v2/users/<user_id>/sync/stream", methods=["POST"])
 @csrf.exempt
 @require_dev_token
 @require_user_permission
-def api_sync_user_data(user_id):
+def api_sync_user_data_stream(user_id):
     """
-    触发用户数据同步 API (RESTful)
+    流式同步用户成绩 API。
 
-    需要 Bearer Token 认证并拥有该用户的访问权限
-
-    将用户加入更新队列，异步执行数据同步
+    返回 application/x-ndjson：
+    - 第一行: accepted / queued-like 即时反馈
+    - 最后一行: completed / failed
     """
-    try:
-        # 检查用户是否已绑定账号
-        _udata = get_user(user_id)
-        if not _udata or 'sega_id' not in _udata or 'sega_pwd' not in _udata:
-            return jsonify({
-                "error": "Account not bound",
-                "message": f"User {user_id} has not bound a SEGA account"
-            }), 400
+    if check_rate_limit(user_id, "api_sync_user_data_stream"):
+        return jsonify({"error": "Rate limited", "message": "Too many sync requests. Please retry later."}), 429
 
-        # 创建模拟事件对象用于更新任务
-        class MockEvent:
-            def __init__(self, user_id):
-                self.source = type('obj', (object,), {'user_id': user_id})()
-                self.reply_token = None  # API 调用不需要回复
+    token_info = request.token_info
+    ver = _get_sync_version(user_id)
+    lock = _get_api_sync_lock(user_id)
 
-        mock_event = MockEvent(user_id)
+    def write_event(event, **payload):
+        payload["event"] = event
+        payload.setdefault("user_id", user_id)
+        return json.dumps(payload, ensure_ascii=False) + "\n"
 
-        # 生成任务ID
-        task_id = f"api_sync_{secrets.token_hex(8)}"
+    @stream_with_context
+    def generate():
+        if not lock.acquire(blocking=False):
+            yield write_event("failed", success=False, error="Sync already running", message=f"User {user_id} is already syncing")
+            return
 
-        # 将更新任务加入队列
         try:
-            webtask_queue.put_nowait((async_maimai_update_task, (mock_event,), task_id))
+            start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            yield write_event("accepted", success=True, version=ver, started_at=start_time, message="Sync started.")
+            logger.info(f"[API] Stream sync started: user_id={user_id}, token_id={token_info['token_id']}")
+            result = _run_api_sync(user_id, ver)
+            payload, _ = _api_sync_result_payload(result)
+            event = "completed" if payload.get("success") else "failed"
+            yield write_event(event, **payload)
+            logger.info(f"[API] Stream sync finished: user_id={user_id}, success={payload.get('success')}, token_id={token_info['token_id']}")
+        except asyncio.TimeoutError:
+            logger.warning(f"[API] Stream sync timeout: user_id={user_id}")
+            yield write_event("failed", success=False, error="Timeout", message=f"Sync exceeded {TASK_TIMEOUT_SECONDS}s")
+        except Exception as e:
+            logger.error(f"[API] ✗ Stream sync error: user_id={user_id}, error={e}", exc_info=True)
+            yield write_event("failed", success=False, error="Internal server error", message=str(e))
+        finally:
+            lock.release()
 
-            # 记录 API 访问日志
-            token_info = request.token_info
-            logger.info(f"[API] ✓ Sync triggered: user_id={user_id}, task_id={task_id}, token_id={token_info['token_id']}, note={token_info['note']}")
-
-            return jsonify({
-                "success": True,
-                "message": "Sync task queued successfully",
-                "user_id": user_id,
-                "task_id": task_id,
-                "queue_size": webtask_queue.qsize()
-            }), 202  # 202 Accepted 更适合异步操作
-
-        except queue.Full:
-            return jsonify({
-                "error": "Queue full",
-                "message": "Sync queue is full, please try again later",
-                "queue_size": webtask_queue.qsize()
-            }), 503
-
-    except Exception as e:
-        logger.error(f"[API] ✗ Sync user error: user_id={user_id}, error={e}", exc_info=True)
-        return jsonify({
-            "error": "Internal server error",
-            "message": str(e)
-        }), 500
+    return Response(generate(), mimetype="application/x-ndjson")
 
 
 # ==================== Permission Management APIs (RESTful) ====================
@@ -6588,67 +6700,6 @@ def api_revoke_user_permission(user_id, token_id):
         }), 500
 
 
-# ==================== Task Status API (RESTful) ====================
-
-@app.route("/api/v1/tasks/<task_id>", methods=["GET"])
-@app.route("/api/v2/tasks/<task_id>", methods=["GET"])
-@csrf.exempt
-@require_dev_token
-def api_get_task(task_id):
-    """
-    查询任务状态 API (RESTful)
-
-    需要 Bearer Token 认证
-
-    返回指定任务的状态信息（running, queued, completed 或 not_found）
-    """
-    try:
-        with task_tracking_lock:
-            # 检查任务是否在运行中
-            for task in task_tracking['running']:
-                if task.get('id') == task_id:
-                    return jsonify({
-                        "success": True,
-                        "task_id": task_id,
-                        "status": "running",
-                    })
-
-            # 检查任务是否在队列中
-            for task in task_tracking['queued']:
-                if task.get('id') == task_id:
-                    return jsonify({
-                        "success": True,
-                        "task_id": task_id,
-                        "status": "queued",
-                        "queue_position": task_tracking['queued'].index(task) + 1,
-                    })
-
-            # 检查任务是否已完成
-            for task in task_tracking['completed']:
-                if task.get('id') == task_id:
-                    return jsonify({
-                        "success": True,
-                        "task_id": task_id,
-                        "status": "completed",
-                        "result": task.get('result', 'success'),
-                    })
-
-        # 任务不存在
-        return jsonify({
-            "success": False,
-            "task_id": task_id,
-            "status": "not_found",
-            "message": "Task not found or expired"
-        }), 404
-
-    except Exception as e:
-        logger.error(f"[API] ✗ Get task status error: task_id={task_id}, error={e}", exc_info=True)
-        return jsonify({
-            "error": "Internal server error",
-            "message": str(e)
-        }), 500
-
-
 # ==================== Song Search API (RESTful) ====================
 
 @app.route("/api/v2/songs/search", methods=["GET"])
@@ -6669,8 +6720,30 @@ def api_v2_search_songs():
     """
     try:
         query = request.args.get('q', '')
-        ver = request.args.get('ver', 'jp')
+        requested_ver = request.args.get('ver')
+        user_id = request.args.get('user_id')
         max_results = request.args.get('max_results', MAX_SEARCH_RESULTS, type=int)
+        if max_results < 1:
+            return jsonify({
+                "error": "Invalid parameter",
+                "message": "Parameter 'max_results' must be at least 1"
+            }), 400
+        if max_results > API_MAX_SEARCH_RESULTS:
+            return jsonify({
+                "error": "Invalid parameter",
+                "message": f"Parameter 'max_results' must be <= {API_MAX_SEARCH_RESULTS}"
+            }), 400
+
+        if requested_ver:
+            ver = requested_ver.strip().lower()
+        elif user_id:
+            token_info = request.token_info
+            has_permission, result = check_user_permission(user_id, token_info['token_id'])
+            if not has_permission:
+                return result
+            ver = (result or {}).get("version", "jp")
+        else:
+            ver = 'jp'
 
         if query == '__empty__':
             query = ''
@@ -6682,7 +6755,7 @@ def api_v2_search_songs():
             }), 400
 
         token_info = request.token_info
-        logger.info(f"[API] Search songs: query='{query}', token_id={token_info['token_id']}, note={token_info['note']}")
+        logger.info(f"[API] Search songs: query='{query}', ver={ver}, user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
 
         songs, _ = read_dxdata(ver)
         matching_songs = find_matching_songs(query, songs, max_results=max_results)
@@ -6809,6 +6882,10 @@ def api_v2_song_info(song_id):
     返回: image/png
     """
     try:
+        token_info = request.token_info
+        if check_rate_limit(token_info['token_id'], "api_song_info_image"):
+            return jsonify({"error": "Rate limited", "message": "Too many image requests. Please retry later."}), 429
+
         ver = request.args.get('ver', 'jp').strip().lower()
         if ver not in ('jp', 'intl'):
             return jsonify({"error": "Invalid ver, must be jp or intl"}), 400
@@ -6831,7 +6908,6 @@ def api_v2_song_info(song_id):
         del song_img
         gc.collect(0)
 
-        token_info = request.token_info
         logger.info(f"[API] Song info generated: song_id={song_id}, ver={ver}, token_id={token_info['token_id']}")
         track_event('image_gen', user_id=None, metadata={'command': 'song-info', 'song_id': song_id, 'ver': ver})
         return _send_image_response(buf)
@@ -6854,6 +6930,9 @@ def api_v2_song_record(user_id, song_id):
     """
     try:
         token_info = request.token_info
+        if check_rate_limit(user_id, "api_song_record_image"):
+            return jsonify({"error": "Rate limited", "message": "Too many image requests. Please retry later."}), 429
+
         has_permission, result = check_user_permission(user_id, token_info['token_id'])
         if not has_permission:
             return result
@@ -6919,6 +6998,8 @@ def api_v2_generate_record_image(user_id):
     """
     try:
         token_info = request.token_info
+        if check_rate_limit(user_id, "api_record_image"):
+            return jsonify({"error": "Rate limited", "message": "Too many image requests. Please retry later."}), 429
 
         has_permission, result = check_user_permission(user_id, token_info['token_id'])
         if not has_permission:
@@ -7000,6 +7081,9 @@ def api_v2_generate_plate(user_id):
     """
     try:
         token_info = request.token_info
+        if check_rate_limit(user_id, "api_plate_image"):
+            return jsonify({"error": "Rate limited", "message": "Too many image requests. Please retry later."}), 429
+
         has_permission, result = check_user_permission(user_id, token_info['token_id'])
         if not has_permission:
             return result
@@ -7143,6 +7227,9 @@ def api_v2_generate_achievement(user_id):
     """
     try:
         token_info = request.token_info
+        if check_rate_limit(user_id, "api_achievement_image"):
+            return jsonify({"error": "Rate limited", "message": "Too many image requests. Please retry later."}), 429
+
         has_permission, result = check_user_permission(user_id, token_info['token_id'])
         if not has_permission:
             return result
@@ -7366,6 +7453,9 @@ def api_v2_import_records():
 
     token_info = request.import_token_info
     user_id = token_info["user_id"]
+    if check_rate_limit(user_id, "api_import_records"):
+        return _maimai_session_cors(jsonify({"error": "Rate limited", "message": "Too many import requests. Please retry later."})), 429
+
     try:
         payload = request.get_json(force=True, silent=False)
         result = import_processed_payload(

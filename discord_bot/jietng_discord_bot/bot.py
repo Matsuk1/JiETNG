@@ -451,27 +451,16 @@ def register_commands(bot: JiETNGDiscordBot) -> None:
         lang = interaction_lang(interaction)
         await interaction.response.defer(thinking=True, ephemeral=True)
         resolved = _resolve_user_id(bot, interaction, None)
-        try:
-            payload = await bot.jietng.users.trigger_sync_and_wait(
-                resolved,
-                timeout=300.0,
-                interval=3.0,
-            )
-        except TimeoutError:
-            await interaction.followup.send(
-                tr(lang, "sync_timeout"),
-                ephemeral=True,
-            )
-            return
+        final_event = None
+        async for event in bot.jietng.users.sync_stream(resolved):
+            final_event = event
 
-        status = payload.get("status", "completed")
-        result = payload.get("result")
+        status = (final_event or {}).get("event", "failed")
         if status == "completed":
             text = tr(lang, "sync_done")
-            if result and result != "success":
-                text += tr(lang, "sync_result", result=result)
         else:
-            text = tr(lang, "sync_status", status=status)
+            message = (final_event or {}).get("message") or status
+            text = tr(lang, "sync_result", result=message)
         await interaction.followup.send(text, ephemeral=True)
 
     @bot.tree.command(name="b50", description=_ls("cmd.b50.desc"))

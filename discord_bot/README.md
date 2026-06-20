@@ -47,7 +47,7 @@ python -m jietng_discord_bot
 - `/unlink` removes the local mapping and requests JiETNG server-side permission revocation.
 - `/bind` creates a JiETNG user and sends a private binding button.
 - `/profile` shows your JiETNG profile metadata.
-- `/sync` triggers your JiETNG data sync task and replies when it finishes.
+- `/sync` streams your JiETNG data sync and replies when it finishes.
 - `/b50 [command]`, `/b40 [command]`, `/b35 [command]`, `/b15 [command]` send Best records images.
 - `/ab35 [command]`, `/ab50 [command]`, `/ap50 [command]`, `/fdx50 [command]`, `/r50 [command]`, `/idlb50 [command]`, `/unknown [command]` send specialized records images.
 - `/achievement level [rank] [filter_mode]` sends a level / achievement image.

@@ -44,19 +44,17 @@ Response: 200 OK
 
 ### 管理权限请求 Manage Permission Request
 ```http
-PATCH /api/v2/users/{user_id}/permissions
+PATCH /api/v2/users/{user_id}/permissions/requests/{request_id}
 Authorization: Bearer {owner_token}
 Content-Type: application/json
 
 // 接受
 {
-  "request_id": "req_abc123",
   "action": "accept"
 }
 
 // 拒绝
 {
-  "request_id": "req_abc123",
   "action": "reject"
 }
 
@@ -86,19 +84,15 @@ Response: 200 OK
 
 ## 数据同步 Data Sync
 
-### 触发同步 Trigger Sync
+### 流式同步 Streaming Sync
 ```http
-POST /api/v2/users/{user_id}/tasks
+POST /api/v2/users/{user_id}/sync/stream
 Authorization: Bearer {token}
 
-Response: 202 Accepted
-{
-  "success": true,
-  "message": "Sync task queued successfully",
-  "user_id": "U123",
-  "task_id": "api_sync_abc123",
-  "queue_size": 3
-}
+Content-Type: application/x-ndjson
+
+{"event":"accepted","success":true,"user_id":"U123","version":"jp","started_at":"2026-06-20 12:34:56","message":"Sync started."}
+{"event":"completed","success":true,"user_id":"U123","version":"jp","username":"Player","rating":"15392","last_update":"2026-06-20 12:35:04","elapsed_time":8.42,"func_status":{"User Info":true,"Best Records":true,"Recent Records":true},"best_count":1200,"recent_count":50,"message":"Sync completed successfully."}
 ```
 
 ## 歌曲搜索 Song Search
@@ -123,43 +117,10 @@ Response: 200 OK
     }
   ]
 }
-
-// 带用户记录
-GET /api/v2/songs/search?q=残響&user_id=U123
-{
-  "success": true,
-  "count": 1,
-  "query": "残響",
-  "ver": "jp",
-  "records": [
-    [
-      {
-        "title": "残響散歌",
-        "achievements": 100.5000,
-        "fc": "ap",
-        ...
-      }
-    ]
-  ]
-}
 ```
 
-## 任务状态 Task Status
-
-### 查询任务 Get Task
-```http
-GET /api/v2/tasks/{task_id}
-Authorization: Bearer {token}
-
-Response: 200 OK
-{
-  "success": true,
-  "task_id": "api_sync_abc123",
-  "status": "running",  // running, queued, completed
-  "start_time": "2026-02-03T10:00:00",
-  "task_type": "maimai_update"
-}
-```
+`max_results` must be between 1 and 50.
+If `ver` is omitted and `user_id` is provided, the API uses that user's saved server version. If both are omitted, it defaults to `jp`.
 
 ## 错误响应 Error Responses
 
@@ -200,7 +161,7 @@ Response: 200 OK
 ### 歌曲搜索
 - `q`: 搜索关键词（支持 "__empty__" 表示空字符串）
 - `ver`: 服务器版本（jp/intl，默认jp）
-- `max_results`: 最大结果数（默认6）
+- `max_results`: 最大结果数（服务端默认10，允许1-50；SDK默认传6）
 - `user_id`: 用户ID（可选，返回用户记录）
 
 ## HTTP 状态码速查

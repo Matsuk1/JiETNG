@@ -72,17 +72,24 @@ PUT /api/v2/users/<user_id>/bind
 GET /api/v2/users/<user_id>/bind-url
 GET /api/v2/users/<user_id>/rebind-url
 GET /api/v2/users/<user_id>/settings-url
-POST /api/v2/users/<user_id>/tasks
-GET /api/v2/tasks/<task_id>
+POST /api/v2/users/<user_id>/sync/stream
 ```
 
-`tasks` queues maimai NET sync and requires a full SEGA binding. Import Token users should upload processed records instead.
+`/sync/stream` returns `application/x-ndjson`: the first line is `accepted`, then the final line is `completed` or `failed`. Sync requires a full SEGA binding. Import Token users should upload processed records instead.
 
 ## Score Image
 
 ```http
 GET /api/v2/users/<user_id>/image?command=b50
+GET /api/v2/users/<user_id>/songs/<song_id>/image
+GET /api/v2/users/<user_id>/plate?title=真神
+GET /api/v2/users/<user_id>/achievement?level=14%2B&rank=sss
+GET /api/v2/songs/<song_id>/image
+GET /api/v2/users/<user_id>/export?fmt=json
+GET /api/v2/dxdata?ver=jp
 ```
+
+`/songs/search` chooses the version in this order: explicit `ver`, then the version stored on `user_id`, then `jp`.
 
 `command` accepts the same B-series words users can type:
 

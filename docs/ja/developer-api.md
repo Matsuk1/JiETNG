@@ -72,17 +72,24 @@ PUT /api/v2/users/<user_id>/bind
 GET /api/v2/users/<user_id>/bind-url
 GET /api/v2/users/<user_id>/rebind-url
 GET /api/v2/users/<user_id>/settings-url
-POST /api/v2/users/<user_id>/tasks
-GET /api/v2/tasks/<task_id>
+POST /api/v2/users/<user_id>/sync/stream
 ```
 
-`tasks` は maimai NET 同期をキューに入れます。完全な SEGA 連携が必要です。Import Token ユーザーは加工済み成績をアップロードしてください。
+`/sync/stream` は `application/x-ndjson` を返し、最初の行が `accepted`、最後の行が `completed` または `failed` になります。同期には完全な SEGA 連携が必要です。Import Token ユーザーは加工済み成績をアップロードしてください。
 
 ## スコア画像
 
 ```http
 GET /api/v2/users/<user_id>/image?command=b50
+GET /api/v2/users/<user_id>/songs/<song_id>/image
+GET /api/v2/users/<user_id>/plate?title=真神
+GET /api/v2/users/<user_id>/achievement?level=14%2B&rank=sss
+GET /api/v2/songs/<song_id>/image
+GET /api/v2/users/<user_id>/export?fmt=json
+GET /api/v2/dxdata?ver=jp
 ```
+
+`/songs/search` のバージョン選択は、明示された `ver`、`user_id` に保存されたサーバー、既定の `jp` の順です。
 
 `command` はユーザーが入力できる B 系コマンドを受け付けます。
 

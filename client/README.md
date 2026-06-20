@@ -2,7 +2,7 @@
 
 [`pip install jietng`](https://pypi.org/project/jietng/) — Python 客户端，封装 [JiETNG](https://jietng.matsuk1.com) 舞萌DX 查分器的 HTTP API。
 
-支持同步 / 异步两套客户端、覆盖全部 v2 端点（用户 / 权限 / 同步 / 搜歌 / 成绩图 / 导出 …）、类型注解齐全。
+支持同步 / 异步两套客户端、覆盖 v2 开发者端点和 Import Token 上传端点（用户 / 权限 / 同步 / 搜歌 / 成绩图 / 导出 / 导入 …）、类型注解齐全。
 
 ## 安装
 
@@ -32,9 +32,9 @@ with jietngClient(token="your_token") as client:
     with open("b50.png", "wb") as f:
         f.write(png)
 
-    # 触发后台同步并等待完成
-    task = client.users.trigger_sync_and_wait("U1234567890", timeout=300)
-    print("sync status:", task["status"])
+    # 流式同步：先收到 accepted，结束时收到 completed / failed
+    for event in client.users.sync_stream("U1234567890"):
+        print(event["event"], event.get("message"))
 
     # 导出成绩为 JSON / XML，文件名由服务端推荐（含玩家名 + 时间戳）
     path = client.exports.save("U1234567890", fmt="json")
@@ -49,9 +49,9 @@ from jietng import AsyncjietngClient
 
 async def main():
     async with AsyncjietngClient(token="your_token") as client:
-        print(await client.songs.search("PANDORA", ver="jp", max_results=3))
-        task = await client.users.trigger_sync_and_wait("U1234567890", timeout=300)
-        print("sync status:", task["status"])
+        print(await client.songs.search("PANDORA", user_id="U1234567890", max_results=3))
+        async for event in client.users.sync_stream("U1234567890"):
+            print("sync event:", event["event"])
 
         png = await client.images.plate("U1234567890", title="真神")
         with open("plate.png", "wb") as f:
@@ -64,14 +64,14 @@ asyncio.run(main())
 
 | 命名空间 | 主要方法 |
 |---|---|
-| `client.users` | `list / get / create / delete / trigger_sync / trigger_sync_and_wait / bind / update_bind / get_rebind_url / get_settings_url` |
+| `client.users` | `list / get / create / delete / sync_stream / bind / update_bind / get_bind_url / get_rebind_url / get_settings_url` |
 | `client.permissions` | `request / list_requests / accept / reject / revoke / revoke_self` |
 | `client.songs` | `search / info` |
-| `client.tasks` | `get / wait` |
 | `client.versions` | `list` |
 | `client.dxdata` | `get` |
 | `client.images` | `user_song / records / plate / achievement` |
 | `client.exports` | `download / save` |
+| `client.imports` | `records` |
 
 所有方法的形参 / 返回结构与 [JiETNG API 文档](https://jietng.matsuk1.com/developer-api) 一一对应。
 

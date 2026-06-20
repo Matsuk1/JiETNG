@@ -95,11 +95,10 @@ GET /api/v2/users/<user_id>/settings-url
 ### 触发同步
 
 ```http
-POST /api/v2/users/<user_id>/tasks
-GET /api/v2/tasks/<task_id>
+POST /api/v2/users/<user_id>/sync/stream
 ```
 
-该接口将用户同步加入队列并返回任务 ID。仅适用于已绑定完整 SEGA 账号的用户。导入模式用户应调用导入 API 上传成绩。
+`/sync/stream` 返回 `application/x-ndjson`，第一行是 `accepted`，结束时返回 `completed` 或 `failed`。仅适用于已绑定完整 SEGA 账号的用户。导入模式用户应调用导入 API 上传成绩。
 
 ## 图片与查询端点
 
@@ -107,7 +106,15 @@ GET /api/v2/tasks/<task_id>
 
 ```http
 GET /api/v2/users/<user_id>/image?command=b50
+GET /api/v2/users/<user_id>/songs/<song_id>/image
+GET /api/v2/users/<user_id>/plate?title=真神
+GET /api/v2/users/<user_id>/achievement?level=14%2B&rank=sss
+GET /api/v2/songs/<song_id>/image
+GET /api/v2/users/<user_id>/export?fmt=json
+GET /api/v2/dxdata?ver=jp
 ```
+
+`/songs/search` 的版本选择优先级：显式 `ver` > `user_id` 对应用户的服务器版本 > 默认 `jp`。
 
 `command` 可使用用户可输入的 B 系列命令：
 
