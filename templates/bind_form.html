@@ -60,35 +60,6 @@
       display: flex;
     }
 
-    .language-tip {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      margin: -4px 12px 12px;
-      padding: 9px 11px;
-      border: 1px solid rgba(0, 122, 255, 0.18);
-      border-radius: var(--radius-md);
-      background: rgba(0, 122, 255, 0.06);
-      color: var(--text-secondary);
-      font-size: 12px;
-      line-height: 1.45;
-    }
-
-    .language-tip::before {
-      content: 'i';
-      flex: 0 0 16px;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: var(--info-color);
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-      line-height: 16px;
-      text-align: center;
-      margin-top: 1px;
-    }
-
     input[type="submit"] {
       width: 100%;
       padding: 13px;
@@ -176,7 +147,7 @@
             <option value="zh-tw" id="opt-lang-zh-tw">繁體中文</option>
           </select>
         </div>
-        <div class="language-tip" id="language-platform-hint">
+        <div class="list-item bind-type-help active" id="language-platform-hint">
           言語設定は LINE 以外の外部プラットフォームには反映されない場合があります。
         </div>
 
@@ -258,7 +229,7 @@
       <input type="submit" id="submit-btn" value="連携" />
     </form>
 
-    <div class="notice" style="margin-top: 24px;">
+    <div class="notice">
       <strong id="notice-title">ご利用に関するご注意</strong><br>
       <div id="notice-ja" style="display: block;">
         ご入力いただいた情報はすべて暗号化された形式で安全に保存され、第三者に提供されることはありません。<br><br>
