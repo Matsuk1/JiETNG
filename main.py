@@ -253,8 +253,14 @@ app.secret_key = secrets.token_hex(32)  # 用于session加密
 
 
 def _error_page(message, language="ja", status=400):
-    message = select_text(message, language=language, default_language="ja")
-    return render_template("error.html", message=message, language=language), status
+    message_i18n = None
+    if isinstance(message, dict):
+        message_i18n = {
+            code: select_text(message, language=code, default_language="ja")
+            for code in ("ja", "en", "zh", "zh-tw")
+        }
+    message = select_text(message_i18n or message, language=language, default_language="ja")
+    return render_template("error.html", message=message, message_i18n=message_i18n, language=language), status
 
 # 配置成绩命令列表
 RANK_COMMANDS = {
@@ -891,20 +897,30 @@ def website_segaid_bind():
     mode = request.args.get("mode", "bind")
     if not token:
         # Token 未提供的错误消息（此时还没有 user_id，三语同时显示）
-        token_missing_message = """トークンが提供されていません。<br />
-Token not provided. <br />
-未提供令牌。"""
+        token_missing_message = {
+            "ja": "トークンが提供されていません。",
+            "en": "Token not provided.",
+            "zh": "未提供令牌。"
+        }
         return _error_page(token_missing_message)
 
     try:
         user_id = get_user_id_from_token(token)
         if not user_exists(user_id):
-            token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
+            token_invalid_message = {
+                "ja": "トークンが無効です。",
+                "en": "Invalid token.",
+                "zh": "令牌无效。"
+            }
             return _error_page(token_invalid_message)
         
     except Exception as e:
         logger.error(f"[Auth] ✗ Token verification failed: error={e}")
-        token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
+        token_invalid_message = {
+            "ja": "トークンが無効です。",
+            "en": "Invalid token.",
+            "zh": "令牌无效。"
+        }
         return _error_page(token_invalid_message)
 
     if request.method == "POST":
@@ -1094,19 +1110,29 @@ def website_settings():
     """
     token = request.args.get("token")
     if not token:
-        token_missing_message = """トークンが提供されていません。<br />
-Token not provided. <br />
-未提供令牌。"""
+        token_missing_message = {
+            "ja": "トークンが提供されていません。",
+            "en": "Token not provided.",
+            "zh": "未提供令牌。"
+        }
         return _error_page(token_missing_message)
 
     try:
         user_id = get_user_id_from_settings_token(token)
         if not user_exists(user_id):
-            token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
+            token_invalid_message = {
+                "ja": "トークンが無効です。",
+                "en": "Invalid token.",
+                "zh": "令牌无效。"
+            }
             return _error_page(token_invalid_message)
     except Exception as e:
         logger.error(f"[Auth] ✗ Settings token verification failed: error={e}")
-        token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
+        token_invalid_message = {
+            "ja": "トークンが無効です。",
+            "en": "Invalid token.",
+            "zh": "令牌无效。"
+        }
         return _error_page(token_invalid_message)
 
     user_data = get_user(user_id) or {}

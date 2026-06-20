@@ -1,24 +1,13 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="{{ language or 'ja' }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-  <title>
-    {% if language == 'en' %}
-    Error | JiETNG
-    {% elif language == 'zh-tw' %}
-    錯誤 | JiETNG
-    {% elif language == 'zh' %}
-    错误 | JiETNG
-    {% else %}
-    エラー | JiETNG
-    {% endif %}
-  </title>
+  <title>Error | JiETNG</title>
   <link rel="icon" type="image/png" href="/static/pics/logo.png">
   {% include 'common_styles.html' %}
 
   <style>
-    /* 页面特定样式 - Page-specific Styles */
     body {
       display: flex;
       align-items: center;
@@ -34,22 +23,38 @@
       background: var(--card-bg);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-lg);
-      padding: 48px 40px;
+      padding: 32px;
       box-shadow: var(--shadow-lg);
       text-align: center;
     }
 
-    /* 错误图标 */
+    .language-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 24px;
+    }
+
+    .language-row select {
+      width: auto;
+      min-width: 132px;
+      padding: 8px 32px 8px 12px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+    }
+
     .error-icon {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 24px;
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 22px;
       border-radius: 50%;
       background: var(--error-color);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 48px;
+      font-size: 42px;
       color: white;
     }
 
@@ -70,20 +75,42 @@
       text-align: center;
     }
 
-    /* 移动端优化 */
+    .notice {
+      margin: 24px 8px 0;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      line-height: 1.45;
+      text-align: left;
+    }
+
+    .notice strong {
+      display: inline-block;
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
     @media (max-width: 600px) {
       body {
         padding: 16px;
       }
 
       .error-box {
-        padding: 40px 24px;
+        padding: 24px;
+      }
+
+      .language-row {
+        justify-content: stretch;
+      }
+
+      .language-row select {
+        width: 100%;
       }
 
       .error-icon {
         width: 64px;
         height: 64px;
-        font-size: 40px;
+        font-size: 38px;
         margin-bottom: 20px;
       }
 
@@ -95,37 +122,70 @@
 </head>
 <body>
   <div class="error-box">
-    <div class="error-icon">✕</div>
-
-    <h1>Error</h1>
-    <p>{{ message|safe }}</p>
-    <div class="notice" style="margin-top: 28px; text-align: left;">
-      {% if language == 'en' %}
-      <strong>Notice</strong><br>
-      All information you provide will be securely stored in encrypted format and will not be shared with third parties.<br><br>
-      However, this service is operated by an individual and does not provide official guarantees or support.<br>
-      Given the nature of this service, if you have concerns about security or operational policies, please refrain from using it.<br>
-      You provide information at your own judgment and responsibility.
-      {% elif language == 'zh-tw' %}
-      <strong>使用須知</strong><br>
-      您輸入的所有資訊都會以加密形式安全保存，不會提供給第三方。<br><br>
-      不過，本服務由個人營運，不提供官方保證或支援。<br>
-      基於本服務的性質，如果您對安全性或營運政策有疑慮，請勿使用。<br>
-      資訊提供完全基於您自己的判斷與責任。
-      {% elif language == 'zh' %}
-      <strong>使用须知</strong><br>
-      您输入的所有信息都将以加密形式安全保存,不会提供给第三方。<br><br>
-      但是,本服务由个人运营,不提供官方保证或支持。<br>
-      鉴于本服务的性质,如果您对安全性或运营政策有顾虑,请勿使用。<br>
-      信息提供完全基于您自己的判断和责任。
-      {% else %}
-      <strong>ご利用に関するご注意</strong><br>
-      ご入力いただいた情報はすべて暗号化された形式で安全に保存され,第三者に提供されることはありません。<br><br>
-      ただし,本サービスは個人によって運営されており,公式な保証やサポートは提供されておりません。<br>
-      本サービスの性質上,セキュリティや運用方針に不安がある場合は,利用をお控えいただくようお願いいたします。<br>
-      情報提供はあくまでご自身の判断と責任にてお願いいたします。
-      {% endif %}
+    <div class="language-row">
+      <select id="language-select" aria-label="Language">
+        <option value="ja">日本語</option>
+        <option value="en">English</option>
+        <option value="zh">简体中文</option>
+        <option value="zh-tw">繁體中文</option>
+      </select>
     </div>
+
+    <div class="error-icon">!</div>
+
+    <h1 id="error-title">Error</h1>
+    <p id="error-message">{{ message|safe }}</p>
+    <div class="notice" id="error-notice"></div>
   </div>
+
+  <script>
+    const initialLanguage = '{{ language or "ja" }}';
+    const initialMessage = {{ message | tojson }};
+    const messageI18n = {{ (message_i18n or {}) | tojson }};
+
+    const i18n = {
+      ja: {
+        title: 'エラー',
+        fallbackMessage: '処理中にエラーが発生しました。',
+        notice: '<strong>ご利用に関するご注意</strong><br>ご入力いただいた情報はすべて暗号化された形式で安全に保存され、第三者に提供されることはありません。<br><br>ただし、本サービスは個人によって運営されており、公式な保証やサポートは提供されておりません。<br>本サービスの性質上、セキュリティや運用方針に不安がある場合は、利用をお控えいただくようお願いいたします。<br>情報提供はあくまでご自身の判断と責任にてお願いいたします。'
+      },
+      en: {
+        title: 'Error',
+        fallbackMessage: 'An error occurred while processing your request.',
+        notice: '<strong>Notice</strong><br>All information you provide will be securely stored in encrypted format and will not be shared with third parties.<br><br>However, this service is operated by an individual and does not provide official guarantees or support.<br>Given the nature of this service, if you have concerns about security or operational policies, please refrain from using it.<br>You provide information at your own judgment and responsibility.'
+      },
+      zh: {
+        title: '错误',
+        fallbackMessage: '处理请求时发生错误。',
+        notice: '<strong>使用须知</strong><br>您输入的所有信息都将以加密形式安全保存，不会提供给第三方。<br><br>但是，本服务由个人运营，不提供官方保证或支持。<br>鉴于本服务的性质，如果您对安全性或运营政策有顾虑，请勿使用。<br>信息提供完全基于您自己的判断和责任。'
+      },
+      'zh-tw': {
+        title: '錯誤',
+        fallbackMessage: '處理請求時發生錯誤。',
+        notice: '<strong>使用須知</strong><br>您輸入的所有資訊都會以加密形式安全保存，不會提供給第三方。<br><br>不過，本服務由個人營運，不提供官方保證或支援。<br>基於本服務的性質，如果您對安全性或營運政策有疑慮，請勿使用。<br>資訊提供完全基於您自己的判斷與責任。'
+      }
+    };
+
+    function messageFor(lang) {
+      if (messageI18n[lang]) return messageI18n[lang];
+      if (lang === 'zh-tw' && messageI18n.zh) return messageI18n.zh;
+      return initialMessage || i18n[lang].fallbackMessage;
+    }
+
+    function setLanguage(lang) {
+      const t = i18n[lang] || i18n.ja;
+      document.documentElement.lang = lang;
+      document.title = t.title + ' | JiETNG';
+      document.getElementById('error-title').textContent = t.title;
+      document.getElementById('error-message').innerHTML = messageFor(lang);
+      document.getElementById('error-notice').innerHTML = t.notice;
+      document.getElementById('language-select').value = lang;
+    }
+
+    document.getElementById('language-select').addEventListener('change', function() {
+      setLanguage(this.value);
+    });
+    setLanguage(i18n[initialLanguage] ? initialLanguage : 'ja');
+  </script>
 </body>
 </html>
