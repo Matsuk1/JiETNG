@@ -304,6 +304,7 @@ export default withMermaid(defineConfig({
     ['meta', { property: 'og:image:type', content: 'image/png' }],
     ['meta', { property: 'og:url', content: siteUrl }],
     ['meta', { property: 'og:locale', content: 'zh_CN' }],
+    ['meta', { property: 'og:locale:alternate', content: 'zh_TW' }],
     ['meta', { property: 'og:locale:alternate', content: 'en_US' }],
     ['meta', { property: 'og:locale:alternate', content: 'ja_JP' }],
 
@@ -315,6 +316,7 @@ export default withMermaid(defineConfig({
 
     // hreflang for main locale entry points
     ['link', { rel: 'alternate', hreflang: 'zh-CN', href: `${siteUrl}/` }],
+    ['link', { rel: 'alternate', hreflang: 'zh-TW', href: `${siteUrl}/` }],
     ['link', { rel: 'alternate', hreflang: 'en', href: `${siteUrl}/en/` }],
     ['link', { rel: 'alternate', hreflang: 'ja', href: `${siteUrl}/ja/` }],
     ['link', { rel: 'alternate', hreflang: 'x-default', href: `${siteUrl}/` }],
@@ -329,7 +331,7 @@ export default withMermaid(defineConfig({
       'description': siteDescription,
       'applicationCategory': 'GameApplication',
       'operatingSystem': 'Any (LINE)',
-      'inLanguage': ['zh-CN', 'ja', 'en'],
+      'inLanguage': ['zh-CN', 'zh-TW', 'ja', 'en'],
       'keywords': '舞萌DX查分器, 舞萌查分器, maimai B50, maimai レート内訳, DX Rating, Best 50, Recent 50',
       'offers': {
         '@type': 'Offer',
@@ -349,7 +351,7 @@ export default withMermaid(defineConfig({
       'name': 'JiETNG',
       'alternateName': ['舞萌DX 查分器', 'maimai DX Score Tracker', 'maimai レート内訳'],
       'url': siteUrl,
-      'inLanguage': ['zh-CN', 'ja', 'en']
+      'inLanguage': ['zh-CN', 'zh-TW', 'ja', 'en']
     }) ]
   ],
 

@@ -256,9 +256,13 @@ def _requester_name(interaction: discord.Interaction) -> str:
 
 def _must_not_have_link(bot: JiETNGDiscordBot, interaction: discord.Interaction, user_id: str) -> None:
     lang = interaction_lang(interaction)
-    linked = bot.links.get_link(interaction.user.id)
-    if linked and linked != user_id:
-        raise app_commands.AppCommandError(tr(lang, "already_has_link", linked=linked))
+    record = bot.links.get_record(interaction.user.id)
+    if not record:
+        return
+    if record.mode == "bind":
+        raise app_commands.AppCommandError(tr(lang, "already_has_discord_bind", linked=record.jietng_user_id))
+    if record.jietng_user_id != user_id:
+        raise app_commands.AppCommandError(tr(lang, "already_has_external_link", linked=record.jietng_user_id))
 
 
 async def _watch_binding_completion(
@@ -386,14 +390,20 @@ def register_commands(bot: JiETNGDiscordBot) -> None:
     @bot.tree.command(name="unlink", description=_ls("cmd.unlink.desc"))
     async def unlink(interaction: discord.Interaction) -> None:
         lang = interaction_lang(interaction)
-        linked = bot.links.get_link(interaction.user.id)
-        if not linked:
+        record = bot.links.get_record(interaction.user.id)
+        if not record:
             await interaction.response.send_message(tr(lang, "not_linked"), ephemeral=True)
+            return
+        if record.mode != "link":
+            await interaction.response.send_message(
+                tr(lang, "unlink_requires_link_mode", user_id=record.jietng_user_id),
+                ephemeral=True,
+            )
             return
 
         revoke_error = None
         try:
-            await bot.jietng.permissions.revoke_self(linked)
+            await bot.jietng.permissions.revoke_self(record.jietng_user_id)
         except APIError as exc:
             revoke_error = exc.message or exc.error or str(exc)
 
@@ -408,12 +418,18 @@ def register_commands(bot: JiETNGDiscordBot) -> None:
     @bot.tree.command(name="bind", description=_ls("cmd.bind.desc"))
     async def bind(interaction: discord.Interaction) -> None:
         lang = interaction_lang(interaction)
-        linked = bot.links.get_link(interaction.user.id)
-        if linked:
-            payload = await bot.jietng.users.get_rebind_url(linked)
+        record = bot.links.get_record(interaction.user.id)
+        if record and record.mode == "link":
+            await interaction.response.send_message(
+                tr(lang, "bind_requires_no_link_mode", user_id=record.jietng_user_id),
+                ephemeral=True,
+            )
+            return
+        if record:
+            payload = await bot.jietng.users.get_rebind_url(record.jietng_user_id)
             url = payload.get("rebind_url") or payload.get("url") or payload
             await interaction.response.send_message(
-                tr(lang, "has_local_link", user_id=linked),
+                tr(lang, "has_discord_bind", user_id=record.jietng_user_id),
                 view=_url_view(tr(lang, "open_bind"), url),
                 ephemeral=True,
             )
@@ -430,7 +446,7 @@ def register_commands(bot: JiETNGDiscordBot) -> None:
                 ) from exc
             raise
 
-        bot.links.set_link(interaction.user.id, user_id)
+        bot.links.set_link(interaction.user.id, user_id, mode="bind")
         url = payload.get("bind_url") or payload.get("url") or payload
         await interaction.response.send_message(
             tr(lang, "created_bind", user_id=user_id),
@@ -438,6 +454,36 @@ def register_commands(bot: JiETNGDiscordBot) -> None:
             ephemeral=True,
         )
         _start_binding_watch(bot, interaction, user_id)
+
+    @bot.tree.command(name="unbind", description=_ls("cmd.unbind.desc"))
+    async def unbind(interaction: discord.Interaction) -> None:
+        lang = interaction_lang(interaction)
+        record = bot.links.get_record(interaction.user.id)
+        if not record:
+            await interaction.response.send_message(tr(lang, "not_linked"), ephemeral=True)
+            return
+        if record.mode != "bind":
+            await interaction.response.send_message(
+                tr(lang, "unbind_requires_bind_mode", user_id=record.jietng_user_id),
+                ephemeral=True,
+            )
+            return
+
+        try:
+            await bot.jietng.users.delete(record.jietng_user_id)
+        except NotFoundError:
+            bot.links.delete_link(interaction.user.id)
+            await interaction.response.send_message(
+                tr(lang, "unbound_local_only", user_id=record.jietng_user_id),
+                ephemeral=True,
+            )
+            return
+
+        bot.links.delete_link(interaction.user.id)
+        await interaction.response.send_message(
+            tr(lang, "unbound", user_id=record.jietng_user_id),
+            ephemeral=True,
+        )
 
     @bot.tree.command(name="profile", description=_ls("cmd.profile.desc"))
     async def profile(interaction: discord.Interaction) -> None:

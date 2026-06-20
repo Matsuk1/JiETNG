@@ -118,15 +118,35 @@ MESSAGES: dict[str, dict[str, str]] = {
         "en": "Local link removed. Server-side permission was not revoked: {message}",
     },
     "not_linked": {"zh": "你还没有绑定 JiETNG user_id。", "ja": "まだ JiETNG user_id を連携していません。", "en": "You have not linked a JiETNG user_id yet."},
-    "already_has_link": {
-        "zh": "你已经绑定到 `{linked}`。要切换账号，请先 `/unlink`，再重新 `/link` 或 `/bind`。",
-        "ja": "既に `{linked}` に紐づいています。切り替える場合は先に `/unlink` してから `/link` または `/bind` してください。",
-        "en": "You are already linked to `{linked}`. To switch accounts, use `/unlink` then `/link` or `/bind`.",
+    "already_has_external_link": {
+        "zh": "你已经通过 `/link` 连接到外部 JiETNG user_id：`{linked}`。要切换外部账号请先 `/unlink`；要改用 Discord 专用账号请先 `/unlink` 再 `/bind`。",
+        "ja": "`/link` で外部 JiETNG user_id `{linked}` に紐づいています。外部アカウントを切り替える場合は先に `/unlink`、Discord 専用アカウントへ移る場合も `/unlink` 後に `/bind` してください。",
+        "en": "You are linked to external JiETNG user_id `{linked}` via `/link`. Use `/unlink` before linking another external account, or before switching to `/bind`.",
     },
-    "has_local_link": {
-        "zh": "你已经有本地绑定：`{user_id}`。\n如需绑定或换绑 SEGA 账号，请点击按钮。",
-        "ja": "既にローカル連携があります：`{user_id}`。\nSEGA アカウントの連携・再連携はボタンから行ってください。",
-        "en": "You already have a local link: `{user_id}`.\nUse the button to bind or rebind your SEGA account.",
+    "already_has_discord_bind": {
+        "zh": "你已经通过 `/bind` 拥有 Discord 专用 JiETNG user_id：`{linked}`。这个模式不能再 `/link` 外部用户；如要切换模式请先 `/unbind`。",
+        "ja": "`/bind` で Discord 専用 JiETNG user_id `{linked}` を作成済みです。このモードでは外部ユーザーを `/link` できません。切り替える場合は先に `/unbind` してください。",
+        "en": "You already have Discord-owned JiETNG user_id `{linked}` from `/bind`. This mode cannot `/link` an external user; use `/unbind` first to switch modes.",
+    },
+    "bind_requires_no_link_mode": {
+        "zh": "你当前是 `/link` 外部用户模式：`{user_id}`。`/bind` 会创建 Discord 专用用户，两种模式不能混用。请先 `/unlink`。",
+        "ja": "現在は `/link` の外部ユーザーモードです：`{user_id}`。`/bind` は Discord 専用ユーザーを作成するため、両モードは併用できません。先に `/unlink` してください。",
+        "en": "You are currently in `/link` external-user mode: `{user_id}`. `/bind` creates a Discord-owned user, so the modes cannot be mixed. Use `/unlink` first.",
+    },
+    "unlink_requires_link_mode": {
+        "zh": "`{user_id}` 是 `/bind` 创建的 Discord 专用用户。`/unlink` 只用于外部用户授权；要删除这个 Discord 专用用户请使用 `/unbind`。",
+        "ja": "`{user_id}` は `/bind` で作成された Discord 専用ユーザーです。`/unlink` は外部ユーザー権限用です。このユーザーを削除するには `/unbind` を使ってください。",
+        "en": "`{user_id}` is a Discord-owned user created by `/bind`. `/unlink` is only for external-user permissions; use `/unbind` to delete this Discord-owned user.",
+    },
+    "unbind_requires_bind_mode": {
+        "zh": "`{user_id}` 是通过 `/link` 连接的外部用户。`/unbind` 只删除 `/bind` 创建的 Discord 专用用户；要取消外部连接请使用 `/unlink`。",
+        "ja": "`{user_id}` は `/link` で紐づけた外部ユーザーです。`/unbind` は `/bind` で作成した Discord 専用ユーザーのみ削除します。外部連携の解除は `/unlink` を使ってください。",
+        "en": "`{user_id}` is an external user linked by `/link`. `/unbind` only deletes Discord-owned users created by `/bind`; use `/unlink` for external links.",
+    },
+    "has_discord_bind": {
+        "zh": "你已经有 Discord 专用 JiETNG user_id：`{user_id}`。\n如需绑定或换绑 SEGA 账号，请点击按钮。",
+        "ja": "Discord 専用 JiETNG user_id があります：`{user_id}`。\nSEGA アカウントの連携・再連携はボタンから行ってください。",
+        "en": "You already have Discord-owned JiETNG user_id: `{user_id}`.\nUse the button to bind or rebind your SEGA account.",
     },
     "created_bind": {
         "zh": "已创建 JiETNG user_id：`{user_id}`。\n点击按钮完成绑定。",
@@ -137,6 +157,16 @@ MESSAGES: dict[str, dict[str, str]] = {
         "zh": "默认 Discord user_id 已存在，但当前 Discord 账号没有本地绑定。为避免串号，我没有继续操作。请联系 JiETNG 管理员处理这个冲突。",
         "ja": "既定の Discord user_id は既に存在しますが、この Discord アカウントにはローカル連携がありません。取り違え防止のため処理を中止しました。JiETNG 管理者に連絡してください。",
         "en": "The default Discord user_id already exists, but this Discord account has no local link. I stopped to avoid cross-account leaks. Contact a JiETNG admin to resolve this conflict.",
+    },
+    "unbound": {
+        "zh": "已删除 Discord 专用 JiETNG 用户 `{user_id}`，并移除本地绑定。",
+        "ja": "Discord 専用 JiETNG ユーザー `{user_id}` を削除し、ローカル連携も解除しました。",
+        "en": "Deleted Discord-owned JiETNG user `{user_id}` and removed the local link.",
+    },
+    "unbound_local_only": {
+        "zh": "JiETNG 服务器上没有找到 `{user_id}`，已移除本地绑定。",
+        "ja": "JiETNG サーバー上で `{user_id}` が見つからなかったため、ローカル連携のみ解除しました。",
+        "en": "`{user_id}` was not found on JiETNG, so I removed the local link only.",
     },
     "open_bind": {"zh": "打开绑定页面", "ja": "連携ページを開く", "en": "Open Binding Page"},
     "open_settings": {"zh": "打开设置页面", "ja": "設定ページを開く", "en": "Open Settings"},
@@ -167,14 +197,19 @@ COMMAND_TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Request JiETNG access and link a default user_id",
     },
     "cmd.unlink.desc": {
-        "zh": "取消当前 Discord 账号的 JiETNG 绑定",
-        "ja": "現在の Discord アカウントの JiETNG 連携を解除します",
-        "en": "Unlink the JiETNG user_id from this Discord account",
+        "zh": "取消 `/link` 外部用户连接并放弃访问权限",
+        "ja": "`/link` の外部ユーザー連携を解除し、アクセス権を放棄します",
+        "en": "Unlink an external `/link` user and revoke access",
     },
     "cmd.bind.desc": {
         "zh": "首次绑定 SEGA 账号到 JiETNG",
         "ja": "SEGA アカウントを JiETNG に初回連携します",
         "en": "Create a JiETNG user and bind a SEGA account",
+    },
+    "cmd.unbind.desc": {
+        "zh": "删除 `/bind` 创建的 Discord 专用 JiETNG 用户",
+        "ja": "`/bind` で作成した Discord 専用 JiETNG ユーザーを削除します",
+        "en": "Delete the Discord-owned JiETNG user created by `/bind`",
     },
     "cmd.profile.desc": {
         "zh": "查看自己的 JiETNG 用户资料",

@@ -178,6 +178,7 @@ from modules.notification_manager import (
 )
 from modules.song_matcher import find_matching_songs, normalize_text
 from modules.memory_manager import memory_manager, cleanup_user_caches, cleanup_rate_limiter_tracking
+from modules.i18n import normalize_language, select_text
 
 # Module aliases for specific use cases
 import modules.user_manager as user_manager_module
@@ -249,6 +250,11 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder='assets', static_url_path='/static')
 app.secret_key = secrets.token_hex(32)  # 用于session加密
+
+
+def _error_page(message, language="ja", status=400):
+    message = select_text(message, language=language, default_language="ja")
+    return render_template("error.html", message=message, language=language), status
 
 # 配置成绩命令列表
 RANK_COMMANDS = {
@@ -888,18 +894,18 @@ def website_segaid_bind():
         token_missing_message = """トークンが提供されていません。<br />
 Token not provided. <br />
 未提供令牌。"""
-        return render_template("error.html", message=token_missing_message, language="ja"), 400
+        return _error_page(token_missing_message)
 
     try:
         user_id = get_user_id_from_token(token)
         if not user_exists(user_id):
             token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
-            return render_template("error.html", message=token_invalid_message, language="ja"), 400
+            return _error_page(token_invalid_message)
         
     except Exception as e:
         logger.error(f"[Auth] ✗ Token verification failed: error={e}")
         token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
-        return render_template("error.html", message=token_invalid_message, language="ja"), 400
+        return _error_page(token_invalid_message)
 
     if request.method == "POST":
         bind_type = request.form.get("bind_type", "sega")
@@ -914,10 +920,10 @@ Token not provided. <br />
         if mode == "rebind":
             # rebind 模式下保持现有 timezone 和 language 不变
             user_timezone = str(user_data.get("timezone", 9))
-            user_language = user_data.get("language", "ja")
+            user_language = normalize_language(user_data.get("language"), "ja")
         else:
             user_timezone = request.form.get("timezone", "9")
-            user_language = request.form.get("language", user_data.get("language", "ja"))
+            user_language = normalize_language(request.form.get("language", user_data.get("language", "ja")), "ja")
 
         # 检查用户是否已经绑定账号（仅在 bind 模式下检查）
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
@@ -928,7 +934,7 @@ Token not provided. <br />
                 "en": "A SEGA account is already linked. To rebind, please use the unbind command first to unlink your account.",
                 "zh": "已绑定 SEGA 账号。如需重新绑定，请先使用 unbind 命令解除绑定。"
             }
-            return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
+            return _error_page(error_messages, user_language)
 
         if mode == "bind" and bind_type == "import_token":
             try:
@@ -953,7 +959,7 @@ Token not provided. <br />
 
             token_result = create_import_token(user_id, note="bookmarklet")
             if not token_result:
-                return render_template("error.html", message="Failed to create import token.", language=user_language), 500
+                return _error_page("Failed to create import token.", user_language, 500)
 
             track_event('user_bind', user_id=user_id, metadata={'version': user_version, 'import_only': True})
             return render_template(
@@ -972,7 +978,7 @@ Token not provided. <br />
                     "en": "No account is linked.",
                     "zh": "未绑定账号。"
                 }
-                return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
+                return _error_page(error_messages, user_language)
 
             if segaid != user_data.get('sega_id'):
                 error_messages = {
@@ -980,7 +986,7 @@ Token not provided. <br />
                     "en": "You cannot change the SEGA ID.",
                     "zh": "无法更改 SEGA ID。"
                 }
-                return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
+                return _error_page(error_messages, user_language)
 
         if not segaid or not password:
             missing_fields_messages = {
@@ -988,7 +994,7 @@ Token not provided. <br />
                 "en": "Please fill in all fields.",
                 "zh": "请填写所有字段。"
             }
-            return render_template("error.html", message=missing_fields_messages.get(user_language, missing_fields_messages["ja"]), language=user_language), 400
+            return _error_page(missing_fields_messages, user_language)
 
         # 转换时区为整数
         try:
@@ -1009,7 +1015,7 @@ Token not provided. <br />
                 "en": "The official website is under maintenance. Please try again later.",
                 "zh": "官方网站正在维护中。请稍后再试。"
             }
-            return render_template("error.html", message=maintenance_messages.get(user_language, maintenance_messages["ja"]), language=user_language), 503
+            return _error_page(maintenance_messages, user_language, 503)
         elif result:
             via_token = "registered_via_token" in (get_user(user_id) or {})
             if mode == "bind":
@@ -1032,18 +1038,20 @@ Token not provided. <br />
                 "en": "Invalid SEGA ID or password. Please check and try again.",
                 "zh": "SEGA ID 或密码不正确。请检查后重试。"
             }
-            return render_template("error.html", message=invalid_credentials_messages.get(user_language, invalid_credentials_messages["ja"]), language=user_language), 500
+            return _error_page(invalid_credentials_messages, user_language, 500)
 
     # GET 请求时，从用户数据中获取语言设置和其他信息
     user_data = get_user(user_id) or {}
-    user_language = user_data.get("language")
+    user_language = normalize_language(user_data.get("language"), "") if user_data.get("language") else ""
     if not user_language:
         # 首次绑定时，尝试从 LINE profile 自动检测语言
         try:
             with ApiClient(configuration) as api_client:
                 profile = MessagingApi(api_client).get_profile(user_id)
                 profile_lang = getattr(profile, 'language', None) or ''
-                if profile_lang.startswith('zh'):
+                if profile_lang.lower().replace("_", "-") in ("zh-tw", "zh-hant", "zh-hk", "zh-mo"):
+                    user_language = 'zh-tw'
+                elif profile_lang.startswith('zh'):
                     user_language = 'zh'
                 elif profile_lang.startswith('ja'):
                     user_language = 'ja'
@@ -1089,17 +1097,17 @@ def website_settings():
         token_missing_message = """トークンが提供されていません。<br />
 Token not provided. <br />
 未提供令牌。"""
-        return render_template("error.html", message=token_missing_message, language="ja"), 400
+        return _error_page(token_missing_message)
 
     try:
         user_id = get_user_id_from_settings_token(token)
         if not user_exists(user_id):
             token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
-            return render_template("error.html", message=token_invalid_message, language="ja"), 400
+            return _error_page(token_invalid_message)
     except Exception as e:
         logger.error(f"[Auth] ✗ Settings token verification failed: error={e}")
         token_invalid_message = "トークンが無効です。<br />Invalid token. <br />令牌无效。"
-        return render_template("error.html", message=token_invalid_message, language="ja"), 400
+        return _error_page(token_invalid_message)
 
     user_data = get_user(user_id) or {}
 
@@ -1112,13 +1120,13 @@ Token not provided. <br />
             "en": "No account is linked.",
             "zh": "未绑定账号。"
         }
-        user_language = user_data.get("language", "ja")
-        return render_template("error.html", message=error_messages.get(user_language, error_messages["ja"]), language=user_language), 400
+        user_language = normalize_language(user_data.get("language"), "ja")
+        return _error_page(error_messages, user_language)
 
     custom_bg_filename = f"jietnguser_{user_id}.webp"
 
     if request.method == "POST":
-        user_language = request.form.get("language", user_data.get("language", "ja"))
+        user_language = normalize_language(request.form.get("language", user_data.get("language", "ja")), "ja")
         user_timezone = request.form.get("timezone", "9")
         bg_files_str = request.form.get("bg_files", "")
 
@@ -1146,7 +1154,7 @@ Token not provided. <br />
         return render_template("success.html", language=user_language, mode="settings")
 
     # GET: 准备数据
-    user_language = user_data.get("language", "ja")
+    user_language = normalize_language(user_data.get("language"), "ja")
 
     # 扫描背景图目录
     try:
@@ -2107,7 +2115,7 @@ def handle_rc_command(msg: str, user_id: str):
             'en': 'Invalid constant. Please enter a value between 1.0 and 15.0.',
             'zh': '无效的定数。请输入 1.0~15.0 范围内的数值。'
         }
-        return TextMessage(text=error_texts.get(language, error_texts['ja']))
+        return TextMessage(text=select_text(error_texts, language=language, default_language='ja'))
 
     # 验证范围：1.0 到 15.0
     if level < 1.0 or level > 15.0:
@@ -2117,7 +2125,7 @@ def handle_rc_command(msg: str, user_id: str):
             'en': f'Constant {level} is out of range. Please enter a value between 1.0 and 15.0.',
             'zh': f'定数 {level} 超出范围。请输入 1.0~15.0 范围内的数值。'
         }
-        return TextMessage(text=error_texts.get(language, error_texts['ja']))
+        return TextMessage(text=select_text(error_texts, language=language, default_language='ja'))
 
     # 验证小数位数：最多一位
     if round(level, 1) != level:
@@ -2127,7 +2135,7 @@ def handle_rc_command(msg: str, user_id: str):
             'en': f'Constant {level} is invalid. Only one decimal place is allowed (e.g., 13.2).',
             'zh': f'定数 {level} 无效。仅支持一位小数（例如：13.2）。'
         }
-        return TextMessage(text=error_texts.get(language, error_texts['ja']))
+        return TextMessage(text=select_text(error_texts, language=language, default_language='ja'))
 
     return get_rc(level, user_id)
 
@@ -4395,10 +4403,11 @@ def handle_postback(event):
                     vote_success_text = {
                         'ja': f"投票ありがとうございます！\n\n支持: {stats['support_count']}人 ({stats['support_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)\n反対: {stats['oppose_count']}人 ({stats['oppose_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)",
                         'en': f"Thank you for voting!\n\nSupport: {stats['support_count']} ({stats['support_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)\nOppose: {stats['oppose_count']} ({stats['oppose_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)",
-                        'zh': f"感谢您的投票！\n\n支持: {stats['support_count']}人 ({stats['support_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)\n反对: {stats['oppose_count']}人 ({stats['oppose_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)"
+                        'zh': f"感谢您的投票！\n\n支持: {stats['support_count']}人 ({stats['support_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)\n反对: {stats['oppose_count']}人 ({stats['oppose_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)",
+                        'zh-tw': f"感謝您的投票！\n\n支持: {stats['support_count']}人 ({stats['support_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)\n反對: {stats['oppose_count']}人 ({stats['oppose_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)"
                     }
 
-                    reply_message = TextMessage(text=vote_success_text.get(lang, vote_success_text['ja']))
+                    reply_message = TextMessage(text=select_text(vote_success_text, language=lang, default_language='ja'))
 
                     # 发送回复
                     smart_reply(user_id, event.reply_token, reply_message, configuration, addition=False)
@@ -6223,7 +6232,7 @@ def api_bind_user(user_id):
     - ver: 服务器版本 jp/intl（默认 jp）
     - aime: Aime卡选择（默认 0，仅jp有效）
     - timezone: 时区偏移（默认 9）
-    - language: 语言 ja/en/zh（默认 en）
+    - language: 语言 ja/en/zh/zh-tw（默认 en）
     """
     try:
         token_info = request.token_info
@@ -6234,7 +6243,7 @@ def api_bind_user(user_id):
         ver = data.get('ver', 'jp').strip().lower()
         aime = data.get('aime', '0')
         timezone = data.get('timezone', '9')
-        language = data.get('language', 'en').strip().lower()
+        language = normalize_language(data.get('language'), 'en')
 
         if not sega_id:
             return jsonify({"error": "Missing parameter", "message": "Parameter 'sega_id' is required"}), 400
@@ -6242,9 +6251,6 @@ def api_bind_user(user_id):
             return jsonify({"error": "Missing parameter", "message": "Parameter 'password' is required"}), 400
         if ver not in ('jp', 'intl'):
             return jsonify({"error": "Invalid parameter", "message": "Parameter 'ver' must be jp or intl"}), 400
-        if language not in ('ja', 'en', 'zh'):
-            language = 'en'
-
         try:
             timezone_int = int(timezone)
         except (ValueError, TypeError):
@@ -6305,7 +6311,7 @@ def api_rebind_user(user_id):
 
         ver = data.get('ver', user_data.get('version', 'jp')).strip().lower()
         aime = data.get('aime', str(user_data.get('aime', 0)))
-        language = user_data.get('language', 'en')
+        language = normalize_language(user_data.get('language'), 'en')
         timezone_int = user_data.get('timezone', 9)
 
         if ver not in ('jp', 'intl'):

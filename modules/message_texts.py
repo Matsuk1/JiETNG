@@ -409,13 +409,15 @@ language_select_description = """Language Selection・语言选择"""
 language_button_ja = "日本語"
 language_button_en = "English"
 language_button_zh = "简体中文"
+language_button_zh_tw = "繁體中文"
 
 language_select_alt = "Language Selection / 言語選択 / 语言选择"
 
 language_set_success_text = {
     "ja": "✅ 言語を日本語に設定しました！",
     "en": "✅ Language set to English!",
-    "zh": "✅ 语言已设置为中文！"
+    "zh": "✅ 语言已设置为中文！",
+    "zh-tw": "✅ 語言已設定為繁體中文！"
 }
 
 # 已绑定账号的提示

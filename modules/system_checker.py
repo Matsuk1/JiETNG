@@ -21,6 +21,7 @@ from modules.user_db import load_all_users, save_user
 from modules.user_manager import delete_user
 from modules.dbpool_manager import get_connection
 from modules.event_tracker import init_events_table
+from modules.i18n import normalize_language
 
 logger = logging.getLogger(__name__)
 
@@ -90,25 +91,30 @@ def clean_deprecated_user_fields() -> Dict[str, Any]:
     # 遍历所有用户
     for user_id, user_data in all_users.items():
         fields_removed = []
+        changed = False
 
         # 修正旧的语言代码
-        if 'language' in user_data and user_data['language'] == "jp":
-            user_data['language'] = "ja"
+        if 'language' in user_data:
+            normalized_language = normalize_language(user_data['language'])
+            if normalized_language != user_data['language']:
+                user_data['language'] = normalized_language
+                changed = True
         # 检查并删除废弃字段
         for field in deprecated_fields:
             if field in user_data:
                 del user_data[field]
                 fields_removed.append(field)
                 total_fields_removed += 1
+                changed = True
 
-        # 如果有字段被删除，保存到 DB 并记录
-        if fields_removed:
+        # 如果数据有变化，保存到 DB 并记录
+        if changed:
             save_user(user_id, user_data)
             cleaned_users.append({
                 "user_id": user_id,
                 "removed_fields": fields_removed
             })
-            logger.debug(f"[SystemCheck] Cleaned deprecated fields: user_id={user_id}, fields={fields_removed}")
+            logger.debug(f"[SystemCheck] Cleaned user fields: user_id={user_id}, removed={fields_removed}")
 
     result = {
         "cleaned_user_count": len(cleaned_users),

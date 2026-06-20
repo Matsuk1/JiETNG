@@ -7,7 +7,7 @@
     {% if mode == 'settings' %}
       {% if language == 'en' %}
       Settings Saved | JiETNG
-      {% elif language == 'zh' %}
+      {% elif language in ['zh', 'zh-tw'] %}
       设置已保存 | JiETNG
       {% else %}
       設定保存完了 | JiETNG
@@ -15,7 +15,7 @@
     {% elif mode == 'import_token' %}
       {% if language == 'en' %}
       Import Token Created | JiETNG
-      {% elif language == 'zh' %}
+      {% elif language in ['zh', 'zh-tw'] %}
       Import Token 已生成 | JiETNG
       {% else %}
       Import Token 作成完了 | JiETNG
@@ -23,7 +23,7 @@
     {% elif mode == 'rebind' %}
       {% if language == 'en' %}
       Update Successful | JiETNG
-      {% elif language == 'zh' %}
+      {% elif language in ['zh', 'zh-tw'] %}
       更新成功 | JiETNG
       {% else %}
       更新成功 | JiETNG
@@ -31,7 +31,7 @@
     {% else %}
       {% if language == 'en' %}
       Binding Successful | JiETNG
-      {% elif language == 'zh' %}
+      {% elif language in ['zh', 'zh-tw'] %}
       绑定成功 | JiETNG
       {% else %}
       連携成功 | JiETNG
@@ -175,7 +175,7 @@
       {% if mode == 'settings' %}
         {% if language == 'en' %}
         Settings Saved
-        {% elif language == 'zh' %}
+        {% elif language in ['zh', 'zh-tw'] %}
         设置已保存
         {% else %}
         設定保存完了
@@ -183,7 +183,7 @@
       {% elif mode == 'import_token' %}
         {% if language == 'en' %}
         Import Token Created
-        {% elif language == 'zh' %}
+        {% elif language in ['zh', 'zh-tw'] %}
         Import Token 已生成
         {% else %}
         Import Token 作成完了
@@ -191,7 +191,7 @@
       {% elif mode == 'rebind' %}
         {% if language == 'en' %}
         Update Successful
-        {% elif language == 'zh' %}
+        {% elif language in ['zh', 'zh-tw'] %}
         更新成功
         {% else %}
         更新成功
@@ -199,7 +199,7 @@
       {% else %}
         {% if language == 'en' %}
         Binding Successful
-        {% elif language == 'zh' %}
+        {% elif language in ['zh', 'zh-tw'] %}
         绑定成功
         {% else %}
         バインド成功
@@ -211,7 +211,7 @@
       {% if mode == 'settings' %}
         {% if language == 'en' %}
         Your settings have been saved successfully.
-        {% elif language == 'zh' %}
+        {% elif language in ['zh', 'zh-tw'] %}
         您的设置已成功保存。
         {% else %}
         設定が正常に保存されました。
@@ -219,7 +219,7 @@
       {% elif mode == 'import_token' %}
         {% if language == 'en' %}
         Save this token in the bookmarklet. Your JiETNG profile will be initialized after the first record upload.
-        {% elif language == 'zh' %}
+        {% elif language in ['zh', 'zh-tw'] %}
         请把这个 Token 保存到书签工具里。第一次上传成绩后，JiETNG 会初始化你的用户资料。
         {% else %}
         この Token をブックマークレットに保存してください。初回の成績アップロード後、JiETNG のユーザーデータが初期化されます。
@@ -227,7 +227,7 @@
       {% elif mode == 'rebind' %}
         {% if language == 'en' %}
         Your account settings have been successfully updated.
-        {% elif language == 'zh' %}
+        {% elif language in ['zh', 'zh-tw'] %}
         您的账号设置已成功更新。
         {% else %}
         アカウント設定が正常に更新されました。
@@ -235,7 +235,7 @@
       {% else %}
         {% if language == 'en' %}
         Successfully linked with JiETNG.
-        {% elif language == 'zh' %}
+        {% elif language in ['zh', 'zh-tw'] %}
         已成功与 JiETNG 连携。
         {% else %}
         JiETNGとの連携が成功しました。
@@ -248,7 +248,7 @@
       <div class="token-label">
         {% if language == 'en' %}
         Token shown only once
-        {% elif language == 'zh' %}
+        {% elif language in ['zh', 'zh-tw'] %}
         Token 只显示这一次
         {% else %}
         Token は今回のみ表示されます
@@ -258,7 +258,7 @@
       <button type="button" class="copy-btn" id="copy-token-btn">
         {% if language == 'en' %}
         Copy Token
-        {% elif language == 'zh' %}
+        {% elif language in ['zh', 'zh-tw'] %}
         复制 Token
         {% else %}
         Tokenをコピー
@@ -274,6 +274,12 @@
       However, this service is operated by an individual and does not provide official guarantees or support.<br>
       Given the nature of this service, if you have concerns about security or operational policies, please refrain from using it.<br>
       You provide information at your own judgment and responsibility.
+      {% elif language == 'zh-tw' %}
+      <strong>使用須知</strong><br>
+      您輸入的所有資訊都會以加密形式安全保存，不會提供給第三方。<br><br>
+      不過,本服務由個人營運,不提供官方保證或支援。<br>
+      基於本服務的性質,如果您對安全性或營運政策有疑慮,請勿使用。<br>
+      資訊提供完全基於您自己的判斷與責任。
       {% elif language == 'zh' %}
       <strong>使用须知</strong><br>
       您输入的所有信息都将以加密形式安全保存,不会提供给第三方。<br><br>
@@ -295,7 +301,7 @@
       const value = document.getElementById('import-token-value')?.textContent || '';
       if (!value) return;
       await navigator.clipboard.writeText(value);
-      this.textContent = {% if language == 'en' %}'Copied'{% elif language == 'zh' %}'已复制'{% else %}'コピーしました'{% endif %};
+      this.textContent = {% if language == 'en' %}'Copied'{% elif language == 'zh-tw' %}'已複製'{% elif language == 'zh' %}'已复制'{% else %}'コピーしました'{% endif %};
     });
   </script>
   {% endif %}

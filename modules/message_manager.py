@@ -1,6 +1,7 @@
 from urllib.parse import quote
 from modules.config_loader import SUPPORT_PAGE, LINE_ACCOUNT_ID
-from modules.user_db import get_user, get_user_field, user_exists
+from modules.i18n import get_user_language, select_text
+from modules.user_db import get_user
 from modules.user_manager import get_notice_interaction, get_user_timezone
 from modules.tip_ad_manager import get_random_tip, get_random_ad
 from modules.message_texts import *
@@ -23,29 +24,6 @@ from linebot.v3.messaging.models import (
     FlexSeparator
 )
 
-# ============================================================
-# 多语言辅助函数 / Multilingual Helper Functions
-# ============================================================
-
-def get_user_language(user_id):
-    """
-    获取用户语言设置
-
-    Args:
-        user_id: 用户ID
-
-    Returns:
-        str: 语言代码 ('ja', 'en', 'zh')，默认为 'en'
-    """
-    language = 'en'
-    if user_id and user_exists(user_id):
-        language = get_user_field(user_id, 'language', 'en')
-
-    if language not in ['zh', 'ja', 'en']:
-        language = 'en'
-
-    return language
-
 def format_timezone_string(user_id):
     """
     格式化用户时区字符串
@@ -60,25 +38,7 @@ def format_timezone_string(user_id):
     tz_sign = '+' if tz_offset >= 0 else ''
     return f"(UTC{tz_sign}{tz_offset})"
 
-def get_multilingual_text(message_dict, user_id=None, language=None):
-    """
-    根据用户语言获取对应的文本
-
-    Args:
-        message_dict: 多语言消息字典 {'ja': '...', 'en': '...', 'zh': '...'}
-        user_id: 用户ID（可选）
-        language: 直接指定语言（可选，优先级高于user_id）
-
-    Returns:
-        str: 对应语言的文本，如果不存在则返回日语文本
-    """
-    if not isinstance(message_dict, dict):
-        return message_dict
-
-    if language is None:
-        language = get_user_language(user_id)
-
-    return message_dict.get(language)
+get_multilingual_text = select_text
 
 def get_quick_reply_label(key, user_id=None):
     """获取 QuickReply 按钮的多语言标签"""
@@ -301,7 +261,7 @@ def generate_notice_flex(notice_json, user_id=None):
         # 向后兼容旧格式
         content = content_dict
     else:
-        content = content_dict.get(lang, content_dict.get('ja', ''))
+        content = select_text(content_dict, language=lang, default_language='ja')
 
     date = notice_json.get('date', '')
     notice_id = notice_json.get('id', '')
@@ -324,7 +284,7 @@ def generate_notice_flex(notice_json, user_id=None):
         button_info = notice_json['button']
         button_type = button_info.get('type', 'uri')
         button_label_dict = button_info.get('label', {})
-        button_label = button_label_dict.get(lang, button_label_dict.get('ja', ''))
+        button_label = select_text(button_label_dict, language=lang, default_language='ja')
         button_value = button_info.get('value', '')
 
         # 如果label为空，使用默认值
@@ -333,7 +293,7 @@ def generate_notice_flex(notice_json, user_id=None):
                 'uri': {'ja': '詳細を見る', 'en': 'View Details', 'zh': '查看详情'},
                 'message': {'ja': '試してみる', 'en': 'Try it', 'zh': '尝试一下'}
             }
-            button_label = default_labels.get(button_type, {}).get(lang, 'Go')
+            button_label = select_text(default_labels.get(button_type, {}), language=lang, default_language='ja') or 'Go'
 
         # 添加箭头到按钮标签
         button_label_with_arrow = f"{button_label} →"
@@ -419,8 +379,8 @@ def generate_notice_flex(notice_json, user_id=None):
             'oppose': {'ja': '反対', 'en': 'Oppose', 'zh': '反对'}
         }
 
-        support_label = vote_labels['support'].get(lang, '支持')
-        oppose_label = vote_labels['oppose'].get(lang, '反対')
+        support_label = select_text(vote_labels['support'], language=lang, default_language='ja')
+        oppose_label = select_text(vote_labels['oppose'], language=lang, default_language='ja')
 
         # 如果已投票，标记选中状态
         support_style = "primary"
@@ -860,7 +820,8 @@ def generate_user_info_flex(user_id):
         lang_display = {
             'ja': texts['lang_ja'],
             'en': texts['lang_en'],
-            'zh': texts['lang_zh']
+            'zh': texts['lang_zh'],
+            'zh-tw': {'zh-tw': '繁體中文'}
         }.get(lang, texts['lang_ja'])
 
         content_rows.append({
@@ -1206,7 +1167,7 @@ def generate_tip_ad_box(tip_ad, lang):
     """
     # 获取对应语言的文本
     text_dict = tip_ad.get('text', {})
-    text = text_dict.get(lang, text_dict.get('ja', ''))
+    text = select_text(text_dict, language=lang, default_language='ja')
 
     # 确定颜色和图标
     is_ad = tip_ad.get('type') == 'ad'
@@ -1244,7 +1205,7 @@ def generate_tip_ad_box(tip_ad, lang):
         button_info = tip_ad['button']
         button_type = button_info.get('type', 'uri')
         button_label_dict = button_info.get('label', {})
-        button_label = button_label_dict.get(lang, button_label_dict.get('ja', ''))
+        button_label = select_text(button_label_dict, language=lang, default_language='ja')
         button_value = button_info.get('value', '')
 
         # 如果label为空，使用默认值
@@ -1253,7 +1214,7 @@ def generate_tip_ad_box(tip_ad, lang):
                 'uri': {'ja': '詳細を見る', 'en': 'View Details', 'zh': '查看详情'},
                 'message': {'ja': '試してみる', 'en': 'Try it', 'zh': '尝试一下'}
             }
-            button_label = default_labels.get(button_type, {}).get(lang, 'Go')
+            button_label = select_text(default_labels.get(button_type, {}), language=lang, default_language='ja') or 'Go'
 
         # 添加箭头到按钮标签
         button_label_with_arrow = f"{button_label} →"
@@ -1707,7 +1668,7 @@ def generate_search_results_flex(user_id, matching_songs, search_type='song', id
         if idx < len(display_songs) - 1:
             song_rows.append({"type": "separator", "margin": "sm"})
 
-    title_text = config['title'].get(language, config['title']['ja'])
+    title_text = select_text(config['title'], language=language, default_language='ja')
 
     header_box = {
         "type": "box",
@@ -2255,7 +2216,7 @@ def generate_rc_flex(level: float, rc_data: list, user_id=None):
         'en': f'Rating Chart for {level}',
         'zh': f'定数 {level} Rating 对照表'
     }
-    title_text = title_texts.get(language, title_texts['ja'])
+    title_text = select_text(title_texts, language=language, default_language='ja')
 
     # 按达成率整数部分分组（100.xxxx、99.xxxx、98.xxxx...）
     score_groups = {}
@@ -2379,7 +2340,7 @@ def generate_bot_status_flex(uptime_str, image_queue_size, web_queue_size,
         'songs':       {'ja': '楽曲データ',    'en': 'Songs DB',        'zh': '歌曲数据'},
     }
     # "曲" / songs / 首
-    song_unit = {'ja': '曲', 'en': 'songs', 'zh': '首'}[lang]
+    song_unit = select_text({'ja': '曲', 'en': 'songs', 'zh': '首'}, language=lang)
 
     queue_busy = (image_queue_size + web_queue_size) > 0
     queue_text = f"Image {image_queue_size} · Web {web_queue_size}"
@@ -2400,13 +2361,13 @@ def generate_bot_status_flex(uptime_str, image_queue_size, web_queue_size,
 
     _sep = {"type": "separator", "margin": "md"}
     content_rows = [
-        _row(texts['uptime'][lang],      uptime_str, margin="none"),
+        _row(select_text(texts['uptime'], language=lang),      uptime_str, margin="none"),
         _sep,
-        _row(texts['queue'][lang],       queue_text, value_color=queue_color),
+        _row(select_text(texts['queue'], language=lang),       queue_text, value_color=queue_color),
         _sep,
-        _row(texts['tasks_today'][lang], str(tasks_today), value_color="#AF52DE"),
+        _row(select_text(texts['tasks_today'], language=lang), str(tasks_today), value_color="#AF52DE"),
         _sep,
-        _row(texts['songs'][lang],       songs_text),
+        _row(select_text(texts['songs'], language=lang),       songs_text),
     ]
     
     # 获取随机tip和ad并添加到内容中
@@ -2439,7 +2400,7 @@ def generate_bot_status_flex(uptime_str, image_queue_size, web_queue_size,
             "contents": [
                 {
                     "type": "text",
-                    "text": texts['title'][lang],
+                    "text": select_text(texts['title'], language=lang),
                     "weight": "bold",
                     "size": "lg",
                     "color": "#000000"

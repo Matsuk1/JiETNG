@@ -6,6 +6,8 @@
   <title>
     {% if language == 'en' %}
     Error | JiETNG
+    {% elif language == 'zh-tw' %}
+    錯誤 | JiETNG
     {% elif language == 'zh' %}
     错误 | JiETNG
     {% else %}
@@ -104,6 +106,12 @@
       However, this service is operated by an individual and does not provide official guarantees or support.<br>
       Given the nature of this service, if you have concerns about security or operational policies, please refrain from using it.<br>
       You provide information at your own judgment and responsibility.
+      {% elif language == 'zh-tw' %}
+      <strong>使用須知</strong><br>
+      您輸入的所有資訊都會以加密形式安全保存，不會提供給第三方。<br><br>
+      不過，本服務由個人營運，不提供官方保證或支援。<br>
+      基於本服務的性質，如果您對安全性或營運政策有疑慮，請勿使用。<br>
+      資訊提供完全基於您自己的判斷與責任。
       {% elif language == 'zh' %}
       <strong>使用须知</strong><br>
       您输入的所有信息都将以加密形式安全保存,不会提供给第三方。<br><br>

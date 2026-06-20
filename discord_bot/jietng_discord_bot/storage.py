@@ -1,8 +1,15 @@
 from __future__ import annotations
 
 import sqlite3
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+
+
+@dataclass(frozen=True)
+class LinkRecord:
+    jietng_user_id: str
+    mode: str
 
 
 class LinkStore:
@@ -24,31 +31,54 @@ class LinkStore:
                 CREATE TABLE IF NOT EXISTS user_links (
                     discord_user_id TEXT PRIMARY KEY,
                     jietng_user_id TEXT NOT NULL,
+                    mode TEXT NOT NULL DEFAULT 'link',
                     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """
             )
+            columns = {
+                row[1]
+                for row in conn.execute("PRAGMA table_info(user_links)").fetchall()
+            }
+            if "mode" not in columns:
+                conn.execute("ALTER TABLE user_links ADD COLUMN mode TEXT NOT NULL DEFAULT 'link'")
+                conn.execute(
+                    """
+                    UPDATE user_links
+                    SET mode = CASE
+                        WHEN jietng_user_id = 'discord_' || discord_user_id THEN 'bind'
+                        ELSE 'link'
+                    END
+                    """
+                )
 
-    def set_link(self, discord_user_id: int, jietng_user_id: str) -> None:
+    def set_link(self, discord_user_id: int, jietng_user_id: str, mode: str = "link") -> None:
+        if mode not in {"link", "bind"}:
+            raise ValueError("mode must be 'link' or 'bind'")
         with self._connect() as conn:
             conn.execute(
                 """
-                INSERT INTO user_links(discord_user_id, jietng_user_id, updated_at)
-                VALUES (?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO user_links(discord_user_id, jietng_user_id, mode, updated_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(discord_user_id) DO UPDATE SET
                     jietng_user_id = excluded.jietng_user_id,
+                    mode = excluded.mode,
                     updated_at = CURRENT_TIMESTAMP
                 """,
-                (str(discord_user_id), jietng_user_id),
+                (str(discord_user_id), jietng_user_id, mode),
             )
 
-    def get_link(self, discord_user_id: int) -> Optional[str]:
+    def get_record(self, discord_user_id: int) -> Optional[LinkRecord]:
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT jietng_user_id FROM user_links WHERE discord_user_id = ?",
+                "SELECT jietng_user_id, mode FROM user_links WHERE discord_user_id = ?",
                 (str(discord_user_id),),
             ).fetchone()
-        return row[0] if row else None
+        return LinkRecord(row[0], row[1]) if row else None
+
+    def get_link(self, discord_user_id: int) -> Optional[str]:
+        record = self.get_record(discord_user_id)
+        return record.jietng_user_id if record else None
 
     def delete_link(self, discord_user_id: int) -> bool:
         with self._connect() as conn:

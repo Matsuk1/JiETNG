@@ -43,9 +43,10 @@ python -m jietng_discord_bot
 
 ## Commands
 
-- `/link user_id` requests JiETNG API access and stores your default user id.
-- `/unlink` removes the local mapping and requests JiETNG server-side permission revocation.
-- `/bind` creates a JiETNG user and sends a private binding button.
+- `/link user_id` links an existing external JiETNG user after permission approval.
+- `/unlink` removes a `/link` external-user mapping and requests permission revocation.
+- `/bind` creates a Discord-owned JiETNG user and sends a private binding button.
+- `/unbind` deletes the Discord-owned JiETNG user created by `/bind`.
 - `/profile` shows your JiETNG profile metadata.
 - `/sync` streams your JiETNG data sync and replies when it finishes.
 - `/b50 [command]`, `/b40 [command]`, `/b35 [command]`, `/b15 [command]` send Best records images.
@@ -61,14 +62,21 @@ python -m jietng_discord_bot
 The bot stores only Discord-to-JiETNG user id mappings in local SQLite. Score
 data is requested from JiETNG API on demand.
 
-`/bind` is for first-time Discord users. If the Discord account has no local
-`/link`, the bot creates `discord_<discord_user_id>` as the JiETNG user id,
-stores that local mapping, then returns JiETNG's private binding button. The bot
-does not collect SEGA credentials inside Discord. For newly created Discord
-accounts, the bot watches the JiETNG profile for a short time and sends a
-private follow-up message when first-time binding is detected. Existing-account
-rebind links are not auto-confirmed because the account already has profile
-data before rebind starts.
+`/link` and `/bind` are intentionally separate modes. `/link` connects this
+Discord account to an existing JiETNG user through JiETNG's permission flow, and
+`/unlink` only removes that permission-style connection. `/bind` creates a
+Discord-owned JiETNG user id (`discord_<discord_user_id>`), stores that local
+mapping, then returns JiETNG's private binding button. `/unbind` is the matching
+destructive command for `/bind`: it deletes that Discord-owned JiETNG user from
+JiETNG and removes the local mapping.
+
+The two modes cannot be mixed for one Discord account. To switch from `/link`
+mode to `/bind` mode, run `/unlink` first. To switch from `/bind` mode to
+`/link` mode, run `/unbind` first.
+
+The bot does not collect SEGA credentials inside Discord. For newly created
+Discord accounts, the bot watches the JiETNG profile for a short time and sends
+a private follow-up message when first-time binding is detected.
 
 `/link` does not bypass JiETNG permissions: the target JiETNG user still needs
 to accept the permission request before protected commands can read their data.

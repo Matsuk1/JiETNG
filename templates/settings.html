@@ -419,7 +419,11 @@
             <option value="ja" id="opt-lang-ja">日本語</option>
             <option value="en" id="opt-lang-en">English</option>
             <option value="zh" id="opt-lang-zh">简体中文</option>
+            <option value="zh-tw" id="opt-lang-zh-tw">繁體中文</option>
           </select>
+        </div>
+        <div class="bg-hint" id="language-platform-hint">
+          言語設定は LINE 以外の外部プラットフォームには反映されない場合があります。
         </div>
 
         <div class="list-item">
@@ -592,6 +596,7 @@
         pageTitle: '設定 | JiETNG',
         heading: '設定',
         labelLanguage: '言語',
+        languagePlatformHint: '言語設定は LINE 以外の外部プラットフォームには反映されない場合があります。',
         labelTimezone: 'タイムゾーン',
         labelBgEnabled: '背景画像',
         bgHint: '選択しない場合、すべての背景からランダムに選ばれます。',
@@ -627,6 +632,7 @@
         pageTitle: 'Settings | JiETNG',
         heading: 'Settings',
         labelLanguage: 'Language',
+        languagePlatformHint: 'Language settings may not apply to third-party platforms outside LINE.',
         labelTimezone: 'Timezone',
         labelBgEnabled: 'Background Image',
         bgHint: 'If none selected, a random background will be used.',
@@ -662,6 +668,7 @@
         pageTitle: '设置 | JiETNG',
         heading: '设置',
         labelLanguage: '语言',
+        languagePlatformHint: '语言设置可能不会作用于 LINE 以外的第三方平台。',
         labelTimezone: '时区',
         labelBgEnabled: '背景图片',
         bgHint: '不选择则从所有背景中随机。',
@@ -692,6 +699,42 @@
         importTokenRevokeError: '撤销失败。',
         importTokenDeleteConfirm: '确定删除这个已撤销的导入 Token 吗？',
         importTokenDeleteError: '删除失败。',
+      },
+      'zh-tw': {
+        pageTitle: '設定 | JiETNG',
+        heading: '設定',
+        labelLanguage: '語言',
+        languagePlatformHint: '語言設定可能不會套用到 LINE 以外的第三方平台。',
+        labelTimezone: '時區',
+        labelBgEnabled: '背景圖片',
+        bgHint: '不選擇時，會從所有背景中隨機使用。',
+        sectionCustomBg: '自訂背景',
+        customBgHint: '上傳您自己的背景圖片（限 1 張，5MB 以內）。',
+        customBgUploaded: '已上傳',
+        labelCustomBg: '選擇圖片',
+        uploadSub: 'PNG / JPG / JPEG / WebP（5MB 以內）',
+        uploadBtn: '上傳',
+        uploadFailed: '上傳失敗。',
+        deleteCustomBgBtn: '刪除',
+        deleteCustomBgConfirm: '確定刪除自訂背景嗎？',
+        submitBtn: '保存',
+        importTokenTitle: '成績匯入 Token',
+        importTokenHelp: '用於讓外部工具把處理後的成績 JSON 上傳到 JiETNG。',
+        importTokenCreate: '產生 Token',
+        importTokenCreateLabel: '新的 Token',
+        importTokenCreateMeta: '產生後，Token 只會顯示這一次。',
+        importTokenResultTitle: 'Token（只顯示這一次）',
+        importTokenCopy: '複製',
+        importTokenCopied: '已複製',
+        importTokenEmpty: '還沒有 Token。',
+        importTokenRevoke: '撤銷',
+        importTokenRevoked: '已撤銷',
+        importTokenDelete: '刪除',
+        importTokenCreateError: '產生 Token 失敗。',
+        importTokenRevokeConfirm: '確定撤銷這個匯入 Token 嗎？',
+        importTokenRevokeError: '撤銷失敗。',
+        importTokenDeleteConfirm: '確定刪除這個已撤銷的匯入 Token 嗎？',
+        importTokenDeleteError: '刪除失敗。',
       }
     };
 
@@ -716,6 +759,13 @@
         revokeBtn: '撤销',
         revokeConfirm: '确定撤销该服务的访问权限吗？',
         revokeError: '撤销失败，请重试',
+      },
+      'zh-tw': {
+        panelTitle: '存取權限管理',
+        ownerLabel: '建立者',
+        revokeBtn: '撤銷',
+        revokeConfirm: '確定撤銷此服務的存取權限嗎？',
+        revokeError: '撤銷失敗，請重試',
       },
     };
 
@@ -746,10 +796,11 @@
     }
 
     function updateLanguage(lang) {
-      const t = translations[lang];
+      const t = translations[lang] || translations.ja;
       document.getElementById('page-title').textContent = t.pageTitle;
       document.getElementById('page-heading').textContent = t.heading;
       document.getElementById('label-language').textContent = t.labelLanguage;
+      document.getElementById('language-platform-hint').textContent = t.languagePlatformHint;
       document.getElementById('label-timezone').textContent = t.labelTimezone;
       document.getElementById('label-bg-enabled').textContent = t.labelBgEnabled;
       document.getElementById('bg-hint-text').textContent = t.bgHint;
@@ -965,7 +1016,7 @@
 
     async function deleteCustomBg() {
       const lang = document.getElementById('language').value || 'ja';
-      const t = translations[lang];
+      const t = translations[lang] || translations.ja;
       if (!confirm(t.deleteCustomBgConfirm)) return;
 
       const btn = document.getElementById('delete-custom-bg-btn');
@@ -1015,7 +1066,7 @@
         area.classList.remove('has-file');
         icon.textContent = '+';
         const lang = document.getElementById('language').value || 'ja';
-        text.textContent = translations[lang].labelCustomBg;
+        text.textContent = (translations[lang] || translations.ja).labelCustomBg;
         btn.style.display = 'none';
       }
     }
@@ -1048,7 +1099,7 @@
           const uploadRow = document.getElementById('upload-row');
           uploadRow.style.display = 'none';
 
-          const t = translations[lang];
+          const t = translations[lang] || translations.ja;
           const actionsDiv = document.createElement('div');
           actionsDiv.className = 'list-item';
           actionsDiv.id = 'custom-bg-actions';
@@ -1072,7 +1123,7 @@
           totalBgCount++;
           updateBgCount();
         } catch (e) {
-          alert(translations[lang].uploadFailed + (e.message ? '\n' + e.message : ''));
+          alert((translations[lang] || translations.ja).uploadFailed + (e.message ? '\n' + e.message : ''));
           btn.textContent = btnText;
           btn.disabled = false;
         }
