@@ -4,6 +4,7 @@ cryptography==3.4.8
 DBUtils==3.1.0
 Flask==3.1.0
 Flask-WTF==1.2.1
+gunicorn==23.0.0
 line-bot-sdk==3.21.0
 lxml==5.3.0
 Pillow==11.2.1

@@ -195,7 +195,7 @@ def calc_dx_star(dx_percentage):
 
     return star_num
 
-def read_record(user_id: str, recent: bool = False, recent_type: bool = False) -> List[Dict[str, Any]]:
+def read_record(user_id: str, recent: bool = False, recent_type: bool = False, ver: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     从数据库读取用户成绩记录
 
@@ -225,7 +225,10 @@ def read_record(user_id: str, recent: bool = False, recent_type: bool = False) -
             item.pop("user_id", None)
             records.append(item)
 
-        return get_detailed_info(records, get_user_field(user_id, 'version', "jp"), recent_type)
+        if ver is None:
+            ver = get_user_field(user_id, 'version', "jp")
+
+        return get_detailed_info(records, ver, recent_type)
 
     finally:
         conn.close()

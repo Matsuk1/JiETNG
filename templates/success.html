@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="{{ language or 'ja' }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
@@ -7,7 +7,9 @@
     {% if mode == 'settings' %}
       {% if language == 'en' %}
       Settings Saved | JiETNG
-      {% elif language in ['zh', 'zh-tw'] %}
+      {% elif language == 'zh-tw' %}
+      設定已保存 | JiETNG
+      {% elif language == 'zh' %}
       设置已保存 | JiETNG
       {% else %}
       設定保存完了 | JiETNG
@@ -15,7 +17,9 @@
     {% elif mode == 'import_token' %}
       {% if language == 'en' %}
       Import Token Created | JiETNG
-      {% elif language in ['zh', 'zh-tw'] %}
+      {% elif language == 'zh-tw' %}
+      Import Token 已產生 | JiETNG
+      {% elif language == 'zh' %}
       Import Token 已生成 | JiETNG
       {% else %}
       Import Token 作成完了 | JiETNG
@@ -23,7 +27,9 @@
     {% elif mode == 'rebind' %}
       {% if language == 'en' %}
       Update Successful | JiETNG
-      {% elif language in ['zh', 'zh-tw'] %}
+      {% elif language == 'zh-tw' %}
+      更新成功 | JiETNG
+      {% elif language == 'zh' %}
       更新成功 | JiETNG
       {% else %}
       更新成功 | JiETNG
@@ -31,7 +37,9 @@
     {% else %}
       {% if language == 'en' %}
       Binding Successful | JiETNG
-      {% elif language in ['zh', 'zh-tw'] %}
+      {% elif language == 'zh-tw' %}
+      綁定成功 | JiETNG
+      {% elif language == 'zh' %}
       绑定成功 | JiETNG
       {% else %}
       連携成功 | JiETNG
@@ -175,7 +183,9 @@
       {% if mode == 'settings' %}
         {% if language == 'en' %}
         Settings Saved
-        {% elif language in ['zh', 'zh-tw'] %}
+        {% elif language == 'zh-tw' %}
+        設定已保存
+        {% elif language == 'zh' %}
         设置已保存
         {% else %}
         設定保存完了
@@ -183,7 +193,9 @@
       {% elif mode == 'import_token' %}
         {% if language == 'en' %}
         Import Token Created
-        {% elif language in ['zh', 'zh-tw'] %}
+        {% elif language == 'zh-tw' %}
+        Import Token 已產生
+        {% elif language == 'zh' %}
         Import Token 已生成
         {% else %}
         Import Token 作成完了
@@ -191,7 +203,9 @@
       {% elif mode == 'rebind' %}
         {% if language == 'en' %}
         Update Successful
-        {% elif language in ['zh', 'zh-tw'] %}
+        {% elif language == 'zh-tw' %}
+        更新成功
+        {% elif language == 'zh' %}
         更新成功
         {% else %}
         更新成功
@@ -199,7 +213,9 @@
       {% else %}
         {% if language == 'en' %}
         Binding Successful
-        {% elif language in ['zh', 'zh-tw'] %}
+        {% elif language == 'zh-tw' %}
+        綁定成功
+        {% elif language == 'zh' %}
         绑定成功
         {% else %}
         バインド成功
@@ -211,7 +227,9 @@
       {% if mode == 'settings' %}
         {% if language == 'en' %}
         Your settings have been saved successfully.
-        {% elif language in ['zh', 'zh-tw'] %}
+        {% elif language == 'zh-tw' %}
+        您的設定已成功保存。
+        {% elif language == 'zh' %}
         您的设置已成功保存。
         {% else %}
         設定が正常に保存されました。
@@ -219,7 +237,9 @@
       {% elif mode == 'import_token' %}
         {% if language == 'en' %}
         Save this token in the bookmarklet. Your JiETNG profile will be initialized after the first record upload.
-        {% elif language in ['zh', 'zh-tw'] %}
+        {% elif language == 'zh-tw' %}
+        請將此 Token 儲存至書籤工具中。首次上傳成績後，JiETNG 會初始化您的使用者資料。
+        {% elif language == 'zh' %}
         请把这个 Token 保存到书签工具里。第一次上传成绩后，JiETNG 会初始化你的用户资料。
         {% else %}
         この Token をブックマークレットに保存してください。初回の成績アップロード後、JiETNG のユーザーデータが初期化されます。
@@ -227,7 +247,9 @@
       {% elif mode == 'rebind' %}
         {% if language == 'en' %}
         Your account settings have been successfully updated.
-        {% elif language in ['zh', 'zh-tw'] %}
+        {% elif language == 'zh-tw' %}
+        您的帳號設定已成功更新。
+        {% elif language == 'zh' %}
         您的账号设置已成功更新。
         {% else %}
         アカウント設定が正常に更新されました。
@@ -235,7 +257,9 @@
       {% else %}
         {% if language == 'en' %}
         Successfully linked with JiETNG.
-        {% elif language in ['zh', 'zh-tw'] %}
+        {% elif language == 'zh-tw' %}
+        已成功與 JiETNG 連結。
+        {% elif language == 'zh' %}
         已成功与 JiETNG 连携。
         {% else %}
         JiETNGとの連携が成功しました。
@@ -248,7 +272,9 @@
       <div class="token-label">
         {% if language == 'en' %}
         Token shown only once
-        {% elif language in ['zh', 'zh-tw'] %}
+        {% elif language == 'zh-tw' %}
+        Token 僅顯示這一次
+        {% elif language == 'zh' %}
         Token 只显示这一次
         {% else %}
         Token は今回のみ表示されます
@@ -258,7 +284,9 @@
       <button type="button" class="copy-btn" id="copy-token-btn">
         {% if language == 'en' %}
         Copy Token
-        {% elif language in ['zh', 'zh-tw'] %}
+        {% elif language == 'zh-tw' %}
+        複製 Token
+        {% elif language == 'zh' %}
         复制 Token
         {% else %}
         Tokenをコピー

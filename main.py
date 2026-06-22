@@ -19,6 +19,7 @@ import copy
 import asyncio
 import aiohttp
 import urllib3
+import atexit
 from urllib.parse import quote as _url_quote
 import time
 import subprocess
@@ -2562,7 +2563,7 @@ async def get_song_record(user_id, id_use, acronym, ver="jp"):
     if "personal_info" not in _id_use_data:
         return mention_error(user_id) if id_use != user_id else info_error(user_id)
     
-    song_record = read_record(id_use)
+    song_record = read_record(id_use, ver=ver)
 
     if not len(song_record):
         return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
@@ -2618,7 +2619,7 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
     if "personal_info" not in _id_use_data:
         return mention_error(user_id) if id_use != user_id else info_error(user_id)
 
-    song_record = read_record(id_use)
+    song_record = read_record(id_use, ver=ver)
 
     if not len(song_record):
         return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
@@ -2698,7 +2699,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None)
     if not (len(title) == 2 or len(title) == 3):
         return plate_error(user_id)
 
-    song_record = read_record(id_use)
+    song_record = read_record(id_use, ver=ver)
 
     if not len(song_record):
         return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
@@ -2931,7 +2932,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
         return song_error(user_id)
 
     target_type, target_icons = rank_mapping[rank] if rank else (None, None)
-    song_record = read_record(id_use)
+    song_record = read_record(id_use, ver=ver)
 
     if not len(song_record):
         return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
@@ -3447,7 +3448,7 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
 
     recent = (type == "rct50")
     recent_type = (type == "best40")
-    song_record = read_record(id_use, recent, recent_type)
+    song_record = read_record(id_use, recent, recent_type, ver=ver)
     if not len(song_record):
         return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
 
@@ -3560,7 +3561,7 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     if "personal_info" not in _id_use_data:
         return mention_error(user_id) if id_use != user_id else info_error(user_id)
 
-    song_record = read_record(id_use)
+    song_record = read_record(id_use, ver=ver)
 
     if not len(song_record):
         return mention_record_error(user_id) if id_use != user_id else record_error(user_id)
@@ -6984,7 +6985,7 @@ def api_v2_song_record(user_id, song_id):
         if not matching_song:
             return jsonify({"error": "Song not found"}), 404
 
-        song_record = read_record(user_id)
+        song_record = read_record(user_id, ver=ver)
         if not song_record:
             return jsonify({"error": "No records found, please sync first"}), 404
 
@@ -7065,7 +7066,7 @@ def api_v2_generate_record_image(user_id):
 
         recent = (record_type == "rct50")
         recent_type = (record_type == "best40")
-        song_record = read_record(user_id, recent, recent_type)
+        song_record = read_record(user_id, recent, recent_type, ver=ver)
         if not song_record:
             return jsonify({"error": "No records found, please sync first"}), 404
 
@@ -7131,7 +7132,7 @@ def api_v2_generate_plate(user_id):
             return jsonify({"error": "Invalid title length, must be 2 or 3 characters"}), 400
 
         ver = _udata.get("version", "jp")
-        song_record = read_record(user_id)
+        song_record = read_record(user_id, ver=ver)
         if not song_record:
             return jsonify({"error": "No records found, please sync first"}), 404
 
@@ -7300,7 +7301,7 @@ def api_v2_generate_achievement(user_id):
         ver = _udata.get("version", "jp")
         target_type, target_icons = rank_mapping[rank] if rank else (None, None)
 
-        song_record = read_record(user_id)
+        song_record = read_record(user_id, ver=ver)
         if not song_record:
             return jsonify({"error": "No records found, please sync first"}), 404
 
@@ -7520,7 +7521,34 @@ def api_v2_import_records():
         return _maimai_session_cors(jsonify({"error": "Internal server error", "message": str(e)})), 500
 
 
-if __name__ == "__main__":
+_runtime_started = False
+_runtime_lock = threading.Lock()
+_runtime_atexit_registered = False
+_runtime_shutdown = False
+
+
+def _shutdown_runtime():
+    global _runtime_shutdown
+
+    with _runtime_lock:
+        if _runtime_shutdown:
+            return
+        _runtime_shutdown = True
+
+    save_dev_tokens(force=True)
+    memory_manager.stop()
+    logger.info("[System] Memory manager stopped")
+
+
+def start_runtime():
+    """启动数据库初始化、后台队列 worker 和定期任务。"""
+    global _runtime_started, _runtime_atexit_registered
+
+    with _runtime_lock:
+        if _runtime_started:
+            return
+        _runtime_started = True
+
     # ==================== 系统启动自检 ====================
     # 在启动 worker 线程之前执行系统自检
     logger.info("=" * 60)
@@ -7598,12 +7626,17 @@ if __name__ == "__main__":
         return stats
     memory_manager.cleanup = enhanced_cleanup
 
+    if not _runtime_atexit_registered:
+        atexit.register(_shutdown_runtime)
+        _runtime_atexit_registered = True
+
+
+start_runtime()
+
+
+if __name__ == "__main__":
     try:
-        app.run(host=HOST, port=PORT)
+        app.run(host=HOST, port=PORT, threaded=True)
 
     finally:
-        save_dev_tokens(force=True)
-
-        # 停止内存管理器
-        memory_manager.stop()
-        logger.info("[System] Memory manager stopped")
+        _shutdown_runtime()
