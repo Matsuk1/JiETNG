@@ -50,7 +50,7 @@ Bot 会从对应版本的 maimai NET 同步资料、Best 记录、Recent 记录�
 settings
 ```
 
-在设置页生成 Import Token，然后到[网页书签工具](/bookmarklet)页面保存书签。登录 maimai 官方移动站后点击书签，即可在原页面生成 B50 / AP50 图片；保存 token 后，需要上传成绩时点击 **Upload** 上传 best / recent / profile 数据。
+在设置页生成 Import Token，然后到[网页书签工具](/zh/bookmarklet)页面保存书签。登录 maimai 官方移动站后点击书签，即可在原页面生成 B50 / AP50 图片；保存 token 后，需要上传成绩时点击 **Upload** 上传 best / recent / profile 数据。
 
 Import Token 明文只显示一次。设置页可以查看所有 token、撤销 token，并删除已撤销 token。
 
@@ -67,7 +67,7 @@ settings
 export json
 ```
 
-更多命令见[命令大全](/commands/)和[成绩命令](/commands/record)。
+更多命令见[命令大全](/zh/commands/)和[成绩命令](/zh/commands/record)。
 
 ## 修改设置
 

@@ -63,7 +63,7 @@ JiETNG は広範な開発作業の成果であり、重要な知的財産を表�
 - ✅ Maimai でらっくす スコアを追跡
 - ✅ すべての機能を無料で使用
 
-[今すぐ始める →](/ja/guide/getting-started)
+[今すぐ始める →](/guide/getting-started)
 
 ## ライセンスに関するお問い合わせ
 

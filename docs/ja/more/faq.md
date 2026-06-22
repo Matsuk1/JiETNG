@@ -13,7 +13,7 @@ maimai NET からの自動同期には完全な SEGA 連携が必要です。
 
 1. 個別チャットで `bind` を送信します。
 2. SEGA 連携、または Import Token モードを選びます。
-3. SEGA ユーザーは `maimai update`、Import Token ユーザーは `settings` で token を作成して[ブックマークレット](/ja/bookmarklet)を使います。
+3. SEGA ユーザーは `maimai update`、Import Token ユーザーは `settings` で token を作成して[ブックマークレット](/bookmarklet)を使います。
 4. `b50`、`rct50`、`record`、`achievement` を試します。
 
 ## チャットに SEGA パスワードを送ってよいですか？

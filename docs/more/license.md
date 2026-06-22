@@ -63,7 +63,7 @@ JiETNG 是广泛开发工作的成果，代表了重要的知识产权。专有�
 - ✅ 追踪您的 『maimai でらっくす』 成绩
 - ✅ 免费使用所有功能
 
-[开始使用 →](/guide/getting-started)
+[开始使用 →](/zh/guide/getting-started)
 
 ## 联系许可事宜
 

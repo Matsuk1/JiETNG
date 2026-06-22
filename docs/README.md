@@ -51,7 +51,7 @@ docs/
 └── index.md
 ```
 
-The root locale is Simplified Chinese. English pages live under `docs/en/`, and Japanese pages live under `docs/ja/`.
+The root locale is Japanese. Simplified Chinese pages are served under `/zh/` from the root Markdown sources, English pages live under `/en/`, and Japanese source files live under `docs/ja/`.
 
 ## Content Scope
 
@@ -72,7 +72,7 @@ The VitePress config uses:
 - `base: '/'`
 - sitemap hostname: `https://jietng.matsuk1.com`
 - local search
-- locales: root `zh-CN`, `/en/`, `/ja/`
+- locales: root `ja`, `/zh/`, `/en/`
 
 For hosted builds, use:
 

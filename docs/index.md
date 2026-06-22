@@ -13,10 +13,10 @@ hero:
   actions:
     - theme: brand
       text: 开始使用
-      link: /guide/getting-started
+      link: /zh/guide/getting-started
     - theme: alt
       text: 网页书签
-      link: /bookmarklet
+      link: /zh/bookmarklet
     - theme: alt
       text: GitHub
       link: https://github.com/Matsuk1/JiETNG
@@ -25,37 +25,37 @@ features:
   - icon: 📊
     title: 成绩图生成
     details: 支持 B50、B40、Best 35/15、All Best、AP Best、FDX Best、Recent 50 和理想分数图。
-    link: /commands/record
+    link: /zh/commands/record
     linkText: 查看成绩命令
 
   - icon: 🔎
     title: 精准查询
     details: 可按等级、定数、达成率、DX 分数、谱面类型、难度、版本与分页筛选成绩。
-    link: /features/search
+    link: /zh/features/search
     linkText: 查看筛选方式
 
   - icon: 🧩
     title: 两种数据来源
     details: 可绑定 SEGA 账号自动同步，也可使用 Import Token 与网页书签上传已加工成绩数据。
-    link: /bookmarklet
+    link: /zh/bookmarklet
     linkText: 查看书签工具
 
   - icon: 🏆
     title: 牌子与进度
     details: 支持版本达成状况、等级达成进度、未游玩/未达成/已达成筛选。
-    link: /commands/
+    link: /zh/commands/
     linkText: 查看命令大全
 
   - icon: 🌐
     title: 多语言与双版本
     details: 文档与主要交互支持中文、英文、日文；数据侧支持 JP 与 INTL。
-    link: /guide/getting-started
+    link: /zh/guide/getting-started
     linkText: 快速开始
 
   - icon: 🔐
     title: 权限与导出
     details: 支持用户设置页、数据导出 JSON/XML、开发者 Token 和用户授权。
-    link: /developer-api
+    link: /zh/developer-api
     linkText: 查看 API
 ---
 
@@ -87,14 +87,14 @@ JiETNG 是面向 **maimai でらっくす / 舞萌DX** 的查分器和 LINE 成�
 
 1. 添加 JiETNG LINE Bot。
 2. 私聊发送 `bind`，选择绑定 SEGA 账号，或选择 Import Token 导入模式。
-3. 发送 `maimai update` 同步官方数据，或使用[网页书签工具](/bookmarklet)从官方网页读取并上传成绩。
+3. 发送 `maimai update` 同步官方数据，或使用[网页书签工具](/zh/bookmarklet)从官方网页读取并上传成绩。
 4. 发送 `b50`、`record`、`13.6のレコードリスト`、`真極の達成状況` 等命令查看结果。
 
-[阅读快速开始 →](/guide/getting-started)
+[阅读快速开始 →](/zh/guide/getting-started)
 
 ## 社区与支持
 
-- [命令参考](/commands/)
-- [开发者 API](/developer-api)
+- [命令参考](/zh/commands/)
+- [开发者 API](/zh/developer-api)
 - [GitHub Issues](https://github.com/Matsuk1/JiETNG/issues)
 - [Discord](https://discord.gg/NXxFn9T8Xz)

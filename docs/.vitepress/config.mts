@@ -2,18 +2,25 @@ import { defineConfig } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
 
 const siteUrl = 'https://jietng.matsuk1.com'
-const siteDescription = 'JiETNG 是支持日服 JP 与国际服 INTL 的舞萌DX / maimai でらっくす 查分器和 LINE Bot，可生成 B50、Best 50、Recent 50、レート内訳、DX Rating 成绩图，并支持网页书签导入。'
+const siteDescription = 'JiETNG は国内版 JP と海外版 INTL に対応した maimai でらっくす スコア管理 Bot。B50、Best 50、Recent 50、DX Rating、レート内訳、ブックマークレット取り込みに対応。'
 
 // https://vitepress.dev/reference/site-config
 export default withMermaid(defineConfig({
   title: "JiETNG",
   description: siteDescription,
-  titleTemplate: ":title | JiETNG · 舞萌DX 查分器 / maimai B50 レート内訳",
+  titleTemplate: ':title | JiETNG · maimai B50 / レート内訳',
 
   cleanUrls: true,
 
   // 排除文件
   srcExclude: ['**/README.md'],
+
+  // 日文をルートに、簡体字中国語を /zh/ に配置する。
+  rewrites: (id) => {
+    if (id.startsWith('ja/')) return id.slice(3)
+    if (id.startsWith('en/')) return id
+    return `zh/${id}`
+  },
 
   // Base URL配置
   // GitHub Pages (username.github.io/JiETNG/): 使用 '/JiETNG/'
@@ -37,47 +44,47 @@ export default withMermaid(defineConfig({
   themeConfig: {
     logo: '/logo.svg',
 
-    // 导航栏
+    // ナビゲーション
     nav: [
-      { text: '首页', link: '/' },
-      { text: '指南', link: '/guide/getting-started' },
-      { text: '功能', link: '/features/search' },
-      { text: '命令', link: '/commands/basic' },
-      { text: '网页书签', link: '/bookmarklet' }
+      { text: 'ホーム', link: '/' },
+      { text: 'ガイド', link: '/guide/getting-started' },
+      { text: '機能', link: '/features/search' },
+      { text: 'コマンド', link: '/commands/basic' },
+      { text: 'ブックマークレット', link: '/bookmarklet' }
     ],
 
-    // 侧边栏
+    // サイドバー
     sidebar: [
       {
-        text: '开始使用',
+        text: '始めに',
         items: [
-          { text: '快速开始', link: '/guide/getting-started' },
-          { text: '在线体验', link: '/demo' },
-          { text: '网页书签工具', link: '/bookmarklet' }
+          { text: 'クイックスタート', link: '/guide/getting-started' },
+          { text: '体験する', link: '/demo' },
+          { text: 'ブックマークレット', link: '/bookmarklet' }
         ]
       },
       {
-        text: '命令参考',
+        text: 'コマンド',
         items: [
-          { text: '命令大全', link: '/commands/' },
-          { text: '基础命令', link: '/commands/basic' },
-          { text: '成绩命令', link: '/commands/record' }
+          { text: 'コマンド一覧', link: '/commands/' },
+          { text: '基本コマンド', link: '/commands/basic' },
+          { text: 'レコードコマンド', link: '/commands/record' }
         ]
       },
       {
-        text: '功能特性',
+        text: '機能',
         items: [
-          { text: '成绩查询', link: '/features/search' }
+          { text: '楽曲検索', link: '/features/search' }
         ]
       },
       {
-        text: '更多',
+        text: 'その他',
         items: [
-          { text: '常见问题', link: '/more/faq' },
-          { text: '隐私政策', link: '/more/privacy' },
-          { text: '支持', link: '/more/support' },
-          { text: '许可证', link: '/more/license' },
-          { text: '开发者 API', link: '/developer-api' }
+          { text: 'よくある質問', link: '/more/faq' },
+          { text: 'プライバシー', link: '/more/privacy' },
+          { text: 'サポート', link: '/more/support' },
+          { text: 'ライセンス', link: '/more/license' },
+          { text: '開発者 API', link: '/developer-api' }
         ]
       }
     ],
@@ -87,10 +94,10 @@ export default withMermaid(defineConfig({
       { icon: 'github', link: 'https://github.com/Matsuk1/JiETNG' }
     ],
 
-    // 页脚
+    // フッター
     footer: {
-      message: '让每一次游玩都有迹可循',
-      copyright: 'Copyright © 2025 Matsuki. 保留所有权利。'
+      message: 'すべてのプレイを記録に残そう',
+      copyright: 'Copyright © 2025 Matsuki. All Rights Reserved.'
     },
 
     // 搜索
@@ -101,12 +108,12 @@ export default withMermaid(defineConfig({
     // 编辑链接
     editLink: {
       pattern: 'https://github.com/Matsuk1/JiETNG/edit/main/docs/:path',
-      text: '在 GitHub 上编辑此页'
+      text: 'GitHub でこのページを編集'
     },
 
     // 最后更新时间
     lastUpdated: {
-      text: '最后更新',
+      text: '最終更新',
       formatOptions: {
         dateStyle: 'short',
         timeStyle: 'short'
@@ -114,12 +121,76 @@ export default withMermaid(defineConfig({
     }
   },
 
-  // 多语言支持
+  // 多言語対応
   locales: {
     root: {
+      label: '日本語',
+      lang: 'ja',
+      description: siteDescription
+    },
+    zh: {
       label: '简体中文',
       lang: 'zh-CN',
-      description: '舞萌DX 查分器 — JiETNG 支持日服 JP 与国际服 INTL，提供 maimai B50、Best 50、Recent 50、DX Rating、レート内訳、牌子进度和网页书签导入。'
+      link: '/zh/',
+      description: '舞萌DX 查分器 — JiETNG 支持日服 JP 与国际服 INTL，提供 maimai B50、Best 50、Recent 50、DX Rating、レート内訳、牌子进度和网页书签导入。',
+      themeConfig: {
+        nav: [
+          { text: '首页', link: '/zh/' },
+          { text: '指南', link: '/zh/guide/getting-started' },
+          { text: '功能', link: '/zh/features/search' },
+          { text: '命令', link: '/zh/commands/basic' },
+          { text: '网页书签', link: '/zh/bookmarklet' }
+        ],
+        sidebar: [
+          {
+            text: '开始使用',
+            items: [
+              { text: '快速开始', link: '/zh/guide/getting-started' },
+              { text: '在线体验', link: '/zh/demo' },
+              { text: '网页书签工具', link: '/zh/bookmarklet' }
+            ]
+          },
+          {
+            text: '命令参考',
+            items: [
+              { text: '命令大全', link: '/zh/commands/' },
+              { text: '基础命令', link: '/zh/commands/basic' },
+              { text: '成绩命令', link: '/zh/commands/record' }
+            ]
+          },
+          {
+            text: '功能特性',
+            items: [
+              { text: '成绩查询', link: '/zh/features/search' }
+            ]
+          },
+          {
+            text: '更多',
+            items: [
+              { text: '常见问题', link: '/zh/more/faq' },
+              { text: '隐私政策', link: '/zh/more/privacy' },
+              { text: '支持', link: '/zh/more/support' },
+              { text: '许可证', link: '/zh/more/license' },
+              { text: '开发者 API', link: '/zh/developer-api' }
+            ]
+          }
+        ],
+        editLink: {
+          pattern: 'https://github.com/Matsuk1/JiETNG/edit/main/docs/:path',
+          text: '在 GitHub 上编辑此页'
+        },
+        lastUpdated: {
+          text: '最后更新',
+          formatOptions: {
+            dateStyle: 'short',
+            timeStyle: 'short'
+          }
+        },
+        footer: {
+          message: '让每一次游玩都有迹可循',
+          copyright: 'Copyright © 2025 Matsuki. 保留所有权利。'
+        }
+      }
     },
     en: {
       label: 'English',
@@ -184,70 +255,6 @@ export default withMermaid(defineConfig({
           copyright: 'Copyright © 2025 Matsuki. All Rights Reserved.'
         }
       }
-    },
-    ja: {
-      label: '日本語',
-      lang: 'ja',
-      link: '/ja/',
-      description: 'JiETNG は国内版 JP と海外版 INTL に対応した maimai でらっくす スコア管理 Bot。B50、Best 50、Recent 50、DX Rating、レート内訳、ブックマークレット取り込みに対応。',
-      themeConfig: {
-        nav: [
-          { text: 'ホーム', link: '/ja/' },
-          { text: 'ガイド', link: '/ja/guide/getting-started' },
-          { text: '機能', link: '/ja/features/search' },
-          { text: 'コマンド', link: '/ja/commands/basic' },
-          { text: 'ブックマークレット', link: '/ja/bookmarklet' }
-        ],
-        sidebar: [
-          {
-            text: '始めに',
-            items: [
-              { text: 'クイックスタート', link: '/ja/guide/getting-started' },
-              { text: '体験する', link: '/ja/demo' },
-              { text: 'ブックマークレット', link: '/ja/bookmarklet' }
-            ]
-          },
-          {
-            text: 'コマンド',
-            items: [
-              { text: 'コマンド一覧', link: '/ja/commands/' },
-              { text: '基本コマンド', link: '/ja/commands/basic' },
-              { text: 'レコードコマンド', link: '/ja/commands/record' }
-            ]
-          },
-          {
-            text: '機能',
-            items: [
-              { text: '楽曲検索', link: '/ja/features/search' }
-            ]
-          },
-          {
-            text: 'その他',
-            items: [
-              { text: 'よくある質問', link: '/ja/more/faq' },
-              { text: 'プライバシー', link: '/ja/more/privacy' },
-              { text: 'サポート', link: '/ja/more/support' },
-              { text: 'ライセンス', link: '/ja/more/license' },
-              { text: '開発者 API', link: '/ja/developer-api' }
-            ]
-          }
-        ],
-        editLink: {
-          pattern: 'https://github.com/Matsuk1/JiETNG/edit/main/docs/:path',
-          text: 'GitHub でこのページを編集'
-        },
-        lastUpdated: {
-          text: '最終更新',
-          formatOptions: {
-            dateStyle: 'short',
-            timeStyle: 'short'
-          }
-        },
-        footer: {
-          message: 'すべてのプレイを記録に残そう',
-          copyright: 'Copyright © 2025 Matsuki. All Rights Reserved.'
-        }
-      }
     }
   },
 
@@ -296,29 +303,27 @@ export default withMermaid(defineConfig({
     // Open Graph
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: 'JiETNG' }],
-    ['meta', { property: 'og:title', content: 'JiETNG · 舞萌DX 查分器 / maimai B50 レート内訳' }],
-    ['meta', { property: 'og:description', content: '支持 JP / INTL 的 maimai DX 查分器：B50、Best 50、Recent 50、DX Rating、レート内訳、牌子进度和网页书签导入。' }],
+    ['meta', { property: 'og:title', content: 'JiETNG · maimai B50 / レート内訳' }],
+    ['meta', { property: 'og:description', content: siteDescription }],
     ['meta', { property: 'og:image', content: `${siteUrl}/og-image.png` }],
     ['meta', { property: 'og:image:width', content: '1200' }],
     ['meta', { property: 'og:image:height', content: '630' }],
     ['meta', { property: 'og:image:type', content: 'image/png' }],
     ['meta', { property: 'og:url', content: siteUrl }],
-    ['meta', { property: 'og:locale', content: 'zh_CN' }],
-    ['meta', { property: 'og:locale:alternate', content: 'zh_TW' }],
+    ['meta', { property: 'og:locale', content: 'ja_JP' }],
+    ['meta', { property: 'og:locale:alternate', content: 'zh_CN' }],
     ['meta', { property: 'og:locale:alternate', content: 'en_US' }],
-    ['meta', { property: 'og:locale:alternate', content: 'ja_JP' }],
 
     // Twitter Card
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { name: 'twitter:title', content: 'JiETNG · 舞萌DX 查分器 / maimai B50 レート内訳' }],
-    ['meta', { name: 'twitter:description', content: 'maimai DX JP / INTL score tracker with B50, Best 50, Recent 50, DX Rating, rate breakdown, and bookmarklet import.' }],
+    ['meta', { name: 'twitter:title', content: 'JiETNG · maimai B50 / レート内訳' }],
+    ['meta', { name: 'twitter:description', content: siteDescription }],
     ['meta', { name: 'twitter:image', content: `${siteUrl}/og-image.png` }],
 
     // hreflang for main locale entry points
-    ['link', { rel: 'alternate', hreflang: 'zh-CN', href: `${siteUrl}/` }],
-    ['link', { rel: 'alternate', hreflang: 'zh-TW', href: `${siteUrl}/` }],
+    ['link', { rel: 'alternate', hreflang: 'ja', href: `${siteUrl}/` }],
+    ['link', { rel: 'alternate', hreflang: 'zh-CN', href: `${siteUrl}/zh/` }],
     ['link', { rel: 'alternate', hreflang: 'en', href: `${siteUrl}/en/` }],
-    ['link', { rel: 'alternate', hreflang: 'ja', href: `${siteUrl}/ja/` }],
     ['link', { rel: 'alternate', hreflang: 'x-default', href: `${siteUrl}/` }],
 
     // JSON-LD 结构化数据（让 Google 知道这是个 WebApplication，不是普通博客）
@@ -331,7 +336,7 @@ export default withMermaid(defineConfig({
       'description': siteDescription,
       'applicationCategory': 'GameApplication',
       'operatingSystem': 'Any (LINE)',
-      'inLanguage': ['zh-CN', 'zh-TW', 'ja', 'en'],
+      'inLanguage': ['ja', 'zh-CN', 'en'],
       'keywords': '舞萌DX查分器, 舞萌查分器, maimai B50, maimai レート内訳, DX Rating, Best 50, Recent 50',
       'offers': {
         '@type': 'Offer',
@@ -351,7 +356,7 @@ export default withMermaid(defineConfig({
       'name': 'JiETNG',
       'alternateName': ['舞萌DX 查分器', 'maimai DX Score Tracker', 'maimai レート内訳'],
       'url': siteUrl,
-      'inLanguage': ['zh-CN', 'zh-TW', 'ja', 'en']
+      'inLanguage': ['ja', 'zh-CN', 'en']
     }) ]
   ],
 

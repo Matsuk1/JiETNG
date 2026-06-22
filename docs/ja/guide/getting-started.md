@@ -41,7 +41,7 @@ update
 settings
 ```
 
-設定ページで Import Token を作成し、[ブックマークレット](/ja/bookmarklet)を保存します。公式 maimai モバイルサイトでブックマークレットを実行すると、B50 / AP50 画像を生成できます。best / recent / profile をアップロードしたい場合は **Upload** を押します。
+設定ページで Import Token を作成し、[ブックマークレット](/bookmarklet)を保存します。公式 maimai モバイルサイトでブックマークレットを実行すると、B50 / AP50 画像を生成できます。best / recent / profile をアップロードしたい場合は **Upload** を押します。
 
 Token の平文は一度だけ表示されます。設定ページでは token の一覧、撤回、撤回済み token の削除ができます。
 
@@ -58,7 +58,7 @@ settings
 export json
 ```
 
-詳しくは[コマンド一覧](/ja/commands/)と[レコードコマンド](/ja/commands/record)を参照してください。
+詳しくは[コマンド一覧](/commands/)と[レコードコマンド](/commands/record)を参照してください。
 
 ## 設定と再連携
 
