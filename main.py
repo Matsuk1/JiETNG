@@ -2019,6 +2019,18 @@ async def maimai_update(user_id, ver="jp"):
     if result.get("error") == "Maintenance":
         return maintenance_error(user_id)
 
+    b50_image_url = None
+    b50_preview_url = None
+    extra_messages = []
+
+    if result.get("func_status", {}).get("Best Records"):
+        b50_message = await generate_records(user_id, user_id, ver=ver)
+        if isinstance(b50_message, ImageMessage):
+            b50_image_url = getattr(b50_message, "original_content_url", None)
+            b50_preview_url = getattr(b50_message, "preview_image_url", None)
+        elif b50_message is not None:
+            extra_messages.append(b50_message)
+
     messages = [
         generate_update_result_flex(
             user_id=user_id,
@@ -2028,11 +2040,12 @@ async def maimai_update(user_id, ver="jp"):
             elapsed_time=result.get("elapsed_time", 0),
             func_status=result.get("func_status", {}),
             success=bool(result.get("success")),
+            b50_image_url=b50_image_url,
+            b50_preview_url=b50_preview_url,
         )
     ]
 
-    if result.get("func_status", {}).get("Best Records"):
-        messages.append(await generate_records(user_id, user_id, ver=ver))
+    messages.extend(extra_messages)
 
     return messages
 

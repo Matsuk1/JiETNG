@@ -894,16 +894,6 @@ update_result_flex_text = {
         'en': '⚠️ Update Error',
         'zh': '⚠️ 更新错误'
     },
-    'username_label': {
-        'ja': 'プレイヤー名',
-        'en': 'Player Name',
-        'zh': '玩家名称'
-    },
-    'rating_label': {
-        'ja': 'レーティング',
-        'en': 'Rating',
-        'zh': 'Rating'
-    },
     'update_time_label': {
         'ja': '更新日時',
         'en': 'Update Time',
@@ -918,11 +908,6 @@ update_result_flex_text = {
         'ja': 'ステータス',
         'en': 'Status',
         'zh': '状态'
-    },
-    'success': {
-        'ja': '成功',
-        'en': 'Success',
-        'zh': '成功'
     },
     'failed': {
         'ja': '失敗',

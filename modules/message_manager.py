@@ -924,7 +924,17 @@ def generate_user_info_flex(user_id):
 # ============================================================
 
 
-def generate_update_result_flex(user_id, username, rating, update_time, elapsed_time, func_status, success=True):
+def generate_update_result_flex(
+    user_id,
+    username,
+    rating,
+    update_time,
+    elapsed_time,
+    func_status,
+    success=True,
+    b50_image_url=None,
+    b50_preview_url=None,
+):
     """
     生成更新结果 Flex Message
 
@@ -935,8 +945,9 @@ def generate_update_result_flex(user_id, username, rating, update_time, elapsed_
         update_time: 更新时间
         elapsed_time: 耗时（秒）
         func_status: 各功能状态字典
-        friends_count: 好友列表数量
         success: 是否成功
+        b50_image_url: 点击打开的 B50 原图 URL
+        b50_preview_url: Flex 内显示的 B50 预览图 URL
 
     Returns:
         FlexMessage: 更新结果 Flex Message
@@ -954,61 +965,6 @@ def generate_update_result_flex(user_id, username, rating, update_time, elapsed_
 
     # 构建内容行
     content_rows = []
-
-    # UserName
-    content_rows.append({
-        "type": "box",
-        "layout": "vertical",
-        "contents": [
-            {
-                "type": "text",
-                "text": get_multilingual_text(texts['username_label'], language=lang),
-                "size": "xs",
-                "color": "#999999"
-            },
-            {
-                "type": "text",
-                "text": username,
-                "size": "sm",
-                "weight": "bold",
-                "margin": "xs"
-            }
-        ]
-    })
-
-    # 分隔线
-    content_rows.append({
-        "type": "separator",
-        "margin": "md"
-    })
-
-    # Rating
-    content_rows.append({
-        "type": "box",
-        "layout": "vertical",
-        "margin": "md",
-        "contents": [
-            {
-                "type": "text",
-                "text": get_multilingual_text(texts['rating_label'], language=lang),
-                "size": "xs",
-                "color": "#999999"
-            },
-            {
-                "type": "text",
-                "text": str(rating),
-                "size": "sm",
-                "weight": "bold",
-                "margin": "xs"
-            }
-        ]
-    })
-
-    # 分隔线
-    content_rows.append({
-        "type": "separator",
-        "margin": "md"
-    })
 
     # 更新时间
     tz_str = format_timezone_string(user_id)
@@ -1062,40 +1018,62 @@ def generate_update_result_flex(user_id, username, rating, update_time, elapsed_
         ]
     })
 
-    # 分隔线
-    content_rows.append({
-        "type": "separator",
-        "margin": "md"
-    })
-
-    # 状态详情
-    status_contents = [
-        {
-            "type": "text",
-            "text": get_multilingual_text(texts['status_label'], language=lang),
-            "size": "xs",
-            "color": "#999999"
-        }
-    ]
-
-    for func_name, status in func_status.items():
-        status_text = get_multilingual_text(texts['success'], language=lang) if status else get_multilingual_text(texts['failed'], language=lang)
-
-        status_color = "#17B169" if status else "#FF3B30"
-        status_contents.append({
-            "type": "text",
-            "text": f"・{func_name}: {status_text}",
-            "size": "xs",
-            "color": status_color,
-            "margin": "sm"
+    failed_statuses = {
+        func_name: status
+        for func_name, status in func_status.items()
+        if not status
+    }
+    if failed_statuses:
+        content_rows.append({
+            "type": "separator",
+            "margin": "md"
         })
 
-    content_rows.append({
-        "type": "box",
-        "layout": "vertical",
-        "margin": "md",
-        "contents": status_contents
-    })
+        status_contents = [
+            {
+                "type": "text",
+                "text": get_multilingual_text(texts['status_label'], language=lang),
+                "size": "xs",
+                "color": "#999999"
+            }
+        ]
+
+        for func_name, status in failed_statuses.items():
+            status_text = get_multilingual_text(texts['failed'], language=lang)
+            status_contents.append({
+                "type": "text",
+                "text": f"・{func_name}: {status_text}",
+                "size": "xs",
+                "color": "#FF3B30",
+                "margin": "sm"
+            })
+
+        content_rows.append({
+            "type": "box",
+            "layout": "vertical",
+            "margin": "md",
+            "contents": status_contents
+        })
+
+    image_url = b50_preview_url or b50_image_url
+    if image_url:
+        content_rows.append({
+            "type": "separator",
+            "margin": "md"
+        })
+        content_rows.append({
+            "type": "image",
+            "url": image_url,
+            "size": "full",
+            "aspectRatio": "3:2",
+            "aspectMode": "fit",
+            "margin": "md",
+            "action": {
+                "type": "uri",
+                "label": "Open B50",
+                "uri": b50_image_url or image_url
+            }
+        })
 
     # 获取随机tip和ad并添加到内容中
     random_tip = get_random_tip()
