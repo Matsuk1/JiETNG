@@ -130,6 +130,7 @@ GET /api/v2/dxdata?ver=jp
 | `fdxb50` / `fdx50` | FDX Best 50 |
 | `rct50` / `r50` | Recent 50 |
 | `idealb50` / `idlb50` | Ideal Best 50 |
+| `s50` / `sun50` / `寸50` / `寸止め` | 寸止め 50：100.4000%-100.4999%、99.9000%-99.9999% |
 | `unknown` | 版本未知歌曲列表 |
 
 可在 `command` 后组合筛选参数，语义与 LINE 命令一致，例如 `b50 -lv 14.7`。

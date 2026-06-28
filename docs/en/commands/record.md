@@ -20,10 +20,13 @@ apb50 / ap50
 fdxb50 / fdx50
 rct50 / r50
 idealb50 / idlb50
+s50 / sun50 / 寸50 / 寸止め
 unknown
 ```
 
 Filters can be appended to the same command.
+
+`s50` / `sun50` lists near-miss scores for SSS+ and SSS: `100.4000% - 100.4999%` and `99.9000% - 99.9999%`.
 
 ## Filters
 

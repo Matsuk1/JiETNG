@@ -105,6 +105,7 @@ GET /api/v2/dxdata?ver=jp
 | `fdxb50` / `fdx50` | FDX Best 50 |
 | `rct50` / `r50` | Recent 50 |
 | `idealb50` / `idlb50` | Ideal Best 50 |
+| `s50` / `sun50` / `寸50` / `寸止め` | Near-miss 50 for SSS+ / SSS |
 | `unknown` | Songs with unknown version |
 
 Filters can be included in the command string, for example `b50 -lv 14.7`.

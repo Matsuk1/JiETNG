@@ -37,6 +37,7 @@ This page follows the current command registry. Commands are case-insensitive un
 | `fdxb50` / `fdx50` | FDX/FDX+ Best 50 |
 | `rct50` / `r50` | Recent 50 |
 | `idealb50` / `idlb50` | Ideal Best 50 |
+| `s50` / `sun50` / `寸50` / `寸止め` | Near-miss 50 for SSS+ / SSS: 100.4000%-100.4999%, 99.9000%-99.9999% |
 | `unknown` | Songs with unknown version |
 
 Filters such as `-lv`, `-ra`, `-scr`, `-dx`, `-star`, `-diff`, `-ver`, `-type`, `-page`, and `-times` can be appended.

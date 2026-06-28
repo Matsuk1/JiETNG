@@ -105,6 +105,7 @@ GET /api/v2/dxdata?ver=jp
 | `fdxb50` / `fdx50` | FDX Best 50 |
 | `rct50` / `r50` | Recent 50 |
 | `idealb50` / `idlb50` | Ideal Best 50 |
+| `s50` / `sun50` / `寸50` / `寸止め` | SSS+ / SSS 寸止め 50 |
 | `unknown` | バージョン不明楽曲 |
 
 `b50 -lv 14.7` のようにフィルターも含められます。
