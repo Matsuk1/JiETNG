@@ -280,6 +280,7 @@ RANK_COMMANDS = {
     ("fdxb50", "fdx50"): "fdxb50",
     ("rct50", "r50"): "rct50",
     ("idealb50", "idlb50"): "idlb50",
+    ("s50", "sun50", "寸止め", "寸50"): "sun50",
     ("unknown",): "unknown",
 }
 
@@ -1427,6 +1428,9 @@ DEMO_CORS_ORIGIN = "https://jietng.matsuk1.com"
 MAIMAI_SESSION_CORS_ORIGINS = {
     "https://maimaidx.jp",
     "https://maimaidx-eng.com",
+    "https://dxrating.net",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 }
 
 def _demo_cors(response):
@@ -1498,7 +1502,7 @@ def _generate_session_image_from_payload(data: dict):
         raise ValueError("Invalid version")
 
     cmd_type = str(data.get("cmd_type", data.get("type", "best50"))).strip().lower()
-    valid_cmd_types = {"best50", "best40", "best35", "best15", "allb35", "allb50", "apb50", "fdxb50", "idlb50"}
+    valid_cmd_types = {"best50", "best40", "best35", "best15", "allb35", "allb50", "apb50", "fdxb50", "idlb50", "sun50"}
     if cmd_type not in valid_cmd_types:
         cmd_type = "best50"
 
@@ -1581,7 +1585,7 @@ def demo_page():
     if ver not in ("jp", "intl"):
         return _demo_cors(jsonify({"error": "Invalid version."})), 400
 
-    _VALID_CMD_TYPES = {"best50", "best40", "best35", "best15", "allb35", "allb50", "apb50", "fdxb50", "idlb50"}
+    _VALID_CMD_TYPES = {"best50", "best40", "best35", "best15", "allb35", "allb50", "apb50", "fdxb50", "idlb50", "sun50"}
     if cmd_type not in _VALID_CMD_TYPES:
         cmd_type = "best50"
     title = cmd_type.upper()
@@ -3235,6 +3239,30 @@ def generate_profile(user_info, scale=1, user_id=None):
     info_img = info_img.resize((int(img_width * scale), int(img_height * scale)), Image.Resampling.LANCZOS)
     return info_img
 
+def _achievement_value(record):
+    return float(str(record.get("score", "0")).replace("%", ""))
+
+
+def _sun50_target(score):
+    if 100.4000 <= score <= 100.4999:
+        return 100.5000
+    if 99.9000 <= score <= 99.9999:
+        return 100.0000
+    return None
+
+
+def _sun50_sort_key(record):
+    score = _achievement_value(record)
+    target = _sun50_target(score) or 0
+    return (
+        round(target - score, 4),
+        -float(record.get("internalLevelValue", 0) or 0),
+        str(record.get("name", "")),
+        str(record.get("difficulty", "")),
+        str(record.get("type", "")),
+    )
+
+
 def select_records(song_record, type="best50", command="", ver="jp"):
     page = 1
     times = 1
@@ -3445,6 +3473,15 @@ def select_records(song_record, type="best50", command="", ver="jp"):
 
         up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*num_35 : page*num_35]
         down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*num_15 : page*num_15]
+
+    elif type == "sun50":
+        sun_songs_data = [
+            x for x in song_record
+            if _sun50_target(_achievement_value(x)) is not None
+        ]
+        sun_songs = sorted(sun_songs_data, key=_sun50_sort_key)[(page-1)*num_50 : page*num_50]
+        up_songs = [x for x in sun_songs if _sun50_target(_achievement_value(x)) == 100.5000]
+        down_songs = [x for x in sun_songs if _sun50_target(_achievement_value(x)) == 100.0000]
 
     else:
         return select_records(song_record, "best50", command, ver)
