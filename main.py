@@ -169,6 +169,7 @@ from modules.api_auth import (
     require_owner_permission,
     require_user_permission,
 )
+from modules.flask_hooks import apply_security_headers
 from modules.image_manager import *
 
 # System utilities
@@ -276,28 +277,7 @@ csrf = CSRFProtect(app)
 # 配置安全响应头
 @app.after_request
 def set_security_headers(response):
-    """设置安全响应头 + 内存清理"""
-    # 防止 XSS 攻击
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-
-    # Content Security Policy
-    response.headers['Content-Security-Policy'] = (
-        "default-src 'self'; "
-        "style-src 'self' 'unsafe-inline'; "
-        "script-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data: https:; "
-        "font-src 'self' data:;"
-    )
-
-    # Strict Transport Security (如果使用 HTTPS)
-    # response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-
-    # 每次请求后执行快速垃圾回收（generation 0）
-    gc.collect(0)
-
-    return response
+    return apply_security_headers(response)
 
 # 记录服务启动时间和统计
 SERVICE_START_TIME = datetime.now()
