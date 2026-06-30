@@ -169,7 +169,7 @@ from modules.image_manager import *
 from modules.system_checker import run_system_check, clean_unbound_users
 from modules.event_tracker import track_event, get_business_stats, get_hourly_stats
 from modules.rate_limiter import check_rate_limit
-from modules.line_messenger import smart_reply, smart_push, notify_admins_error, notify_on_error
+from modules.line_messenger import smart_reply, smart_push, notify_admins_error
 from modules.perm_request_generator import generate_perm_request_message
 from modules.notification_manager import (
     get_notifications,
@@ -186,6 +186,7 @@ import modules.user_manager as user_manager_module
 import modules.rate_limiter as rate_limiter_module
 
 from modules.storelist_generator import generate_store_buttons
+from modules.task_queue import TaskQueueManager
 
 # ==================== 常量定义 ====================
 
@@ -316,174 +317,29 @@ def set_security_headers(response):
 # 记录服务启动时间和统计
 SERVICE_START_TIME = datetime.now()
 
-# 使用字典存储统计数据,避免 global 变量问题
-STATS = {
-    'tasks_processed': 0,
-}
-stats_lock = threading.Lock()  # 保护统计数据的线程锁
-
-# ==================== 任务队列系统 ====================
-
-# 图片生成任务队列 (处理图片生成任务，如 b50 等)
-image_queue = queue.Queue(maxsize=MAX_QUEUE_SIZE)
-image_concurrency_limit = threading.Semaphore(MAX_CONCURRENT_IMAGE_TASKS)
-
-# Web任务队列 (处理耗时的网络请求，如 maimai_update 等)
-webtask_queue = queue.Queue(maxsize=MAX_QUEUE_SIZE)
-webtask_concurrency_limit = threading.Semaphore(WEB_MAX_CONCURRENT_TASKS)
-
-
-def run_task_with_limit(func: callable, args: tuple, sem: threading.Semaphore,
-                        q: queue.Queue, task_id: str = None, is_web_task: bool = False) -> None:
-    """
-    在并发限制下运行任务
-
-    Args:
-        func: 要执行的函数
-        args: 函数参数元组
-        sem: 信号量,用于控制并发数
-        q: 任务队列
-        task_id: 任务 ID
-        is_web_task: 是否是 web 任务
-    """
-    # 添加到运行中的任务
-    if task_id:
-        with task_tracking_lock:
-            # 从排队中移除
-            task_tracking['queued'] = [t for t in task_tracking['queued'] if t.get('id') != task_id]
-            # 添加到运行中
-            # 智能提取 user_id：尝试多种方式
-            user_id_for_tracking = 'Unknown'
-            if args:
-                if hasattr(args[0], 'source'):  # Event 对象
-                    user_id_for_tracking = args[0].source.user_id
-                elif isinstance(args[0], str) and args[0].startswith('U'):  # 直接传入的 user_id 字符串
-                    user_id_for_tracking = args[0]
-
-            task_info = {
-                'id': task_id,
-                'function': func.__name__,
-                'user_id': user_id_for_tracking,
-            }
-            task_tracking['running'].append(task_info)
-
-    with sem:
-        task_done = threading.Event()
-
-        def target():
-            try:
-                func(*args)
-            except Exception as e:
-                logger.error(f"[Task] ✗ Execution error: function={func.__name__}, error={e}", exc_info=True)
-
-                # 尝试获取用户信息以便回复
-                user_id = None
-                reply_token = None
-                if args:
-                    if hasattr(args[0], 'source') and hasattr(args[0], 'reply_token'):
-                        # Event 对象
-                        user_id = args[0].source.user_id
-                        reply_token = args[0].reply_token
-                    elif isinstance(args[0], str) and args[0].startswith('U'):
-                        # 直接传入的 user_id 字符串
-                        user_id = args[0]
-                        # reply_token 可能在 args[1]
-                        if len(args) > 1 and isinstance(args[1], str):
-                            reply_token = args[1]
-
-                # 通知管理员
-                notify_admins_error(
-                    error_title=f"Task Execution Failed: {func.__name__}",
-                    error_details=f"{type(e).__name__}: {str(e)}\n\n{traceback.format_exc()}",
-                    context={
-                        "Task": func.__name__,
-                        "Error Type": type(e).__name__,
-                    },
-                    user_id=user_id
-                )
-
-                # 回复用户
-                if user_id and reply_token:
-                    try:
-                        smart_reply(user_id, reply_token, system_error(user_id), configuration)
-                    except Exception:
-                        pass
-            finally:
-                task_done.set()
-
-        thread = threading.Thread(target=target)
-        thread.start()
-
-        timer = threading.Timer(TASK_TIMEOUT_SECONDS, cancel_if_timeout, args=(task_done,))
-        timer.start()
-
-        thread.join()
-        timer.cancel()
-
-        # 从运行中的任务移除，并添加到已完成列表
-        if task_id:
-            with task_tracking_lock:
-                task_info = None
-                for t in task_tracking['running']:
-                    if t.get('id') == task_id:
-                        task_info = t.copy()
-                        break
-                task_tracking['running'] = [t for t in task_tracking['running'] if t.get('id') != task_id]
-                if task_info:
-                    task_tracking['completed'].insert(0, task_info)
-                    if len(task_tracking['completed']) > MAX_COMPLETED_TASKS:
-                        task_tracking['completed'] = task_tracking['completed'][:MAX_COMPLETED_TASKS]
-
-        with stats_lock:
-            STATS['tasks_processed'] += 1
-            logger.info(f"[Task] ✓ Completed: function={func.__name__}, total={STATS['tasks_processed']}")
-
-
-@notify_on_error("Image Task Worker Error", context={"Worker": "image_worker"}, reraise=False)
-def _run_image_task(item):
-    func, args, task_id = (item if len(item) == 3 else (*item, None))
-    run_task_with_limit(func, args, image_concurrency_limit, image_queue, task_id, False)
-
-
-def image_worker() -> None:
-    """图片生成任务队列的工作线程"""
-    while True:
-        item = image_queue.get()
-        try:
-            _run_image_task(item)
-        finally:
-            image_queue.task_done()
-
-
-@notify_on_error("Web Task Worker Error", context={"Worker": "webtask_worker"}, reraise=False)
-def _run_webtask(item):
-    func, args, task_id = (item if len(item) == 3 else (*item, None))
-    run_task_with_limit(func, args, webtask_concurrency_limit, webtask_queue, task_id, True)
-
-
-def webtask_worker() -> None:
-    """Web任务队列的工作线程"""
-    while True:
-        item = webtask_queue.get()
-        try:
-            _run_webtask(item)
-        finally:
-            webtask_queue.task_done()
-
-
-
-def cancel_if_timeout(task_done: threading.Event) -> None:
-    """
-    检查任务是否超时
-
-    Args:
-        task_done: 任务完成事件
-    """
-    if not task_done.is_set():
-        logger.warning(f"[Task] ⚠ Execution timeout: timeout={TASK_TIMEOUT_SECONDS}s")
-
 configuration = Configuration(access_token=LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
+
+task_queues = TaskQueueManager(
+    max_queue_size=MAX_QUEUE_SIZE,
+    max_image_tasks=MAX_CONCURRENT_IMAGE_TASKS,
+    max_web_tasks=WEB_MAX_CONCURRENT_TASKS,
+    task_timeout_seconds=TASK_TIMEOUT_SECONDS,
+    on_error=notify_admins_error,
+    user_error_message=system_error,
+    reply_user=lambda user_id, reply_token, message: smart_reply(
+        user_id, reply_token, message, configuration
+    ),
+    logger=logger,
+)
+
+# Backward-compatible aliases for the route and admin code below.
+image_queue = task_queues.image_queue
+webtask_queue = task_queues.webtask_queue
+STATS = task_queues.stats
+stats_lock = task_queues.stats_lock
+task_tracking = task_queues.task_tracking
+task_tracking_lock = task_queues.task_tracking_lock
 
 # ==================== API 认证装饰器 ====================
 
@@ -4632,14 +4488,6 @@ def handle_default(event):
 
 # ==================== 管理后台路由 ====================
 
-# 任务队列追踪
-task_tracking = {
-    'running': [],
-    'queued': [],
-    'completed': []  # 存储已完成的任务 (最多保留20个)
-}
-task_tracking_lock = threading.Lock()
-MAX_COMPLETED_TASKS = 20  # 最多保留20个已完成任务
 api_sync_locks = {}
 api_sync_locks_lock = threading.Lock()
 
@@ -7671,12 +7519,7 @@ def start_runtime():
         logger.info("[System] → Continuing startup anyway...")
 
     # 启动 worker 线程
-    for i in range(MAX_CONCURRENT_IMAGE_TASKS):
-        threading.Thread(target=image_worker, daemon=True, name=f"ImageWorker-{i+1}").start()
-
-    for i in range(WEB_MAX_CONCURRENT_TASKS):
-        threading.Thread(target=webtask_worker, daemon=True, name=f"WebTaskWorker-{i+1}").start()
-
+    task_queues.start_workers(MAX_CONCURRENT_IMAGE_TASKS, WEB_MAX_CONCURRENT_TASKS)
     logger.info(f"[System] ✓ Workers started: image={MAX_CONCURRENT_IMAGE_TASKS}, web={WEB_MAX_CONCURRENT_TASKS}")
 
     # 启动定期清理线程（图床 + 成绩导出）
@@ -7724,11 +7567,34 @@ def start_runtime():
         _runtime_atexit_registered = True
 
 
-start_runtime()
+def create_app(start_background_runtime: bool = False, lazy_runtime: bool = True):
+    """Return the Flask app, optionally starting JiETNG background runtime.
+
+    The module keeps a global ``app`` because routes are registered with
+    decorators throughout this file. This factory gives tests and scripts a
+    side-effect-light way to import the application without immediately opening
+    DB connections or starting worker threads.
+    """
+    app.config["JIETNG_LAZY_RUNTIME"] = lazy_runtime
+    if start_background_runtime:
+        start_runtime()
+    return app
+
+
+@app.before_request
+def _ensure_runtime_started_for_request():
+    """Lazily start workers for WSGI imports such as ``gunicorn main:app``."""
+    if app.config.get("JIETNG_LAZY_RUNTIME", True):
+        start_runtime()
+
+
+if os.getenv("JIETNG_START_RUNTIME_ON_IMPORT", "").lower() in {"1", "true", "yes"}:
+    start_runtime()
 
 
 if __name__ == "__main__":
     try:
+        start_runtime()
         app.run(host=HOST, port=PORT, threaded=True)
 
     finally:

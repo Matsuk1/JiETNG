@@ -104,32 +104,43 @@ def _ensure_bind_token(value: str) -> str:
     return value
 
 # 加载配置，若不存在则创建；若缺字段则补全
+_config_changed = False
 if not os.path.exists(CONFIG_PATH):
     _config = copy.deepcopy(default_config)
+    _config_changed = True
 else:
     with open(CONFIG_PATH, 'r', encoding='utf-8') as file:
         _config = json.load(file)
 
     # 递归补字段
     def deep_update(default, current):
+        global _config_changed
         for key, value in default.items():
             if key not in current:
                 current[key] = value
+                _config_changed = True
             elif isinstance(value, dict):
                 deep_update(value, current[key])
 
     deep_update(default_config, _config)
 
-_config["keys"]["user_data"] = _ensure_fernet_key(_config["keys"].get("user_data", ""))
-_config["keys"]["bind_token"] = _ensure_bind_token(_config["keys"].get("bind_token", ""))
+_old_user_data_key = _config["keys"].get("user_data", "")
+_old_bind_token_key = _config["keys"].get("bind_token", "")
+_config["keys"]["user_data"] = _ensure_fernet_key(_old_user_data_key)
+_config["keys"]["bind_token"] = _ensure_bind_token(_old_bind_token_key)
+if (_config["keys"]["user_data"] != _old_user_data_key
+        or _config["keys"]["bind_token"] != _old_bind_token_key):
+    _config_changed = True
 
 # 自动生成 VAPID 密钥
 if not _config["web_push"].get("vapid_private_key") or not _config["web_push"].get("vapid_public_key"):
     _config["web_push"]["vapid_private_key"], _config["web_push"]["vapid_public_key"] = _generate_vapid_keys()
+    _config_changed = True
 
-# 写回更新后的配置
-with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
-    json.dump(_config, f, indent=4, ensure_ascii=False)
+# 仅在补字段或生成密钥时写回，避免普通 import 造成 config.json 时间戳变化
+if _config_changed:
+    with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
+        json.dump(_config, f, indent=4, ensure_ascii=False)
 
 # 顶层字段
 ADMIN_PASSWORD = _config["admin_password"]
