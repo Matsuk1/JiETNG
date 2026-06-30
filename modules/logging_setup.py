@@ -15,18 +15,23 @@ class ColoredFormatter(logging.Formatter):
     GRAY = "\033[90m"
 
     def format(self, record):
-        levelname = record.levelname
-        if levelname in self.COLORS:
-            record.levelname = f"{self.COLORS[levelname]}{levelname}{self.RESET}"
-
-        formatted = super().format(record)
-        if hasattr(record, "asctime"):
-            formatted = formatted.replace(
-                record.asctime,
-                f"{self.GRAY}{record.asctime}{self.RESET}",
-                1,
+        original_levelname = record.levelname
+        if original_levelname in self.COLORS:
+            record.levelname = (
+                f"{self.COLORS[original_levelname]}{original_levelname}{self.RESET}"
             )
-        return formatted
+
+        try:
+            formatted = super().format(record)
+            if hasattr(record, "asctime"):
+                formatted = formatted.replace(
+                    record.asctime,
+                    f"{self.GRAY}{record.asctime}{self.RESET}",
+                    1,
+                )
+            return formatted
+        finally:
+            record.levelname = original_levelname
 
 
 def configure_logging(log_file: str) -> None:
