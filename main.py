@@ -183,6 +183,7 @@ from modules.memory_manager import memory_manager, cleanup_user_caches, cleanup_
 from modules.i18n import normalize_language, select_text
 from modules.logging_setup import configure_logging
 from modules.record_selector import select_records
+from modules.session_payload import normalize_session_profile, normalize_session_records
 
 # Module aliases for specific use cases
 import modules.user_manager as user_manager_module
@@ -973,54 +974,6 @@ def linebot_perms_revoke():
     return jsonify({"success": True})
 
 
-def _normalize_session_profile(profile: dict, ver: str) -> dict:
-    base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
-    rating = str(profile.get("rating", "0")).strip() or "0"
-    try:
-        rating_int = int(rating)
-    except (TypeError, ValueError):
-        rating_int = 0
-
-    return {
-        "name": str(profile.get("name", "NAME_ERROR")).strip()[:64] or "NAME_ERROR",
-        "rating": rating,
-        "rating_block_path": get_rating_image_path(rating_int),
-        "cource_rank_url": profile.get("cource_rank_url") or profile.get("course_rank_url") or "N/A",
-        "class_rank_url": profile.get("class_rank_url") or "N/A",
-        "icon_url": profile.get("icon_url") or "N/A",
-        "nameplate_url": profile.get("nameplate_url") or "N/A",
-        "trophy_url": profile.get("trophy_url") or f"{base}/img/trophy_rainbow.png",
-        "trophy_content": str(profile.get("trophy_content", "N/A")).strip()[:80] or "N/A",
-    }
-
-def _normalize_session_records(records: list) -> list:
-    valid_difficulties = {"basic", "advanced", "expert", "master", "remaster"}
-    valid_types = {"std", "dx", "utage"}
-    normalized = []
-
-    for record in records[:3000]:
-        if not isinstance(record, dict):
-            continue
-        name = str(record.get("name", "")).strip()
-        score = str(record.get("score", "")).strip()
-        difficulty = str(record.get("difficulty", "")).strip().lower()
-        music_type = str(record.get("type", "")).strip().lower()
-        if not name or not score or difficulty not in valid_difficulties or music_type not in valid_types:
-            continue
-
-        normalized.append({
-            "name": name[:160],
-            "difficulty": difficulty,
-            "type": music_type,
-            "score": score if score.endswith("%") else f"{score}%",
-            "dx_score": str(record.get("dx_score", "N/A")).replace(",", "").strip(),
-            "score_icon": str(record.get("score_icon", "")).strip().lower(),
-            "combo_icon": str(record.get("combo_icon", "")).strip().lower(),
-            "sync_icon": str(record.get("sync_icon", "")).strip().lower(),
-        })
-
-    return normalized
-
 def _generate_session_image_from_payload(data: dict):
     ver = data.get("version", "jp")
     if ver not in ("jp", "intl"):
@@ -1044,11 +997,11 @@ def _generate_session_image_from_payload(data: dict):
     if not isinstance(profile, dict) or not isinstance(raw_records, list):
         raise ValueError("Missing profile or records.best")
 
-    records = _normalize_session_records(raw_records)
+    records = normalize_session_records(raw_records)
     if not records:
         raise ValueError("No valid records")
 
-    user_info = _normalize_session_profile(profile, ver)
+    user_info = normalize_session_profile(profile, ver)
     song_record = get_detailed_info(records, ver=ver, recent_type=(cmd_type == "best40"))
     up_songs, down_songs, details = select_records(song_record, type=cmd_type, command=command, ver=ver)
     if not up_songs and not down_songs:
