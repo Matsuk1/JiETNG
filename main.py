@@ -3264,6 +3264,52 @@ def _sun50_sort_key(record):
     )
 
 
+def _record_level_value(record):
+    try:
+        return float(record.get("internalLevelValue", 0) or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _parse_level_filter_values(raw_level):
+    values = parse_level_value(str(raw_level).strip())
+    if not values:
+        return []
+    return [float(v) for v in values]
+
+
+def _filter_records_by_level(song_record, parts):
+    if not parts:
+        return song_record, None
+
+    if len(parts) == 1:
+        level_values = _parse_level_filter_values(parts[0])
+        if not level_values:
+            return song_record, None
+        value_set = {round(v, 1) for v in level_values}
+        filtered = [
+            x for x in song_record
+            if round(_record_level_value(x), 1) in value_set
+        ]
+        return filtered, str(parts[0])
+
+    start_values = _parse_level_filter_values(parts[0])
+    stop_values = _parse_level_filter_values(parts[1])
+    if not start_values or not stop_values:
+        return song_record, None
+
+    lv_start = min(start_values)
+    lv_stop = max(stop_values)
+    if lv_start > lv_stop:
+        lv_start, lv_stop = lv_stop, lv_start
+
+    filtered = [
+        x for x in song_record
+        if lv_start <= _record_level_value(x) <= lv_stop
+    ]
+    return filtered, f'{parts[0]} ~ {parts[1]}'
+
+
 def select_records(song_record, type="best50", command="", ver="jp"):
     page = 1
     times = 1
@@ -3298,14 +3344,10 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                     details['Diff'] = ' '.join(d for d in difficulties)
             elif cmd in ["lv", "level"]:
                 parts = cmd_num.split()
-                if len(parts) == 1:
-                    level = float(parts[0])
-                    song_record = list(filter(lambda x: x['internalLevelValue'] == level, song_record))
-                    details['Lv'] = f'{level}'
-                else:
-                    lv_start, lv_stop = map(float, parts[:2])
-                    song_record = list(filter(lambda x: lv_start <= x['internalLevelValue'] <= lv_stop, song_record))
-                    details['Lv'] = f'{lv_start} ~ {lv_stop}'
+                filtered_records, detail = _filter_records_by_level(song_record, parts)
+                song_record = filtered_records
+                if detail:
+                    details['Lv'] = detail
             elif cmd in ["next", "nxt"]:
                 filter_rules = [
                     (lambda x: x['version'] != MAIMAI_VERSION[ver][-1]),
