@@ -153,7 +153,8 @@ from modules.command_router import (
     Exact, Prefix, Suffix, Regex, FirstWord,
     Command, CommandContext,
     QUEUE_SYNC, QUEUE_IMAGE, QUEUE_WEB,
-    B_COMMAND_WORDS, resolve_rank_command, rank_command_aliases,
+    B_COMMAND_WORDS, normalize_session_image_command,
+    resolve_rank_command, rank_command_aliases,
 )
 from modules.api_auth import (
     check_user_permission,
@@ -979,10 +980,7 @@ def _generate_session_image_from_payload(data: dict):
     if ver not in ("jp", "intl"):
         raise ValueError("Invalid version")
 
-    cmd_type = str(data.get("cmd_type", data.get("type", "best50"))).strip().lower()
-    valid_cmd_types = {"best50", "best40", "best35", "best15", "allb35", "allb50", "apb50", "fdxb50", "idlb50", "sun50"}
-    if cmd_type not in valid_cmd_types:
-        cmd_type = "best50"
+    cmd_type = normalize_session_image_command(data.get("cmd_type", data.get("type", "best50")))
 
     command = str(data.get("command", "")).strip()
     try:
@@ -1050,7 +1048,7 @@ def demo_page():
     segaid = request.form.get("segaid", "").strip()
     password = request.form.get("password", "").strip()
     ver = request.form.get("ver", "jp")
-    cmd_type = request.form.get("cmd_type", "best50").strip()
+    cmd_type = normalize_session_image_command(request.form.get("cmd_type", "best50"))
     params = request.form.get("params", "").strip()
     try:
         tz = int(request.form.get("timezone", "9"))
@@ -1063,9 +1061,6 @@ def demo_page():
     if ver not in ("jp", "intl"):
         return _demo_cors(jsonify({"error": "Invalid version."})), 400
 
-    _VALID_CMD_TYPES = {"best50", "best40", "best35", "best15", "allb35", "allb50", "apb50", "fdxb50", "idlb50", "sun50"}
-    if cmd_type not in _VALID_CMD_TYPES:
-        cmd_type = "best50"
     title = cmd_type.upper()
 
     async def _pipeline():

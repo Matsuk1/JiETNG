@@ -42,6 +42,10 @@ RANK_COMMANDS = {
 }
 
 B_COMMAND_WORDS = tuple(sorted({alias for aliases in RANK_COMMANDS for alias in aliases}))
+SESSION_IMAGE_COMMANDS = {
+    "best50", "best40", "best35", "best15",
+    "allb35", "allb50", "apb50", "fdxb50", "idlb50", "sun50",
+}
 
 
 def resolve_rank_command(word: str) -> Optional[str]:
@@ -55,6 +59,11 @@ def resolve_rank_command(word: str) -> Optional[str]:
 
 def rank_command_aliases() -> list[str]:
     return list(B_COMMAND_WORDS)
+
+
+def normalize_session_image_command(command: str) -> str:
+    command = (command or "best50").strip().lower()
+    return command if command in SESSION_IMAGE_COMMANDS else "best50"
 
 
 # ============================================================
