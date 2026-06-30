@@ -27,7 +27,6 @@ import gc
 import math
 import base64 as b64mod
 
-from functools import wraps
 from datetime import datetime
 
 from PIL import Image, ImageDraw, ImageFilter
@@ -114,7 +113,6 @@ from modules.maimai_manager import *
 from modules.dxdata_manager import update_dxdata_with_comparison, start_weekly_update_scheduler as start_dxdata_weekly_update
 from modules.record_manager import *
 from modules.devtoken_manager import (
-    verify_dev_token,
     load_dev_tokens,
     create_dev_token,
     save_dev_tokens,
@@ -156,13 +154,20 @@ from modules.import_token_manager import (
     delete_revoked_import_token,
     list_import_tokens,
     revoke_import_token,
-    verify_import_token,
 )
 from modules.command_router import (
     Exact, Prefix, Suffix, Regex, FirstWord,
     Command, CommandContext,
     QUEUE_SYNC, QUEUE_IMAGE, QUEUE_WEB,
     B_COMMAND_WORDS, resolve_rank_command, rank_command_aliases,
+)
+from modules.api_auth import (
+    check_user_permission,
+    maimai_session_cors as _maimai_session_cors,
+    require_dev_token,
+    require_import_token,
+    require_owner_permission,
+    require_user_permission,
 )
 from modules.image_manager import *
 
@@ -320,233 +325,6 @@ STATS = task_queues.stats
 stats_lock = task_queues.stats_lock
 task_tracking = task_queues.task_tracking
 task_tracking_lock = task_queues.task_tracking_lock
-
-# ==================== API 认证装饰器 ====================
-
-def require_dev_token(f):
-    """
-    验证开发者 token 的装饰器
-
-    使用方法:
-    @app.route('/api/endpoint')
-    @require_dev_token
-    def endpoint():
-        # token_info 会被添加到 request 对象中
-        token_info = request.token_info
-        return jsonify({"status": "success"})
-    """
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # 从 Authorization header 获取 token
-        auth_header = request.headers.get('Authorization')
-
-        if not auth_header:
-            return jsonify({
-                "error": "No authorization header",
-                "message": "Authorization header is required"
-            }), 401
-
-        # 检查 Bearer token 格式
-        parts = auth_header.split()
-        if len(parts) != 2 or parts[0].lower() != 'bearer':
-            return jsonify({
-                "error": "Invalid authorization header",
-                "message": "Authorization header must be in format: Bearer <token>"
-            }), 401
-
-        token = parts[1]
-
-        # 验证 token
-        token_info = verify_dev_token(token)
-        if not token_info:
-            return jsonify({
-                "error": "Invalid token",
-                "message": "Token is invalid or has been revoked"
-            }), 401
-
-        # 将 token 信息添加到 request 对象中
-        request.token_info = token_info
-
-        return f(*args, **kwargs)
-
-    return decorated_function
-
-
-def require_import_token(f):
-    """验证用户成绩导入 token；通过后 request.import_token_info 包含 user_id/token_id。"""
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if request.method == "OPTIONS":
-            return f(*args, **kwargs)
-
-        auth_header = request.headers.get('Authorization')
-        if not auth_header:
-            return _maimai_session_cors(jsonify({
-                "error": "No authorization header",
-                "message": "Authorization header is required"
-            })), 401
-
-        parts = auth_header.split()
-        if len(parts) != 2 or parts[0].lower() != 'bearer':
-            return _maimai_session_cors(jsonify({
-                "error": "Invalid authorization header",
-                "message": "Authorization header must be in format: Bearer <token>"
-            })), 401
-
-        token_info = verify_import_token(parts[1])
-        if not token_info:
-            return _maimai_session_cors(jsonify({
-                "error": "Invalid token",
-                "message": "Import token is invalid or has been revoked"
-            })), 401
-
-        request.import_token_info = token_info
-        return f(*args, **kwargs)
-
-    return decorated_function
-
-
-def require_user_permission(f):
-    """
-    验证 token 是否有权限访问指定用户的装饰器
-
-    必须在 @require_dev_token 之后使用
-
-    使用方法:
-    @app.route('/api/endpoint/<user_id>')
-    @csrf.exempt
-    @require_dev_token
-    @require_user_permission
-    def endpoint(user_id):
-        # 此时已验证 token 有权限访问 user_id
-        return jsonify({"status": "success"})
-
-    权限检查逻辑:
-    1. 如果用户是通过该 token 创建的 (registered_via_token) - 允许访问
-    2. 如果 token 的 allowed_users 列表包含该用户 - 允许访问
-    3. 否则拒绝访问
-    """
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # 获取 user_id 参数
-        user_id = kwargs.get('user_id')
-        if not user_id:
-            return jsonify({
-                "error": "Missing parameter",
-                "message": "user_id is required"
-            }), 400
-
-        # 获取 token 信息（由 require_dev_token 装饰器提供）
-        token_info = request.token_info
-        token_id = token_info['token_id']
-
-        # 使用辅助函数检查权限
-        has_permission, result = check_user_permission(user_id, token_id)
-        if not has_permission:
-            return result
-
-        return f(*args, **kwargs)
-
-    return decorated_function
-
-
-def require_owner_permission(f):
-    """
-    验证 token 是否为用户的所有者（创建者）的装饰器
-
-    只允许创建该用户的 token 访问，不允许被授权的 token 访问
-    用于敏感操作如：删除用户、管理权限等
-
-    必须在 @require_dev_token 之后使用
-
-    使用方法:
-    @app.route('/api/endpoint/<user_id>')
-    @csrf.exempt
-    @require_dev_token
-    @require_owner_permission
-    def endpoint(user_id):
-        # 此时已验证 token 是 user_id 的所有者（创建者）
-        return jsonify({"status": "success"})
-
-    权限检查逻辑:
-    只检查用户是否通过该 token 创建 (registered_via_token)
-    不检查 allowed_users 列表
-    """
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # 获取 user_id 参数
-        user_id = kwargs.get('user_id')
-        if not user_id:
-            return jsonify({
-                "error": "Missing parameter",
-                "message": "user_id is required"
-            }), 400
-
-        # 获取 token 信息（由 require_dev_token 装饰器提供）
-        token_info = request.token_info
-        token_id = token_info['token_id']
-
-        # 检查用户是否存在且为该 token 创建
-        _owner_token = get_user_field(user_id, 'registered_via_token')
-        if _owner_token is None:
-            return jsonify({
-                "error": "User not found",
-                "message": f"User {user_id} does not exist"
-            }), 404
-
-        if _owner_token != token_id:
-            return jsonify({
-                "error": "Forbidden",
-                "message": "Only the owner token (creator) can perform this operation"
-            }), 403
-
-        return f(*args, **kwargs)
-
-    return decorated_function
-
-
-def check_user_permission(user_id, token_id):
-    """
-    检查 token 是否有权限访问指定用户的辅助函数
-
-    Args:
-        user_id: 用户ID
-        token_id: Token ID
-
-    Returns:
-        tuple: (has_permission: bool, error_response_or_user_data)
-            成功时返回 (True, user_data_dict)
-            失败时返回 (False, error_response)
-    """
-    user_data = get_user(user_id)
-
-    # 检查用户是否存在
-    if not user_data:
-        return False, (jsonify({
-            "error": "User not found",
-            "message": f"User {user_id} does not exist"
-        }), 404)
-
-    # 检查权限：方式1 - 用户是通过该 token 创建的
-    if user_data.get('registered_via_token') == token_id:
-        return True, user_data
-
-    # 检查权限：方式2 - token 的 allowed_users 列表包含该用户
-    dev_tokens = load_dev_tokens()
-    if token_id in dev_tokens:
-        allowed_users = dev_tokens[token_id].get('allowed_users', [])
-        if user_id in allowed_users:
-            return True, user_data
-
-    # 没有权限
-    return False, (jsonify({
-        "error": "Permission denied",
-        "message": f"Token does not have permission to access user {user_id}"
-    }), 403)
 
 # ==================== Flask 路由 ====================
 
@@ -1262,27 +1040,11 @@ def linebot_perms_revoke():
 
 
 DEMO_CORS_ORIGIN = "https://jietng.matsuk1.com"
-MAIMAI_SESSION_CORS_ORIGINS = {
-    "https://maimaidx.jp",
-    "https://maimaidx-eng.com",
-    "https://dxrating.net",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-}
 
 def _demo_cors(response):
     response.headers["Access-Control-Allow-Origin"] = DEMO_CORS_ORIGIN
     response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    return response
-
-def _maimai_session_cors(response):
-    origin = request.headers.get("Origin")
-    if origin in MAIMAI_SESSION_CORS_ORIGINS:
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Vary"] = "Origin"
-    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response
 
 def _normalize_session_profile(profile: dict, ver: str) -> dict:
