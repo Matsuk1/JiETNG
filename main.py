@@ -187,6 +187,7 @@ from modules.notification_manager import (
 from modules.song_matcher import find_matching_songs, normalize_text
 from modules.memory_manager import memory_manager, cleanup_user_caches, cleanup_rate_limiter_tracking
 from modules.i18n import normalize_language, select_text
+from modules.logging_setup import configure_logging
 
 # Module aliases for specific use cases
 import modules.user_manager as user_manager_module
@@ -209,52 +210,10 @@ API_MAX_SEARCH_RESULTS = 50
 
 # ==================== 日志配置 ====================
 
-# 配置日志
-# 带颜色的日志格式化器
-class ColoredFormatter(logging.Formatter):
-    COLORS = {
-        'DEBUG': '\033[36m',    # 青色
-        'INFO': '\033[32m',     # 绿色
-        'WARNING': '\033[33m',  # 黄色
-        'ERROR': '\033[31m',    # 红色
-        'CRITICAL': '\033[35m', # 紫色
-    }
-    RESET = '\033[0m'
-    GRAY = '\033[90m'
-
-    def format(self, record):
-        # 为级别名添加颜色
-        levelname = record.levelname
-        if levelname in self.COLORS:
-            record.levelname = f"{self.COLORS[levelname]}{levelname}{self.RESET}"
-
-        # 时间戳使用灰色
-        formatted = super().format(record)
-        formatted = formatted.replace(record.asctime, f"{self.GRAY}{record.asctime}{self.RESET}", 1)
-
-        return formatted
-
 # 禁用 SSL 警告
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# 配置日志
-file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
-file_handler.setFormatter(logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-))
-
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(ColoredFormatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%H:%M:%S'
-))
-
-logging.basicConfig(
-    level=logging.INFO,
-    handlers=[file_handler, console_handler]
-)
-
+configure_logging(LOG_FILE)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder='assets', static_url_path='/static')
