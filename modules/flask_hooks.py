@@ -3,6 +3,9 @@
 import gc
 
 
+DEMO_CORS_ORIGIN = "https://jietng.matsuk1.com"
+
+
 def apply_security_headers(response):
     """Apply baseline browser security headers and run light GC."""
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -17,4 +20,11 @@ def apply_security_headers(response):
     )
 
     gc.collect(0)
+    return response
+
+
+def demo_cors(response):
+    response.headers["Access-Control-Allow-Origin"] = DEMO_CORS_ORIGIN
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return response

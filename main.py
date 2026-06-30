@@ -164,7 +164,7 @@ from modules.api_auth import (
     require_owner_permission,
     require_user_permission,
 )
-from modules.flask_hooks import apply_security_headers
+from modules.flask_hooks import apply_security_headers, demo_cors as _demo_cors
 from modules.image_manager import *
 
 # System utilities
@@ -972,14 +972,6 @@ def linebot_perms_revoke():
     logger.info(f"[Permission] Web revoke: token_id={token_id_to_revoke}, user_id={user_id}")
     return jsonify({"success": True})
 
-
-DEMO_CORS_ORIGIN = "https://jietng.matsuk1.com"
-
-def _demo_cors(response):
-    response.headers["Access-Control-Allow-Origin"] = DEMO_CORS_ORIGIN
-    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    return response
 
 def _normalize_session_profile(profile: dict, ver: str) -> dict:
     base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
