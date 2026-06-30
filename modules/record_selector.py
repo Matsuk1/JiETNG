@@ -97,6 +97,16 @@ def _idealized_records(records):
     return idealized
 
 
+def _int_from_digits(value):
+    digits = re.sub(r"\D", "", value)
+    return int(digits) if digits else None
+
+
+def _float_from_score(value):
+    number = re.sub(r"[^0-9.]", "", value)
+    return float(number) if number else None
+
+
 def select_records(song_record, type="best50", command="", ver="jp"):
     page = 1
     times = 1
@@ -148,59 +158,68 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 details["NextVer"] = "ON"
             elif cmd in ["ra", "rating"]:
                 parts = cmd_num.split()
-                if len(parts) == 1:
-                    ra = int(parts[0])
-                    song_record = list(filter(lambda x: x["ra"] == ra, song_record))
-                    details["RA"] = f"{ra}"
-                else:
-                    ra_start, ra_stop = map(int, parts[:2])
-                    song_record = list(filter(lambda x: ra_start <= x["ra"] <= ra_stop, song_record))
-                    details["RA"] = f"{ra_start} ~ {ra_stop}"
+                try:
+                    if len(parts) == 1:
+                        ra = int(parts[0])
+                        song_record = list(filter(lambda x: x["ra"] == ra, song_record))
+                        details["RA"] = f"{ra}"
+                    elif len(parts) >= 2:
+                        ra_start, ra_stop = map(int, parts[:2])
+                        song_record = list(filter(lambda x: ra_start <= x["ra"] <= ra_stop, song_record))
+                        details["RA"] = f"{ra_start} ~ {ra_stop}"
+                except (TypeError, ValueError):
+                    pass
             elif cmd in ["dx", "dxscore"]:
                 parts = cmd_num.split()
                 if not len(parts):
                     sort_rule = lambda x: (x["dx_percentage"], float(x["score"][:-1]))
                     details["Sort"] = "DX Score"
                 elif len(parts) == 1:
-                    dx_percentage = int(re.sub(r"\D", "", parts[0]))
-                    song_record = list(filter(lambda x: x["dx_percentage"] * 100 >= dx_percentage, song_record))
-                    details["DxScr"] = f"\u2267 {dx_percentage}%"
+                    dx_percentage = _int_from_digits(parts[0])
+                    if dx_percentage is not None:
+                        song_record = list(filter(lambda x: x["dx_percentage"] * 100 >= dx_percentage, song_record))
+                        details["DxScr"] = f"\u2267 {dx_percentage}%"
                 else:
-                    dx_start = int(re.sub(r"\D", "", parts[0]))
-                    dx_stop = int(re.sub(r"\D", "", parts[1]))
-                    song_record = list(filter(
-                        lambda x: dx_start <= x["dx_percentage"] * 100 <= dx_stop,
-                        song_record,
-                    ))
-                    details["DxScr"] = f"{dx_start}% ~ {dx_stop}%"
+                    dx_start = _int_from_digits(parts[0])
+                    dx_stop = _int_from_digits(parts[1])
+                    if dx_start is not None and dx_stop is not None:
+                        song_record = list(filter(
+                            lambda x: dx_start <= x["dx_percentage"] * 100 <= dx_stop,
+                            song_record,
+                        ))
+                        details["DxScr"] = f"{dx_start}% ~ {dx_stop}%"
             elif cmd in ["dxstar", "star"]:
                 parts = cmd_num.split()
                 if len(parts) == 1:
-                    dx_star = int(re.sub(r"\D", "", parts[0]))
-                    song_record = list(filter(lambda x: x["dx_star"] == dx_star, song_record))
-                    details["Star"] = f"{dx_star}"
-                else:
-                    dx_start = int(re.sub(r"\D", "", parts[0]))
-                    dx_stop = int(re.sub(r"\D", "", parts[1]))
-                    song_record = list(filter(lambda x: dx_start <= x["dx_star"] <= dx_stop, song_record))
-                    details["Star"] = f"{dx_start} ~ {dx_stop}"
+                    dx_star = _int_from_digits(parts[0])
+                    if dx_star is not None:
+                        song_record = list(filter(lambda x: x["dx_star"] == dx_star, song_record))
+                        details["Star"] = f"{dx_star}"
+                elif len(parts) >= 2:
+                    dx_start = _int_from_digits(parts[0])
+                    dx_stop = _int_from_digits(parts[1])
+                    if dx_start is not None and dx_stop is not None:
+                        song_record = list(filter(lambda x: dx_start <= x["dx_star"] <= dx_stop, song_record))
+                        details["Star"] = f"{dx_start} ~ {dx_stop}"
             elif cmd in ["score", "scr"]:
                 parts = cmd_num.split()
                 if len(parts) == 1:
-                    score = float(re.sub(r"[^0-9.]", "", parts[0]))
-                    song_record = list(filter(
-                        lambda x: float(x["score"].replace("%", "")) >= score,
-                        song_record,
-                    ))
-                    details["Scr"] = f"\u2267 {score:.4f}%"
-                else:
-                    scr_start = float(re.sub(r"[^0-9.]", "", parts[0]))
-                    scr_stop = float(re.sub(r"[^0-9.]", "", parts[1]))
-                    song_record = list(filter(
-                        lambda x: scr_start <= float(x["score"].replace("%", "")) <= scr_stop,
-                        song_record,
-                    ))
-                    details["Scr"] = f"{scr_start}% ~ {scr_stop}%"
+                    score = _float_from_score(parts[0])
+                    if score is not None:
+                        song_record = list(filter(
+                            lambda x: float(x["score"].replace("%", "")) >= score,
+                            song_record,
+                        ))
+                        details["Scr"] = f"\u2267 {score:.4f}%"
+                elif len(parts) >= 2:
+                    scr_start = _float_from_score(parts[0])
+                    scr_stop = _float_from_score(parts[1])
+                    if scr_start is not None and scr_stop is not None:
+                        song_record = list(filter(
+                            lambda x: scr_start <= float(x["score"].replace("%", "")) <= scr_stop,
+                            song_record,
+                        ))
+                        details["Scr"] = f"{scr_start}% ~ {scr_stop}%"
             elif cmd in ["ver", "version"]:
                 raw_versions = cmd_num.split()
                 versions = []
@@ -214,22 +233,23 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                             .replace("deluxe", "maimai\u3067\u3089\u3063\u304f\u3059")
                         )
                         versions.append(processed)
-                song_record = list(filter(
-                    lambda x: (x.get("version") or "").lower() in versions,
-                    song_record,
-                ))
-                details["Ver"] = ""
-                for version in versions:
-                    plus = "plus" in version
-                    details["Ver"] += (
-                        version.lower()
-                        .replace("maimai\u3067\u3089\u3063\u304f\u3059", "dx")
-                        .replace("plus", "")[:3]
-                        .strip()
+                if versions:
+                    song_record = list(filter(
+                        lambda x: (x.get("version") or "").lower() in versions,
+                        song_record,
+                    ))
+                    details["Ver"] = ""
+                    for version in versions:
+                        plus = "plus" in version
+                        details["Ver"] += (
+                            version.lower()
+                            .replace("maimai\u3067\u3089\u3063\u304f\u3059", "dx")
+                            .replace("plus", "")[:3]
+                            .strip()
                     )
-                    if plus:
-                        details["Ver"] += "+"
-                    details["Ver"] += " "
+                        if plus:
+                            details["Ver"] += "+"
+                        details["Ver"] += " "
             elif cmd in ["type", "tp"]:
                 raw_types = [t.strip().lower() for t in cmd_num.split() if t.strip()]
                 valid_types = []
@@ -248,11 +268,14 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                     pass
             elif cmd in ["times", "tm"]:
                 parts = cmd_num.split()
-                times = min(float(parts[0]), 2.5)
-                if times > 0:
-                    details["Times"] = times
-                else:
-                    times = 1
+                try:
+                    times = min(float(parts[0]), 2.5)
+                    if times > 0:
+                        details["Times"] = times
+                    else:
+                        times = 1
+                except (IndexError, TypeError, ValueError):
+                    pass
 
     up_songs = down_songs = []
 
