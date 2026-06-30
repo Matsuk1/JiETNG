@@ -162,6 +162,7 @@ from modules.command_router import (
     Exact, Prefix, Suffix, Regex, FirstWord,
     Command, CommandContext,
     QUEUE_SYNC, QUEUE_IMAGE, QUEUE_WEB,
+    B_COMMAND_WORDS, resolve_rank_command, rank_command_aliases,
 )
 from modules.image_manager import *
 
@@ -263,27 +264,6 @@ def _error_page(message, language="ja", status=400):
         }
     message = select_text(message_i18n or message, language=language, default_language="ja")
     return render_template("error.html", message=message, message_i18n=message_i18n, language=language), status
-
-# 配置成绩命令列表
-RANK_COMMANDS = {
-    # Best 系列
-    ("b50", "best50"): "best50",
-    ("b40", "best40"): "best40",
-    ("b35", "best35"): "best35",
-    ("b15", "best15"): "best15",
-
-    # All Best 系列
-    ("ab35", "allb35"): "allb35",
-    ("ab50", "allb50"): "allb50",
-
-    # 特殊系列
-    ("apb50", "ap50"): "apb50",
-    ("fdxb50", "fdx50"): "fdxb50",
-    ("rct50", "r50"): "rct50",
-    ("idealb50", "idlb50"): "idlb50",
-    ("s50", "sun50", "寸止め", "寸50"): "sun50",
-    ("unknown",): "unknown",
-}
 
 # 启用 CSRF 保护
 csrf = CSRFProtect(app)
@@ -1626,14 +1606,7 @@ def async_generate_friend_record_task(event):
     command = parts[2] if len(parts) > 2 else ""
 
     # 转换 record_type 为标准格式
-    std = False
-    for aliases, standard_type in RANK_COMMANDS.items():
-        if record_type.lower() in aliases:
-            record_type = standard_type
-            std = True
-            break
-    if not std:
-        record_type = "best50"
+    record_type = resolve_rank_command(record_type) or "best50"
 
     # 获取用户版本
     ver = "jp"
@@ -3819,8 +3792,7 @@ def has_non_bot_mention(event) -> bool:
 
 # ============================================================
 # 命令派发 / Command Dispatch
-# 替代散落在 main.py 的 6 个分发表：WEB_TASK_ROUTES / IMAGE_TASK_ROUTES /
-# RANK_COMMANDS（仍保留为数据）/ COMMAND_MAP / SPECIAL_RULES / 内联 if-block
+# 替代散落在 main.py 的分发表和内联 if-block。
 # 设计：modules/command_router.py
 # ============================================================
 
@@ -4058,16 +4030,12 @@ def cmd_level_rank_progress(ctx):
         filter_mode=filter_mode))
 
 def cmd_b_records(ctx):
-    """b50 / best50 / ab50 / ... → generate_records；mode 由 RANK_COMMANDS 解析"""
+    """b50 / best50 / ab50 / ... → generate_records."""
     msg_lower = ctx.text.lower()
     splits = re.split(r"[ \n]", msg_lower, 1)
     first = splits[0]
     rest = splits[1] if len(splits) > 1 else ""
-    mode = None
-    for aliases, mode_value in RANK_COMMANDS.items():
-        if first in aliases:
-            mode = mode_value
-            break
+    mode = resolve_rank_command(first)
     if mode is None:
         return input_error(ctx.user_id)  # matcher 保证不会到这
     return asyncio.run(generate_records(
@@ -4161,10 +4129,6 @@ def cmd_settings(ctx):
     )
 
 
-# ---- B 系列命令的 first-word 集合（从 RANK_COMMANDS 自动展开）----
-_B_COMMAND_WORDS = tuple(sorted({alias for aliases in RANK_COMMANDS for alias in aliases}))
-
-
 # ---- 命令注册表 ----
 # 顺序：web > image > sync。同一文本不应被多个命令命中，命中即停。
 # self_only=True 集合与旧 _SELF_ONLY_EXACT_COMMANDS 保持一致（preserves prior behavior）。
@@ -4213,7 +4177,7 @@ COMMANDS = [
     Command(Suffix("の定数リスト", "のレベルリスト", "level-list"),
             cmd_level_rank_list, queue=QUEUE_IMAGE,
             name="level_rank_list"),
-    Command(FirstWord(*_B_COMMAND_WORDS),
+    Command(FirstWord(*B_COMMAND_WORDS),
             cmd_b_records, queue=QUEUE_IMAGE, mention_queryable=True,
             rate_limit_key="image:b_series",
             name="b_records"),
@@ -6990,20 +6954,11 @@ def api_v2_generate_record_image(user_id):
 
         ver = _udata.get("version", "jp")
 
-        record_type = None
-        for aliases, mode in RANK_COMMANDS.items():
-            if isinstance(aliases, tuple):
-                if first_word in aliases:
-                    record_type = mode
-                    break
-            else:
-                if first_word == aliases:
-                    record_type = mode
-                    break
+        record_type = resolve_rank_command(first_word)
 
         if not record_type:
             return jsonify({"error": f"Unknown command: {command}",
-                            "available": [a for aliases in RANK_COMMANDS for a in (aliases if isinstance(aliases, tuple) else (aliases,))]}), 400
+                            "available": rank_command_aliases()}), 400
 
         recent = (record_type == "rct50")
         recent_type = (record_type == "best40")
