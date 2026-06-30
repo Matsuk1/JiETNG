@@ -3,10 +3,6 @@
 import math
 import re
 
-from modules.config_loader import MAIMAI_VERSION
-from modules.maimai_manager import parse_level_value
-from modules.record_manager import get_ideal_score, get_single_ra
-
 
 def _achievement_value(record):
     return float(str(record.get("score", "0")).replace("%", ""))
@@ -40,6 +36,8 @@ def _record_level_value(record):
 
 
 def _parse_level_filter_values(raw_level):
+    from modules.maimai_manager import parse_level_value
+
     values = parse_level_value(str(raw_level).strip())
     if not values:
         return []
@@ -76,6 +74,27 @@ def _filter_records_by_level(song_record, parts):
         if lv_start <= _record_level_value(x) <= lv_stop
     ]
     return filtered, f"{parts[0]} ~ {parts[1]}"
+
+
+def _idealized_records(records):
+    from modules.record_manager import get_ideal_score, get_single_ra
+
+    idealized = []
+    for record in records:
+        rcd = record.copy()
+        ideal_score, score_icon = get_ideal_score(float(rcd["score"][:-1]))
+        rcd["score"] = f"{ideal_score:.4f}%"
+        if score_icon:
+            rcd["score_icon"] = score_icon
+        if ideal_score == 101:
+            rcd["combo_icon"] = "app"
+        rcd["ra"] = get_single_ra(
+            rcd["internalLevelValue"],
+            ideal_score,
+            ideal_score == 101,
+        )
+        idealized.append(rcd)
+    return idealized
 
 
 def select_records(song_record, type="best50", command="", ver="jp"):
@@ -120,6 +139,8 @@ def select_records(song_record, type="best50", command="", ver="jp"):
                 if detail:
                     details["Lv"] = detail
             elif cmd in ["next", "nxt"]:
+                from modules.config_loader import MAIMAI_VERSION
+
                 filter_rules = [
                     (lambda x: x["version"] != MAIMAI_VERSION[ver][-1]),
                     (lambda x: x["version"] == MAIMAI_VERSION[ver][-1]),
@@ -284,23 +305,8 @@ def select_records(song_record, type="best50", command="", ver="jp"):
         up_songs = song_record
 
     elif type == "idlb50":
-        for rcd in up_songs_data:
-            ideal_score, score_icon = get_ideal_score(float(rcd["score"][:-1]))
-            rcd["score"] = f"{ideal_score:.4f}%"
-            if score_icon:
-                rcd["score_icon"] = score_icon
-            if ideal_score == 101:
-                rcd["combo_icon"] = "app"
-            rcd["ra"] = get_single_ra(rcd["internalLevelValue"], ideal_score, ideal_score == 101)
-
-        for rcd in down_songs_data:
-            ideal_score, score_icon = get_ideal_score(float(rcd["score"][:-1]))
-            rcd["score"] = f"{ideal_score:.4f}%"
-            if score_icon:
-                rcd["score_icon"] = score_icon
-            if ideal_score == 101:
-                rcd["combo_icon"] = "app"
-            rcd["ra"] = get_single_ra(rcd["internalLevelValue"], ideal_score, ideal_score == 101)
+        up_songs_data = _idealized_records(up_songs_data)
+        down_songs_data = _idealized_records(down_songs_data)
 
         up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page - 1) * num_35: page * num_35]
         down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page - 1) * num_15: page * num_15]
