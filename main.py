@@ -15,21 +15,19 @@ import psutil
 import platform
 import socket
 import secrets
-import copy
 import asyncio
 import aiohttp
 import urllib3
 import atexit
 from urllib.parse import quote as _url_quote
 import time
-import subprocess
 import gc
 import math
 import base64 as b64mod
 
 from datetime import datetime
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 from io import BytesIO
 
 from flask import (
@@ -52,15 +50,12 @@ from linebot.v3.messaging import (
     Configuration,
     ApiClient,
     MessagingApi,
-    MessagingApiBlob,
     TextMessage,
     ImageMessage,
     TemplateMessage,
     ButtonsTemplate,
-    MessageAction,
     URIAction,
     FlexMessage,
-    FlexContainer
 )
 from linebot.v3.messaging.models import (
     MarkMessagesAsReadByTokenRequest,
