@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useData } from 'vitepress'
 
 type TranslateElementConstructor = new (
@@ -34,12 +34,13 @@ function loadGoogleTranslate() {
       else reject(new Error('Google Translate did not initialize.'))
     }
 
-    const script = document.createElement('script')
+    const existingScript = document.getElementById('google-translate-script') as HTMLScriptElement | null
+    const script = existingScript || document.createElement('script')
     script.id = 'google-translate-script'
     script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit'
     script.async = true
     script.onerror = () => reject(new Error('Google Translate failed to load.'))
-    document.head.appendChild(script)
+    if (!existingScript) document.head.appendChild(script)
   })
 
   return googleTranslateLoader
@@ -47,16 +48,49 @@ function loadGoogleTranslate() {
 
 const status = ref('')
 const { lang } = useData()
+const navTargetReady = ref(false)
+const screenTargetReady = ref(false)
+let observer: MutationObserver | undefined
 
 const copy = computed(() => {
   if (lang.value.startsWith('ja')) {
-    return { more: 'その他の言語', unavailable: '翻訳を読み込めませんでした。' }
+    return {
+      more: 'その他の言語',
+      unavailable: '翻訳を読み込めませんでした。',
+      fallback: 'Google Translate で開く'
+    }
   }
   if (lang.value.startsWith('en')) {
-    return { more: 'More languages', unavailable: 'Translation unavailable' }
+    return {
+      more: 'More languages',
+      unavailable: 'Translation unavailable',
+      fallback: 'Open in Google Translate'
+    }
   }
-  return { more: '更多语言', unavailable: '翻译服务加载失败。' }
+  return {
+    more: '更多语言',
+    unavailable: '翻译服务加载失败。',
+    fallback: '用 Google 翻译打开'
+  }
 })
+
+const fallbackUrl = computed(() => {
+  if (typeof window === 'undefined') return 'https://translate.google.com/'
+  const target = window.location.href
+  return `https://translate.google.com/translate?sl=auto&tl=en&u=${encodeURIComponent(target)}`
+})
+
+function updateTargets() {
+  navTargetReady.value = !!document.querySelector('.VPNavBarTranslations .items')
+  screenTargetReady.value = !!document.querySelector('.VPNavScreenTranslations .list')
+}
+
+function pageLanguage() {
+  if (lang.value.startsWith('zh')) return 'zh-CN'
+  if (lang.value.startsWith('en')) return 'en'
+  if (lang.value.startsWith('ja')) return 'ja'
+  return document.documentElement.lang || 'ja'
+}
 
 async function mountTranslateControl(id: string) {
   await nextTick()
@@ -66,8 +100,8 @@ async function mountTranslateControl(id: string) {
   try {
     const TranslateElement = await loadGoogleTranslate()
     new TranslateElement({
-      pageLanguage: document.documentElement.lang || 'zh-CN',
-      includedLanguages: 'zh-TW,ko,fr,de,es,th,vi,id',
+      pageLanguage: pageLanguage(),
+      includedLanguages: 'ja,en,zh-CN,zh-TW,ko,fr,de,es,th,vi,id',
       autoDisplay: false
     }, id)
   } catch {
@@ -76,25 +110,54 @@ async function mountTranslateControl(id: string) {
 }
 
 onMounted(() => {
+  updateTargets()
+  observer = new MutationObserver(() => updateTargets())
+  observer.observe(document.body, { childList: true, subtree: true })
   void mountTranslateControl('google_translate_nav')
   void mountTranslateControl('google_translate_screen')
+})
+
+watch(navTargetReady, (ready) => {
+  if (ready) void mountTranslateControl('google_translate_nav')
+})
+
+watch(screenTargetReady, (ready) => {
+  if (ready) void mountTranslateControl('google_translate_screen')
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
 })
 </script>
 
 <template>
-  <Teleport to=".VPNavBarTranslations .items">
+  <Teleport v-if="navTargetReady" to=".VPNavBarTranslations .items">
     <div class="google-translate-menu">
       <p class="google-translate-title">{{ copy.more }}</p>
       <div id="google_translate_nav" class="google-translate-control" />
       <p v-if="status" class="google-translate-status">{{ status }}</p>
+      <a
+        v-if="status"
+        class="google-translate-fallback"
+        :href="fallbackUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+      >{{ copy.fallback }}</a>
     </div>
   </Teleport>
 
-  <Teleport to=".VPNavScreenTranslations .list">
+  <Teleport v-if="screenTargetReady" to=".VPNavScreenTranslations .list">
     <li class="google-translate-screen-item">
       <p class="google-translate-title">{{ copy.more }}</p>
       <div id="google_translate_screen" class="google-translate-control" />
       <p v-if="status" class="google-translate-status">{{ status }}</p>
+      <a
+        v-if="status"
+        class="google-translate-fallback"
+        :href="fallbackUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+      >{{ copy.fallback }}</a>
     </li>
   </Teleport>
 </template>

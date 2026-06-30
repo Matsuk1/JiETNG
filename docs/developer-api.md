@@ -187,22 +187,22 @@ Content-Type: application/json
     "class_rank_url": "https://...",
     "course_rank_url": "https://..."
   },
-  "best": [
-    {
-      "song_id": "123456",
-      "title": "Song Title",
-      "type": "DX",
-      "difficulty": "MASTER",
-      "level": "14+",
-      "level_index": 3,
-      "achievement": 100.5,
-      "dx_score": 1234,
-      "dx_rating": 312,
-      "fc": "AP+",
-      "sync": "FDX+"
-    }
-  ],
-  "recent": []
+  "records": {
+    "best": [
+      {
+        "title": "Song Title",
+        "type": "DX",
+        "difficulty": "Master",
+        "achievement": 100.5,
+        "dx_score": 1234,
+        "dx_score_max": 1500,
+        "rank": "SSS+",
+        "combo": "AP+",
+        "sync": "FDX+"
+      }
+    ],
+    "recent": []
+  }
 }
 ```
 
@@ -210,14 +210,14 @@ Content-Type: application/json
 
 - `version`：`jp` 或 `intl`。
 - `profile`：用户资料。缺失字段会尽量保留服务器已有值。
-- `best`：Best 记录。
-- `recent`：Recent 记录。
+- `records.best`：Best 记录。
+- `records.recent`：Recent 记录。
 - `rating_block_path` 不需要上传，服务端会根据 `rating` 计算。
 
 替换规则：
 
-- 请求体包含 `"best": []` 会清空 Best。
-- 请求体包含 `"recent": []` 会清空 Recent。
+- 请求体包含 `"records": {"best": []}` 会清空 Best。
+- 请求体包含 `"records": {"recent": []}` 会清空 Recent。
 - 省略某个分区则保留服务器旧数据。
 
 成功响应：

@@ -1260,7 +1260,7 @@ def manage_import_tokens():
 
     if request.method == "POST":
         data = request.get_json(silent=True) or {}
-        note = data.get("note", "settings")
+        note = str(data.get("title") or data.get("note") or "").strip()[:120] or "custom"
         result = create_import_token(user_id, note=note)
         if not result:
             return jsonify({"error": "User not found"}), 404
@@ -1269,6 +1269,7 @@ def manage_import_tokens():
             "user_id": user_id,
             "token_id": result["token_id"],
             "token": result["token"],
+            "note": result["note"],
             "created_at": result["created_at"],
             "message": "Import token generated. This token is shown only once.",
         }), 201

@@ -160,22 +160,22 @@ Example:
     "class_rank_url": "https://...",
     "course_rank_url": "https://..."
   },
-  "best": [
-    {
-      "song_id": "123456",
-      "title": "Song Title",
-      "type": "DX",
-      "difficulty": "MASTER",
-      "level": "14+",
-      "level_index": 3,
-      "achievement": 100.5,
-      "dx_score": 1234,
-      "dx_rating": 312,
-      "fc": "AP+",
-      "sync": "FDX+"
-    }
-  ],
-  "recent": []
+  "records": {
+    "best": [
+      {
+        "title": "Song Title",
+        "type": "DX",
+        "difficulty": "Master",
+        "achievement": 100.5,
+        "dx_score": 1234,
+        "dx_score_max": 1500,
+        "rank": "SSS+",
+        "combo": "AP+",
+        "sync": "FDX+"
+      }
+    ],
+    "recent": []
+  }
 }
 ```
 
@@ -183,8 +183,8 @@ Example:
 
 Replacement rules:
 
-- `"best": []` clears Best.
-- `"recent": []` clears Recent.
+- `"records": {"best": []}` clears Best.
+- `"records": {"recent": []}` clears Recent.
 - Omitting a section keeps existing server data.
 
 Success:

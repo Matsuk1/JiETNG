@@ -568,6 +568,10 @@
         <button type="button" class="token-action-btn" id="import-token-copy-btn" onclick="copyImportToken()">コピー</button>
       </div>
       <div class="list-item">
+        <label for="import-token-note" id="import-token-note-label">Token名</label>
+        <input type="text" id="import-token-note" maxlength="120" placeholder="Bookmarklet / Tool name" autocomplete="off">
+      </div>
+      <div class="list-item">
         <div class="list-item-info">
           <span class="list-item-label" id="import-token-create-label">新しいToken</span>
           <span class="list-item-meta" id="import-token-create-meta">生成後、Tokenは一度だけ表示されます。</span>
@@ -624,6 +628,9 @@
         importTokenTitle: '成績インポートToken',
         importTokenHelp: '外部ツールから加工済みの成績JSONをJiETNGへアップロードするためのTokenです。',
         importTokenCreate: 'Tokenを生成',
+        importTokenNoteLabel: 'Token名',
+        importTokenNotePlaceholder: '例：Bookmarklet / 外部ツール名',
+        importTokenNoteRequired: 'Token名を入力してください。',
         importTokenCreateLabel: '新しいToken',
         importTokenCreateMeta: '生成後、Tokenは一度だけ表示されます。',
         importTokenResultTitle: 'Token（今回のみ表示）',
@@ -660,6 +667,9 @@
         importTokenTitle: 'Record Import Token',
         importTokenHelp: 'Use this token to upload processed record JSON from external tools to JiETNG.',
         importTokenCreate: 'Generate Token',
+        importTokenNoteLabel: 'Token title',
+        importTokenNotePlaceholder: 'e.g. Bookmarklet / Tool name',
+        importTokenNoteRequired: 'Please enter a token title.',
         importTokenCreateLabel: 'New Token',
         importTokenCreateMeta: 'After generation, the token is shown only once.',
         importTokenResultTitle: 'Token (shown only once)',
@@ -696,6 +706,9 @@
         importTokenTitle: '成绩导入 Token',
         importTokenHelp: '用于让外部工具把加工后的成绩 JSON 上传到 JiETNG。',
         importTokenCreate: '生成 Token',
+        importTokenNoteLabel: 'Token 标题',
+        importTokenNotePlaceholder: '例如：Bookmarklet / 工具名称',
+        importTokenNoteRequired: '请输入 Token 标题。',
         importTokenCreateLabel: '新的 Token',
         importTokenCreateMeta: '生成后，Token 只会显示这一次。',
         importTokenResultTitle: 'Token（只显示这一次）',
@@ -732,6 +745,9 @@
         importTokenTitle: '成績匯入 Token',
         importTokenHelp: '用於讓外部工具把處理後的成績 JSON 上傳到 JiETNG。',
         importTokenCreate: '產生 Token',
+        importTokenNoteLabel: 'Token 標題',
+        importTokenNotePlaceholder: '例如：Bookmarklet / 工具名稱',
+        importTokenNoteRequired: '請輸入 Token 標題。',
         importTokenCreateLabel: '新的 Token',
         importTokenCreateMeta: '產生後，Token 只會顯示這一次。',
         importTokenResultTitle: 'Token（只顯示這一次）',
@@ -844,6 +860,10 @@
       if (help) help.textContent = t.importTokenHelp;
       const createBtn = document.getElementById('import-token-create-btn');
       if (createBtn && !createBtn.disabled) createBtn.textContent = t.importTokenCreate;
+      const noteLabel = document.getElementById('import-token-note-label');
+      if (noteLabel) noteLabel.textContent = t.importTokenNoteLabel;
+      const noteInput = document.getElementById('import-token-note');
+      if (noteInput) noteInput.placeholder = t.importTokenNotePlaceholder;
       const createLabel = document.getElementById('import-token-create-label');
       if (createLabel) createLabel.textContent = t.importTokenCreateLabel;
       const createMeta = document.getElementById('import-token-create-meta');
@@ -912,23 +932,44 @@
       return new URLSearchParams(window.location.search).get('token') || '';
     }
 
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, function(ch) {
+        return ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;',
+        })[ch];
+      });
+    }
+
     async function createImportToken() {
       const lang = document.getElementById('language').value || 'ja';
       const t = translations[lang] || translations.ja;
       const btn = document.getElementById('import-token-create-btn');
+      const noteInput = document.getElementById('import-token-note');
+      const note = (noteInput && noteInput.value ? noteInput.value : '').trim();
+      if (!note) {
+        alert(t.importTokenNoteRequired);
+        if (noteInput) noteInput.focus();
+        return;
+      }
       btn.disabled = true;
       try {
         const res = await fetch('/linebot/settings/import_tokens?token=' + encodeURIComponent(settingsToken()), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ note: 'settings' }),
+          body: JSON.stringify({ title: note }),
         });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.message || '');
+        const displayNote = data.note || note;
 
         const result = document.getElementById('import-token-result');
         document.getElementById('import-token-value').textContent = data.token;
         result.classList.add('active');
+        if (noteInput) noteInput.value = '';
 
         const empty = document.getElementById('import-token-empty');
         if (empty) empty.remove();
@@ -937,8 +978,8 @@
         item.className = 'list-item';
         item.id = 'import-token-item-' + data.token_id;
         item.innerHTML = '<div class="list-item-info">'
-          + '<span class="list-item-label">settings</span>'
-          + '<span class="list-item-meta">' + data.token_id + ' · ' + data.created_at + '</span>'
+          + '<span class="list-item-label">' + escapeHtml(displayNote) + '</span>'
+          + '<span class="list-item-meta">' + escapeHtml(data.token_id) + ' · ' + escapeHtml(data.created_at) + '</span>'
           + '</div>'
           + '<button type="button" class="btn-danger import-token-revoke-btn">'
           + t.importTokenRevoke + '</button>';

@@ -197,6 +197,15 @@
   line-height: 1.4;
 }
 
+.google-translate-fallback {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--vp-c-brand-1);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .goog-te-banner-frame {
   display: none;
 }
