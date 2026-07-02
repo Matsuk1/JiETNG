@@ -31,7 +31,8 @@ from modules.message_manager import generate_notice_flex
 logger = logging.getLogger(__name__)
 
 
-def smart_reply(user_id: str, reply_token: str, messages, configuration: Configuration, addition: bool = True):
+def smart_reply(user_id: str, reply_token: str, messages, configuration: Configuration,
+                addition: bool = True, source_type: str = "user"):
     """
     智能回复函数 - 自动附加好友申请、未读公告
 
@@ -43,6 +44,8 @@ def smart_reply(user_id: str, reply_token: str, messages, configuration: Configu
         reply_token: 回复令牌
         messages: 要发送的消息(单个或列表)
         configuration: LINE API配置对象
+        addition: 是否自动附加权限申请/公告
+        source_type: LINE source 类型，只有私聊(user)会附加权限申请/公告
     """
     if not isinstance(messages, list):
         messages = [messages]
@@ -55,8 +58,10 @@ def smart_reply(user_id: str, reply_token: str, messages, configuration: Configu
             msg.quick_reply = None  # 移除原消息的 quick_reply
             break
 
-    # 只有当消息数量小于5时，才添加附加消息
-    if len(messages) < 5 and addition:
+    can_append_private_additions = addition and source_type == "user"
+
+    # 只有私聊且消息数量小于5时，才添加附加消息
+    if len(messages) < 5 and can_append_private_additions:
         # 优先级1: 好友申请与权限申请消息
         if user_exists(user_id):
             perm_requests = get_pending_perm_requests(user_id)

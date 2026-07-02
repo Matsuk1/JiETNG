@@ -379,14 +379,17 @@ def run_task_with_limit(func: callable, args: tuple, sem: threading.Semaphore,
                 # 尝试获取用户信息以便回复
                 user_id = None
                 reply_token = None
+                source_type = "user"
                 if args:
                     if hasattr(args[0], 'source') and hasattr(args[0], 'reply_token'):
                         # Event 对象
                         user_id = args[0].source.user_id
                         reply_token = args[0].reply_token
+                        source_type = getattr(args[0].source, 'type', 'user')
                     elif isinstance(args[0], str) and args[0].startswith('U'):
                         # 直接传入的 user_id 字符串
                         user_id = args[0]
+                        source_type = "user"
                         # reply_token 可能在 args[1]
                         if len(args) > 1 and isinstance(args[1], str):
                             reply_token = args[1]
@@ -405,7 +408,7 @@ def run_task_with_limit(func: callable, args: tuple, sem: threading.Semaphore,
                 # 回复用户
                 if user_id and reply_token:
                     try:
-                        smart_reply(user_id, reply_token, system_error(user_id), configuration)
+                        smart_reply(user_id, reply_token, system_error(user_id), configuration, source_type=source_type)
                     except Exception:
                         pass
             finally:
@@ -1666,6 +1669,7 @@ def async_maimai_update_task(event):
     """异步maimai更新任务 - 在webtask_queue中执行"""
     user_id = event.source.user_id
     reply_token = event.reply_token
+    source_type = getattr(event.source, 'type', 'user')
 
     # 获取用户版本
     ver = "jp"
@@ -1680,7 +1684,7 @@ def async_maimai_update_task(event):
         track_event('sync_task', user_id=user_id, metadata={'success': False, 'trigger': 'user', 'error': str(e)[:200]})
         raise
     if reply_token:
-        smart_reply(user_id, reply_token, reply_msg, configuration)
+        smart_reply(user_id, reply_token, reply_msg, configuration, source_type=source_type)
 
 def async_bind_update_task(user_id, ver):
     """绑定后异步数据更新任务 - 在webtask_queue中执行"""
@@ -1708,7 +1712,7 @@ def async_get_friend_list_task(event):
 
     _udata = get_user(user_id)
     if not _udata or 'sega_id' not in _udata:
-        smart_reply(user_id, reply_token, segaid_error(user_id), configuration)
+        smart_reply(user_id, reply_token, segaid_error(user_id), configuration, source_type=source_type)
         return
 
     sega_id = _udata.get('sega_id')
@@ -1719,18 +1723,18 @@ def async_get_friend_list_task(event):
     try:
         cookies = asyncio.run(login_to_maimai(sega_id, sega_pwd, ver=ver, aime=aime))
         if cookies is None:
-            smart_reply(user_id, reply_token, segaid_error(user_id), configuration)
+            smart_reply(user_id, reply_token, segaid_error(user_id), configuration, source_type=source_type)
             return
         if cookies == "MAINTENANCE":
-            smart_reply(user_id, reply_token, maintenance_error(user_id), configuration)
+            smart_reply(user_id, reply_token, maintenance_error(user_id), configuration, source_type=source_type)
             return
 
         friend_list = asyncio.run(get_friends_list(cookies, ver))
         if friend_list == "MAINTENANCE":
-            smart_reply(user_id, reply_token, maintenance_error(user_id), configuration)
+            smart_reply(user_id, reply_token, maintenance_error(user_id), configuration, source_type=source_type)
             return
         if not friend_list:
-            smart_reply(user_id, reply_token, friend_error(user_id), configuration)
+            smart_reply(user_id, reply_token, friend_error(user_id), configuration, source_type=source_type)
             return
 
         friend_num = len(friend_list)
@@ -1744,11 +1748,11 @@ def async_get_friend_list_task(event):
             group_size = 7
 
         reply_msg = generate_friend_buttons(user_id, get_friend_list_alt_text(user_id), friend_list, group_size)
-        smart_reply(user_id, reply_token, reply_msg, configuration)
+        smart_reply(user_id, reply_token, reply_msg, configuration, source_type=source_type)
 
     except Exception as e:
         logger.error(f"[FriendList] ✗ Failed to get friend list: user_id={user_id}, error={e}", exc_info=True)
-        smart_reply(user_id, reply_token, friend_error(user_id), configuration)
+        smart_reply(user_id, reply_token, friend_error(user_id), configuration, source_type=source_type)
 
 def async_generate_friend_record_task(event):
     """异步生成好友成绩任务 - 在webtask_queue中执行"""
@@ -1792,13 +1796,14 @@ def async_generate_friend_record_task(event):
     # 直接通过网页爬取获取好友信息
     reply_msg = asyncio.run(generate_friend_record(user_id, friend_code, record_type, command, ver))
 
-    smart_reply(user_id, reply_token, reply_msg, configuration)
+    smart_reply(user_id, reply_token, reply_msg, configuration, source_type=source_type)
 
 def async_get_song_record_task(event):
     """异步歌曲成绩查询任务 - 在webtask_queue中执行"""
     user_message = event.message.text.strip()
     user_id = event.source.user_id
     reply_token = event.reply_token
+    source_type = getattr(event.source, 'type', 'user')
 
     # 检查 @ mention（提取被提到的用户 ID）
     mentioned_user_id = extract_single_mention(event, user_id)
@@ -1826,24 +1831,25 @@ def async_get_song_record_task(event):
     # 调用实际的查询函数
     reply_msg = asyncio.run(get_song_record(user_id, id_use, acronym, mai_ver_use))
 
-    smart_reply(user_id, reply_token, reply_msg, configuration)
+    smart_reply(user_id, reply_token, reply_msg, configuration, source_type=source_type)
 
 def async_get_song_record_by_id_task(event):
     """异步歌曲成绩查询任务（通过ID）- 在webtask_queue中执行"""
     user_message = event.message.text.strip()
     user_id = event.source.user_id
     reply_token = event.reply_token
+    source_type = getattr(event.source, 'type', 'user')
 
     # 验证命令格式
     parts = user_message.split()
     if len(parts) < 2:
-        smart_reply(user_id, reply_token, song_error(user_id), configuration)
+        smart_reply(user_id, reply_token, song_error(user_id), configuration, source_type=source_type)
         return
 
     # 提取歌曲ID并验证长度
     song_id = parts[1].split("&", 1)[0]
     if len(song_id) != 6:
-        smart_reply(user_id, reply_token, song_error(user_id), configuration)
+        smart_reply(user_id, reply_token, song_error(user_id), configuration, source_type=source_type)
         return
 
     # 获取用户版本
@@ -1865,7 +1871,7 @@ def async_get_song_record_by_id_task(event):
     # 调用实际的查询函数
     reply_msg = asyncio.run(get_song_record_by_id(user_id, id_use, song_id, ver))
 
-    smart_reply(user_id, reply_token, reply_msg, configuration)
+    smart_reply(user_id, reply_token, reply_msg, configuration, source_type=source_type)
 
 def async_admin_maimai_update_task(event):
     """管理员触发的maimai更新任务 - 在webtask_queue中执行"""
@@ -4023,7 +4029,14 @@ def _run_sync_handler(cmd, ctx):
     reply = cmd.handler(ctx)
     if reply is not None:
         _bump_stats()
-        smart_reply(ctx.user_id, ctx.reply_token, reply, configuration, cmd.addition)
+        smart_reply(
+            ctx.user_id,
+            ctx.reply_token,
+            reply,
+            configuration,
+            cmd.addition,
+            source_type=ctx.source_type,
+        )
 
 
 def _image_worker_task(cmd, ctx):
@@ -4052,7 +4065,13 @@ def _enqueue_task(cmd, ctx, target_queue, lane_name, payload):
         show_loading(ctx.user_id)
         target_queue.put_nowait((*payload, task_id))
     except queue.Full:
-        smart_reply(ctx.user_id, ctx.reply_token, access_error(ctx.user_id), configuration)
+        smart_reply(
+            ctx.user_id,
+            ctx.reply_token,
+            access_error(ctx.user_id),
+            configuration,
+            source_type=ctx.source_type,
+        )
 
 
 def dispatch_command(ctx):
@@ -4067,7 +4086,8 @@ def dispatch_command(ctx):
         if cmd.self_only and ctx.has_other_mention:
             _bump_stats()
             smart_reply(ctx.user_id, ctx.reply_token,
-                        cannot_do_for_others(ctx.user_id), configuration)
+                        cannot_do_for_others(ctx.user_id), configuration,
+                        source_type=ctx.source_type)
             return True
 
         # 拦截 2：mention_queryable 命令 + @ 了未注册用户
@@ -4075,14 +4095,16 @@ def dispatch_command(ctx):
                 and ctx.mentioned_user_id is None):
             _bump_stats()
             smart_reply(ctx.user_id, ctx.reply_token,
-                        mention_error(ctx.user_id), configuration)
+                        mention_error(ctx.user_id), configuration,
+                        source_type=ctx.source_type)
             return True
 
         # 频率限制
         if cmd.rate_limit_key is not None:
             if check_rate_limit(ctx.user_id, cmd.rate_limit_key):
                 smart_reply(ctx.user_id, ctx.reply_token,
-                            rate_limit_msg(ctx.user_id), configuration)
+                            rate_limit_msg(ctx.user_id), configuration,
+                            source_type=ctx.source_type)
                 return True
 
         # 派发
@@ -4468,7 +4490,8 @@ def handle_location_message(event):
         event.source.user_id,
         event.reply_token,
         reply_message,
-        configuration
+        configuration,
+        source_type=getattr(event.source, 'type', 'user')
     )
 
 # Postback 事件处理
