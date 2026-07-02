@@ -546,7 +546,8 @@ settings_button_text = {
 notice_header_text = {
     "ja": "📢 お知らせ",
     "en": "📢 Notice",
-    "zh": "📢 公告"
+    "zh": "📢 公告",
+    "zh-tw": "📢 公告"
 }
 
 # 开发者 Token 相关消息

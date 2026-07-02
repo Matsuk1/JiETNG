@@ -4930,16 +4930,18 @@ def admin_create_notice():
 
     # 多语言内容
     content_zh = data.get('content_zh', '').strip()
+    content_zh_tw = data.get('content_zh_tw', '').strip()
     content_ja = data.get('content_ja', '').strip()
     content_en = data.get('content_en', '').strip()
 
     # 验证至少填写一种语言
-    if not any([content_ja, content_en, content_zh]):
+    if not any([content_ja, content_en, content_zh, content_zh_tw]):
         return jsonify({'success': False, 'message': 'At least one language content is required'}), 400
 
     # 构建多语言内容对象
     content_dict = {
         'zh': content_zh,
+        'zh-tw': content_zh_tw,
         'ja': content_ja,
         'en': content_en,
     }
@@ -4952,6 +4954,7 @@ def admin_create_notice():
     # 按钮参数
     button_type = data.get('button_type')
     button_label_zh = data.get('button_label_zh', '').strip()
+    button_label_zh_tw = data.get('button_label_zh_tw', '').strip()
     button_label_ja = data.get('button_label_ja', '').strip()
     button_label_en = data.get('button_label_en', '').strip()
     button_value = data.get('button_value', '').strip()
@@ -4961,6 +4964,7 @@ def admin_create_notice():
     if button_type and button_value:
         button_label = {
             'zh': button_label_zh,
+            'zh-tw': button_label_zh_tw,
             'ja': button_label_ja,
             'en': button_label_en
         }
@@ -5004,14 +5008,16 @@ def admin_update_notice():
 
     # 多语言内容
     content_zh = data.get('content_zh', '').strip()
+    content_zh_tw = data.get('content_zh_tw', '').strip()
     content_ja = data.get('content_ja', '').strip()
     content_en = data.get('content_en', '').strip()
 
-    if not notice_id or not any([content_ja, content_en, content_zh]):
+    if not notice_id or not any([content_ja, content_en, content_zh, content_zh_tw]):
         return jsonify({'success': False, 'message': 'Notice ID and at least one language content are required'}), 400
 
     content_dict = {
         'zh': content_zh,
+        'zh-tw': content_zh_tw,
         'ja': content_ja,
         'en': content_en,
     }
@@ -5019,6 +5025,7 @@ def admin_update_notice():
     # 按钮参数
     button_type = data.get('button_type')
     button_label_zh = data.get('button_label_zh', '').strip()
+    button_label_zh_tw = data.get('button_label_zh_tw', '').strip()
     button_label_ja = data.get('button_label_ja', '').strip()
     button_label_en = data.get('button_label_en', '').strip()
     button_value = data.get('button_value', '').strip()
@@ -5029,6 +5036,7 @@ def admin_update_notice():
     if button_type and button_value:
         button_label = {
             'zh': button_label_zh,
+            'zh-tw': button_label_zh_tw,
             'ja': button_label_ja,
             'en': button_label_en
         }
@@ -5227,10 +5235,12 @@ def admin_create_tip_ads():
     data = request.get_json()
     tip_type = data.get('type')
     text_zh = data.get('text_zh')
+    text_zh_tw = data.get('text_zh_tw')
     text_en = data.get('text_en')
     text_ja = data.get('text_ja')
     button_type = data.get('button_type')
     button_label_zh = data.get('button_label_zh')
+    button_label_zh_tw = data.get('button_label_zh_tw')
     button_label_en = data.get('button_label_en')
     button_label_ja = data.get('button_label_ja')
     button_value = data.get('button_value')
@@ -5246,10 +5256,12 @@ def admin_create_tip_ads():
         tip_ad = create_tip_ad(
             tip_type=tip_type,
             text_zh=text_zh,
+            text_zh_tw=text_zh_tw,
             text_en=text_en,
             text_ja=text_ja,
             button_type=button_type,
             button_label_zh=button_label_zh,
+            button_label_zh_tw=button_label_zh_tw,
             button_label_en=button_label_en,
             button_label_ja=button_label_ja,
             button_value=button_value,
@@ -5275,10 +5287,12 @@ def admin_put_tip_ads(tip_ad_id):
 
     tip_type = data.get('type')
     text_zh = data.get('text_zh')
+    text_zh_tw = data.get('text_zh_tw')
     text_en = data.get('text_en')
     text_ja = data.get('text_ja')
     button_type = data.get('button_type')
     button_label_zh = data.get('button_label_zh')
+    button_label_zh_tw = data.get('button_label_zh_tw')
     button_label_en = data.get('button_label_en')
     button_label_ja = data.get('button_label_ja')
     button_value = data.get('button_value')
@@ -5290,10 +5304,12 @@ def admin_put_tip_ads(tip_ad_id):
             tip_ad_id=tip_ad_id,
             tip_type=tip_type,
             text_zh=text_zh,
+            text_zh_tw=text_zh_tw,
             text_en=text_en,
             text_ja=text_ja,
             button_type=button_type,
             button_label_zh=button_label_zh,
+            button_label_zh_tw=button_label_zh_tw,
             button_label_en=button_label_en,
             button_label_ja=button_label_ja,
             button_value=button_value,

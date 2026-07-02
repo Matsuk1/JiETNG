@@ -115,13 +115,13 @@ def upload_notice(content, date=None, status='published', voting_enabled=False, 
     上传新公告
 
     Args:
-        content: 多语言内容字典 {'ja': '...', 'en': '...', 'zh': '...'} 或字符串(向后兼容)
+        content: 多语言内容字典 {'ja': '...', 'en': '...', 'zh': '...', 'zh-tw': '...'} 或字符串(向后兼容)
         date: 创建时间
         status: 'draft' 或 'published'
         voting_enabled: 是否启用投票
         created_by: 创建者用户ID
         button_type: 按钮类型 ('uri' 或 'message')
-        button_label: 按钮标签 {'ja': '...', 'en': '...', 'zh': '...'}
+        button_label: 按钮标签 {'ja': '...', 'en': '...', 'zh': '...', 'zh-tw': '...'}
         button_value: 按钮值（URI或消息文本）
 
     Returns:
@@ -133,7 +133,7 @@ def upload_notice(content, date=None, status='published', voting_enabled=False, 
     # 处理内容格式
     if isinstance(content, str):
         # 向后兼容：字符串转换为多语言对象
-        content_dict = {'ja': content, 'en': content, 'zh': content}
+        content_dict = {'ja': content, 'en': content, 'zh': content, 'zh-tw': content}
     elif isinstance(content, dict):
         # 验证至少有一种语言
         if not any(content.values()):
@@ -144,7 +144,8 @@ def upload_notice(content, date=None, status='published', voting_enabled=False, 
         content_dict = {
             'ja': content.get('ja') or filled_content,
             'en': content.get('en') or filled_content,
-            'zh': content.get('zh') or filled_content
+            'zh': content.get('zh') or filled_content,
+            'zh-tw': content.get('zh-tw') or filled_content
         }
     else:
         raise ValueError("Content must be a string or dict")
@@ -219,7 +220,7 @@ def update_notice(notice_id, content, button_type=None, button_label=None, butto
         notice_id: 公告ID
         content: 多语言内容字典 或 字符串(向后兼容)
         button_type: 按钮类型 ('uri' 或 'message')
-        button_label: 按钮标签 {'ja': '...', 'en': '...', 'zh': '...'}
+        button_label: 按钮标签 {'ja': '...', 'en': '...', 'zh': '...', 'zh-tw': '...'}
         button_value: 按钮值（URI或消息文本）
         remove_button: 是否移除按钮
 
@@ -230,7 +231,7 @@ def update_notice(notice_id, content, button_type=None, button_label=None, butto
 
     # 处理内容格式
     if isinstance(content, str):
-        content_dict = {'ja': content, 'en': content, 'zh': content}
+        content_dict = {'ja': content, 'en': content, 'zh': content, 'zh-tw': content}
     elif isinstance(content, dict):
         if not any(content.values()):
             raise ValueError("At least one language content is required")
@@ -238,7 +239,8 @@ def update_notice(notice_id, content, button_type=None, button_label=None, butto
         content_dict = {
             'ja': content.get('ja') or filled_content,
             'en': content.get('en') or filled_content,
-            'zh': content.get('zh') or filled_content
+            'zh': content.get('zh') or filled_content,
+            'zh-tw': content.get('zh-tw') or filled_content
         }
     else:
         raise ValueError("Content must be a string or dict")

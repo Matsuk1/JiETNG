@@ -1192,6 +1192,11 @@
           </div>
 
           <div class="form-group">
+            <label class="form-label">Text (Traditional Chinese):</label>
+            <textarea id="tipad_text_zh_tw" class="form-input" style="min-height: 80px;"></textarea>
+          </div>
+
+          <div class="form-group">
             <label class="form-label">Text (English):</label>
             <textarea id="tipad_text_en" required class="form-input" style="min-height: 80px;"></textarea>
           </div>
@@ -1220,6 +1225,10 @@
               <div class="list-item">
                 <label for="tipad_button_label_zh">Label (Chinese)</label>
                 <input type="text" id="tipad_button_label_zh" placeholder="查看详情 / 尝试一下">
+              </div>
+              <div class="list-item">
+                <label for="tipad_button_label_zh_tw">Label (Traditional Chinese)</label>
+                <input type="text" id="tipad_button_label_zh_tw" placeholder="查看詳情 / 試試看">
               </div>
               <div class="list-item">
                 <label for="tipad_button_label_en">Label (English)</label>
@@ -1560,6 +1569,14 @@
             <textarea id="notice-content-zh" class="form-textarea" rows="4" placeholder="输入中文内容..."></textarea>
           </div>
 
+          <!-- Traditional Chinese -->
+          <div style="margin-bottom: 12px;">
+            <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">
+              🇹🇼 繁體中文
+            </label>
+            <textarea id="notice-content-zh-tw" class="form-textarea" rows="4" placeholder="輸入繁體中文內容..."></textarea>
+          </div>
+
           <!-- Japanese -->
           <div style="margin-bottom: 12px;">
             <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">
@@ -1613,6 +1630,10 @@
             <div class="list-item">
               <label for="notice-button-label-zh">Label (Chinese)</label>
               <input type="text" id="notice-button-label-zh" placeholder="查看详情 / 尝试一下">
+            </div>
+            <div class="list-item">
+              <label for="notice-button-label-zh-tw">Label (Traditional Chinese)</label>
+              <input type="text" id="notice-button-label-zh-tw" placeholder="查看詳情 / 試試看">
             </div>
             <div class="list-item">
               <label for="notice-button-label-en">Label (English)</label>
@@ -2648,7 +2669,7 @@
 
       let html = '';
       for (const notice of notices) {
-        const content = typeof notice.content === 'string' ? { zh: notice.content, ja: '', en: '' } : (notice.content || {});
+        const content = typeof notice.content === 'string' ? { zh: notice.content, 'zh-tw': '', ja: '', en: '' } : (notice.content || {});
 
         const statusBadge = notice.status === 'draft'
           ? '<span class="badge" style="color:var(--warning-color);border-color:var(--warning-color);">Draft</span>'
@@ -2687,6 +2708,10 @@
               <span style="font-size:13px;color:var(--text-color);line-height:1.6;flex:1;">${escapeHtml(content.zh || '—')}</span>
             </div>
             <div class="list-item" style="align-items:flex-start;gap:12px;">
+              <span style="color:var(--text-secondary);font-size:13px;white-space:nowrap;padding-top:1px;min-width:24px;">🇹🇼</span>
+              <span style="font-size:13px;color:var(--text-color);line-height:1.6;flex:1;">${escapeHtml(content['zh-tw'] || '—')}</span>
+            </div>
+            <div class="list-item" style="align-items:flex-start;gap:12px;">
               <span style="color:var(--text-secondary);font-size:13px;white-space:nowrap;padding-top:1px;min-width:24px;">🇬🇧</span>
               <span style="font-size:13px;color:var(--text-color);line-height:1.6;flex:1;">${escapeHtml(content.en || '—')}</span>
             </div>
@@ -2715,6 +2740,7 @@
       document.getElementById('notice-modal-title').textContent = 'Create New Notice';
       document.getElementById('notice-id').value = '';
       document.getElementById('notice-content-zh').value = '';
+      document.getElementById('notice-content-zh-tw').value = '';
       document.getElementById('notice-content-ja').value = '';
       document.getElementById('notice-content-en').value = '';
       document.getElementById('notice-voting-enabled').checked = false;
@@ -2723,6 +2749,7 @@
       document.getElementById('noticeButtonFields').style.display = 'none';
       document.getElementById('notice-button-type').value = 'uri';
       document.getElementById('notice-button-label-zh').value = '';
+      document.getElementById('notice-button-label-zh-tw').value = '';
       document.getElementById('notice-button-label-ja').value = '';
       document.getElementById('notice-button-label-en').value = '';
       document.getElementById('notice-button-value').value = '';
@@ -2745,10 +2772,12 @@
               if (typeof content === 'string') {
                 // Backward compatibility
                 document.getElementById('notice-content-zh').value = content;
+                document.getElementById('notice-content-zh-tw').value = '';
                 document.getElementById('notice-content-ja').value = '';
                 document.getElementById('notice-content-en').value = '';
               } else {
                 document.getElementById('notice-content-zh').value = content.zh || '';
+                document.getElementById('notice-content-zh-tw').value = content['zh-tw'] || '';
                 document.getElementById('notice-content-ja').value = content.ja || '';
                 document.getElementById('notice-content-en').value = content.en || '';
               }
@@ -2762,6 +2791,7 @@
                 document.getElementById('noticeButtonFields').style.display = 'block';
                 document.getElementById('notice-button-type').value = notice.button.type || 'uri';
                 document.getElementById('notice-button-label-zh').value = notice.button.label?.zh || '';
+                document.getElementById('notice-button-label-zh-tw').value = notice.button.label?.['zh-tw'] || '';
                 document.getElementById('notice-button-label-ja').value = notice.button.label?.ja || '';
                 document.getElementById('notice-button-label-en').value = notice.button.label?.en || '';
                 document.getElementById('notice-button-value').value = notice.button.value || '';
@@ -2782,13 +2812,14 @@
 
       const noticeId = document.getElementById('notice-id').value;
       const contentZh = document.getElementById('notice-content-zh').value.trim();
+      const contentZhTw = document.getElementById('notice-content-zh-tw').value.trim();
       const contentJa = document.getElementById('notice-content-ja').value.trim();
       const contentEn = document.getElementById('notice-content-en').value.trim();
       const votingEnabled = document.getElementById('notice-voting-enabled').checked;
       const status = document.getElementById('notice-status').value;
 
       // Validate at least one language
-      if (!contentJa && !contentEn && !contentZh) {
+      if (!contentJa && !contentEn && !contentZh && !contentZhTw) {
         showToast('✗ At least one language content is required');
         return;
       }
@@ -2799,6 +2830,7 @@
         content_ja: contentJa,
         content_en: contentEn,
         content_zh: contentZh,
+        content_zh_tw: contentZhTw,
         voting_enabled: votingEnabled,
         status: status
       };
@@ -2812,6 +2844,7 @@
       if (hasButton) {
         payload.button_type = document.getElementById('notice-button-type').value;
         payload.button_label_zh = document.getElementById('notice-button-label-zh').value;
+        payload.button_label_zh_tw = document.getElementById('notice-button-label-zh-tw').value;
         payload.button_label_ja = document.getElementById('notice-button-label-ja').value;
         payload.button_label_en = document.getElementById('notice-button-label-en').value;
         payload.button_value = document.getElementById('notice-button-value').value;
@@ -3258,6 +3291,10 @@
               <span style="font-size: 13px; color: var(--text-color); line-height: 1.6; flex: 1;">${escapeHtml(tipad.text.zh || '—')}</span>
             </div>
             <div class="list-item" style="align-items: flex-start; gap: 12px;">
+              <span style="color: var(--text-secondary); font-size: 13px; white-space: nowrap; padding-top: 1px; min-width: 24px;">🇹🇼</span>
+              <span style="font-size: 13px; color: var(--text-color); line-height: 1.6; flex: 1;">${escapeHtml(tipad.text['zh-tw'] || '—')}</span>
+            </div>
+            <div class="list-item" style="align-items: flex-start; gap: 12px;">
               <span style="color: var(--text-secondary); font-size: 13px; white-space: nowrap; padding-top: 1px; min-width: 24px;">🇬🇧</span>
               <span style="font-size: 13px; color: var(--text-color); line-height: 1.6; flex: 1;">${escapeHtml(tipad.text.en || '—')}</span>
             </div>
@@ -3293,6 +3330,7 @@
               document.getElementById('tipad_id').value = tipad.id;
               document.getElementById('tipad_type').value = tipad.type;
               document.getElementById('tipad_text_zh').value = tipad.text.zh || '';
+              document.getElementById('tipad_text_zh_tw').value = tipad.text['zh-tw'] || '';
               document.getElementById('tipad_text_en').value = tipad.text.en || '';
               document.getElementById('tipad_text_ja').value = tipad.text.ja || '';
               document.getElementById('tipad_enabled').checked = tipad.enabled;
@@ -3302,6 +3340,7 @@
                 document.getElementById('buttonFields').style.display = 'block';
                 document.getElementById('tipad_button_type').value = tipad.button.type;
                 document.getElementById('tipad_button_label_zh').value = tipad.button.label.zh || '';
+                document.getElementById('tipad_button_label_zh_tw').value = tipad.button.label['zh-tw'] || '';
                 document.getElementById('tipad_button_label_en').value = tipad.button.label.en || '';
                 document.getElementById('tipad_button_label_ja').value = tipad.button.label.ja || '';
                 document.getElementById('tipad_button_value').value = tipad.button.value || '';
@@ -3337,6 +3376,7 @@
       const data = {
         type: document.getElementById('tipad_type').value,
         text_zh: document.getElementById('tipad_text_zh').value,
+        text_zh_tw: document.getElementById('tipad_text_zh_tw').value,
         text_en: document.getElementById('tipad_text_en').value,
         text_ja: document.getElementById('tipad_text_ja').value,
         enabled: document.getElementById('tipad_enabled').checked
@@ -3349,6 +3389,7 @@
       if (hasButton) {
         data.button_type = document.getElementById('tipad_button_type').value;
         data.button_label_zh = document.getElementById('tipad_button_label_zh').value;
+        data.button_label_zh_tw = document.getElementById('tipad_button_label_zh_tw').value;
         data.button_label_en = document.getElementById('tipad_button_label_en').value;
         data.button_label_ja = document.getElementById('tipad_button_label_ja').value;
         data.button_value = document.getElementById('tipad_button_value').value;

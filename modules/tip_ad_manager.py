@@ -119,18 +119,21 @@ def get_random_ad():
     return random.choice(_ENABLED_ADS)
 
 
-def create_tip_ad(tip_type, text_zh, text_en, text_ja, button_type=None, button_label_zh=None,
-                   button_label_en=None, button_label_ja=None, button_value=None, enabled=True):
+def create_tip_ad(tip_type, text_zh, text_en, text_ja, text_zh_tw=None, button_type=None,
+                  button_label_zh=None, button_label_zh_tw=None, button_label_en=None,
+                  button_label_ja=None, button_value=None, enabled=True):
     """
     创建新的tip/ad
 
     Args:
         tip_type: 类型 ('tip' 或 'ad')
         text_zh: 中文文本
+        text_zh_tw: 繁体中文文本
         text_en: 英文文本
         text_ja: 日文文本
         button_type: 按钮类型 ('uri' 或 'message')，None表示无按钮
         button_label_zh: 按钮中文标签
+        button_label_zh_tw: 按钮繁体中文标签
         button_label_en: 按钮英文标签
         button_label_ja: 按钮日文标签
         button_value: 按钮值（URI或消息文本）
@@ -145,6 +148,7 @@ def create_tip_ad(tip_type, text_zh, text_en, text_ja, button_type=None, button_
         'type': tip_type,
         'text': {
             'zh': text_zh,
+            'zh-tw': text_zh_tw or '',
             'en': text_en,
             'ja': text_ja
         },
@@ -158,6 +162,7 @@ def create_tip_ad(tip_type, text_zh, text_en, text_ja, button_type=None, button_
             'type': button_type,
             'label': {
                 'zh': button_label_zh or '',
+                'zh-tw': button_label_zh_tw or '',
                 'en': button_label_en or '',
                 'ja': button_label_ja or ''
             },
@@ -172,7 +177,8 @@ def create_tip_ad(tip_type, text_zh, text_en, text_ja, button_type=None, button_
 
 
 def update_tip_ad(tip_ad_id, tip_type=None, text_zh=None, text_en=None, text_ja=None,
-                  button_type=None, button_label_zh=None, button_label_en=None,
+                  text_zh_tw=None, button_type=None, button_label_zh=None,
+                  button_label_zh_tw=None, button_label_en=None,
                   button_label_ja=None, button_value=None, enabled=None, remove_button=False):
     """
     更新tip/ad
@@ -181,10 +187,12 @@ def update_tip_ad(tip_ad_id, tip_type=None, text_zh=None, text_en=None, text_ja=
         tip_ad_id: tip/ad ID
         tip_type: 类型
         text_zh: 中文文本
+        text_zh_tw: 繁体中文文本
         text_en: 英文文本
         text_ja: 日文文本
         button_type: 按钮类型
         button_label_zh: 按钮中文标签
+        button_label_zh_tw: 按钮繁体中文标签
         button_label_en: 按钮英文标签
         button_label_ja: 按钮日文标签
         button_value: 按钮值
@@ -201,6 +209,8 @@ def update_tip_ad(tip_ad_id, tip_type=None, text_zh=None, text_en=None, text_ja=
 
             if text_zh is not None:
                 tip_ad['text']['zh'] = text_zh
+            if text_zh_tw is not None:
+                tip_ad['text']['zh-tw'] = text_zh_tw
             if text_en is not None:
                 tip_ad['text']['en'] = text_en
             if text_ja is not None:
@@ -217,6 +227,7 @@ def update_tip_ad(tip_ad_id, tip_type=None, text_zh=None, text_en=None, text_ja=
                     'type': button_type,
                     'label': {
                         'zh': button_label_zh or '',
+                        'zh-tw': button_label_zh_tw or '',
                         'en': button_label_en or '',
                         'ja': button_label_ja or ''
                     },
