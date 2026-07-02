@@ -17,8 +17,65 @@ from modules.config_loader import (
 )
 from modules.image_cache import *
 from modules.image_manager import *
+from modules.maimai_manager import get_rating_image_path
 
 logger = logging.getLogger(__name__)
+
+RECORD_RATING_BLOCK_SIZE = (259, 51)
+RATING_SOURCE_WIDTH = 296
+RATING_DIGIT_WIDTH = 23
+RATING_DIGIT_START_X = 140
+RATING_DIGIT_Y_OFFSET = 1
+RATING_EQUATION_GAP = 18
+RATING_EQUATION_Y_OFFSET = -5
+RATING_STATS_GAP = 2
+HEADER_STAT_SPACING = 4
+
+
+def _format_rating_value(value):
+    return str(int(value)) if float(value).is_integer() else str(value)
+
+
+def _split_colon_lines(lines):
+    left_texts = []
+    right_texts = []
+    for line in lines:
+        if ":" in line:
+            left, right = line.split(":", 1)
+            left_texts.append(left + ":")
+            right_texts.append(right.strip())
+        else:
+            left_texts.append(line)
+            right_texts.append("")
+    return left_texts, right_texts
+
+
+def _measure_aligned_colon_width(draw, lines, font):
+    left_texts, right_texts = _split_colon_lines(lines)
+    left_width = max(draw.textbbox((0, 0), text, font=font)[2] for text in left_texts) + 10
+    right_width = max(draw.textbbox((0, 0), text, font=font)[2] for text in right_texts) if right_texts else 0
+    return left_width + right_width
+
+
+def _draw_record_rating_block(base_img, draw, rating, position, size=RECORD_RATING_BLOCK_SIZE, font=font_large):
+    rating_int = int(float(rating))
+    rating_text = str(rating_int).rjust(5)
+    x, y = position
+    scale_x = size[0] / RATING_SOURCE_WIDTH
+
+    with Image.open(get_rating_image_path(rating_int)) as rb:
+        rb_img = rb.convert("RGBA").resize(size, Image.LANCZOS)
+    base_img.paste(rb_img, position, rb_img)
+
+    char_width = RATING_DIGIT_WIDTH * scale_x
+    start_x = x + RATING_DIGIT_START_X * scale_x
+    for i, char in enumerate(rating_text):
+        char_bbox = draw.textbbox((0, 0), char, font=font)
+        digit_width = char_bbox[2] - char_bbox[0]
+        offset = (char_width - digit_width) / 2
+        text_height = char_bbox[3] - char_bbox[1]
+        centered_y = y + (size[1] - text_height) / 2 - char_bbox[1] + RATING_DIGIT_Y_OFFSET
+        draw.text((start_x + i * char_width + offset, centered_y), char, fill=(255, 255, 255), font=font)
 
 def _get_difficulty_color(difficulty):
     colors = {
@@ -336,9 +393,11 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
     combined = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(combined)
 
+    rating_equation = f"= {_format_rating_value(up_ra)} + {_format_rating_value(down_ra)}" if up_ra and down_ra else ""
+    rating_block_size = RECORD_RATING_BLOCK_SIZE
+
     if ver == "jp":
         header_text = [
-            f"でらっくす RATING: {all_ra} = {up_ra} + {down_ra}" if up_ra and down_ra else f"でらっくす RATING: {all_ra}",
             f"平均レベル: {round(float(all_level)/num, 2):.2f}",
             f"平均達成率: {round(all_score/num, 4):.4f}%",
             f"平均レーティング: {round(float(all_ra)/num, 2):.2f}"
@@ -346,7 +405,6 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
         
     else:
         header_text = [
-            f"でらっくす RATING: {all_ra} = {up_ra} + {down_ra}" if up_ra and down_ra else f"でらっくす RATING: {all_ra}",
             f"AVG LEVEL: {round(float(all_level)/num, 2):.2f}",
             f"AVG ACHIEVEMENT: {round(all_score/num, 4):.4f}%",
             f"AVG RATING: {round(float(all_ra)/num, 2):.2f}"
@@ -356,27 +414,15 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
     card_padding = 20
     card_y = side_width + 10
 
-    left_texts = []
-    right_texts = []
-    for line in header_text:
-        if ":" in line:
-            left, right = line.split(":", 1)
-            left_texts.append(left + ":")
-            right_texts.append(right.strip())
-        else:
-            left_texts.append(line)
-            right_texts.append("")
-
-    # 计算左侧最大宽度
-    max_left_width = max(draw.textbbox((0, 0), text, font=font_large)[2] for text in left_texts) + 10
-    # 计算右侧最大宽度
-    max_right_width = max(draw.textbbox((0, 0), text, font=font_large)[2] for text in right_texts) if right_texts else 0
-
     # 实际文本总宽度
-    max_text_width = max_left_width + max_right_width
+    max_text_width = _measure_aligned_colon_width(draw, header_text, font_large)
+    rating_line_width = rating_block_size[0]
+    if rating_equation:
+        rating_line_width += RATING_EQUATION_GAP + int(draw.textlength(rating_equation, font=font_large))
+    max_text_width = max(max_text_width, rating_line_width)
 
     line_height = draw.textbbox((0, 0), "JiETNG", font=font_large)[3]
-    text_total_height = len(header_text) * (line_height + 7)
+    text_total_height = rating_block_size[1] + RATING_STATS_GAP + len(header_text) * (line_height + HEADER_STAT_SPACING)
 
     # 根据实际文本宽度设置卡片宽度，卡片靠左
     card_width = max_text_width + card_padding * 2
@@ -392,12 +438,20 @@ def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp
         width=2
     )
 
+    content_x = card_x + card_padding
+    content_y = card_y + card_padding - 5
+    _draw_record_rating_block(combined, draw, all_ra, (content_x, content_y), rating_block_size, font=font_large)
+    if rating_equation:
+        equation_x = content_x + rating_block_size[0] + RATING_EQUATION_GAP
+        equation_y = content_y + (rating_block_size[1] - line_height) // 2 + RATING_EQUATION_Y_OFFSET
+        draw.text((equation_x, equation_y), rating_equation, fill=(40, 40, 40), font=font_large)
+
     draw_aligned_colon_text(
         draw,
         lines=header_text,
-        top_left=(card_x + card_padding, card_y + card_padding - 5),
+        top_left=(content_x, content_y + rating_block_size[1] + RATING_STATS_GAP),
         font=font_large,
-        spacing=7,
+        spacing=HEADER_STAT_SPACING,
         fill=(40, 40, 40)
     )
 
