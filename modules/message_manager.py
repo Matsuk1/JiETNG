@@ -40,6 +40,18 @@ def format_timezone_string(user_id):
 
 get_multilingual_text = select_text
 
+COLOR_TEXT_PRIMARY = "#111111"
+COLOR_TEXT_SECONDARY = "#666666"
+COLOR_TEXT_MUTED = "#999999"
+COLOR_TEXT_INVERSE = "#FFFFFF"
+COLOR_SUCCESS = "#17B169"
+COLOR_DANGER = "#FF3B30"
+COLOR_WARNING = "#FF9500"
+COLOR_BRAND = "#FF6B35"
+COLOR_TIP = "#5856D6"
+COLOR_TIP_BG = "#F0EFFF"
+COLOR_AD_BG = "#FFF4E6"
+
 def get_quick_reply_label(key, user_id=None):
     """获取 QuickReply 按钮的多语言标签"""
     if key not in quick_reply_labels:
@@ -60,6 +72,18 @@ def create_text_message(msg_text_dict, user_id=None, quick_reply=None):
     """
     text = get_multilingual_text(msg_text_dict, user_id)
     return TextMessage(text=text, quick_reply=quick_reply)
+
+
+def _update_status_label(func_name, lang):
+    status_text_keys = {
+        "User Info": "status_user_info",
+        "Best Records": "status_best_records",
+        "Recent Records": "status_recent_records",
+    }
+    text_key = status_text_keys.get(func_name)
+    if not text_key:
+        return func_name
+    return get_multilingual_text(update_result_flex_text[text_key], language=lang)
 
 def get_support_quick_reply(user_id=None):
     """获取「サポート」按钮的 QuickReply"""
@@ -651,7 +675,7 @@ def generate_user_info_flex(user_id):
                             "type": "text",
                             "text": get_multilingual_text(texts['user_id_label'], language=lang),
                             "size": "xs",
-                            "color": "#999999"
+                            "color": COLOR_TEXT_MUTED
                         },
                         {
                             "type": "text",
@@ -695,7 +719,7 @@ def generate_user_info_flex(user_id):
                     "type": "text",
                     "text": get_multilingual_text(texts['sega_id_label'], language=lang),
                     "size": "xs",
-                    "color": "#999999"
+                    "color": COLOR_TEXT_MUTED
                 },
                 {
                     "type": "text",
@@ -726,7 +750,7 @@ def generate_user_info_flex(user_id):
                             "type": "text",
                             "text": get_multilingual_text(texts['name_label'], language=lang),
                             "size": "xs",
-                            "color": "#999999"
+                            "color": COLOR_TEXT_MUTED
                         },
                         {
                             "type": "text",
@@ -751,7 +775,7 @@ def generate_user_info_flex(user_id):
                         "type": "text",
                         "text": get_multilingual_text(texts['rating_label'], language=lang),
                         "size": "xs",
-                        "color": "#999999"
+                        "color": COLOR_TEXT_MUTED
                     },
                     {
                         "type": "text",
@@ -769,7 +793,7 @@ def generate_user_info_flex(user_id):
                         "type": "text",
                         "text": f"・{get_multilingual_text(texts['last_update_label'], language=lang)} {tz_str}: {user_data['last_update']}",
                         "size": "xs",
-                        "color": "#666666",
+                        "color": COLOR_TEXT_SECONDARY,
                         "margin": "sm"
                     })
 
@@ -798,7 +822,7 @@ def generate_user_info_flex(user_id):
                         "type": "text",
                         "text": get_multilingual_text(texts['server_label'], language=lang),
                         "size": "xs",
-                        "color": "#999999"
+                        "color": COLOR_TEXT_MUTED
                     },
                     {
                         "type": "text",
@@ -833,7 +857,7 @@ def generate_user_info_flex(user_id):
                     "type": "text",
                     "text": get_multilingual_text(texts['language_label'], language=lang),
                     "size": "xs",
-                    "color": "#999999"
+                    "color": COLOR_TEXT_MUTED
                 },
                 {
                     "type": "text",
@@ -855,7 +879,7 @@ def generate_user_info_flex(user_id):
                     "type": "text",
                     "text": get_multilingual_text(texts['user_id_label'], language=lang),
                     "size": "xs",
-                    "color": "#999999"
+                    "color": COLOR_TEXT_MUTED
                 },
                 {
                     "type": "text",
@@ -882,7 +906,7 @@ def generate_user_info_flex(user_id):
                     "type": "text",
                     "text": f"❌ {get_multilingual_text(texts['not_bound'], language=lang)}",
                     "size": "sm",
-                    "color": "#FF0000"
+                    "color": COLOR_DANGER
                 }
             ]
         })
@@ -900,11 +924,11 @@ def generate_user_info_flex(user_id):
                     "text": get_multilingual_text(texts['title'], language=lang),
                     "weight": "bold",
                     "size": "lg",
-                    "color": "#FFFFFF"
+                    "color": COLOR_TEXT_INVERSE
                 }
             ],
             "paddingAll": "16px",
-            "backgroundColor": "#000000"
+            "backgroundColor": COLOR_BRAND
         },
         "body": {
             "type": "box",
@@ -932,8 +956,6 @@ def generate_update_result_flex(
     elapsed_time,
     func_status,
     success=True,
-    b50_image_url=None,
-    b50_preview_url=None,
 ):
     """
     生成更新结果 Flex Message
@@ -946,8 +968,6 @@ def generate_update_result_flex(
         elapsed_time: 耗时（秒）
         func_status: 各功能状态字典
         success: 是否成功
-        b50_image_url: 点击打开的 B50 原图 URL
-        b50_preview_url: Flex 内显示的 B50 预览图 URL
 
     Returns:
         FlexMessage: 更新结果 Flex Message
@@ -977,7 +997,7 @@ def generate_update_result_flex(
                 "type": "text",
                 "text": f"{get_multilingual_text(texts['update_time_label'], language=lang)} {tz_str}",
                 "size": "xs",
-                "color": "#999999"
+                "color": COLOR_TEXT_MUTED
             },
             {
                 "type": "text",
@@ -1005,7 +1025,7 @@ def generate_update_result_flex(
                 "type": "text",
                 "text": get_multilingual_text(texts['elapsed_time_label'], language=lang),
                 "size": "xs",
-                "color": "#999999"
+                "color": COLOR_TEXT_MUTED
             },
             {
                 "type": "text",
@@ -1013,7 +1033,7 @@ def generate_update_result_flex(
                 "size": "sm",
                 "weight": "bold",
                 "margin": "xs",
-                "color": "#17B169" if success else "#FF3B30"
+                "color": COLOR_SUCCESS if success else COLOR_DANGER
             }
         ]
     })
@@ -1034,17 +1054,18 @@ def generate_update_result_flex(
                 "type": "text",
                 "text": get_multilingual_text(texts['status_label'], language=lang),
                 "size": "xs",
-                "color": "#999999"
+                "color": COLOR_TEXT_MUTED
             }
         ]
 
         for func_name, status in failed_statuses.items():
             status_text = get_multilingual_text(texts['failed'], language=lang)
+            func_label = _update_status_label(func_name, lang)
             status_contents.append({
                 "type": "text",
-                "text": f"・{func_name}: {status_text}",
+                "text": f"・{func_label}: {status_text}",
                 "size": "xs",
-                "color": "#FF3B30",
+                "color": COLOR_DANGER,
                 "margin": "sm"
             })
 
@@ -1053,26 +1074,6 @@ def generate_update_result_flex(
             "layout": "vertical",
             "margin": "md",
             "contents": status_contents
-        })
-
-    image_url = b50_preview_url or b50_image_url
-    if image_url:
-        content_rows.append({
-            "type": "separator",
-            "margin": "md"
-        })
-        content_rows.append({
-            "type": "image",
-            "url": image_url,
-            "size": "full",
-            "aspectRatio": "3:2",
-            "aspectMode": "fit",
-            "margin": "md",
-            "action": {
-                "type": "uri",
-                "label": "Open B50",
-                "uri": b50_image_url or image_url
-            }
         })
 
     # 获取随机tip和ad并添加到内容中
@@ -1098,7 +1099,7 @@ def generate_update_result_flex(
 
     # 创建 bubble
     title_text = texts['title_success'] if success else texts['title_error']
-    header_color = "#17B169" if success else "#FF3B30"
+    header_color = COLOR_SUCCESS if success else COLOR_DANGER
 
     bubble = {
         "type": "bubble",
@@ -1112,7 +1113,7 @@ def generate_update_result_flex(
                     "text": get_multilingual_text(title_text, language=lang),
                     "weight": "bold",
                     "size": "lg",
-                    "color": "#FFFFFF"
+                    "color": COLOR_TEXT_INVERSE
                 }
             ],
             "paddingAll": "16px",
@@ -1149,8 +1150,8 @@ def generate_tip_ad_box(tip_ad, lang):
 
     # 确定颜色和图标
     is_ad = tip_ad.get('type') == 'ad'
-    bg_color = "#FFF4E6" if is_ad else "#F0EFFF"  # 浅橙色 or 浅紫色背景
-    text_color = "#FF9500" if is_ad else "#5856D6"
+    bg_color = COLOR_AD_BG if is_ad else COLOR_TIP_BG
+    text_color = COLOR_WARNING if is_ad else COLOR_TIP
     icon = "📢" if is_ad else "💡"
 
     # 构建内容

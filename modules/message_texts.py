@@ -22,15 +22,15 @@ welcome_msg_text = "『JiETNG・カヰテー』で有りんす。\nお願ひ申�
 group_welcome_msg_text = "『JiETNG・カヰテー』で有りんす。\nお出迎え有りんす。"
 
 rebind_msg_text = {
-    "ja": "✅ SEGA IDの更新できたよ！",
-    "en": "✅ SEGA ID updated successfully!",
-    "zh": "✅ SEGA ID 更新成功！"
+    "ja": "✅ SEGA アカウント情報を更新しました。",
+    "en": "✅ SEGA account settings updated.",
+    "zh": "✅ SEGA 账号信息已更新。"
 }
 
 unbind_msg_text = {
-    "ja": "✅ SEGA IDの連携を解除したよ！",
-    "en": "✅ SEGA ID unlinked successfully!",
-    "zh": "✅ SEGA ID 解绑成功！"
+    "ja": "✅ SEGA アカウント連携を解除しました。",
+    "en": "✅ SEGA account unlinked.",
+    "zh": "✅ SEGA 账号已解绑。"
 }
 
 
@@ -45,15 +45,15 @@ segaid_error_text = {
 }
 
 record_error_text = {
-    "ja": "maimaiレコードまだアップデートしてないみたい！",
-    "en": "Looks like you haven't updated your maimai records yet!",
-    "zh": "看起来你还没有更新 maimai 记录！"
+    "ja": "まだ maimai 成績データがありません。『maimai update』で更新してから試してください。",
+    "en": "No maimai records found yet. Run `maimai update` first, then try again.",
+    "zh": "还没有 maimai 成绩数据。请先使用『maimai update』更新后再试。"
 }
 
 info_error_text = {
-    "ja": "ごめん！maimai個人情報まだ保存してないみたい！",
-    "en": "Sorry! Your maimai profile hasn't been saved yet!",
-    "zh": "抱歉！你的 maimai 个人信息还没有保存！"
+    "ja": "maimai プロフィールがまだ保存されていません。『maimai update』で更新してから試してください。",
+    "en": "Your maimai profile has not been saved yet. Run `maimai update` first, then try again.",
+    "zh": "你的 maimai 玩家资料尚未保存。请先使用『maimai update』更新后再试。"
 }
 
 access_error_text = {
@@ -69,15 +69,15 @@ system_error_text = {
 }
 
 input_error_text = {
-    "ja": "全然意味がわかんないかも...",
-    "en": "I don't understand what you mean...",
-    "zh": "我完全不明白你的意思..."
+    "ja": "コマンドを認識できませんでした。入力内容を確認してください。",
+    "en": "Command not recognized. Please check your input.",
+    "zh": "无法识别该命令，请检查输入内容。"
 }
 
 song_error_text = {
-    "ja": "条件に合う楽曲がないかも...",
-    "en": "No songs match the criteria...",
-    "zh": "没有符合条件的歌曲..."
+    "ja": "条件に合う楽曲が見つかりませんでした。",
+    "en": "No songs matched the criteria.",
+    "zh": "没有找到符合条件的歌曲。"
 }
 
 level_not_supported_text = {
@@ -88,15 +88,15 @@ level_not_supported_text = {
 
 
 plate_error_text = {
-    "ja": "そのプレートがわからないね...",
-    "en": "I don't recognize that plate...",
-    "zh": "我不认识那个牌子..."
+    "ja": "指定されたプレートが見つかりませんでした。",
+    "en": "Plate not found.",
+    "zh": "没有找到指定的牌子。"
 }
 
 version_error_text = {
-    "ja": "そのバージョンがわからないね...",
-    "en": "I don't recognize that version...",
-    "zh": "我不认识那个版本..."
+    "ja": "指定されたバージョンが見つかりませんでした。",
+    "en": "Version not found.",
+    "zh": "没有找到指定的版本。"
 }
 
 store_error_text = {
@@ -123,16 +123,16 @@ maintenance_error_text = {
 
 # 通知预览栏 / Push notification alt text
 export_alt_text = {
-    "ja": "📦 成績データを書き出しました",
-    "en": "📦 Your records have been exported",
-    "zh": "📦 成绩数据已导出"
+    "ja": "成績データを書き出しました",
+    "en": "Records exported",
+    "zh": "成绩数据已导出"
 }
 
 # Flex 卡片标题
 export_flex_title_text = {
-    "ja": "📦 成績データを書き出したよ！",
-    "en": "📦 Records Exported!",
-    "zh": "📦 成绩数据已导出！"
+    "ja": "成績データを書き出しました",
+    "en": "Records Exported",
+    "zh": "成绩数据已导出"
 }
 
 # Flex 卡片内说明（{best} / {recent} / {size} / {ttl} 可格式化）
@@ -165,15 +165,15 @@ export_flex_copy_button_text = {
 
 # 无成绩 / 失败时的纯文本回退
 export_empty_text = {
-    "ja": "📭 まだ成績データがないみたい！『maimai update』で更新してから試してね。",
-    "en": "📭 No records to export yet! Run `maimai update` first, then try again.",
-    "zh": "📭 还没有成绩数据可以导出！请先用『maimai update』更新后再试。"
+    "ja": "まだ書き出せる成績データがありません。『maimai update』で更新してから試してください。",
+    "en": "No records to export yet. Run `maimai update` first, then try again.",
+    "zh": "还没有可导出的成绩数据。请先使用『maimai update』更新后再试。"
 }
 
 export_failed_text = {
-    "ja": "🙇 書き出しに失敗しました…しばらく経ってからもう一度お試しください。",
-    "en": "🙇 Export failed... Please try again later.",
-    "zh": "🙇 导出失败…请稍后再试。"
+    "ja": "成績データの書き出しに失敗しました。しばらくしてからもう一度お試しください。",
+    "en": "Failed to export records. Please try again later.",
+    "zh": "成绩数据导出失败，请稍后再试。"
 }
 
 # ============================================================
@@ -181,46 +181,46 @@ export_failed_text = {
 # ============================================================
 
 friend_error_text = {
-    "ja": "お気に入りにフレンド登録してないみたいだよ？",
-    "en": "Looks like you haven't registered any favorite friends?",
-    "zh": "看起来你还没有收藏的好友？"
+    "ja": "お気に入りフレンドがまだ登録されていません。",
+    "en": "No favorite friends have been registered yet.",
+    "zh": "还没有收藏的好友。"
 }
 
 friend_rcd_error_text = {
-    "ja": "この人フレンドじゃないかも！",
-    "en": "This person might not be your friend!",
-    "zh": "这个人可能不是你的好友！"
+    "ja": "指定されたユーザーはフレンドに登録されていません。",
+    "en": "The selected user is not in your friend list.",
+    "zh": "指定用户不在你的好友列表中。"
 }
 
 mention_error_text = {
-    "ja": "メンションされたユーザーはまだ登録してないみたい！",
-    "en": "The mentioned user hasn't registered yet!",
-    "zh": "被提到的用户好像还没有注册！"
+    "ja": "メンションされたユーザーはまだ JiETNG に登録されていません。",
+    "en": "The mentioned user is not registered with JiETNG yet.",
+    "zh": "被提到的用户尚未注册 JiETNG。"
 }
 
 mention_record_error_text = {
-    "ja": "メンションされたユーザーはまだmaimaiレコードをアップデートしてないみたい！",
-    "en": "Looks like the mentioned user hasn't updated their maimai records yet!",
-    "zh": "看起来被提到的用户还没有更新 maimai 记录！"
+    "ja": "メンションされたユーザーには、まだ maimai 成績データがありません。",
+    "en": "The mentioned user does not have maimai records yet.",
+    "zh": "被提到的用户还没有 maimai 成绩数据。"
 }
 
 cannot_do_for_others_text = {
-    "ja": "ごめん！このコマンドは自分にしか使えないよ。他の人の代わりにはできないんだ！",
-    "en": "Sorry! This command can only be used on yourself. I can't do it on someone else's behalf!",
-    "zh": "抱歉！这个命令只能对自己用哦，不可以帮别人做的！"
+    "ja": "このコマンドは自分のアカウントにのみ使用できます。",
+    "en": "This command can only be used for your own account.",
+    "zh": "该命令只能用于你自己的账号。"
 }
 
 # 有成绩，但本次查询的过滤/条件没匹配到（与"没成绩"区分）
 no_matching_data_text = {
-    "ja": "条件に合うデータがないみたい...",
-    "en": "No data matches the criteria...",
-    "zh": "没有符合条件的数据..."
+    "ja": "条件に合う成績データが見つかりませんでした。",
+    "en": "No records matched the criteria.",
+    "zh": "没有找到符合条件的成绩数据。"
 }
 
 mention_no_matching_data_text = {
-    "ja": "メンションされたユーザーには条件に合うデータがないみたい...",
-    "en": "The mentioned user has no data matching the criteria...",
-    "zh": "被提到的用户没有符合条件的数据..."
+    "ja": "メンションされたユーザーには、条件に合う成績データがありません。",
+    "en": "The mentioned user has no records matching the criteria.",
+    "zh": "被提到的用户没有符合条件的成绩数据。"
 }
 
 
@@ -798,9 +798,9 @@ quick_reply_labels = {
 
 user_info_flex_text = {
     'title': {
-        'ja': '👤 ユーザー情報',
-        'en': '👤 User Information',
-        'zh': '👤 用户信息'
+        'ja': 'ユーザー情報',
+        'en': 'User Information',
+        'zh': '用户信息'
     },
     'user_id_label': {
         'ja': 'LINE ID',
@@ -886,14 +886,14 @@ user_info_flex_text = {
 
 update_result_flex_text = {
     'title_success': {
-        'ja': '✅ アップデート完了',
-        'en': '✅ Update Completed',
-        'zh': '✅ 更新完成'
+        'ja': '成績更新完了',
+        'en': 'Records Updated',
+        'zh': '成绩更新完成'
     },
     'title_error': {
-        'ja': '⚠️ アップデートエラー',
-        'en': '⚠️ Update Error',
-        'zh': '⚠️ 更新错误'
+        'ja': '成績更新エラー',
+        'en': 'Records Update Failed',
+        'zh': '成绩更新失败'
     },
     'update_time_label': {
         'ja': '更新日時',
@@ -906,9 +906,9 @@ update_result_flex_text = {
         'zh': '耗时'
     },
     'status_label': {
-        'ja': 'ステータス',
-        'en': 'Status',
-        'zh': '状态'
+        'ja': '取得できなかった項目',
+        'en': 'Items Not Updated',
+        'zh': '未更新项目'
     },
     'failed': {
         'ja': '失敗',
@@ -916,13 +916,28 @@ update_result_flex_text = {
         'zh': '失败'
     },
     'alt_text_success': {
-        'ja': 'アップデート完了',
-        'en': 'Update Completed',
-        'zh': '更新完成'
+        'ja': '成績更新完了',
+        'en': 'Records Updated',
+        'zh': '成绩更新完成'
     },
     'alt_text_error': {
-        'ja': 'アップデートエラー',
-        'en': 'Update Error',
-        'zh': '更新错误'
+        'ja': '成績更新エラー',
+        'en': 'Records Update Failed',
+        'zh': '成绩更新失败'
+    },
+    'status_user_info': {
+        'ja': 'プロフィール',
+        'en': 'Profile',
+        'zh': '玩家资料'
+    },
+    'status_best_records': {
+        'ja': 'Best 成績',
+        'en': 'Best Records',
+        'zh': 'Best 成绩'
+    },
+    'status_recent_records': {
+        'ja': 'Recent 成績',
+        'en': 'Recent Records',
+        'zh': 'Recent 成绩'
     }
 }
