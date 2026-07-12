@@ -71,5 +71,9 @@ test_api.py
 uploads/
 temp/
 
+# Rich menu generated assets
+assets/richmenu/_preview/
+assets/richmenu/_upload/
+
 # 临时产物：导出文件（30 分钟内自动清理）
 data/exports/

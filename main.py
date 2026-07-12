@@ -170,6 +170,12 @@ from modules.system_checker import run_system_check, clean_unbound_users
 from modules.event_tracker import track_event, get_business_stats, get_hourly_stats
 from modules.rate_limiter import check_rate_limit
 from modules.line_messenger import smart_reply, smart_push, notify_admins_error, notify_on_error
+from modules.rich_menu_manager import (
+    link_bound_rich_menu,
+    link_rich_menu_for_state,
+    link_unbound_rich_menu,
+    unlink_rich_menu,
+)
 from modules.perm_request_generator import generate_perm_request_message
 from modules.notification_manager import (
     get_notifications,
@@ -983,6 +989,7 @@ def website_segaid_bind():
                 return _error_page("Failed to create import token.", user_language, 500)
 
             track_event('user_bind', user_id=user_id, metadata={'version': user_version, 'import_only': True})
+            link_bound_rich_menu(user_id, user_data)
             return render_template(
                 "success.html",
                 language=user_language,
@@ -1040,13 +1047,11 @@ def website_segaid_bind():
         elif result:
             via_token = "registered_via_token" in (get_user(user_id) or {})
             if mode == "bind":
-                # API token 创建的用户不再跑 bind 自动同步推送，但依然计入绑定事件
-                if not via_token:
-                    task_id = f"bind_{secrets.token_hex(8)}"
-                    webtask_queue.put_nowait((async_bind_update_task, (user_id, user_version), task_id))
                 track_event('user_bind', user_id=user_id, metadata={'version': user_version, 'via_token': via_token})
+                link_bound_rich_menu(user_id, get_user(user_id))
             else:
                 track_event('user_rebind', user_id=user_id, metadata={'version': user_version, 'via_token': via_token})
+                link_bound_rich_menu(user_id, get_user(user_id))
                 if not via_token:
                     try:
                         smart_push(user_id, rebind_msg(user_id), configuration)
@@ -1181,6 +1186,7 @@ def website_settings():
         edit_user_value(user_id, "timezone", timezone_int)
         edit_user_value(user_id, "bg_files", bg_files_list)
         edit_user_value(user_id, "bg_enabled", bg_enabled)
+        link_bound_rich_menu(user_id, get_user(user_id))
 
         return render_template("success.html", language=user_language, mode="settings")
 
@@ -1661,6 +1667,7 @@ async def process_sega_credentials(user_id, segaid, password, ver="jp", language
 def user_unbind(user_id):
     msg = unbind_msg(user_id)
     delete_user(user_id)
+    link_unbound_rich_menu(user_id)
     return msg
 
 # ==================== 异步任务处理函数 ====================
@@ -1685,20 +1692,6 @@ def async_maimai_update_task(event):
         raise
     if reply_token:
         smart_reply(user_id, reply_token, reply_msg, configuration, source_type=source_type)
-
-def async_bind_update_task(user_id, ver):
-    """绑定后异步数据更新任务 - 在webtask_queue中执行"""
-    try:
-        messages = asyncio.run(maimai_update(user_id, ver))
-        track_event('sync_task', user_id=user_id, metadata={'success': True, 'trigger': 'bind'})
-    except Exception as e:
-        logger.error(f"[Bind Update] ⚠ Failed to update: {e}")
-        track_event('sync_task', user_id=user_id, metadata={'success': False, 'trigger': 'bind', 'error': str(e)[:200]})
-        messages = rebind_msg(user_id)
-    try:
-        smart_push(user_id, messages, configuration)
-    except Exception as e:
-        logger.error(f"[Bind Update] ⚠ Failed to push: {e}")
 
 def async_get_friend_list_task(event):
     """异步获取好友列表任务 - 在webtask_queue中执行，实时登录SEGA抓取"""
@@ -4588,6 +4581,7 @@ def handle_follow(event):
     reply_token = event.reply_token
 
     add_user(user_id)
+    link_rich_menu_for_state(user_id, get_user(user_id))
         
     bind_url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(user_id)}"
     buttons_template = ButtonsTemplate(
@@ -4615,6 +4609,7 @@ def handle_follow(event):
 def handle_unfollow(event):
     user_id = event.source.user_id
     logger.info(f"[UnfollowEvent] {user_id} left")
+    unlink_rich_menu(user_id)
     try:
         track_event('user_unbind', user_id=user_id, metadata={'source': 'line_unfollow'})
     except Exception: pass
@@ -5535,6 +5530,7 @@ def admin_delete_user():
 
         # 使用 delete_user 函数删除用户
         delete_user(user_id)
+        link_unbound_rich_menu(user_id)
 
         logger.info(f"[Admin] ✓ User deleted: user_id={user_id}")
 
@@ -6236,6 +6232,7 @@ def api_delete_user(user_id):
 
         # 删除用户
         delete_user(user_id)
+        link_unbound_rich_menu(user_id)
 
         # 记录 API 访问日志
         token_info = request.token_info
@@ -6425,6 +6422,7 @@ def api_bind_user(user_id):
             return jsonify({"error": "Maintenance", "message": "The official website is under maintenance. Please try again later."}), 503
         elif result:
             track_event('user_bind', user_id=user_id, metadata={'version': ver, 'via_token': True})
+            link_bound_rich_menu(user_id, get_user(user_id))
             logger.info(f"[API] ✓ Bind success: user_id={user_id}, ver={ver}, token_id={token_info['token_id']}")
             return jsonify({"success": True, "user_id": user_id, "message": "SEGA account bound successfully."})
         else:

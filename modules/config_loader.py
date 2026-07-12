@@ -48,6 +48,15 @@ default_config = {
         "access_token": "",
         "secret": ""
     },
+    "rich_menu": {
+        "enabled": False,
+        "unbound_id": "",
+        "bound_id": "",
+        "support_url": "",
+        "default_language": "zh",
+        "menus": {},
+        "aliases": {}
+    },
     "keys": {
         "user_data": "",
         "bind_token": ""
@@ -196,6 +205,14 @@ LINE_CHANNEL = _config["line_channel"]
 LINE_ACCOUNT_ID = LINE_CHANNEL["account_id"]
 LINE_CHANNEL_ACCESS_TOKEN = LINE_CHANNEL["access_token"]
 LINE_CHANNEL_SECRET = LINE_CHANNEL["secret"]
+
+# Rich menu 配置字段
+RICH_MENU = _config.get("rich_menu", {})
+RICH_MENU_ENABLED = bool(RICH_MENU.get("enabled", False))
+RICH_MENU_UNBOUND_ID = RICH_MENU.get("unbound_id", "")
+RICH_MENU_BOUND_ID = RICH_MENU.get("bound_id", "")
+RICH_MENU_DEFAULT_LANGUAGE = RICH_MENU.get("default_language", "zh")
+RICH_MENU_MENUS = RICH_MENU.get("menus", {})
 
 # key 配置字段
 KEYS = _config["keys"]
