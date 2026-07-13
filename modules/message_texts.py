@@ -395,23 +395,23 @@ dxdata_initial_stats_sheets_text = {
 }
 
 # SEGA 账号绑定消息
-sega_bind_title_text = "SEGA アカウントと連携"
-sega_bind_description_text = "Link your SEGA account\n绑定你的 SEGA 账号"
+sega_bind_title_text = "SEGA Account Link"
+sega_bind_description_text = "绑定你的 SEGA 账号\n綁定你的 SEGA 帳號\nSEGA アカウントを連携"
 sega_bind_button_text = "Tap Here"
-sega_bind_alt_text = "SEGA Account Link"
+sega_bind_alt_text = "SEGA Account Link / SEGA 账号绑定 / SEGA 帳號綁定 / SEGA アカウント連携"
 
 # 语言选择消息（用于首次绑定时）
-# 这些文本在用户未选择语言时显示，所以直接显示三语
+# 这些文本在用户未选择语言时显示，所以直接显示多语言
 language_select_title = "言語選択"
 
-language_select_description = """Language Selection・语言选择"""
+language_select_description = """Language Selection・语言选择・語言選擇"""
 
 language_button_ja = "日本語"
 language_button_en = "English"
 language_button_zh = "简体中文"
 language_button_zh_tw = "繁體中文"
 
-language_select_alt = "Language Selection / 言語選択 / 语言选择"
+language_select_alt = "Language Selection / 言語選択 / 语言选择 / 語言選擇"
 
 language_set_success_text = {
     "ja": "✅ 言語を日本語に設定しました！",

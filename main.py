@@ -939,6 +939,8 @@ def website_segaid_bind():
         segaid = request.form.get("segaid")
         password = request.form.get("password")
         user_version = request.form.get("ver", "jp")
+        if user_version not in ("jp", "intl"):
+            user_version = "jp"
         aime = request.form.get("aime", "0")
 
         # 获取用户数据
@@ -1020,9 +1022,74 @@ def website_segaid_bind():
             missing_fields_messages = {
                 "ja": "すべての項目を入力してください。",
                 "en": "Please fill in all fields.",
-                "zh": "请填写所有字段。"
+                "zh": "请填写所有字段。",
+                "zh-tw": "請填寫所有欄位。"
             }
             return _error_page(missing_fields_messages, user_language)
+
+        if request.form.get("aime_preview") == "1":
+            try:
+                async def _fetch_all_aime_candidates():
+                    results = await asyncio.gather(
+                        get_aime_candidates(segaid, password, "jp"),
+                        get_aime_candidates(segaid, password, "intl"),
+                        return_exceptions=True,
+                    )
+                    merged = []
+                    maintenance_count = 0
+                    for version, result in zip(("jp", "intl"), results):
+                        if isinstance(result, Exception):
+                            logger.warning(
+                                f"[Auth] ⚠ Failed to fetch Aime candidates for {version}: "
+                                f"user_id={user_id}, error={result}"
+                            )
+                            continue
+                        if result == "MAINTENANCE":
+                            maintenance_count += 1
+                            continue
+                        if not result:
+                            continue
+                        for candidate in result:
+                            candidate = dict(candidate)
+                            candidate["ver"] = version
+                            candidate["version_label"] = "🇯🇵" if version == "jp" else "🇺🇳"
+                            merged.append(candidate)
+                    if merged:
+                        return merged
+                    if maintenance_count == 2:
+                        return "MAINTENANCE"
+                    return None
+
+                candidates = asyncio.run(_fetch_all_aime_candidates())
+            except Exception as e:
+                logger.error(f"[Auth] ✗ Failed to fetch Aime candidates: user_id={user_id}, error={e}", exc_info=True)
+                message = {
+                    "ja": "アカウント一覧の取得に失敗しました。しばらくしてからもう一度お試しください。",
+                    "en": "Failed to fetch the account list. Please try again later.",
+                    "zh": "获取账号列表失败。请稍后再试。",
+                    "zh-tw": "取得帳號列表失敗。請稍後再試。"
+                }
+                return jsonify({"success": False, "message": select_text(message, language=user_language, default_language="ja")}), 500
+
+            if candidates == "MAINTENANCE":
+                message = {
+                    "ja": "公式サイトがメンテナンス中です。しばらくしてからもう一度お試しください。",
+                    "en": "The official website is under maintenance. Please try again later.",
+                    "zh": "官方网站正在维护中。请稍后再试。",
+                    "zh-tw": "官方網站正在維護中。請稍後再試。"
+                }
+                return jsonify({"success": False, "message": select_text(message, language=user_language, default_language="ja")}), 503
+
+            if not candidates:
+                message = {
+                    "ja": "SEGA ID または パスワード が正しくありません。もう一度確認してください。",
+                    "en": "Invalid SEGA ID or password. Please check and try again.",
+                    "zh": "SEGA ID 或密码不正确。请检查后重试。",
+                    "zh-tw": "SEGA ID 或密碼不正確。請檢查後重試。"
+                }
+                return jsonify({"success": False, "message": select_text(message, language=user_language, default_language="ja")}), 401
+
+            return jsonify({"success": True, "candidates": candidates})
 
         # 转换时区为整数
         try:

@@ -43,6 +43,27 @@ def get_rating_image_path(rating: int) -> str:
             return os.path.join(RATING_DIR, filename)
     return os.path.join(RATING_DIR, "white.png")
 
+
+def _static_asset_url(path):
+    if not path:
+        return ""
+
+    normalized_path = os.path.normpath(str(path))
+    assets_marker = f"{os.sep}assets{os.sep}"
+    if assets_marker in normalized_path:
+        return "/static/" + normalized_path.split(assets_marker, 1)[1].replace(os.sep, "/")
+    if normalized_path.startswith(f"assets{os.sep}"):
+        return "/static/" + normalized_path[len(f"assets{os.sep}"):].replace(os.sep, "/")
+    return ""
+
+
+def _rating_block_static_url(rating):
+    try:
+        rating_int = int(str(rating or "0").strip())
+    except ValueError:
+        rating_int = 0
+    return _static_asset_url(get_rating_image_path(rating_int))
+
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
@@ -355,6 +376,186 @@ async def login_to_maimai(sega_id: str, password: str, ver="jp", aime=0):
                 pass
 
             return session.cookie_jar.filter_cookies("https://maimaidx.jp")
+
+
+def _parse_aime_candidates(dom):
+    candidates = []
+    seen = set()
+    idx_inputs = dom.xpath('//form[contains(@action, "/aimeList/submit/")]//input[@name="idx"]')
+
+    for idx_input in idx_inputs:
+        idx_values = idx_input.xpath('./@value')
+        if not idx_values:
+            continue
+
+        idx = idx_values[0].strip()
+        if idx in seen:
+            continue
+        seen.add(idx)
+
+        form = idx_input.getparent()
+        while form is not None and form.tag != "form":
+            form = form.getparent()
+
+        container = form or idx_input
+        for ancestor in container.iterancestors():
+            if ancestor.xpath('.//div[contains(concat(" ", normalize-space(@class), " "), " name_block ")]'):
+                container = ancestor
+                break
+
+        name_values = container.xpath('.//div[contains(concat(" ", normalize-space(@class), " "), " name_block ")]/text()')
+        rating_values = container.xpath('.//div[contains(concat(" ", normalize-space(@class), " "), " rating_block ")]/text()')
+        trophy_values = container.xpath('.//div[contains(@class, "trophy_inner_block")]//span/text()')
+        icon_values = container.xpath('.//img[contains(@src, "/img/Icon/")]/@src')
+        course_rank_values = container.xpath('.//img[contains(@src, "/img/course/course_rank_")]/@src')
+        class_rank_values = container.xpath('.//img[contains(@src, "/img/class/class_rank_")]/@src')
+        trophy_block_classes = container.xpath('.//div[contains(concat(" ", normalize-space(@class), " "), " trophy_block ")]/@class')
+
+        name = normalize(name_values[0]) if name_values else ""
+        rating = normalize(rating_values[0]) if rating_values else ""
+        trophy = normalize(trophy_values[0]) if trophy_values else ""
+        icon_url = icon_values[0] if icon_values else ""
+        if icon_url.startswith("/"):
+            icon_url = f"https://maimaidx.jp{icon_url}"
+        elif icon_url.startswith("img/"):
+            icon_url = f"https://maimaidx.jp/maimai-mobile/{icon_url}"
+
+        course_rank_url = course_rank_values[0] if course_rank_values else ""
+        if course_rank_url.startswith("/"):
+            course_rank_url = f"https://maimaidx.jp{course_rank_url}"
+        elif course_rank_url.startswith("img/"):
+            course_rank_url = f"https://maimaidx.jp/maimai-mobile/{course_rank_url}"
+
+        class_rank_url = class_rank_values[0] if class_rank_values else ""
+        if class_rank_url.startswith("/"):
+            class_rank_url = f"https://maimaidx.jp{class_rank_url}"
+        elif class_rank_url.startswith("img/"):
+            class_rank_url = f"https://maimaidx.jp/maimai-mobile/{class_rank_url}"
+
+        trophy_type = ""
+        for class_name in trophy_block_classes:
+            for part in class_name.split():
+                if part.startswith("trophy_") and part != "trophy_block":
+                    trophy_type = part.replace("trophy_", "", 1).lower()
+                    break
+            if trophy_type:
+                break
+        trophy_url = f"https://maimaidx.jp/maimai-mobile/img/trophy_{trophy_type}.png" if trophy_type else ""
+
+        try:
+            idx_label = int(idx) + 1
+        except ValueError:
+            idx_label = idx
+
+        candidates.append({
+            "idx": idx,
+            "name": name or f"Aime {idx_label}",
+            "rating": rating,
+            "trophy": trophy,
+            "icon_url": icon_url,
+            "rating_block_url": _rating_block_static_url(rating),
+            "trophy_url": trophy_url,
+            "course_rank_url": course_rank_url,
+            "class_rank_url": class_rank_url,
+        })
+
+    return candidates
+
+
+async def get_aime_candidates(sega_id: str, password: str, ver="jp"):
+    """Return selectable Aime/account candidates after validating SEGA login."""
+    if ver == "intl":
+        cookies = await login_to_maimai(sega_id, password, ver="intl", aime=0)
+        if cookies == "MAINTENANCE":
+            return "MAINTENANCE"
+        if not cookies:
+            return None
+
+        user_info = await get_maimai_info(cookies, ver="intl")
+        if not isinstance(user_info, dict):
+            return None
+        if user_info.get("error") == "MAINTENANCE":
+            return "MAINTENANCE"
+        if not user_info:
+            return None
+
+        return [{
+            "idx": "0",
+            "name": user_info.get("name") or "International Account",
+            "rating": user_info.get("rating") or "",
+            "trophy": user_info.get("trophy_content") or "",
+            "icon_url": user_info.get("icon_url") or "",
+            "rating_block_url": _rating_block_static_url(user_info.get("rating")),
+            "trophy_url": user_info.get("trophy_url") or "",
+            "course_rank_url": user_info.get("cource_rank_url") or "",
+            "class_rank_url": user_info.get("class_rank_url") or "",
+        }]
+
+    user_agent = _get_random_user_agent()
+    connector = aiohttp.TCPConnector(ssl=False, limit=10, ttl_dns_cache=300)
+
+    async with aiohttp.ClientSession(connector=connector) as session:
+        token = None
+        for attempt in range(3):
+            try:
+                async with session.get("https://maimaidx.jp/maimai-mobile/login/") as response:
+                    if response.status == 503:
+                        logger.warning("[Maimai] ⚠ Server maintenance (503): server=JP")
+                        return "MAINTENANCE"
+                    response.raise_for_status()
+                    html = await response.text()
+
+                dom = await asyncio.to_thread(etree.HTML, html)
+                token_list = dom.xpath('//input[@name="token"]/@value')
+                if token_list:
+                    token = token_list[0]
+                    break
+            except Exception as e:
+                logger.warning(f"[Maimai] ⚠ JP login page fetch failed for Aime list (attempt {attempt + 1}/3): {e}")
+
+            if attempt < 2:
+                await asyncio.sleep(1.5)
+
+        if not token:
+            raise Exception("Unable to fetch JP login token for Aime list")
+
+        async with session.post(
+            "https://maimaidx.jp/maimai-mobile/submit/",
+            data={
+                "segaId": sega_id,
+                "password": password,
+                "save_cookie": "on",
+                "token": token
+            },
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": user_agent,
+            },
+            allow_redirects=True
+        ) as login_response:
+            if login_response.status == 503:
+                logger.warning("[Maimai] ⚠ Server maintenance (503): server=JP")
+                return "MAINTENANCE"
+            await login_response.text()
+
+        async with session.get(
+            "https://maimaidx.jp/maimai-mobile/aimeList/",
+            headers={"User-Agent": user_agent}
+        ) as response:
+            if response.status == 503:
+                logger.warning("[Maimai] ⚠ Server maintenance (503): server=JP")
+                return "MAINTENANCE"
+            response.raise_for_status()
+            html = await response.text()
+
+        if "再度ログインしてください" in html:
+            return None
+
+        dom = await asyncio.to_thread(etree.HTML, html)
+        if dom is None:
+            return None
+        candidates = _parse_aime_candidates(dom)
+        return candidates or None
 
 
 async def get_maimai_info(cookies: dict, ver="jp"):

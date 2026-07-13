@@ -111,6 +111,290 @@
       to { transform: rotate(360deg); }
     }
 
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.45);
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .aime-modal {
+      width: 100%;
+      max-width: 420px;
+      max-height: calc(100vh - 48px);
+      overflow: auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      padding: 24px;
+    }
+
+    .aime-modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .aime-modal-close {
+      width: 32px;
+      height: 32px;
+      flex: 0 0 auto;
+      border: 1px solid var(--border-color);
+      border-radius: 50%;
+      background: var(--surface-bg);
+      color: var(--text-color);
+      font-size: 22px;
+      line-height: 28px;
+      cursor: pointer;
+    }
+
+    .aime-modal-close:disabled {
+      cursor: default;
+      opacity: 0.45;
+    }
+
+    .aime-modal h3 {
+      margin: 0 0 8px;
+      color: var(--text-color);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .aime-modal p {
+      margin: 0 0 16px;
+      color: var(--text-tertiary);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .aime-choice-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .aime-modal-loading {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: 112px;
+    }
+
+    .aime-modal-loading.active {
+      display: flex;
+    }
+
+    .aime-modal-spinner {
+      width: 42px;
+      height: 42px;
+      border: 4px solid var(--border-color);
+      border-top-color: var(--accent-color);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    .aime-choice {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      color: var(--text-color);
+      background: var(--surface-bg);
+      transition: border-color var(--transition-base), box-shadow var(--transition-base);
+    }
+
+    .aime-choice.selected {
+      border-color: var(--info-color);
+      box-shadow: inset 0 0 0 2px rgba(48, 145, 255, 0.42),
+                  0 0 14px rgba(48, 145, 255, 0.24);
+    }
+
+    .aime-choice-version {
+      flex: 0 0 auto;
+      padding: 0;
+      background: transparent;
+      font-size: 18px;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0;
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    .aime-choice input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .aime-choice-icon {
+      width: 64px;
+      height: 64px;
+      flex: 0 0 auto;
+      border-radius: 8px;
+      object-fit: cover;
+      background: var(--border-color);
+    }
+
+    .aime-choice-main {
+      min-width: 0;
+      flex: 1;
+      height: 64px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .aime-choice-trophy {
+      position: relative;
+      width: min(100%, 226px);
+      height: 16px;
+      box-sizing: border-box;
+      flex: 0 0 16px;
+    }
+
+    .aime-choice-trophy img {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .aime-choice-trophy span {
+      position: absolute;
+      inset: 0 8px;
+      display: block;
+      line-height: 16px;
+      padding: 0 10px;
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: 700;
+      text-align: center;
+      text-shadow: 0 1px 2px #000000, 0 -1px 2px #000000;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .aime-choice-row {
+      display: flex;
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .aime-choice-name-row,
+    .aime-choice-rating-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: min(100%, 226px);
+      min-width: 0;
+    }
+
+    .aime-choice-name {
+      width: auto;
+      height: 21px;
+      box-sizing: border-box;
+      padding: 3px 9px;
+      border: 1px solid rgba(180, 180, 180, 0.9);
+      border-radius: 7px;
+      background: #ffffff;
+      color: #111111;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 13px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .aime-choice-class {
+      width: 38px;
+      height: 21px;
+      flex: 0 0 auto;
+      object-fit: contain;
+    }
+
+    .aime-choice-rating {
+      position: relative;
+      width: 112px;
+      height: 22px;
+      box-sizing: border-box;
+      flex: 0 0 auto;
+    }
+
+    .aime-choice-course {
+      width: 52px;
+      height: 22px;
+      flex: 0 0 auto;
+      object-fit: contain;
+    }
+
+    .aime-choice-rating img {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .aime-choice-rating span {
+      position: absolute;
+      inset: 1px 10px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      transform: translateX(-4px);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0;
+      text-shadow: 0 1px 2px #000000, 0 -1px 2px #000000;
+    }
+
+    .aime-choice-meta {
+      margin-top: 3px;
+      color: var(--text-tertiary);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    #aime-confirm-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--info-color);
+      color: #ffffff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition-base);
+    }
+
+    #aime-confirm-btn:hover {
+      opacity: 0.85;
+      box-shadow: var(--shadow-md);
+    }
+
     /* 移动端优化 */
     @media (max-width: 600px) {
       body {
@@ -126,6 +410,11 @@
         font-size: 20px;
         margin-bottom: 24px;
       }
+
+      .aime-choice-row {
+        align-items: flex-start;
+        flex-direction: column;
+      }
     }
   </style>
 </head>
@@ -135,6 +424,11 @@
     <h2 id="page-heading">SEGA アカウント連携</h2>
     <form method="POST">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <input type="hidden" id="aime" name="aime" value="{% if mode == 'rebind' %}{{ aime }}{% else %}0{% endif %}"/>
+      <input type="hidden" id="aime_confirmed" name="aime_confirmed" value="0"/>
+      {% if mode != 'rebind' %}
+      <input type="hidden" id="timezone" name="timezone" value="9"/>
+      {% endif %}
 
       <div class="list-panel" style="margin-bottom: 20px;">
         {% if mode != 'rebind' %}
@@ -173,7 +467,7 @@
           <input type="password" id="password" name="password" required {% if mode == 'rebind' %}value="{{ password }}"{% endif %} />
         </div>
 
-        <div class="list-item">
+        <div class="list-item" id="version-container">
           <label for="ver" id="label-version">バージョン</label>
           <select id="ver" name="ver" required>
             <option value="jp" id="opt-jp" {% if mode != 'rebind' or version == 'jp' %}selected{% endif %}>日本版</option>
@@ -181,49 +475,6 @@
           </select>
         </div>
 
-        <div class="list-item sega-field" id="aime-container" {% if mode == 'rebind' and version == 'intl' %}style="display: none;"{% endif %}>
-          <label for="aime" id="label-aime">Aime</label>
-          <select id="aime" name="aime">
-            <option value="0" {% if mode != 'rebind' or aime == 0 %}selected{% endif %}>1</option>
-            <option value="1" {% if mode == 'rebind' and aime == 1 %}selected{% endif %}>2</option>
-            <option value="2" {% if mode == 'rebind' and aime == 2 %}selected{% endif %}>3</option>
-          </select>
-        </div>
-
-        {% if mode != 'rebind' %}
-        <div class="list-item">
-          <label for="timezone" id="label-timezone">タイムゾーン</label>
-          <select id="timezone" name="timezone" required>
-            <option value="-12">UTC-12</option>
-            <option value="-11">UTC-11</option>
-            <option value="-10">UTC-10</option>
-            <option value="-9">UTC-9</option>
-            <option value="-8">UTC-8</option>
-            <option value="-7">UTC-7</option>
-            <option value="-6">UTC-6</option>
-            <option value="-5">UTC-5</option>
-            <option value="-4">UTC-4</option>
-            <option value="-3">UTC-3</option>
-            <option value="-2">UTC-2</option>
-            <option value="-1">UTC-1</option>
-            <option value="0">UTC+0</option>
-            <option value="1">UTC+1</option>
-            <option value="2">UTC+2</option>
-            <option value="3">UTC+3</option>
-            <option value="4">UTC+4</option>
-            <option value="5">UTC+5</option>
-            <option value="6">UTC+6</option>
-            <option value="7">UTC+7</option>
-            <option value="8">UTC+8</option>
-            <option value="9">UTC+9</option>
-            <option value="10">UTC+10</option>
-            <option value="11">UTC+11</option>
-            <option value="12">UTC+12</option>
-            <option value="13">UTC+13</option>
-            <option value="14">UTC+14</option>
-          </select>
-        </div>
-        {% endif %}
       </div>
 
       <input type="submit" id="submit-btn" value="連携" />
@@ -253,6 +504,21 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="aime-modal-overlay" aria-hidden="true">
+    <div class="aime-modal" role="dialog" aria-modal="true" aria-labelledby="aime-modal-title">
+      <div class="aime-modal-header">
+        <h3 id="aime-modal-title">Aime を選択</h3>
+        <button type="button" class="aime-modal-close" id="aime-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <p id="aime-modal-description">連携するアカウントを選択してください。</p>
+      <div class="aime-modal-loading" id="aime-modal-loading">
+        <div class="aime-modal-spinner"></div>
+      </div>
+      <div class="aime-choice-list" id="aime-choice-list"></div>
+      <button type="button" id="aime-confirm-btn">確定</button>
+    </div>
+  </div>
+
   <script>
     const translations = {
       ja: {
@@ -265,7 +531,6 @@
         labelVersion: 'バージョン',
         optJp: '日本版',
         optIntl: '海外版',
-        labelAime: 'Aime',
         labelTimezone: 'タイムゾーン',
         labelLanguage: '言語',
         languagePlatformHint: '言語設定は LINE 以外の外部プラットフォームには反映されない場合があります。',
@@ -276,7 +541,14 @@
         submitBtn: '連携',
         submitBtnImport: 'Tokenを生成',
         submitBtnRebind: '更新',
-        noticeTitle: 'ご利用に関するご注意'
+        noticeTitle: 'ご利用に関するご注意',
+        aimeModalTitle: 'Aime を選択',
+        aimeModalDescription: '連携するアカウントを選択してください。',
+        aimeConfirm: '確定',
+        aimeFallbackName: 'Aime アカウント',
+        ratingLabel: 'Rating',
+        trophyLabel: '称号',
+        accountListError: 'アカウント一覧を取得できませんでした。'
       },
       en: {
         pageTitle: 'SEGA Account Binding | JiETNG',
@@ -288,7 +560,6 @@
         labelVersion: 'Version',
         optJp: 'JP Version',
         optIntl: 'INTL Version',
-        labelAime: 'Aime',
         labelTimezone: 'Timezone',
         labelLanguage: 'Language',
         languagePlatformHint: 'Language settings may not apply to third-party platforms outside LINE.',
@@ -299,7 +570,14 @@
         submitBtn: 'Bind',
         submitBtnImport: 'Generate Token',
         submitBtnRebind: 'Update',
-        noticeTitle: 'Notice'
+        noticeTitle: 'Notice',
+        aimeModalTitle: 'Select Aime',
+        aimeModalDescription: 'Choose the account to link.',
+        aimeConfirm: 'Confirm',
+        aimeFallbackName: 'Aime Account',
+        ratingLabel: 'Rating',
+        trophyLabel: 'Trophy',
+        accountListError: 'Could not fetch the account list.'
       },
       zh: {
         pageTitle: 'SEGA 账号绑定 | JiETNG',
@@ -311,7 +589,6 @@
         labelVersion: '版本',
         optJp: '日本版',
         optIntl: '国际版',
-        labelAime: 'Aime',
         labelTimezone: '时区',
         labelLanguage: '语言',
         languagePlatformHint: '语言设置可能不会作用于 LINE 以外的第三方平台。',
@@ -322,7 +599,14 @@
         submitBtn: '绑定',
         submitBtnImport: '生成 Token',
         submitBtnRebind: '更新',
-        noticeTitle: '使用须知'
+        noticeTitle: '使用须知',
+        aimeModalTitle: '选择 Aime',
+        aimeModalDescription: '请选择要绑定的账号。',
+        aimeConfirm: '确定',
+        aimeFallbackName: 'Aime 账号',
+        ratingLabel: 'Rating',
+        trophyLabel: '称号',
+        accountListError: '无法获取账号列表。'
       },
       'zh-tw': {
         pageTitle: 'SEGA 帳號綁定 | JiETNG',
@@ -334,7 +618,6 @@
         labelVersion: '版本',
         optJp: '日本版',
         optIntl: '國際版',
-        labelAime: 'Aime',
         labelTimezone: '時區',
         labelLanguage: '語言',
         languagePlatformHint: '語言設定可能不會套用到 LINE 以外的第三方平台。',
@@ -345,7 +628,14 @@
         submitBtn: '綁定',
         submitBtnImport: '產生 Token',
         submitBtnRebind: '更新',
-        noticeTitle: '使用須知'
+        noticeTitle: '使用須知',
+        aimeModalTitle: '選擇 Aime',
+        aimeModalDescription: '請選擇要綁定的帳號。',
+        aimeConfirm: '確定',
+        aimeFallbackName: 'Aime 帳號',
+        ratingLabel: 'Rating',
+        trophyLabel: '稱號',
+        accountListError: '無法取得帳號列表。'
       }
     };
 
@@ -363,10 +653,6 @@
       document.getElementById('label-segaid').textContent = t.labelSegaid;
       document.getElementById('label-password').textContent = t.labelPassword;
       document.getElementById('label-version').textContent = t.labelVersion;
-      document.getElementById('label-aime').textContent = t.labelAime;
-
-      const labelTimezone = document.getElementById('label-timezone');
-      if (labelTimezone) labelTimezone.textContent = t.labelTimezone;
 
       const labelLanguage = document.getElementById('label-language');
       if (labelLanguage) labelLanguage.textContent = t.labelLanguage;
@@ -389,6 +675,9 @@
 
       // Update notice title
       document.getElementById('notice-title').textContent = t.noticeTitle;
+      document.getElementById('aime-modal-title').textContent = t.aimeModalTitle;
+      document.getElementById('aime-modal-description').textContent = t.aimeModalDescription;
+      document.getElementById('aime-confirm-btn').textContent = t.aimeConfirm;
 
       // Toggle notice content
       document.getElementById('notice-ja').style.display = lang === 'ja' ? 'block' : 'none';
@@ -396,17 +685,6 @@
       document.getElementById('notice-zh').style.display = lang === 'zh' ? 'block' : 'none';
       document.getElementById('notice-zh-tw').style.display = lang === 'zh-tw' ? 'block' : 'none';
 
-      // Toggle timezone hint text (only in bind mode)
-      if (mode === 'bind') {
-        const hintJa = document.getElementById('hint-text-ja');
-        const hintEn = document.getElementById('hint-text-en');
-        const hintZh = document.getElementById('hint-text-zh');
-        if (hintJa && hintEn && hintZh) {
-          hintJa.style.display = lang === 'ja' ? 'inline' : 'none';
-          hintEn.style.display = lang === 'en' ? 'inline' : 'none';
-          hintZh.style.display = lang === 'zh' ? 'inline' : 'none';
-        }
-      }
     }
 
     // 自动检测用户时区并转换为 UTC 偏移量
@@ -423,29 +701,6 @@
       }
     }
 
-    // 控制 Aime 容器显示/隐藏
-    function toggleAimeContainer() {
-      const verSelect = document.getElementById('ver');
-      const aimeContainer = document.getElementById('aime-container');
-      const aimeSelect = document.getElementById('aime');
-      const bindType = document.getElementById('bind_type')?.value || 'sega';
-
-      if (bindType === 'import_token') {
-        aimeContainer.style.display = 'none';
-        aimeSelect.value = '0';
-        return;
-      }
-
-      if (verSelect.value === 'intl') {
-        // intl 版本：隐藏 Aime 容器，设置值为 0
-        aimeContainer.style.display = 'none';
-        aimeSelect.value = '0';
-      } else {
-        // jp 版本：显示 Aime 容器
-        aimeContainer.style.display = 'flex';
-      }
-    }
-
     function updateBindTypeUi() {
       const lang = document.getElementById('language')?.value || '{{ user_language }}' || 'ja';
       const t = translations[lang] || translations.ja;
@@ -458,6 +713,10 @@
       });
       document.getElementById('segaid').required = !importOnly;
       document.getElementById('password').required = !importOnly;
+      const versionContainer = document.getElementById('version-container');
+      if (versionContainer) {
+        versionContainer.style.display = importOnly ? 'flex' : 'none';
+      }
 
       const help = document.getElementById('bind-type-help');
       if (help) {
@@ -468,25 +727,253 @@
       document.getElementById('submit-btn').value = mode === 'rebind'
         ? t.submitBtnRebind
         : (importOnly ? t.submitBtnImport : t.submitBtn);
-      toggleAimeContainer();
+      if (importOnly) {
+        document.getElementById('aime_confirmed').value = '0';
+        document.getElementById('aime').value = '0';
+      }
     }
 
-    // 提交时显示 loading 遮罩，使用 fetch 避免 LINE WKWebView 页面导航冻结渲染
-    document.querySelector('form').addEventListener('submit', async function(event) {
-      event.preventDefault();
-      document.getElementById('loading-overlay').classList.add('active');
+    function getCurrentTranslations() {
+      const lang = document.getElementById('language')?.value || '{{ user_language }}' || 'ja';
+      return translations[lang] || translations.ja;
+    }
+
+    let aimeRequestId = 0;
+
+    function updateSelectedAimeChoice() {
+      document.querySelectorAll('.aime-choice').forEach(choice => {
+        const input = choice.querySelector('input[name="aime_choice"]');
+        choice.classList.toggle('selected', Boolean(input?.checked));
+      });
+    }
+
+    function renderAimeChoices(candidates) {
+      const t = getCurrentTranslations();
+      const list = document.getElementById('aime-choice-list');
+      list.innerHTML = '';
+
+      candidates.forEach((candidate, index) => {
+        const value = String(candidate.idx ?? index);
+        const label = document.createElement('label');
+        label.className = 'aime-choice';
+
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'aime_choice';
+        input.value = value;
+        input.dataset.ver = candidate.ver || 'jp';
+        if (index === 0) input.checked = true;
+
+        let iconElement;
+        if (candidate.icon_url) {
+          iconElement = document.createElement('img');
+          iconElement.alt = '';
+          iconElement.loading = 'lazy';
+          iconElement.src = candidate.icon_url;
+        } else {
+          iconElement = document.createElement('div');
+        }
+        iconElement.className = 'aime-choice-icon';
+
+        const main = document.createElement('div');
+        main.className = 'aime-choice-main';
+
+        if (candidate.trophy_url || candidate.trophy) {
+          const trophy = document.createElement('div');
+          trophy.className = 'aime-choice-trophy';
+          if (candidate.trophy_url) {
+            const trophyImage = document.createElement('img');
+            trophyImage.alt = '';
+            trophyImage.loading = 'lazy';
+            trophyImage.src = candidate.trophy_url;
+            trophy.appendChild(trophyImage);
+          }
+          const trophyText = document.createElement('span');
+          trophyText.textContent = candidate.trophy || '';
+          trophy.appendChild(trophyText);
+          main.appendChild(trophy);
+        }
+
+        const row = document.createElement('div');
+        row.className = 'aime-choice-row';
+
+        const nameRow = document.createElement('div');
+        nameRow.className = 'aime-choice-name-row';
+
+        const name = document.createElement('div');
+        name.className = 'aime-choice-name';
+        name.textContent = candidate.name || `${t.aimeFallbackName} ${index + 1}`;
+
+        nameRow.appendChild(name);
+
+        if (candidate.class_rank_url) {
+          const classRank = document.createElement('img');
+          classRank.className = 'aime-choice-class';
+          classRank.alt = '';
+          classRank.loading = 'lazy';
+          classRank.src = candidate.class_rank_url;
+          nameRow.appendChild(classRank);
+        }
+
+        row.appendChild(nameRow);
+
+        if (candidate.rating_block_url || candidate.rating) {
+          const ratingRow = document.createElement('div');
+          ratingRow.className = 'aime-choice-rating-row';
+
+          const rating = document.createElement('div');
+          rating.className = 'aime-choice-rating';
+          if (candidate.rating_block_url) {
+            const ratingImage = document.createElement('img');
+            ratingImage.alt = '';
+            ratingImage.loading = 'lazy';
+            ratingImage.src = candidate.rating_block_url;
+            rating.appendChild(ratingImage);
+          }
+          const ratingText = document.createElement('span');
+          ratingText.textContent = candidate.rating || '0';
+          rating.appendChild(ratingText);
+          ratingRow.appendChild(rating);
+
+          if (candidate.course_rank_url) {
+            const courseRank = document.createElement('img');
+            courseRank.className = 'aime-choice-course';
+            courseRank.alt = '';
+            courseRank.loading = 'lazy';
+            courseRank.src = candidate.course_rank_url;
+            ratingRow.appendChild(courseRank);
+          }
+
+          const version = document.createElement('div');
+          version.className = 'aime-choice-version';
+          version.textContent = candidate.version_label || (candidate.ver === 'intl' ? '🇺🇳' : '🇯🇵');
+          ratingRow.appendChild(version);
+
+          row.appendChild(ratingRow);
+        }
+
+        const metaParts = [];
+
+        const meta = document.createElement('div');
+        meta.className = 'aime-choice-meta';
+        meta.textContent = metaParts.join(' / ');
+
+        main.appendChild(row);
+        if (metaParts.length) main.appendChild(meta);
+        label.appendChild(input);
+        label.appendChild(iconElement);
+        label.appendChild(main);
+        label.addEventListener('click', () => requestAnimationFrame(updateSelectedAimeChoice));
+        list.appendChild(label);
+      });
+      updateSelectedAimeChoice();
+    }
+
+    function setAimeModalLoading(loading) {
+      document.getElementById('aime-modal-loading').classList.toggle('active', loading);
+      document.getElementById('aime-choice-list').style.display = loading ? 'none' : 'flex';
+      document.getElementById('aime-confirm-btn').style.display = loading ? 'none' : 'block';
+      document.getElementById('aime-modal-close').disabled = loading && document.getElementById('aime_confirmed').value === '1';
+    }
+
+    function openAimeModal({ loading = false, candidates = [] } = {}) {
+      if (candidates.length) {
+        renderAimeChoices(candidates);
+      } else {
+        document.getElementById('aime-choice-list').innerHTML = '';
+      }
+      setAimeModalLoading(loading);
+      const overlay = document.getElementById('aime-modal-overlay');
+      overlay.classList.add('active');
+      overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeAimeModal() {
+      const overlay = document.getElementById('aime-modal-overlay');
+      overlay.classList.remove('active');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+
+    async function submitFinalForm(form, { modalLoading = false } = {}) {
+      if (modalLoading) {
+        openAimeModal({ loading: true });
+      } else {
+        document.getElementById('loading-overlay').classList.add('active');
+      }
       try {
         const response = await fetch(window.location.href, {
           method: 'POST',
-          body: new FormData(this)
+          body: new FormData(form)
         });
         const html = await response.text();
         document.open();
         document.write(html);
         document.close();
       } catch (e) {
-        document.getElementById('loading-overlay').classList.remove('active');
+        if (modalLoading) {
+          setAimeModalLoading(false);
+        } else {
+          document.getElementById('loading-overlay').classList.remove('active');
+        }
       }
+    }
+
+    async function fetchAimeCandidates(form) {
+      const formData = new FormData(form);
+      formData.set('aime_preview', '1');
+      const response = await fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'fetch' }
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || getCurrentTranslations().accountListError);
+      }
+      return data.candidates || [];
+    }
+
+    // SEGA 绑定先在弹窗内加载账号列表，避免 LINE WKWebView 页面导航冻结渲染
+    document.querySelector('form').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      const mode = '{{ mode }}' || 'bind';
+      const bindType = document.getElementById('bind_type')?.value || 'sega';
+      const importOnly = mode !== 'rebind' && bindType === 'import_token';
+
+      if (importOnly || document.getElementById('aime_confirmed').value === '1') {
+        await submitFinalForm(this);
+        return;
+      }
+
+      const requestId = ++aimeRequestId;
+      openAimeModal({ loading: true });
+      try {
+        const candidates = await fetchAimeCandidates(this);
+        if (requestId !== aimeRequestId) return;
+        openAimeModal({ candidates });
+      } catch (e) {
+        if (requestId !== aimeRequestId) return;
+        closeAimeModal();
+        alert(e.message || getCurrentTranslations().accountListError);
+      }
+    });
+
+    document.getElementById('aime-modal-close').addEventListener('click', function() {
+      if (this.disabled) return;
+      aimeRequestId += 1;
+      document.getElementById('aime_confirmed').value = '0';
+      closeAimeModal();
+    });
+
+    document.getElementById('aime-confirm-btn').addEventListener('click', async function() {
+      const selected = document.querySelector('input[name="aime_choice"]:checked');
+      if (!selected) return;
+
+      const form = document.querySelector('form');
+      document.getElementById('aime').value = selected.value;
+      document.getElementById('ver').value = selected.dataset.ver || 'jp';
+      document.getElementById('aime_confirmed').value = '1';
+      await submitFinalForm(form, { modalLoading: true });
     });
 
     // 页面加载时自动设置用户语言和预填充数据
@@ -495,17 +982,10 @@
       const mode = '{{ mode }}' || 'bind';
       updateLanguage(userLanguage);
 
-      // 监听版本选择变化，控制 Aime 容器显示
-      const verSelect = document.getElementById('ver');
-      verSelect.addEventListener('change', toggleAimeContainer);
-
       const bindTypeSelect = document.getElementById('bind_type');
       if (bindTypeSelect) {
         bindTypeSelect.addEventListener('change', updateBindTypeUi);
       }
-
-      // 初始化 Aime 容器显示状态
-      toggleAimeContainer();
 
       const languageSelect = document.getElementById('language');
       if (languageSelect) {
@@ -523,13 +1003,8 @@
       if (mode !== 'rebind') {
         const timezoneSelect = document.getElementById('timezone');
         if (timezoneSelect) {
-          const detectedTimezone = detectUserTimezone();
+          const detectedTimezone = Math.max(-12, Math.min(14, detectUserTimezone()));
           timezoneSelect.value = detectedTimezone.toString();
-
-          // 如果检测到的时区在选项中不存在，则使用 UTC+9
-          if (!timezoneSelect.value) {
-            timezoneSelect.value = '9';
-          }
         }
       }
     });
