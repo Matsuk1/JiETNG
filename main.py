@@ -4232,6 +4232,13 @@ def cmd_profile(ctx):
 def cmd_status(ctx):
     return get_bot_status(ctx.user_id)
 
+def cmd_refresh_menu(ctx):
+    try:
+        link_rich_menu_for_state(ctx.user_id, get_user(ctx.user_id) or {})
+    except Exception as e:
+        logger.warning("[RichMenu] Silent refresh failed user_id=%s error=%s", ctx.user_id, e)
+    return None
+
 def cmd_unbind_prompt(ctx):
     return TextMessage(text=get_multilingual_text(unbind_confirm_text, ctx.user_id))
 
@@ -4502,6 +4509,8 @@ COMMANDS = [
     Command(Exact("donate"), cmd_donate, name="donate"),
     Command(Exact("profile", "getme"), cmd_profile, name="profile"),
     Command(Exact("status"), cmd_status, name="status"),
+    Command(Exact("refreshmenu"), cmd_refresh_menu,
+            self_only=True, addition=False, name="refreshmenu"),
 
     Command(Regex(r"^(rank|ranking)(\s+(jp|intl))?$"),
             cmd_ranking, name="ranking"),
