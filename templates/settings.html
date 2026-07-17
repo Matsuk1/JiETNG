@@ -196,6 +196,28 @@
       color: var(--text-tertiary);
     }
 
+    .range-control {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 260px;
+    }
+
+    .range-control input[type="range"] {
+      flex: 1;
+      min-width: 0;
+      accent-color: var(--accent-color);
+    }
+
+    .range-value {
+      min-width: 28px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
     .bind-type-help {
       display: none;
       color: var(--text-tertiary);
@@ -483,6 +505,20 @@
 
       <div id="bg-settings-area" {% if not bg_enabled %}style="display: none;"{% endif %}>
         <div class="list-panel" style="margin-bottom: 20px;">
+          <div class="list-item">
+            <label for="bg_blur" id="label-bg-blur">背景ぼかし</label>
+            <div class="range-control">
+              <input type="range" id="bg_blur" name="bg_blur" min="0" max="40" step="1" value="{{ bg_blur | default(20) }}" oninput="updateBgBlurValue(this.value)" />
+              <span class="range-value" id="bg-blur-value">{{ bg_blur | default(20) }}</span>
+            </div>
+          </div>
+          <div class="list-item">
+            <label for="bg_overlay" id="label-bg-overlay">背景フェード</label>
+            <div class="range-control">
+              <input type="range" id="bg_overlay" name="bg_overlay" min="0" max="120" step="1" value="{{ bg_overlay | default(40) }}" oninput="updateBgOverlayValue(this.value)" />
+              <span class="range-value" id="bg-overlay-value">{{ bg_overlay | default(40) }}</span>
+            </div>
+          </div>
           <div class="bg-hint" style="display:flex; justify-content:space-between; align-items:center;">
             <span id="bg-hint-text">選択しない場合、すべての背景からランダムに選ばれます。</span>
             <span id="bg-count-text" style="flex-shrink:0; margin-left:8px;">{{ user_bg_files | length }}/{{ bg_files | length }}</span>
@@ -614,6 +650,8 @@
         languagePlatformHint: '言語設定は LINE 以外の外部プラットフォームには反映されない場合があります。',
         labelTimezone: 'タイムゾーン',
         labelBgEnabled: '背景画像',
+        labelBgBlur: '背景ぼかし',
+        labelBgOverlay: '背景フェード',
         bgHint: '選択しない場合、すべての背景からランダムに選ばれます。',
         sectionCustomBg: 'カスタム背景',
         customBgHint: '自分だけの背景画像をアップロードできます（1枚まで、5MB以下）。',
@@ -653,6 +691,8 @@
         languagePlatformHint: 'Language settings may not apply to third-party platforms outside LINE.',
         labelTimezone: 'Timezone',
         labelBgEnabled: 'Background Image',
+        labelBgBlur: 'Background Blur',
+        labelBgOverlay: 'Background Fade',
         bgHint: 'If none selected, a random background will be used.',
         sectionCustomBg: 'Custom Background',
         customBgHint: 'Upload your own background image (1 image, max 5MB).',
@@ -692,6 +732,8 @@
         languagePlatformHint: '语言设置可能不会作用于 LINE 以外的第三方平台。',
         labelTimezone: '时区',
         labelBgEnabled: '背景图片',
+        labelBgBlur: '背景模糊',
+        labelBgOverlay: '背景淡化',
         bgHint: '不选择则从所有背景中随机。',
         sectionCustomBg: '自定义背景',
         customBgHint: '上传你自己的背景图片（限1张，5MB以内）。',
@@ -731,6 +773,8 @@
         languagePlatformHint: '語言設定可能不會套用到 LINE 以外的第三方平台。',
         labelTimezone: '時區',
         labelBgEnabled: '背景圖片',
+        labelBgBlur: '背景模糊',
+        labelBgOverlay: '背景淡化',
         bgHint: '不選擇時，會從所有背景中隨機使用。',
         sectionCustomBg: '自訂背景',
         customBgHint: '上傳您自己的背景圖片（限 1 張，5MB 以內）。',
@@ -822,6 +866,14 @@
       document.getElementById('bg-settings-area').style.display = checked ? '' : 'none';
     }
 
+    function updateBgBlurValue(value) {
+      document.getElementById('bg-blur-value').textContent = value;
+    }
+
+    function updateBgOverlayValue(value) {
+      document.getElementById('bg-overlay-value').textContent = value;
+    }
+
     function updateLanguage(lang) {
       const t = translations[lang] || translations.ja;
       document.getElementById('page-title').textContent = t.pageTitle;
@@ -830,6 +882,8 @@
       document.getElementById('language-platform-hint').textContent = t.languagePlatformHint;
       document.getElementById('label-timezone').textContent = t.labelTimezone;
       document.getElementById('label-bg-enabled').textContent = t.labelBgEnabled;
+      document.getElementById('label-bg-blur').textContent = t.labelBgBlur;
+      document.getElementById('label-bg-overlay').textContent = t.labelBgOverlay;
       document.getElementById('bg-hint-text').textContent = t.bgHint;
       const sectionCustomBg = document.getElementById('section-title-custom-bg');
       if (sectionCustomBg) sectionCustomBg.textContent = t.sectionCustomBg;

@@ -1232,6 +1232,8 @@ def website_settings():
         user_language = normalize_language(request.form.get("language", user_data.get("language", "ja")), "ja")
         user_timezone = request.form.get("timezone", "9")
         bg_files_str = request.form.get("bg_files", "")
+        bg_blur_raw = request.form.get("bg_blur", user_data.get("bg_blur", 20))
+        bg_overlay_raw = request.form.get("bg_overlay", user_data.get("bg_overlay", 40))
 
         # 转换时区为整数
         try:
@@ -1248,11 +1250,25 @@ def website_settings():
         # 处理背景图开关
         bg_enabled = request.form.get("bg_enabled_hidden", "0") == "1"
 
+        try:
+            bg_blur = int(bg_blur_raw)
+        except (ValueError, TypeError):
+            bg_blur = 20
+        bg_blur = max(0, min(40, bg_blur))
+
+        try:
+            bg_overlay = int(bg_overlay_raw)
+        except (ValueError, TypeError):
+            bg_overlay = 40
+        bg_overlay = max(0, min(120, bg_overlay))
+
         # 保存设置
         edit_user_value(user_id, "language", user_language)
         edit_user_value(user_id, "timezone", timezone_int)
         edit_user_value(user_id, "bg_files", bg_files_list)
         edit_user_value(user_id, "bg_enabled", bg_enabled)
+        edit_user_value(user_id, "bg_blur", bg_blur)
+        edit_user_value(user_id, "bg_overlay", bg_overlay)
         link_bound_rich_menu(user_id, get_user(user_id))
 
         return render_template("success.html", language=user_language, mode="settings")
@@ -1278,6 +1294,16 @@ def website_settings():
     user_bg_files = user_data.get("bg_files", [])
     has_custom_bg = os.path.exists(os.path.join(BG_DIR, custom_bg_filename))
     bg_enabled = user_data.get("bg_enabled", False)
+    try:
+        bg_blur = int(user_data.get("bg_blur", 20))
+    except (ValueError, TypeError):
+        bg_blur = 20
+    bg_blur = max(0, min(40, bg_blur))
+    try:
+        bg_overlay = int(user_data.get("bg_overlay", 40))
+    except (ValueError, TypeError):
+        bg_overlay = 40
+    bg_overlay = max(0, min(120, bg_overlay))
 
     # 权限列表
     dev_tokens = load_dev_tokens()
@@ -1304,6 +1330,8 @@ def website_settings():
         bg_files=all_bg_files,
         user_bg_files=user_bg_files,
         bg_enabled=bg_enabled,
+        bg_blur=bg_blur,
+        bg_overlay=bg_overlay,
         has_custom_bg=has_custom_bg,
         custom_bg_filename=custom_bg_filename,
         perm_token=generate_perm_token(user_id),
@@ -1454,7 +1482,19 @@ def _get_user_bg_filter(user_id):
     if not udata.get('bg_enabled', False):
         return None
     bg_files = udata.get('bg_files', [])
-    return bg_files
+    try:
+        bg_blur = int(udata.get('bg_blur', 20))
+    except (ValueError, TypeError):
+        bg_blur = 20
+    try:
+        bg_overlay = int(udata.get('bg_overlay', 40))
+    except (ValueError, TypeError):
+        bg_overlay = 40
+    return {
+        "files": bg_files,
+        "blur": max(0, min(40, bg_blur)),
+        "overlay": max(0, min(120, bg_overlay)),
+    }
 
 
 @app.route("/linebot/perms/revoke", methods=["POST"])
@@ -3200,7 +3240,7 @@ def generate_profile(user_info, scale=1, user_id=None):
     info_img = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(info_img)
 
-    def paste_image(key, position, size, round=False):
+    def paste_image(key, position, size, round=False, use_alpha=True):
         nonlocal user_info
         if key in user_info and user_info[key]:
             try:
@@ -3223,12 +3263,17 @@ def generate_profile(user_info, scale=1, user_id=None):
                 with requests.get(url, headers=headers, verify=False) as response:
                     response.raise_for_status()
                     img = Image.open(BytesIO(response.content))
-                if img.mode != "RGBA":
+                if use_alpha and img.mode != "RGBA":
                     img = img.convert("RGBA")
+                elif not use_alpha and img.mode != "RGB":
+                    img = img.convert("RGB")
                 img_resized = img.resize(size, Image.LANCZOS)
                 if round:
                     img_resized = round_corner(img_resized, radius=10)
-                info_img.paste(img_resized, position, img_resized)
+                if use_alpha:
+                    info_img.paste(img_resized, position, img_resized)
+                else:
+                    info_img.paste(img_resized, position)
                 return True
 
             except Exception as e:
@@ -3236,7 +3281,7 @@ def generate_profile(user_info, scale=1, user_id=None):
                 return None
         return None
 
-    paste_image("nameplate_url", (0, 0), (1363, 218))
+    paste_image("nameplate_url", (0, 0), (1363, 218), use_alpha=False)
 
     # icon_url 为默认值时，尝试使用 LINE 头像
     default_icon = [

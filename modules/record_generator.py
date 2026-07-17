@@ -272,7 +272,7 @@ def create_thumbnail(song):
     # --- 底部白色圆角矩形（AA）---
     bottom_h = 45
     radius = 10
-    border_w = 2
+    border_w = 3
 
     s = 4
     W, H = thumb_size[0] * s, thumb_size[1] * s
@@ -350,7 +350,7 @@ def create_thumbnail(song):
               f"{song['internalLevelValue']:.1f} → {song['ra']}",
               fill=(0, 0, 0), font=font_stadium, anchor="ra")
 
-    final_img = round_corner(img, radius=12)
+    final_img = round_corner(img, radius=10)
     return final_img
 
 def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp", details={}):

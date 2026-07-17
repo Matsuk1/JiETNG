@@ -2,6 +2,23 @@ from PIL import Image, ImageDraw
 from modules.record_generator import create_thumbnail_in_line, _get_difficulty_color, generate_cover
 from modules.image_manager import *
 
+def _draw_rounded_panel(base_img, box, radius=22, fill=(255, 255, 255, 255), outline=(180, 180, 180, 255), width=4):
+    scale = 4
+    x1, y1, x2, y2 = box
+    panel_size = ((x2 - x1) * scale, (y2 - y1) * scale)
+    panel = Image.new("RGBA", panel_size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(panel)
+    draw.rounded_rectangle(
+        (0, 0, panel_size[0] - scale, panel_size[1] - scale),
+        radius=radius * scale,
+        fill=fill,
+        outline=outline,
+        width=width * scale,
+    )
+    panel = panel.resize((x2 - x1, y2 - y1), Image.Resampling.LANCZOS)
+    base_img.alpha_composite(panel, (x1, y1))
+
+
 def song_info_generate(song_json, played_data = [], timezone_offset=9, ver="jp", bg_filter=None):
     img1 = resize_by_width(_render_basic_info_image(song_json, ver), 900)
 
@@ -26,6 +43,7 @@ def _render_basic_info_image(song_json, ver="jp"):
     # 创建画布
     img = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
+    _draw_rounded_panel(img, (0, 0, canvas_width, block_height), radius=24, width=4)
 
     cover_url = song_json.get("cover_url")
     cover_name = song_json.get("cover_name")

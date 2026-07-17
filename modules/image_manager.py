@@ -125,7 +125,11 @@ def compose_images(images, timezone_offset=9, bg_filter=None):
     参数：
         images: PIL.Image 对象列表
         timezone_offset: 时区偏移（小时数），默认 9（UTC+9）
-        bg_filter: 可选的背景图文件名列表，非空时只从该列表中随机选择
+        bg_filter: 可选的背景配置。兼容：
+          - None: 不使用背景图
+          - []: 从全部内置背景随机
+          - [items]: 从指定背景随机
+          - {"files": [...], "blur": 20}: 指定背景列表和模糊半径
 
     返回：
         组合后的 PIL.Image 对象（RGB 或 RGBA）
@@ -259,6 +263,22 @@ def compose_images(images, timezone_offset=9, bg_filter=None):
     except Exception as e:
         logger.error(f"[ImageManager] ✗ Failed to load logo: error={e}")
 
+    bg_files_filter = bg_filter
+    bg_blur_radius = 20
+    bg_overlay_alpha = 40
+    if isinstance(bg_filter, dict):
+        bg_files_filter = bg_filter.get("files", [])
+        try:
+            bg_blur_radius = int(bg_filter.get("blur", 20))
+        except (ValueError, TypeError):
+            bg_blur_radius = 20
+        bg_blur_radius = max(0, min(40, bg_blur_radius))
+        try:
+            bg_overlay_alpha = int(bg_filter.get("overlay", 40))
+        except (ValueError, TypeError):
+            bg_overlay_alpha = 40
+        bg_overlay_alpha = max(0, min(120, bg_overlay_alpha))
+
     # 7. 外层背景（模糊背景图 or fallback 纯色）
     final_width = combined.width + 2 * outer_margin
     final_height = combined.height + 2 * outer_margin
@@ -268,12 +288,14 @@ def compose_images(images, timezone_offset=9, bg_filter=None):
         all_bg_files = [f for f in os.listdir(BG_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
         if not all_bg_files:
             raise FileNotFoundError("No background images found")
-        # bg_filter=None → 白色背景, bg_filter=[] → 列表内抽取, bg_filter=[items] → 指定列表
-        if bg_filter:
-            candidate_files = [f for f in bg_filter if f in all_bg_files]
-        elif bg_filter == []:
+        # bg_files_filter=None → 白色背景, [] → 内置背景随机, [items] → 指定列表
+        if bg_files_filter:
+            candidate_files = [f for f in bg_files_filter if f in all_bg_files]
+        elif bg_files_filter == []:
             candidate_files = [f for f in all_bg_files if not f.startswith('jietnguser_')]
         else:
+            raise FileNotFoundError("No candidate backgrounds")
+        if not candidate_files:
             raise FileNotFoundError("No candidate backgrounds")
         bg_path = os.path.join(BG_DIR, random.choice(candidate_files))
         with Image.open(bg_path) as _bg:
@@ -288,11 +310,13 @@ def compose_images(images, timezone_offset=9, bg_filter=None):
         top = (new_bg_h - final_height) // 2
         bg_img = bg_img.crop((left, top, left + final_width, top + final_height))
         # 高斯模糊（在 RGB 上操作避免 alpha 边缘伪影）
-        bg_img = bg_img.filter(ImageFilter.GaussianBlur(radius=20))
+        if bg_blur_radius > 0:
+            bg_img = bg_img.filter(ImageFilter.GaussianBlur(radius=bg_blur_radius))
         # 转回 RGBA 后叠加半透明白色遮罩
         bg_img = bg_img.convert("RGBA")
-        overlay = Image.new("RGBA", (final_width, final_height), (255, 255, 255, 40))
-        bg_img = Image.alpha_composite(bg_img, overlay)
+        if bg_overlay_alpha > 0:
+            overlay = Image.new("RGBA", (final_width, final_height), (255, 255, 255, bg_overlay_alpha))
+            bg_img = Image.alpha_composite(bg_img, overlay)
         final_img = bg_img
         has_bg_image = True
     except Exception:
@@ -321,12 +345,15 @@ def _generate_qrcode(data: str, box_size: int = 10, border: int = 4) -> Image.Im
 
 def round_corner(img, radius=20):
     img = img.convert("RGBA")
-    mask = Image.new("L", img.size, 0)
+    mask_scale = 4
+    mask_size = (img.size[0] * mask_scale, img.size[1] * mask_scale)
+    mask = Image.new("L", mask_size, 0)
     ImageDraw.Draw(mask).rounded_rectangle(
-        (0, 0, *img.size),
-        radius=radius,
+        (0, 0, *mask_size),
+        radius=radius * mask_scale,
         fill=255
     )
+    mask = mask.resize(img.size, Image.Resampling.LANCZOS)
 
     img.putalpha(mask)
     return img
