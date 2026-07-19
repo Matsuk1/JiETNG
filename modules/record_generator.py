@@ -907,11 +907,11 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
 
 def _level_group_sort_key(level):
     if str(level) == "10-":
-        return (9, "~")
+        return (9, 0)
     match = re.match(r"^(\d+)(\+?)$", str(level))
     if not match:
-        return (-1, "")
-    return (int(match.group(1)), match.group(2))
+        return (-1, 0)
+    return (int(match.group(1)), 1 if match.group(2) else 0)
 
 
 def _progress_level_group_label(level):
@@ -982,7 +982,10 @@ def generate_level_rank_progress_image(
         else:
             row_entries = [entry for entry in target_data if entry.get(group_by) == group_value]
 
-        row_entries.sort(key=lambda x: (not x["achieved"], -x.get("achievement_rate", 0.0)))
+        if group_by == "level" and group_value == "10-":
+            row_entries.sort(key=lambda x: (-x.get("internal_level", 0.0), not x["achieved"], -x.get("achievement_rate", 0.0)))
+        else:
+            row_entries.sort(key=lambda x: (not x["achieved"], -x.get("achievement_rate", 0.0)))
 
         if row_entries:
             rows.append((level_str, row_entries))
