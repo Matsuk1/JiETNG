@@ -134,8 +134,8 @@ def _draw_detail_line(draw, x, y, key, value, font, max_w, lh):
 
 
 def _draw_level_label(draw, text, x, row_top, content_h, font,
-                      diameter=72, dx=-6, dy=0,
-                      border_color=(150, 150, 150, 255), border_width=3):
+                      diameter=92, dx=0, dy=0,
+                      border_color=(150, 150, 150, 255), border_width=4):
     """绘制固定大小的等级圆形标签。"""
     label_text = str(text)
     max_text_width = diameter - border_width * 2 - 8
