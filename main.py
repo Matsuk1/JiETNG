@@ -3229,6 +3229,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
             # 生成所有难度的封面
             target_data.append({
                 "img": generate_cover(song['cover_url'], song_type, icon if rank else None, target_type if rank else None, cover_name=song.get('cover_name'), difficulty=difficulty, achieved=achieved if rank else None, song_title=song_title),
+                "level": sheet["level"],
                 "internal_level": sheet['internalLevelValue'],
                 "achieved": achieved,
                 "difficulty": difficulty,
@@ -3266,7 +3267,9 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
         target_data,
         level_display,
         rank_display,
-        stats
+        stats,
+        group_by="internal_level" if is_level_target else "level",
+        show_progress_suffix=is_level_target
     )
 
     # 清理 target_data 中的封面图片对象
@@ -4280,9 +4283,9 @@ COMMAND_HELP = {
         "命令: <レベルまたは定数> records [ページ] / <レベルまたは定数> record-list [ページ]\n说明: 指定レベルまたは定数の成績リストを表示します。\n参数: 必須: <レベルまたは定数>。13、13+、14、13.6 などに対応します。\n任意: [ページ]。1 から始まる正整数。省略時は 1 ページ目です。\n検索: 整数/+ はレベル、小数は定数の完全一致です。\n示例: 13.6 records\n14 records 2",
     ),
     "level_rank_progress": _help_text(
-        "命令: <等级或分类><评价> progress [-uc|-up|-c]\n说明: 查看指定等级或分类中评价目标的达成进度。\n参数: 必填: <等级或分类>，等级支持 11-15、13+、14；分类支持 vocaloid、touhou、popani、gekichu、game、maimai。\n必填: <评价>，紧跟等级/分类书写，支持 s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+。\n可选: -uc 仅看未完成目标，-up 仅看未游玩，-c 仅看已完成目标。\n格式: 等级可直接连写，例如 14sss+ progress；分类建议和评价之间加空格，例如 vocaloid sss+ progress。\n示例: 14sss+ progress\n13ap progress -uc\nvocaloid sss+ progress\npopani ss+ progress -up",
-        "命令: <level or category><rank> progress [-uc|-up|-c]\n说明: Show progress toward a rank target at a level or song category.\n参数: Required: <level or category>; levels support 11-15, 13+, 14; categories support vocaloid, touhou, popani, gekichu, game, and maimai.\nRequired: <rank>, written after the level/category; supports s, s+, ss, ss+, sss, sss+, fc, fc+, ap, ap+, fdx, fdx+.\nOptional: -uc shows unfinished target charts, -up shows unplayed charts, -c shows completed target charts.\nFormat: levels may be joined directly, for example 14sss+ progress; put a space after category names, for example vocaloid sss+ progress.\n示例: 14sss+ progress\n13ap progress -uc\nvocaloid sss+ progress\npopani ss+ progress -up",
-        "命令: <レベルまたはカテゴリ><評価> progress [-uc|-up|-c]\n说明: 指定レベルまたはカテゴリ内の評価目標進捗を表示します。\n参数: 必須: <レベルまたはカテゴリ>。レベルは 11-15、13+、14、カテゴリは vocaloid、touhou、popani、gekichu、game、maimai に対応します。\n必須: <評価>。レベル/カテゴリの後に書きます。s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+ に対応します。\n任意: -uc は目標未達成のみ、-up は未プレイのみ、-c は目標達成済みのみを表示します。\n形式: レベルは 14sss+ progress のように連結できます。カテゴリは vocaloid sss+ progress のように空白区切りを推奨します。\n示例: 14sss+ progress\n13ap progress -uc\nvocaloid sss+ progress\npopani ss+ progress -up",
+        "命令: <等级或分类><评价> progress [-uc|-up|-c]\n说明: 查看指定等级或分类中评价目标的达成进度。\n参数: 必填: <等级或分类>，等级支持 11-15；分类支持 vocaloid、touhou、popani、gekichu、game、maimai。\n必填: <评价>，紧跟等级/分类书写，支持 s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+。\n可选: -uc 仅看未完成目标，-up 仅看未游玩，-c 仅看已完成目标。\n格式: 等级可直接连写，例如 14sss+ progress；分类建议和评价之间加空格，例如 vocaloid sss+ progress。\n示例: 14sss+ progress\n13ap progress -uc\nvocaloid sss+ progress\npopani ss+ progress -up",
+        "命令: <level or category><rank> progress [-uc|-up|-c]\n说明: Show progress toward a rank target at a level or song category.\n参数: Required: <level or category>; levels support 11-15; categories support vocaloid, touhou, popani, gekichu, game, and maimai.\nRequired: <rank>, written after the level/category; supports s, s+, ss, ss+, sss, sss+, fc, fc+, ap, ap+, fdx, fdx+.\nOptional: -uc shows unfinished target charts, -up shows unplayed charts, -c shows completed target charts.\nFormat: levels may be joined directly, for example 14sss+ progress; put a space after category names, for example vocaloid sss+ progress.\n示例: 14sss+ progress\n13ap progress -uc\nvocaloid sss+ progress\npopani ss+ progress -up",
+        "命令: <レベルまたはカテゴリ><評価> progress [-uc|-up|-c]\n说明: 指定レベルまたはカテゴリ内の評価目標進捗を表示します。\n参数: 必須: <レベルまたはカテゴリ>。レベルは 11-15、カテゴリは vocaloid、touhou、popani、gekichu、game、maimai に対応します。\n必須: <評価>。レベル/カテゴリの後に書きます。s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+ に対応します。\n任意: -uc は目標未達成のみ、-up は未プレイのみ、-c は目標達成済みのみを表示します。\n形式: レベルは 14sss+ progress のように連結できます。カテゴリは vocaloid sss+ progress のように空白区切りを推奨します。\n示例: 14sss+ progress\n13ap progress -uc\nvocaloid sss+ progress\npopani ss+ progress -up",
     ),
     "song_info": _help_text(
         "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 查询歌曲基本信息、谱面信息和 BPM。\n参数: 必填: <曲名>，写在 info / song-info 前面，可以是完整曲名、部分曲名或别名。\n匹配: 如果匹配到多首歌，会返回可选择的候选结果。\n示例: ヒバナ info\nヒバナってどんな曲",
@@ -8018,6 +8021,7 @@ def api_v2_generate_achievement(user_id):
                                           cover_name=song.get('cover_name'), difficulty=difficulty,
                                           achieved=achieved if rank else None,
                                           song_title=song_title),
+                    "level": sheet["level"],
                     "internal_level": sheet['internalLevelValue'],
                     "achieved": achieved,
                     "difficulty": difficulty,

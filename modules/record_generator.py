@@ -1,6 +1,7 @@
 import math
 import logging
 import os
+import re
 
 from PIL import Image, ImageDraw
 
@@ -903,18 +904,37 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
     return final_img
 
 
-def generate_level_rank_progress_image(target_data, level_name, rank_name, stats, img_width=2700, max_per_row=15, margin=20):
+def _level_group_sort_key(level):
+    match = re.match(r"^(\d+)(\+?)$", str(level))
+    if not match:
+        return (-1, "")
+    return (int(match.group(1)), match.group(2))
+
+
+def generate_level_rank_progress_image(
+    target_data,
+    level_name,
+    rank_name,
+    stats,
+    img_width=2700,
+    max_per_row=15,
+    margin=20,
+    group_by="internal_level",
+    show_progress_suffix=True,
+):
     """
-    生成难度评级进度图片，顶部显示总体统计卡片，下方显示按定数分组的封面列表
+    生成难度评级进度图片，顶部显示总体统计卡片，下方显示分组封面列表
 
     参数:
-        target_data: 歌曲数据列表，每个元素为 {"img": PIL.Image, "internal_level": float, "achieved": bool, "difficulty": str, "achievement_rate": float}
+        target_data: 歌曲数据列表，每个元素为 {"img": PIL.Image, "level": str, "internal_level": float, "achieved": bool, "difficulty": str, "achievement_rate": float}
         level_name: 难度名称（如 "13", "13+", "14", "14+"）
         rank_name: 评级名称（如 "SSS⁺", "AP", "FDX"）
         stats: 统计信息字典 {"achieved": int, "unachieved": int, "unplayed": int, "total": int}
         img_width: 图片总宽度
         max_per_row: 每行最多显示的歌曲数量
         margin: 边距
+        group_by: "internal_level" 按定数分组，"level" 按等级分组
+        show_progress_suffix: 是否在进度标题末尾显示 PROGRESS
     """
     level_width = 100
     img_size = 150
@@ -926,15 +946,22 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
 
     all_data = target_data
 
-    # 按照定数分组（降序），每组内已达成的排在前面
+    # 等级模式按定数分组；分类模式按谱面等级分组。
     rows = []
     total_rows = 0
 
-    internal_levels = sorted(set(entry["internal_level"] for entry in all_data), reverse=True)
+    if group_by == "level":
+        group_values = sorted(
+            {entry.get("level", "") for entry in all_data},
+            key=_level_group_sort_key,
+            reverse=True,
+        )
+    else:
+        group_values = sorted(set(entry["internal_level"] for entry in all_data), reverse=True)
 
-    for internal_level in internal_levels:
-        level_str = f"{internal_level:.1f}"
-        row_entries = [entry for entry in all_data if entry["internal_level"] == internal_level]
+    for group_value in group_values:
+        level_str = str(group_value) if group_by == "level" else f"{group_value:.1f}"
+        row_entries = [entry for entry in all_data if entry.get(group_by) == group_value]
 
         # 按达成状态和达成率排序：已达成在前，未达成的按达成率从大到小
         # (not achieved, -achievement_rate)
@@ -1040,7 +1067,8 @@ def generate_level_rank_progress_image(target_data, level_name, rank_name, stats
 
     # 绘制右侧标题
     if rank_name:
-        title_text = f"{level_name} {rank_name} PROGRESS"
+        suffix = " PROGRESS" if show_progress_suffix else ""
+        title_text = f"{level_name} {rank_name}{suffix}"
     else:
         title_text = f"{level_name} LEVEL LIST"
     title_text_size = draw.textlength(title_text, font=font_record_title)
