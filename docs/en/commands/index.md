@@ -22,6 +22,7 @@ Append `-help` to any command to see its usage. Commands that require arguments 
 | `export json` / `export xml` | Export processed score data |
 | `donate` | Show support information |
 | `status` | Show bot runtime status |
+| `help` | Show the command directory |
 
 `bind`, `rebind`, `settings`, `update`, `export`, and `unbind` are self-only.
 

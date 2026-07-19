@@ -22,6 +22,7 @@ description: JiETNG の maimai B50、スコア管理、レート内訳、プレ�
 | `export json` / `export xml` | 加工済み成績を出力 |
 | `donate` | 支援情報 |
 | `status` | Bot 稼働状態 |
+| `help` | コマンド一覧を表示 |
 
 `bind`、`rebind`、`settings`、`update`、`export`、`unbind` は自分自身にのみ作用します。
 

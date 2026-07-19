@@ -4456,6 +4456,8 @@ REQUIRED_PARAM_HELP_WORDS = set(FIRST_WORD_HELP_ALIASES) | {
 
 
 def _command_help_message(help_key, user_id=None):
+    if help_key == "help_index":
+        return _build_help_index_flex(user_id)
     if help_key == "b_records":
         return _build_b_records_help_flex(user_id)
     text = get_multilingual_text(COMMAND_HELP.get(help_key), user_id)
@@ -4486,6 +4488,14 @@ HELP_UI_TEXT = {
         "ja": "Best / All Best / 特殊成績画像とフィルター",
     },
     "modes": {"zh": "可用模式", "en": "Modes", "ja": "モード"},
+    "catalog_title": {"zh": "命令目录", "en": "Command Directory", "ja": "コマンド一覧"},
+    "catalog_subtitle": {
+        "zh": "发送 命令-help 查看单项说明",
+        "en": "Send command-help for detailed usage",
+        "ja": "command-help で詳細を表示",
+    },
+    "categories": {"zh": "分类", "en": "Categories", "ja": "カテゴリ"},
+    "detail_hint": {"zh": "详细说明", "en": "Detailed Help", "ja": "詳細ヘルプ"},
 }
 
 
@@ -4786,6 +4796,85 @@ def _build_b_records_help_flex(user_id=None):
     )
 
 
+def _build_help_index_flex(user_id=None):
+    def t(zh, en, ja):
+        return get_multilingual_text({"zh": zh, "en": en, "ja": ja}, user_id)
+
+    groups = [
+        (
+            t("账号与系统", "Account and System", "アカウントとシステム"),
+            "bind / rebind / settings / profile / update / export / status",
+            t("绑定、设置、资料、同步、导出与状态。", "Binding, settings, profile, sync, export, and status.", "連携、設定、プロフィール、同期、エクスポート、状態確認。"),
+            "#E85D75",
+        ),
+        (
+            t("成绩图", "Score Images", "成績画像"),
+            "b50 / b40 / ab50 / ap50 / fdx50 / r50 / idlb50 / s50",
+            t("Best、All Best、Recent 与特殊成绩图。", "Best, All Best, Recent, and special score images.", "Best、All Best、Recent、特殊成績画像。"),
+            "#8A63D2",
+        ),
+        (
+            t("歌曲与成绩", "Songs and Records", "楽曲と成績"),
+            "info / record / search / search-record / calc-song",
+            t("查歌曲信息、单曲成绩和歌曲 ID。", "Song details, single-song records, and song IDs.", "楽曲情報、単曲成績、楽曲 ID 検索。"),
+            "#267D8B",
+        ),
+        (
+            t("搜索", "Search", "検索"),
+            "artist / designer / bpm / random",
+            t("按艺术家、谱师、BPM 或条件随机选曲。", "Search by artist, designer, BPM, or random conditions.", "アーティスト、譜面制作者、BPM、ランダム条件で検索。"),
+            "#2F7D51",
+        ),
+        (
+            t("列表与进度", "Lists and Progress", "リストと進捗"),
+            "records / record-list / level-list / achievement / progress",
+            t("等级列表、定数列表、牌子完成度和目标进度。", "Level lists, constant lists, plate completion, and target progress.", "レベルリスト、定数リスト、プレート達成状況、目標進捗。"),
+            "#B86E19",
+        ),
+        (
+            t("社交与权限", "Social and Permissions", "フレンドと権限"),
+            "friends / friend-rcd / accept-perm-request / reject-perm-request",
+            t("好友成绩和第三方访问权限管理。", "Friend records and third-party access permission management.", "フレンド成績と外部アクセス権限管理。"),
+            "#315B7D",
+        ),
+        (
+            t("工具", "Tools", "ツール"),
+            "rank / rc / calc / donate / refreshmenu",
+            t("排行榜、Rating 内訳、分值计算和辅助功能。", "Ranking, rating breakdown, note scoring, and utility commands.", "ランキング、レート内訳、ノーツ点数計算、補助機能。"),
+            "#6B7280",
+        ),
+    ]
+
+    sections = [
+        (_help_ui("categories", user_id), [
+            _mode_card(title, commands, color)
+            for title, commands, _desc, color in groups
+        ]),
+        (_help_ui("function", user_id), [
+            _note_row(title, desc)
+            for title, _commands, desc, _color in groups
+        ]),
+        (_help_ui("detail_hint", user_id), [
+            _filter_row(t("单项说明", "Single command", "単体説明"), t(
+                "发送 b50-help、artist-help、bpm-help 这类格式查看完整用法。",
+                "Send b50-help, artist-help, bpm-help, and similar forms for full usage.",
+                "b50-help、artist-help、bpm-help のように送信すると詳しい使い方を表示します。",
+            )),
+            _filter_row(t("参数缺失", "Missing arguments", "引数不足"), t(
+                "需要参数的命令只发送命令名时，也会显示对应说明。",
+                "Commands that need arguments also show help when sent without arguments.",
+                "引数が必要なコマンドを引数なしで送ると説明を表示します。",
+            )),
+        ]),
+    ]
+    return _standard_help_bubble(
+        title=_help_ui("catalog_title", user_id),
+        subtitle=_help_ui("catalog_subtitle", user_id),
+        sections=sections,
+        alt_text=f"{_help_ui('catalog_title', user_id)}",
+    )
+
+
 def _detect_command_help_key(text):
     normalized = re.sub(r"\s+", " ", text.strip())
     lowered = normalized.lower()
@@ -4794,6 +4883,8 @@ def _detect_command_help_key(text):
 
     if lowered in EXACT_HELP_ALIASES:
         return EXACT_HELP_ALIASES[lowered]
+    if lowered in {"help", "commands", "command", "帮助", "幫助", "ヘルプ", "コマンド"}:
+        return "help_index"
 
     first_word = re.split(r"[ \n]", lowered, 1)[0]
     if first_word in ("rank", "ranking"):
@@ -4852,6 +4943,12 @@ def _detect_missing_param_help_key(text):
 
 
 def _reply_command_help_if_needed(ctx):
+    if ctx.text.strip().lower() in {"help", "commands", "command", "帮助", "幫助", "ヘルプ", "コマンド"}:
+        _bump_stats()
+        smart_reply(ctx.user_id, ctx.reply_token, _build_help_index_flex(ctx.user_id),
+                    configuration, addition=False, source_type=ctx.source_type)
+        return True
+
     help_match = re.match(r"^(?P<body>.*?)\s*-help\s*$", ctx.text, re.IGNORECASE)
     if help_match:
         help_key = _detect_command_help_key(help_match.group("body"))

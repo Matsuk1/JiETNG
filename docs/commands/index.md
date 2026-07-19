@@ -22,6 +22,7 @@ description: JiETNG 命令大全，包含舞萌DX / maimai B50、查分、レー
 | `export json` / `export xml` | 导出加工后的成绩数据 |
 | `donate` | 显示支持开发信息 |
 | `status` | 显示机器人运行状态 |
+| `help` | 显示命令目录 |
 
 `bind`、`rebind`、`settings`、`update`、`export`、`unbind` 仅限操作自己的账号。
 
