@@ -53,6 +53,7 @@ Filters such as `-lv`, `-ra`, `-scr`, `-dx`, `-star`, `-diff`, `-ver`, `-type`, 
 | `calc-song <song_id>` | Song achievement calculation |
 | `artist <keyword> [page]` | Search by artist |
 | `designer <keyword> [page]` | Search by chart designer |
+| `bpm <BPM or range> [page]` | Search by BPM, e.g. `bpm 180` / `bpm 120-180` |
 
 ## Lists and Progress
 

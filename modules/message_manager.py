@@ -1834,14 +1834,14 @@ def generate_ranking_flex(user_id, top5, nearby_entries=None, ver="jp"):
 
 def generate_song_list_flex(user_id, title, matching_songs, page, command_prefix, query, matched_sheets_map=None):
     """
-    生成歌曲列表 Flex Message（黑白简约风，artist/designer 搜索共用）
+    生成歌曲列表 Flex Message（黑白简约风，歌曲搜索列表共用）
 
     Args:
         user_id: 用户ID
         title: 列表标题
         matching_songs: 匹配的歌曲列表
         page: 当前页码（从1开始）
-        command_prefix: 翻页命令前缀（如 "artist" 或 "designer"）
+        command_prefix: 翻页命令前缀（如 "artist"、"designer" 或 "bpm"）
         query: 搜索关键词
         matched_sheets_map: designer 模式下的匹配谱面映射 {song_id: [sheet, ...]}
 
@@ -1893,6 +1893,8 @@ def generate_song_list_flex(user_id, title, matching_songs, page, command_prefix
                 designer_name = s.get('noteDesigner', '')
                 designers.append(f"{designer_name} [{diff_label}]")
             sub_text = ' / '.join(designers)
+        elif command_prefix == "bpm":
+            sub_text = f"BPM: {song.get('bpm', '-')}"
         else:
             # artist 模式：艺术家名
             sub_text = song.get('artist') or '-'

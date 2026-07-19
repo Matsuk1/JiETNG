@@ -25,12 +25,15 @@ ap50 -lv 13.6
 ```text
 artist Nanahira
 designer Jack
+bpm 180
+bpm 120-180
 ヒバナ info
 ヒバナってどんな曲
 ```
 
 - `artist` はアーティスト名検索。
 - `designer` は譜面制作者検索。
+- `bpm` は BPM の完全一致または範囲検索。`120-180`、`120~180`、`120 180` に対応。
 - `info` / `song-info` / `ってどんな曲` は楽曲情報。
 - キーワードは大文字小文字を区別しません。
 

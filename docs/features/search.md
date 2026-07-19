@@ -27,12 +27,15 @@ ap50 -lv 13.6
 ```text
 artist Nanahira
 designer Jack
+bpm 180
+bpm 120-180
 ヒバナ info
 ヒバナってどんな曲
 ```
 
 - `artist` 按艺术家名搜索。
 - `designer` 按谱面设计师搜索。
+- `bpm` 按 BPM 精确值或范围搜索，支持 `120-180`、`120~180`、`120 180`。
 - `info` / `song-info` / `ってどんな曲` 查询歌曲信息。
 - 关键词大小写不敏感。
 

@@ -53,6 +53,7 @@ description: JiETNG 命令大全，包含舞萌DX / maimai B50、查分、レー
 | `calc-song <6位歌曲ID>` | 计算歌曲达成率相关信息 |
 | `artist <关键词> [页码]` | 按艺术家搜索 |
 | `designer <关键词> [页码]` | 按谱师搜索 |
+| `bpm <BPM或范围> [页码]` | 按 BPM 搜索，如 `bpm 180` / `bpm 120-180` |
 
 ## 列表与进度
 

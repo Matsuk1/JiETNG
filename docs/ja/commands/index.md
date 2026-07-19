@@ -53,6 +53,7 @@ description: JiETNG の maimai B50、スコア管理、レート内訳、プレ�
 | `calc-song <楽曲ID>` | 達成率計算 |
 | `artist <キーワード> [ページ]` | アーティスト検索 |
 | `designer <キーワード> [ページ]` | 譜面制作者検索 |
+| `bpm <BPMまたは範囲> [ページ]` | BPM 検索。例: `bpm 180` / `bpm 120-180` |
 
 ## リストと進捗
 

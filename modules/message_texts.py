@@ -469,9 +469,9 @@ friend_rcd_group_warning_text = {
 
 # 搜索命令群聊警告
 search_group_warning_text = {
-    "ja": "⚠️ グループチャットでの荒らし防止のため、artist / designer 検索コマンドは個人チャットでのみ使用できます。",
-    "en": "⚠️ To prevent spam, artist / designer search commands can only be used in private chat.",
-    "zh": "⚠️ 为防止刷屏，artist / designer 搜索命令仅限私聊使用。"
+    "ja": "⚠️ グループチャットでの荒らし防止のため、artist / designer / bpm 検索コマンドは個人チャットでのみ使用できます。",
+    "en": "⚠️ To prevent spam, artist / designer / bpm search commands can only be used in private chat.",
+    "zh": "⚠️ 为防止刷屏，artist / designer / bpm 搜索命令仅限私聊使用。"
 }
 
 # 排行榜

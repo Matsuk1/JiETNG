@@ -2560,6 +2560,70 @@ def search_by_designer(user_id, designer_query, ver="jp", page=1, source_type="u
     title = f"Designer: {designer_query}"
     return generate_song_list_flex(user_id, title, matching_songs, page, "designer", designer_query, matched_sheets_map)
 
+def _parse_bpm_number(value):
+    try:
+        bpm = float(value)
+    except (TypeError, ValueError):
+        return None
+    if bpm <= 0:
+        return None
+    return bpm
+
+def _format_bpm_number(value):
+    if float(value).is_integer():
+        return str(int(value))
+    return f"{value:g}"
+
+def search_by_bpm(user_id, bpm_min, bpm_max=None, ver="jp", page=1, source_type="user"):
+    """
+    通过 BPM 或 BPM 范围搜索歌曲
+
+    Args:
+        user_id: 用户ID
+        bpm_min: BPM 下限
+        bpm_max: BPM 上限；为空时精确查询 bpm_min
+        ver: 服务器版本 (jp/intl)
+        page: 页码
+        source_type: 来源类型 (user/group/room)
+
+    Returns:
+        FlexMessage 歌曲列表 或错误消息
+    """
+    if source_type != 'user':
+        return TextMessage(text=get_multilingual_text(search_group_warning_text, user_id))
+
+    songs, _ = read_dxdata(ver)
+    exact_match = bpm_max is None
+    bpm_max = bpm_min if bpm_max is None else bpm_max
+    if bpm_min > bpm_max:
+        bpm_min, bpm_max = bpm_max, bpm_min
+
+    matching_songs = []
+    for song in songs:
+        song_bpm = _parse_bpm_number(song.get('bpm'))
+        if song_bpm is None:
+            continue
+        if bpm_min <= song_bpm <= bpm_max:
+            matching_songs.append(song)
+
+    if not matching_songs:
+        return song_error(user_id)
+
+    matching_songs.sort(key=lambda song: (
+        _parse_bpm_number(song.get('bpm')) or 0,
+        song.get('title') or '',
+        song.get('type') or ''
+    ))
+
+    if exact_match:
+        query = _format_bpm_number(bpm_min)
+        title = f"BPM: {query}"
+    else:
+        query = f"{_format_bpm_number(bpm_min)}-{_format_bpm_number(bpm_max)}"
+        title = f"BPM: {query}"
+
+    return generate_song_list_flex(user_id, title, matching_songs, page, "bpm", query)
+
 def calc_by_id(user_id, song_id, ver="jp"):
     """
     通过歌曲ID搜索歌曲并返回歌曲calc结果
@@ -4271,6 +4335,39 @@ def cmd_designer(ctx):
         keyword = ' '.join(parts[1:]); page = 1
     return search_by_designer(ctx.user_id, keyword, ctx.mai_ver, page, ctx.source_type)
 
+def cmd_bpm(ctx):
+    raw = re.sub(r"^bpm\s+", "", ctx.text, flags=re.IGNORECASE).strip()
+    tokens = raw.split()
+    page = 1
+    bpm_min = None
+    bpm_max = None
+
+    range_match = re.match(r"^(\d+(?:\.\d+)?)\s*[-~〜]\s*(\d+(?:\.\d+)?)(?:\s+(\d+))?$", raw)
+    if range_match:
+        bpm_min = _parse_bpm_number(range_match.group(1))
+        bpm_max = _parse_bpm_number(range_match.group(2))
+        if range_match.group(3):
+            page = int(range_match.group(3))
+    elif len(tokens) == 1:
+        bpm_min = _parse_bpm_number(tokens[0])
+    elif len(tokens) == 2:
+        first = _parse_bpm_number(tokens[0])
+        second = _parse_bpm_number(tokens[1])
+        if first is not None and second is not None and second > first:
+            bpm_min, bpm_max = first, second
+        elif first is not None and tokens[1].isdigit():
+            bpm_min = first
+            page = int(tokens[1])
+    elif len(tokens) == 3 and tokens[2].isdigit():
+        bpm_min = _parse_bpm_number(tokens[0])
+        bpm_max = _parse_bpm_number(tokens[1])
+        page = int(tokens[2])
+
+    if bpm_min is None or (bpm_max is not None and bpm_max <= 0):
+        return input_error(ctx.user_id)
+
+    return search_by_bpm(ctx.user_id, bpm_min, bpm_max, ctx.mai_ver, page, ctx.source_type)
+
 def cmd_song_info(ctx):
     keyword = re.sub(r"\s*(ってどんな曲|info|song-info)$", "", ctx.text).strip()
     return asyncio.run(search_song(ctx.user_id, keyword, ctx.mai_ver))
@@ -4520,6 +4617,7 @@ COMMANDS = [
             cmd_calc_song, name="calc_song"),
     Command(Prefix("artist "), cmd_artist, name="search_by_artist"),
     Command(Prefix("designer "), cmd_designer, name="search_by_designer"),
+    Command(Prefix("bpm "), cmd_bpm, name="search_by_bpm"),
     Command(Prefix("rc "), cmd_rc, name="rc"),
 
     Command(Regex(r"^(成績エクスポート|成绩导出|export)\s+(json|xml)\s*$",
