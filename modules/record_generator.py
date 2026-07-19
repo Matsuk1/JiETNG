@@ -3,9 +3,10 @@ import logging
 import os
 import re
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 from modules.config_loader import (
+    FONT_FILE,
     PLATES_DIR,
     ICON_TYPE_DIR,
     ICON_SCORE_DIR,
@@ -911,6 +912,14 @@ def _level_group_sort_key(level):
     return (int(match.group(1)), match.group(2))
 
 
+def _fit_font_to_width(draw, text, max_width, start_size, min_size):
+    for size in range(start_size, min_size - 1, -4):
+        font = ImageFont.truetype(FONT_FILE, size)
+        if draw.textlength(text, font=font) <= max_width:
+            return font
+    return ImageFont.truetype(FONT_FILE, min_size)
+
+
 def generate_level_rank_progress_image(
     target_data,
     level_name,
@@ -941,58 +950,58 @@ def generate_level_rank_progress_image(
     footer_height = 30  # 与 generate_cover 中的 footer_height 一致
     row_height = img_size + footer_height + margin
 
-    # 统计卡片区域高度（2x2布局）
-    card_area_height = 180
-
-    all_data = target_data
-
     # 等级模式按定数分组；分类模式按谱面等级分组。
     rows = []
     total_rows = 0
 
     if group_by == "level":
         group_values = sorted(
-            {entry.get("level", "") for entry in all_data},
+            {entry.get("level", "") for entry in target_data},
             key=_level_group_sort_key,
             reverse=True,
         )
     else:
-        group_values = sorted(set(entry["internal_level"] for entry in all_data), reverse=True)
+        group_values = sorted(set(entry["internal_level"] for entry in target_data), reverse=True)
 
     for group_value in group_values:
         level_str = str(group_value) if group_by == "level" else f"{group_value:.1f}"
-        row_entries = [entry for entry in all_data if entry.get(group_by) == group_value]
+        row_entries = [entry for entry in target_data if entry.get(group_by) == group_value]
 
-        # 按达成状态和达成率排序：已达成在前，未达成的按达成率从大到小
-        # (not achieved, -achievement_rate)
-        # achieved=True -> False -> 0, achieved=False -> True -> 1
-        # 所以已达成的(0)会排在未达成的(1)前面
-        # -achievement_rate 让达成率大的排在前面
         row_entries.sort(key=lambda x: (not x["achieved"], -x.get("achievement_rate", 0.0)))
 
         if row_entries:
             rows.append((level_str, row_entries))
             total_rows += math.ceil(len(row_entries) / max_per_row)
 
-    # 计算总高度
-    # 卡片总高度 = 2行卡片 + 中间间距
-    cards_total_height = 2 * int(65 * 1.2) + int(12 * 1.2)
-    # 总高度 = 顶部边距 + 卡片区域 + 卡片到内容间距 + 内容高度 + 底部边距
-    total_height = margin + 15 + cards_total_height + 60 + total_rows * row_height + margin
+    # 顶部布局：标题单独居中一行，统计卡片下一行横向铺满。
+    if rank_name:
+        suffix = " PROGRESS" if show_progress_suffix else ""
+        title_text = f"{level_name} {rank_name}{suffix}"
+    else:
+        title_text = f"{level_name} LEVEL LIST"
+
+    measure_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1), (0, 0, 0, 0)))
+    title_font = _fit_font_to_width(measure_draw, title_text, img_width - margin * 4, 170, 92)
+    title_bbox = measure_draw.textbbox((0, 0), title_text, font=title_font, stroke_width=3)
+    title_height = title_bbox[3] - title_bbox[1]
+
+    title_y = margin + 5
+    card_y = title_y + title_height + 42
+    card_height = 138
+    card_gap_x = 26
+    content_gap = 54
+    top_area_height = card_y + card_height + content_gap
+
+    total_height = top_area_height + total_rows * row_height + margin
 
     final_img = Image.new("RGBA", (img_width, total_height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(final_img)
 
-    # 绘制统计卡片
-    card_start_x = margin + 5
-    card_y = margin + 30
-    card_width = 366
-    card_height = 78
-    card_gap_x = 18
-    card_gap_y = 14
-    border_width = 8
+    card_start_x = margin * 2
+    card_area_width = img_width - card_start_x * 2
+    card_width = (card_area_width - card_gap_x * 3) // 4
+    border_width = 12
+    card_radius = 18
 
-    # 四个统计卡片：完了、未完了、未プレイ、总计
     card_data = [
         ("完了", stats["achieved"], (76, 175, 80)),       # 绿色
         ("未完了", stats["unachieved"], (255, 152, 0)),   # 橙色
@@ -1000,29 +1009,23 @@ def generate_level_rank_progress_image(
         ("総計", stats["total"], (66, 133, 244))          # 蓝色
     ]
 
-    final_img_rgba = final_img.convert("RGBA")
+    final_img_rgba = final_img
 
     for idx, (label, count, color) in enumerate(card_data):
-        # 计算卡片位置（2列布局，先上下后左右）
-        row = idx % 2
-        col = idx // 2
-        card_x = card_start_x + col * (card_width + card_gap_x)
-        current_y = card_y + row * (card_height + card_gap_y)
+        card_x = card_start_x + idx * (card_width + card_gap_x)
+        current_y = card_y
 
-        # 创建卡片层用于阴影和圆角
         card_layer = Image.new("RGBA", final_img_rgba.size, (0, 0, 0, 0))
         card_draw = ImageDraw.Draw(card_layer)
 
-        # 绘制阴影效果
         shadow_offset = 3
         card_draw.rounded_rectangle(
             [card_x + shadow_offset, current_y + shadow_offset,
              card_x + card_width + shadow_offset, current_y + card_height + shadow_offset],
-            radius=12,
+            radius=card_radius,
             fill=(0, 0, 0, 30)
         )
 
-        # 绘制卡片主体背景（使用浅色版本）
         r, g, b = color
         light_r = int(r + (255 - r) * 0.85)
         light_g = int(g + (255 - g) * 0.85)
@@ -1031,54 +1034,50 @@ def generate_level_rank_progress_image(
 
         card_draw.rounded_rectangle(
             [card_x, current_y, card_x + card_width, current_y + card_height],
-            radius=12,
+            radius=card_radius,
             fill=bg_color
         )
 
-        # 绘制左侧彩色边框
         card_draw.rounded_rectangle(
             [card_x, current_y, card_x + border_width, current_y + card_height],
-            radius=12,
+            radius=card_radius,
             fill=color + (255,)
         )
 
-        # 将卡片层合成到图像上
         final_img_rgba = Image.alpha_composite(final_img_rgba, card_layer)
         card_draw = ImageDraw.Draw(final_img_rgba)
 
-        # 绘制标签（左侧，边框后）
-        text_x = card_x + border_width + 15
-        text_y = current_y + (card_height - 30) // 2
-        card_draw.text((text_x, text_y), label, fill=(60, 60, 60), font=font_large)
-
-        # 绘制数量（右侧对齐），非总计加百分比
         total = stats["total"]
         if label != "総計" and total > 0:
             pct = count / total * 100
             data_text = f"{count} ({pct:.1f}%)"
         else:
             data_text = str(count)
-        data_text_width = card_draw.textlength(data_text, font=font_large)
-        data_x = card_x + card_width - data_text_width - 15
-        card_draw.text((data_x, text_y), data_text, fill=(40, 40, 40), font=font_large)
+
+        inner_x = card_x + border_width + 28
+        inner_w = card_width - border_width - 56
+        label_font = _fit_font_to_width(card_draw, label, inner_w, 54, 38)
+        data_font = _fit_font_to_width(card_draw, data_text, inner_w, 66, 42)
+
+        label_bbox = card_draw.textbbox((0, 0), label, font=label_font)
+        data_bbox = card_draw.textbbox((0, 0), data_text, font=data_font)
+        text_block_height = (label_bbox[3] - label_bbox[1]) + 8 + (data_bbox[3] - data_bbox[1])
+        text_y = current_y + (card_height - text_block_height) // 2
+
+        card_draw.text((inner_x, text_y - label_bbox[1]), label, fill=(72, 72, 72), font=label_font)
+        data_y = text_y + (label_bbox[3] - label_bbox[1]) + 8
+        card_draw.text((inner_x, data_y - data_bbox[1]), data_text, fill=(32, 32, 32), font=data_font)
 
     final_img = final_img_rgba
     draw = ImageDraw.Draw(final_img)
 
-    # 绘制右侧标题
-    if rank_name:
-        suffix = " PROGRESS" if show_progress_suffix else ""
-        title_text = f"{level_name} {rank_name}{suffix}"
-    else:
-        title_text = f"{level_name} LEVEL LIST"
-    title_text_size = draw.textlength(title_text, font=font_record_title)
-    title_x = img_width - margin - title_text_size - 15
-    title_y = 5
-    draw.text((title_x, title_y), title_text, fill=(255, 255, 255), font=font_record_title, stroke_width=3, stroke_fill=(50, 50, 50))
+    # 绘制居中标题
+    title_text_size = draw.textlength(title_text, font=title_font)
+    title_x = (img_width - title_text_size) / 2
+    draw.text((title_x, title_y - title_bbox[1]), title_text, fill=(255, 255, 255), font=title_font, stroke_width=3, stroke_fill=(50, 50, 50))
 
     # 渲染主体图像内容
-    cards_total_height = 2 * card_height + card_gap_y
-    y_offset = card_y + cards_total_height + 40
+    y_offset = top_area_height
 
     for level_str, entries_list in rows:
         _draw_level_label(draw, level_str, margin, y_offset, img_size, font_level_badge)
