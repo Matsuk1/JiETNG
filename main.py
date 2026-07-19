@@ -3038,6 +3038,39 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None)
     return message
 
 
+PROGRESS_RANK_PATTERN = r"(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)"
+PROGRESS_CATEGORY_ALIASES = {
+    "vocaloid": "niconico＆ボーカロイド",
+    "popani": "POPS＆アニメ",
+    "touhou": "東方Project",
+    "gekichu": "オンゲキ＆CHUNITHM",
+    "game": "ゲーム＆バラエティ",
+    "maimai": "maimai",
+}
+
+
+def _resolve_progress_category(target):
+    key = str(target or "").strip().lower()
+    if not key:
+        return None
+    alias = PROGRESS_CATEGORY_ALIASES.get(key)
+    if alias:
+        return alias
+    return None
+
+
+def _parse_level_rank_progress_text(text):
+    lowered = re.sub(r"\s+", " ", text.strip().lower())
+    body = re.sub(r"\s*-(uc|up|c)\s*$", "", lowered).strip()
+    body = re.sub(r"\s*(progress|進捗|进度)\s*$", "", body).strip()
+    match = re.search(fr"{PROGRESS_RANK_PATTERN}\s*$", body)
+    if not match:
+        return None, None
+    target = body[:match.start()].strip()
+    rank = match.group(1)
+    return target, rank
+
+
 async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="jp", filter_mode=None):
     """
     生成指定难度和评级的达成情况图片（定数列表+统计卡片）
@@ -3045,7 +3078,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
     参数:
         user_id: 请求用户ID
         id_use: 目标用户ID
-        level: 难度等级（如 "13", "13+", "14", "14+", "15"）
+        level: 难度等级或分类关键词（如 "13", "14+", "vocaloid"）
         rank: 评级（如 "s", "s+", "ss", "ss+", "sss", "sss+", "ap", "ap+", "fdx", "fdx+"），可选
         ver: 服务器版本（"jp" 或 "intl"）
         filter_mode: 过滤模式（"uncleared"=只显示未完成, "unplayed"=只显示未游玩, "cleared"=只显示已完成）
@@ -3058,10 +3091,14 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
     if "personal_info" not in _id_use_data:
         return mention_error(user_id) if id_use != user_id else info_error(user_id)
 
-    # 检查等级是否支持
     supported_levels = ["11", "11+", "12", "12+", "13", "13+", "14", "14+", "15"]
-    if level not in supported_levels:
-        return level_not_supported(user_id)
+    songs, _ = read_dxdata(ver)
+    target_category = None
+    is_level_target = level in supported_levels
+    if not is_level_target:
+        target_category = _resolve_progress_category(level)
+        if not target_category:
+            return level_not_supported(user_id)
 
     # 评级映射：用户输入 -> 内部标识
     rank_mapping = {
@@ -3108,23 +3145,24 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
     unachieved_count = 0  # 未达成（有记录但未达标）
     unplayed_count = 0  # 未游玩
     
-    songs, _ = read_dxdata(ver)
     for song in songs:
         if song['type'] == 'utage':
+            continue
+        if target_category and song.get("category") != target_category:
             continue
 
         for sheet in song['sheets']:
             if not sheet['regions'].get(region_key, False):
                 continue
 
-            # 只处理指定等级的谱面
-            # 14+ 包含 14+ 和 15 级别
-            if level == "14+":
-                if sheet['level'] not in ["14+", "15"]:
-                    continue
-            else:
-                if sheet['level'] != level:
-                    continue
+            if is_level_target:
+                # 14+ 包含 14+ 和 15 级别
+                if level == "14+":
+                    if sheet['level'] not in ["14+", "15"]:
+                        continue
+                else:
+                    if sheet['level'] != level:
+                        continue
 
             difficulty = sheet['difficulty']
             total_charts += 1
@@ -3212,7 +3250,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
         return mention_no_matching_data(user_id) if id_use != user_id else no_matching_data(user_id)
 
     # 生成标题
-    level_display = level.replace("+", "⁺")
+    level_display = level.replace("+", "⁺") if is_level_target else target_category
     rank_display = rank.upper().replace("+", "⁺") if rank else ""
 
     # 总体统计数据
@@ -4242,9 +4280,9 @@ COMMAND_HELP = {
         "命令: <レベルまたは定数> records [ページ] / <レベルまたは定数> record-list [ページ]\n说明: 指定レベルまたは定数の成績リストを表示します。\n参数: 必須: <レベルまたは定数>。13、13+、14、13.6 などに対応します。\n任意: [ページ]。1 から始まる正整数。省略時は 1 ページ目です。\n検索: 整数/+ はレベル、小数は定数の完全一致です。\n示例: 13.6 records\n14 records 2",
     ),
     "level_rank_progress": _help_text(
-        "命令: <等级><评价> progress [-uc|-up|-c]\n说明: 查看指定等级和评价目标的达成进度。\n参数: 必填: <等级>，支持 1-15、带 + 等级，例如 13+、14。\n必填: <评价>，紧跟等级书写，支持 s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+。\n可选: -uc 仅看未完成目标，-up 仅看未游玩，-c 仅看已完成目标。\n格式: 等级和评价中间不要空格，例如 14sss+ progress。\n示例: 14sss+ progress\n13ap progress -uc",
-        "命令: <level><rank> progress [-uc|-up|-c]\n说明: Show progress toward a rank target at a level.\n参数: Required: <level>, supports 1-15 and plus levels such as 13+ and 14.\nRequired: <rank>, written immediately after level; supports s, s+, ss, ss+, sss, sss+, fc, fc+, ap, ap+, fdx, fdx+.\nOptional: -uc shows unfinished target charts, -up shows unplayed charts, -c shows completed target charts.\nFormat: do not put a space between level and rank, for example 14sss+ progress.\n示例: 14sss+ progress\n13ap progress -uc",
-        "命令: <レベル><評価> progress [-uc|-up|-c]\n说明: 指定レベルと評価目標の進捗を表示します。\n参数: 必須: <レベル>。1-15、13+、14 などに対応します。\n必須: <評価>。レベル直後に書きます。s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+ に対応します。\n任意: -uc は目標未達成のみ、-up は未プレイのみ、-c は目標達成済みのみを表示します。\n形式: レベルと評価の間に空白を入れません。例: 14sss+ progress。\n示例: 14sss+ progress\n13ap progress -uc",
+        "命令: <等级或分类><评价> progress [-uc|-up|-c]\n说明: 查看指定等级或分类中评价目标的达成进度。\n参数: 必填: <等级或分类>，等级支持 11-15、13+、14；分类支持 vocaloid、touhou、popani、gekichu、game、maimai。\n必填: <评价>，紧跟等级/分类书写，支持 s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+。\n可选: -uc 仅看未完成目标，-up 仅看未游玩，-c 仅看已完成目标。\n格式: 等级可直接连写，例如 14sss+ progress；分类建议和评价之间加空格，例如 vocaloid sss+ progress。\n示例: 14sss+ progress\n13ap progress -uc\nvocaloid sss+ progress\npopani ss+ progress -up",
+        "命令: <level or category><rank> progress [-uc|-up|-c]\n说明: Show progress toward a rank target at a level or song category.\n参数: Required: <level or category>; levels support 11-15, 13+, 14; categories support vocaloid, touhou, popani, gekichu, game, and maimai.\nRequired: <rank>, written after the level/category; supports s, s+, ss, ss+, sss, sss+, fc, fc+, ap, ap+, fdx, fdx+.\nOptional: -uc shows unfinished target charts, -up shows unplayed charts, -c shows completed target charts.\nFormat: levels may be joined directly, for example 14sss+ progress; put a space after category names, for example vocaloid sss+ progress.\n示例: 14sss+ progress\n13ap progress -uc\nvocaloid sss+ progress\npopani ss+ progress -up",
+        "命令: <レベルまたはカテゴリ><評価> progress [-uc|-up|-c]\n说明: 指定レベルまたはカテゴリ内の評価目標進捗を表示します。\n参数: 必須: <レベルまたはカテゴリ>。レベルは 11-15、13+、14、カテゴリは vocaloid、touhou、popani、gekichu、game、maimai に対応します。\n必須: <評価>。レベル/カテゴリの後に書きます。s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+ に対応します。\n任意: -uc は目標未達成のみ、-up は未プレイのみ、-c は目標達成済みのみを表示します。\n形式: レベルは 14sss+ progress のように連結できます。カテゴリは vocaloid sss+ progress のように空白区切りを推奨します。\n示例: 14sss+ progress\n13ap progress -uc\nvocaloid sss+ progress\npopani ss+ progress -up",
     ),
     "song_info": _help_text(
         "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 查询歌曲基本信息、谱面信息和 BPM。\n参数: 必填: <曲名>，写在 info / song-info 前面，可以是完整曲名、部分曲名或别名。\n匹配: 如果匹配到多首歌，会返回可选择的候选结果。\n示例: ヒバナ info\nヒバナってどんな曲",
@@ -4467,10 +4505,7 @@ def _detect_command_help_key(text):
         return "level_records"
     if re.match(r"^.+(の達成状況|achievement)(\s*-(uc|up|c))?$", lowered):
         return "plate"
-    if re.match(
-        r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)\s*(?:-(uc|up|c))?$",
-        lowered,
-    ):
+    if re.match(fr"^.+\s*{PROGRESS_RANK_PATTERN}\s*(progress|進捗|进度)\s*(?:-(uc|up|c))?$", lowered):
         return "level_rank_progress"
 
     missing_param_help_key = _detect_missing_param_help_key(lowered)
@@ -4703,9 +4738,9 @@ def cmd_level_rank_list(ctx):
 def cmd_level_rank_progress(ctx):
     """难度 + 评级 + 进度，如 \"13sss+進捗\" / \"14AP progress -uc\""""
     msg_lower = ctx.text.lower()
-    level = re.match(r"^(\d+\+?)", msg_lower).group(1)
-    rank = re.search(r"(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)",
-                     msg_lower).group(1)
+    level, rank = _parse_level_rank_progress_text(msg_lower)
+    if not level or not rank:
+        return input_error(ctx.user_id)
     filter_mode = ("uncleared" if re.search(r"-uc\s*$", msg_lower) else
                    "unplayed" if re.search(r"-up\s*$", msg_lower) else
                    "cleared" if re.search(r"-c\s*$", msg_lower) else None)
@@ -4857,7 +4892,7 @@ COMMANDS = [
             cmd_level_records, queue=QUEUE_IMAGE, mention_queryable=True,
             name="level_records"),
     Command(Regex(
-        r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)\s*(?:-(uc|up|c))?\s*$",
+        fr"^.+\s*{PROGRESS_RANK_PATTERN}\s*(progress|進捗|进度)\s*(?:-(uc|up|c))?\s*$",
         re.IGNORECASE),
             cmd_level_rank_progress, queue=QUEUE_IMAGE, mention_queryable=True,
             name="level_rank_progress"),
