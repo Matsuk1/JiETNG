@@ -55,7 +55,7 @@ COLOR_AD_BG = "#FFF4E6"
 HELP_UI_TEXT = {
     "help_title": {"zh": "命令帮助", "en": "Command Help", "ja": "コマンドヘルプ"},
     "usage": {"zh": "用法", "en": "Usage", "ja": "使い方"},
-    "function": {"zh": "功能", "en": "Function", "ja": "機能"},
+    "function": {"zh": "说明", "en": "Description", "ja": "説明"},
     "params": {"zh": "参数", "en": "Parameters", "ja": "引数"},
     "examples": {"zh": "示例", "en": "Examples", "ja": "例"},
     "notes": {"zh": "注意", "en": "Notes", "ja": "注意"},
@@ -709,7 +709,7 @@ def generate_help_index_flex(user_id=None):
         (
             _help_i18n(user_id, "工具", "Tools", "ツール"),
             "rank / rc / calc / refreshmenu",
-            _help_i18n(user_id, "排行榜、Rating 内訳、分值计算和辅助功能。", "Ranking, rating breakdown, note scoring, and utility commands.", "ランキング、レート内訳、ノーツ点数計算、補助機能。"),
+            _help_i18n(user_id, "排行榜、Rating 内訳、分值计算和辅助命令。", "Ranking, rating breakdown, note scoring, and utility commands.", "ランキング、レート内訳、ノーツ点数計算、補助コマンド。"),
             "#6B7280",
         ),
     ]
