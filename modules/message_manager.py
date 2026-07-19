@@ -1550,7 +1550,6 @@ def generate_update_result_flex(
     if random_ad:
         extra_rows.append(generate_tip_ad_box(random_ad, lang))
     if extra_rows:
-        body_contents.append(_help_section_title(_help_ui("notes", user_id)))
         body_contents.extend(extra_rows)
 
     alt_text = texts['alt_text_success'] if success else texts['alt_text_error']
@@ -2689,7 +2688,6 @@ def generate_bot_status_flex(uptime_str, image_queue_size, web_queue_size,
     if random_ad:
         extra_rows.append(generate_tip_ad_box(random_ad, lang))
     if extra_rows:
-        body_contents.append(_help_section_title(_help_ui("notes", user_id)))
         body_contents.extend(extra_rows)
 
     bubble = {
