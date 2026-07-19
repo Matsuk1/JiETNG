@@ -134,23 +134,30 @@ def _draw_detail_line(draw, x, y, key, value, font, max_w, lh):
 
 
 def _draw_level_label(draw, text, x, row_top, content_h, font,
-                      pad_x=14, pad_y=8, radius=12, dx=-4, dy=6,
+                      diameter=72, dx=-6, dy=0,
                       border_color=(150, 150, 150, 255), border_width=3):
-    """在左侧等级占位处绘制白色圆角矩形卡片（带边框），并把等级文字（如 13.6 / 14+）在卡片内垂直居中。
+    """绘制固定大小的等级圆形标签。"""
+    label_text = str(text)
+    max_text_width = diameter - border_width * 2 - 8
+    label_font = font
+    if draw.textlength(label_text, font=label_font) > max_text_width:
+        label_font = _fit_font_to_width(draw, label_text, max_text_width, 40, 28)
 
-    dx / dy 让卡片与文字整体平移（负 = 左 / 上），调用处无需改动。
-    """
-    ascent, descent = font.getmetrics()
-    text_h = ascent + descent
-    text_w = int(draw.textlength(text, font=font))
-    tx = x + dx
-    ty = row_top + (content_h - text_h) // 2 + dy
-    draw.rounded_rectangle(
-        (tx - pad_x, ty - pad_y, tx + text_w + pad_x, ty + text_h + pad_y),
-        radius=radius, fill=(255, 255, 255, 255),
-        outline=border_color, width=border_width,
+    left = x + dx
+    top = row_top + (content_h - diameter) // 2 + dy
+    draw.ellipse(
+        (left, top, left + diameter, top + diameter),
+        fill=(255, 255, 255, 255),
+        outline=border_color,
+        width=border_width,
     )
-    draw.text((tx, ty), text, fill="black", font=font)
+
+    bbox = draw.textbbox((0, 0), label_text, font=label_font)
+    text_w = bbox[2] - bbox[0]
+    text_h = bbox[3] - bbox[1]
+    tx = left + (diameter - text_w) / 2 - bbox[0]
+    ty = top + (diameter - text_h) / 2 - bbox[1]
+    draw.text((tx, ty), label_text, fill="black", font=label_font)
 
 
 def create_thumbnail_in_line(song):
