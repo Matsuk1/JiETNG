@@ -50,7 +50,7 @@ python -m jietng_discord_bot
 - `/profile` shows your JiETNG profile metadata.
 - `/sync` streams your JiETNG data sync and replies when it finishes.
 - `/b50 [command]`, `/b40 [command]`, `/b35 [command]`, `/b15 [command]` send Best records images.
-- `/ab35 [command]`, `/ab50 [command]`, `/ap50 [command]`, `/fdx50 [command]`, `/r50 [command]`, `/idlb50 [command]`, `/unknown [command]` send specialized records images.
+- `/ab35 [command]`, `/ab50 [command]`, `/ap50 [command]`, `/fdx50 [command]`, `/r50 [command]`, `/idlb50 [command]` send specialized records images.
 - `/achievement level [rank] [filter_mode]` sends a level / achievement image.
 - `/plate title [filter_mode]` sends a plate image.
 - `/song query [ver]` searches by song title / alias; one match sends the song info image, multiple matches send public selection buttons.

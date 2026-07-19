@@ -4330,7 +4330,14 @@ def _command_help_message(help_key):
     return TextMessage(text=text) if text else None
 
 
-def _flex_text(text, size="sm", color="#222222", weight=None, wrap=True, margin=None):
+HIDDEN_HELP_COMMAND_WORDS = {"unknown"}
+HELP_B_COMMAND_WORDS = tuple(
+    word for word in _B_COMMAND_WORDS
+    if word not in HIDDEN_HELP_COMMAND_WORDS
+)
+
+
+def _flex_text(text, size="sm", color="#222222", weight=None, wrap=True, margin=None, align=None):
     node = {
         "type": "text",
         "text": text,
@@ -4342,64 +4349,188 @@ def _flex_text(text, size="sm", color="#222222", weight=None, wrap=True, margin=
         node["weight"] = weight
     if margin:
         node["margin"] = margin
+    if align:
+        node["align"] = align
     return node
 
 
-def _help_section(title, rows):
+def _pill(text, color="#315B7D", bg_color="#EAF4FF"):
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "backgroundColor": bg_color,
+        "cornerRadius": "12px",
+        "paddingTop": "3px",
+        "paddingBottom": "3px",
+        "paddingStart": "8px",
+        "paddingEnd": "8px",
+        "contents": [
+            _flex_text(text, size="xxs", color=color, weight="bold", align="center", wrap=False)
+        ],
+    }
+
+
+def _section_title(title, accent="#FF7A45"):
+    return {
+        "type": "box",
+        "layout": "horizontal",
+        "spacing": "sm",
+        "alignItems": "center",
+        "margin": "lg",
+        "contents": [
+            {
+                "type": "box",
+                "layout": "vertical",
+                "width": "4px",
+                "height": "18px",
+                "cornerRadius": "2px",
+                "backgroundColor": accent,
+                "contents": [{"type": "filler"}],
+            },
+            _flex_text(title, size="sm", color="#111111", weight="bold"),
+        ],
+    }
+
+
+def _mode_card(title, body, accent):
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "xs",
+        "paddingAll": "10px",
+        "cornerRadius": "8px",
+        "borderWidth": "1px",
+        "borderColor": "#E6E8EC",
+        "contents": [
+            _flex_text(title, size="xs", color=accent, weight="bold"),
+            _flex_text(body, size="xxs", color="#555555"),
+        ],
+    }
+
+
+def _filter_row(label, desc, example=None):
     contents = [
-        _flex_text(title, size="sm", color="#111111", weight="bold"),
+        {
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+                _pill(label, color="#C93D47", bg_color="#FFF0F1"),
+            ],
+        },
+        _flex_text(desc, size="xxs", color="#555555", margin="xs"),
     ]
-    for label, desc in rows:
+    if example:
         contents.append({
             "type": "box",
             "layout": "vertical",
-            "spacing": "xs",
-            "margin": "sm",
+            "margin": "xs",
+            "paddingAll": "7px",
+            "cornerRadius": "6px",
+            "backgroundColor": "#F7F8FA",
             "contents": [
-                _flex_text(label, size="xs", color="#D64545", weight="bold"),
-                _flex_text(desc, size="xs", color="#555555"),
+                _flex_text(example, size="xxs", color="#222222"),
             ],
         })
     return {
         "type": "box",
         "layout": "vertical",
-        "spacing": "xs",
-        "margin": "lg",
+        "paddingBottom": "8px",
         "contents": contents,
+    }
+
+
+def _note_row(label, desc):
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "xs",
+        "paddingAll": "9px",
+        "cornerRadius": "8px",
+        "backgroundColor": "#F8FAFC",
+        "contents": [
+            _flex_text(label, size="xs", color="#315B7D", weight="bold"),
+            _flex_text(desc, size="xxs", color="#555555"),
+        ],
     }
 
 
 def _build_b_records_help_flex():
     modes = [
-        ("Best", "`b50`/`best50`, `b40`/`best40`, `b35`/`best35`, `b15`/`best15`"),
-        ("All Best", "`ab50`/`allb50`, `ab35`/`allb35`"),
-        ("Special", "`ap50`, `fdx50`, `r50`/`rct50`, `idlb50`, `s50`, `unknown`"),
+        ("Best", "b50 / best50, b40 / best40, b35 / best35, b15 / best15", "#E85D75"),
+        ("All Best", "ab50 / allb50, ab35 / allb35", "#8A63D2"),
+        ("Special", "ap50, fdx50, r50 / rct50, idlb50, s50 / sun50", "#267D8B"),
     ]
     filters = [
-        ("-lv / -level", "等级或定数；1 个值为精确匹配，2 个值为范围。例: `-lv 13.6` / `-lv 14 14.9`"),
-        ("-diff / -difficulty", "难度；支持 `bas adv exp mas rem` 或完整名，可多个。例: `-diff mas rem`"),
-        ("-ra / -rating", "单谱 Rating；1 个值精确匹配，2 个值范围。例: `-ra 320 360`"),
-        ("-scr / -score", "达成率；1 个值为下限，2 个值为范围。例: `-scr 100.5` / `-scr 100 100.5`"),
-        ("-dx / -dxscore", "无参数时按 DX 分排序；带值时筛 DX Score 百分比。例: `-dx` / `-dx 95 100`"),
-        ("-star / -dxstar", "DX 星数；1 个值精确匹配，2 个值范围。例: `-star 5`"),
-        ("-ver / -version", "版本名，可多个；`+` 会识别为 PLUS，`dx/deluxe` 会归一。例: `-ver buddies prism+`"),
-        ("-type / -tp", "谱面类型；支持 `dx`、`std`，可多个。例: `-type dx`"),
-        ("-next / -nxt", "按当前版本分上下栏：旧曲在上，新曲在下。无需参数。"),
-        ("-page / -pg", "页码，从 1 开始。例: `-page 2`"),
-        ("-times / -tm", "扩大输出数量倍率，最大 2.5。例: `-times 2`"),
-    ]
-    requirements = [
-        ("数据要求", "需要已绑定账号并完成 `maimai update`，或已有 Import Token/开发者 API 导入的数据。"),
-        ("组合规则", "筛选参数可以组合；参数和参数值之间用空格分隔。例: `b50 -lv 14 14.9 -diff mas rem -scr 100.5`"),
-        ("查询他人", "支持 LINE mention 查询已注册用户；仅限本人命令不会接受 mention。"),
+        ("-lv / -level", "等级或定数。1 个值精确匹配，2 个值范围。", "-lv 13.6   /   -lv 14 14.9"),
+        ("-diff / -difficulty", "难度。支持 bas、adv、exp、mas、rem 或完整名，可多个。", "-diff mas rem"),
+        ("-ra / -rating", "单谱 Rating。1 个值精确匹配，2 个值范围。", "-ra 320 360"),
+        ("-scr / -score", "达成率。1 个值为下限，2 个值为范围。", "-scr 100.5   /   -scr 100 100.5"),
+        ("-dx / -dxscore", "无参数时按 DX 分排序；带值时筛 DX Score 百分比。", "-dx   /   -dx 95 100"),
+        ("-star / -dxstar", "DX 星数。1 个值精确匹配，2 个值范围。", "-star 5"),
+        ("-ver / -version", "版本名，可多个。+ 会识别为 PLUS，dx / deluxe 会归一。", "-ver buddies prism+"),
+        ("-type / -tp", "谱面类型。支持 dx、std，可多个。", "-type dx"),
+        ("-next / -nxt", "下版本预览。按下一版本 Rating 结构预览成绩图。", "-nxt"),
+        ("-page / -pg", "页码，从 1 开始。", "-page 2"),
+        ("-times / -tm", "扩大输出数量倍率，最大 2.5。", "-times 2"),
     ]
 
     body_contents = [
-        _flex_text("B 系列成绩图", size="lg", color="#111111", weight="bold"),
-        _flex_text("生成 Best / All Best / 特殊成绩图，可追加筛选参数。", size="xs", color="#666666", margin="sm"),
-        _help_section("可用模式", modes),
-        _help_section("筛选参数", filters),
-        _help_section("要求与示例", requirements),
+        {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "xs",
+            "paddingAll": "14px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#111827",
+            "contents": [
+                _flex_text("B 系列成绩图", size="lg", color="#FFFFFF", weight="bold"),
+                _flex_text("Best / All Best / 特殊成绩图与筛选参数", size="xs", color="#D1D5DB", margin="xs"),
+            ],
+        },
+        _section_title("可用模式"),
+        {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+                _mode_card(title, body, color)
+                for title, body, color in modes
+            ],
+        },
+        _section_title("筛选参数"),
+        {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+                _filter_row(label, desc, example)
+                for label, desc, example in filters
+            ],
+        },
+        _section_title("组合示例"),
+        {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "xs",
+            "paddingAll": "10px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#F7F8FA",
+            "contents": [
+                _flex_text("b50 -lv 14 14.9 -diff mas rem -scr 100.5", size="xxs", color="#111111"),
+                _flex_text("ab50 -ver buddies -type dx", size="xxs", color="#111111"),
+                _flex_text("r50 -page 2", size="xxs", color="#111111"),
+            ],
+        },
+        {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "margin": "lg",
+            "contents": [
+                _note_row("数据要求", "需要已绑定账号并完成 maimai update，或已有 Import Token / 开发者 API 导入的数据。"),
+                _note_row("查询他人", "支持 LINE mention 查询已注册用户；仅限本人命令不会接受 mention。"),
+            ],
+        },
     ]
     bubble = {
         "type": "bubble",
@@ -4407,7 +4538,7 @@ def _build_b_records_help_flex():
         "body": {
             "type": "box",
             "layout": "vertical",
-            "spacing": "sm",
+            "spacing": "md",
             "paddingAll": "16px",
             "contents": body_contents,
         },
@@ -4432,7 +4563,7 @@ def _detect_command_help_key(text):
         return "ranking"
     if first_word == "random":
         return "random_song"
-    if first_word in _B_COMMAND_WORDS:
+    if first_word in HELP_B_COMMAND_WORDS:
         return "b_records"
     if first_word in FIRST_WORD_HELP_ALIASES:
         return FIRST_WORD_HELP_ALIASES[first_word]

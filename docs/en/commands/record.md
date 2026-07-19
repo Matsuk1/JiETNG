@@ -21,7 +21,6 @@ fdxb50 / fdx50
 rct50 / r50
 idealb50 / idlb50
 s50 / sun50 / 寸50 / 寸止め
-unknown
 ```
 
 Filters can be appended to the same command.
@@ -43,7 +42,7 @@ b50 -times 2
 b50 -page 2
 ```
 
-Supported fields include level/constant, chart rating, achievement, DX score, DX stars, difficulty, chart type, version, page, and display multiplier.
+Supported fields include level/constant, chart rating, achievement, DX score, DX stars, difficulty, chart type, version, next-version preview, page, and display multiplier.
 
 ## Song Records
 

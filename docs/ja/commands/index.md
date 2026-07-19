@@ -40,9 +40,8 @@ description: JiETNG の maimai B50、スコア管理、レート内訳、プレ�
 | `rct50` / `r50` | Recent 50 |
 | `idealb50` / `idlb50` | Ideal Best 50 |
 | `s50` / `sun50` / `寸50` / `寸止め` | SSS+ / SSS 寸止め 50：100.4000%-100.4999%、99.9000%-99.9999% |
-| `unknown` | バージョン不明楽曲 |
 
-`-lv`、`-ra`、`-scr`、`-dx`、`-star`、`-diff`、`-ver`、`-type`、`-page`、`-times` を追加できます。
+`-lv`、`-ra`、`-scr`、`-dx`、`-star`、`-diff`、`-ver`、`-type`、`-next` / `-nxt`、`-page`、`-times` を追加できます。
 
 ## 楽曲と成績
 

@@ -40,9 +40,8 @@ description: JiETNG 命令大全，包含舞萌DX / maimai B50、查分、レー
 | `rct50` / `r50` | Recent 50 |
 | `idealb50` / `idlb50` | 理想分数 Best 50 |
 | `寸50` / `寸止め` / `s50` / `sun50` | 寸止め 50：100.4000%-100.4999%、99.9000%-99.9999% |
-| `unknown` | 版本未知歌曲列表 |
 
-可追加 `-lv`、`-ra`、`-scr`、`-dx`、`-star`、`-diff`、`-ver`、`-type`、`-page`、`-times` 等参数。
+可追加 `-lv`、`-ra`、`-scr`、`-dx`、`-star`、`-diff`、`-ver`、`-type`、`-next` / `-nxt`、`-page`、`-times` 等参数。
 
 ## 歌曲与成绩
 

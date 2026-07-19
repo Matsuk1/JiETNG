@@ -40,9 +40,8 @@ Append `-help` to any command to see its usage. Commands that require arguments 
 | `rct50` / `r50` | Recent 50 |
 | `idealb50` / `idlb50` | Ideal Best 50 |
 | `s50` / `sun50` / `寸50` / `寸止め` | Near-miss 50 for SSS+ / SSS: 100.4000%-100.4999%, 99.9000%-99.9999% |
-| `unknown` | Songs with unknown version |
 
-Filters such as `-lv`, `-ra`, `-scr`, `-dx`, `-star`, `-diff`, `-ver`, `-type`, `-page`, and `-times` can be appended.
+Filters such as `-lv`, `-ra`, `-scr`, `-dx`, `-star`, `-diff`, `-ver`, `-type`, `-next` / `-nxt`, `-page`, and `-times` can be appended.
 
 ## Songs and Records
 
