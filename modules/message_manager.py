@@ -232,18 +232,7 @@ def _help_body_row(desc):
 
 def _standard_help_bubble(title, subtitle, sections, alt_text):
     body_contents = [
-        {
-            "type": "box",
-            "layout": "vertical",
-            "spacing": "xs",
-            "paddingAll": "14px",
-            "cornerRadius": "8px",
-            "backgroundColor": "#111827",
-            "contents": [
-                _help_flex_text(title, size="lg", color="#FFFFFF", weight="bold"),
-                _help_flex_text(subtitle, size="xs", color="#D1D5DB", margin="xs"),
-            ],
-        },
+        _standard_header_box(title, subtitle),
     ]
     for title, rows in sections:
         body_contents.append(_help_section_title(title))
@@ -268,6 +257,23 @@ def _standard_help_bubble(title, subtitle, sections, alt_text):
         alt_text=alt_text,
         contents=FlexContainer.from_dict(bubble),
     )
+
+
+def _standard_header_box(title, subtitle=None, accent="#111827", title_color="#FFFFFF"):
+    contents = [
+        _help_flex_text(title, size="lg", color=title_color, weight="bold"),
+    ]
+    if subtitle:
+        contents.append(_help_flex_text(subtitle, size="xs", color="#D1D5DB", margin="xs"))
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "xs",
+        "paddingAll": "14px",
+        "cornerRadius": "8px",
+        "backgroundColor": accent,
+        "contents": contents,
+    }
 
 
 def _flex_action_button(label, action, style="primary", color=COLOR_BRAND):
@@ -295,18 +301,7 @@ def _standard_action_bubble(title, subtitle, body_text, alt_text, actions=None, 
         ]))
 
     body_contents = [
-        {
-            "type": "box",
-            "layout": "vertical",
-            "spacing": "xs",
-            "paddingAll": "14px",
-            "cornerRadius": "8px",
-            "backgroundColor": "#111827",
-            "contents": [
-                _help_flex_text(title, size="lg", color="#FFFFFF", weight="bold"),
-                _help_flex_text(subtitle, size="xs", color="#D1D5DB", margin="xs"),
-            ],
-        },
+        _standard_header_box(title, subtitle),
     ]
     for section_title, rows in sections:
         body_contents.append(_help_section_title(section_title, accent=accent))
@@ -1031,21 +1026,7 @@ def generate_notice_flex(notice_json, user_id=None):
     bubble = {
         "type": "bubble",
         "size": "mega",
-        "header": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": title,
-                    "weight": "bold",
-                    "size": "md",
-                    "color": "#FFFFFF"
-                }
-            ],
-            "backgroundColor": "#FF6B35",
-            "paddingAll": "16px"
-        },
+        "header": _standard_header_box(title, "JiETNG"),
         "body": {
             "type": "box",
             "layout": "vertical",
@@ -1324,294 +1305,127 @@ def generate_user_info_flex(user_id):
     """
     lang = get_user_language(user_id)
     texts = user_info_flex_text
-
-    # 构建内容行
-    content_rows = []
-
     user_data = get_user(user_id)
-    if user_data:
 
-        # LINE ID 行（带复制按钮）
-        content_rows.append({
+    def _info_row(label, value, action=None, value_color=COLOR_TEXT_PRIMARY):
+        contents = [
+            {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "xs",
+                "contents": [
+                    _help_flex_text(label, size="xxs", color=COLOR_TEXT_MUTED),
+                    _help_flex_text(str(value), size="sm", color=value_color, weight="bold"),
+                ],
+                "flex": 1,
+            }
+        ]
+        if action:
+            contents.append({
+                "type": "button",
+                "flex": 0,
+                "height": "sm",
+                "style": "secondary",
+                "action": action,
+            })
+        return {
             "type": "box",
             "layout": "horizontal",
             "spacing": "md",
-            "contents": [
-                {
-                    "type": "box",
-                    "layout": "vertical",
-                    "flex": 3,
-                    "contents": [
-                        {
-                            "type": "text",
-                            "text": get_multilingual_text(texts['user_id_label'], language=lang),
-                            "size": "xs",
-                            "color": COLOR_TEXT_MUTED
-                        },
-                        {
-                            "type": "text",
-                            "text": user_id,
-                            "size": "sm",
-                            "weight": "bold",
-                            "wrap": True,
-                            "margin": "xs"
-                        }
-                    ]
-                },
-                {
-                    "type": "button",
-                    "flex": 0,
-                    "style": "secondary",
-                    "height": "sm",
-                    "action": {
-                        "type": "clipboard",
-                        "label": "📋",
-                        "clipboardText": user_id
-                    }
-                }
-            ]
-        })
+            "paddingAll": "10px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#F8FAFC",
+            "contents": contents,
+        }
 
-        # 分隔线
-        content_rows.append({
-            "type": "separator",
-            "margin": "md"
-        })
+    account_rows = [
+        _info_row(
+            get_multilingual_text(texts['user_id_label'], language=lang),
+            user_id,
+            {
+                "type": "clipboard",
+                "label": get_multilingual_text(texts['copy_id'], language=lang),
+                "clipboardText": user_id,
+            },
+        )
+    ]
 
-        # SEGA ID
+    profile_rows = []
+    settings_rows = []
+
+    if user_data:
         sega_id_value = user_data.get('sega_id', get_multilingual_text(texts['not_bound'], language=lang))
+        account_rows.append(_info_row(
+            get_multilingual_text(texts['sega_id_label'], language=lang),
+            sega_id_value,
+        ))
 
-        content_rows.append({
-            "type": "box",
-            "layout": "vertical",
-            "margin": "md",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": get_multilingual_text(texts['sega_id_label'], language=lang),
-                    "size": "xs",
-                    "color": COLOR_TEXT_MUTED
-                },
-                {
-                    "type": "text",
-                    "text": sega_id_value,
-                    "size": "sm",
-                    "weight": "bold",
-                    "margin": "xs"
-                }
-            ]
-        })
+        personal_info = user_data.get('personal_info') or {}
+        if personal_info.get('name'):
+            profile_rows.append(_info_row(
+                get_multilingual_text(texts['name_label'], language=lang),
+                personal_info['name'],
+            ))
+        if 'rating' in personal_info:
+            rating_value = str(personal_info['rating'])
+            if 'last_update' in user_data:
+                tz_str = format_timezone_string(user_id)
+                rating_value = (
+                    f"{rating_value}\n"
+                    f"{get_multilingual_text(texts['last_update_label'], language=lang)} "
+                    f"{tz_str}: {user_data['last_update']}"
+                )
+            profile_rows.append(_info_row(
+                get_multilingual_text(texts['rating_label'], language=lang),
+                rating_value,
+            ))
 
-        # 分隔线
-        content_rows.append({
-            "type": "separator",
-            "margin": "md"
-        })
-
-        # 玩家名称
-        if "personal_info" in user_data:
-            personal_info = user_data['personal_info']
-            if 'name' in personal_info:
-                content_rows.append({
-                    "type": "box",
-                    "layout": "vertical",
-                    "margin": "md",
-                    "contents": [
-                        {
-                            "type": "text",
-                            "text": get_multilingual_text(texts['name_label'], language=lang),
-                            "size": "xs",
-                            "color": COLOR_TEXT_MUTED
-                        },
-                        {
-                            "type": "text",
-                            "text": personal_info['name'],
-                            "size": "sm",
-                            "weight": "bold",
-                            "margin": "xs"
-                        }
-                    ]
-                })
-
-                # 分隔线
-                content_rows.append({
-                    "type": "separator",
-                    "margin": "md"
-                })
-
-            # Rating
-            if 'rating' in personal_info:
-                rating_contents = [
-                    {
-                        "type": "text",
-                        "text": get_multilingual_text(texts['rating_label'], language=lang),
-                        "size": "xs",
-                        "color": COLOR_TEXT_MUTED
-                    },
-                    {
-                        "type": "text",
-                        "text": str(personal_info['rating']),
-                        "size": "sm",
-                        "weight": "bold",
-                        "margin": "xs"
-                    }
-                ]
-
-                # 添加最后更新时间（如果存在）
-                if 'last_update' in user_data:
-                    tz_str = format_timezone_string(user_id)
-                    rating_contents.append({
-                        "type": "text",
-                        "text": f"・{get_multilingual_text(texts['last_update_label'], language=lang)} {tz_str}: {user_data['last_update']}",
-                        "size": "xs",
-                        "color": COLOR_TEXT_SECONDARY,
-                        "margin": "sm"
-                    })
-
-                content_rows.append({
-                    "type": "box",
-                    "layout": "vertical",
-                    "margin": "md",
-                    "contents": rating_contents
-                })
-
-                # 分隔线
-                content_rows.append({
-                    "type": "separator",
-                    "margin": "md"
-                })
-
-        # 服务器
         if "version" in user_data:
             server_text = texts['jp_server'] if user_data['version'] == 'jp' else texts['intl_server']
-            content_rows.append({
-                "type": "box",
-                "layout": "vertical",
-                "margin": "md",
-                "contents": [
-                    {
-                        "type": "text",
-                        "text": get_multilingual_text(texts['server_label'], language=lang),
-                        "size": "xs",
-                        "color": COLOR_TEXT_MUTED
-                    },
-                    {
-                        "type": "text",
-                        "text": get_multilingual_text(server_text, language=lang),
-                        "size": "sm",
-                        "weight": "bold",
-                        "margin": "xs"
-                    }
-                ]
-            })
+            settings_rows.append(_info_row(
+                get_multilingual_text(texts['server_label'], language=lang),
+                get_multilingual_text(server_text, language=lang),
+            ))
 
-            # 分隔线
-            content_rows.append({
-                "type": "separator",
-                "margin": "md"
-            })
-
-        # 语言
         lang_display = {
             'ja': texts['lang_ja'],
             'en': texts['lang_en'],
             'zh': texts['lang_zh'],
             'zh-tw': {'zh-tw': '繁體中文'}
         }.get(lang, texts['lang_ja'])
-
-        content_rows.append({
-            "type": "box",
-            "layout": "vertical",
-            "margin": "md",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": get_multilingual_text(texts['language_label'], language=lang),
-                    "size": "xs",
-                    "color": COLOR_TEXT_MUTED
-                },
-                {
-                    "type": "text",
-                    "text": get_multilingual_text(lang_display, language=lang),
-                    "size": "sm",
-                    "weight": "bold",
-                    "margin": "xs"
-                }
-            ]
-        })
-
+        settings_rows.append(_info_row(
+            get_multilingual_text(texts['language_label'], language=lang),
+            get_multilingual_text(lang_display, language=lang),
+        ))
     else:
-        # 用户未绑定
-        content_rows.append({
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": get_multilingual_text(texts['user_id_label'], language=lang),
-                    "size": "xs",
-                    "color": COLOR_TEXT_MUTED
-                },
-                {
-                    "type": "text",
-                    "text": user_id,
-                    "size": "sm",
-                    "weight": "bold",
-                    "wrap": True,
-                    "margin": "xs"
-                }
-            ]
-        })
+        account_rows.append(_info_row(
+            get_multilingual_text(texts['sega_id_label'], language=lang),
+            get_multilingual_text(texts['not_bound'], language=lang),
+            value_color=COLOR_DANGER,
+        ))
 
-        content_rows.append({
-            "type": "separator",
-            "margin": "md"
-        })
+    sections = [
+        (
+            get_multilingual_text(texts['account_section'], language=lang),
+            account_rows,
+        )
+    ]
+    if profile_rows:
+        sections.append((
+            get_multilingual_text(texts['profile_section'], language=lang),
+            profile_rows,
+        ))
+    if settings_rows:
+        sections.append((
+            get_multilingual_text(texts['settings_section'], language=lang),
+            settings_rows,
+        ))
 
-        content_rows.append({
-            "type": "box",
-            "layout": "vertical",
-            "margin": "md",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": f"❌ {get_multilingual_text(texts['not_bound'], language=lang)}",
-                    "size": "sm",
-                    "color": COLOR_DANGER
-                }
-            ]
-        })
-
-    # 创建 bubble
-    bubble = {
-        "type": "bubble",
-        "size": "mega",
-        "header": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": get_multilingual_text(texts['title'], language=lang),
-                    "weight": "bold",
-                    "size": "lg",
-                    "color": COLOR_TEXT_INVERSE
-                }
-            ],
-            "paddingAll": "16px",
-            "backgroundColor": COLOR_BRAND
-        },
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": content_rows,
-            "paddingAll": "16px"
-        }
-    }
-
-    return FlexMessage(
+    return _standard_help_bubble(
+        title=get_multilingual_text(texts['title'], language=lang),
+        subtitle="JiETNG",
+        sections=sections,
         alt_text=get_multilingual_text(texts['alt_text'], language=lang),
-        contents=FlexContainer.from_dict(bubble)
     )
 
 # ============================================================
@@ -1654,154 +1468,57 @@ def generate_update_result_flex(
         seconds = elapsed_time % 60
         elapsed_str = f"{minutes}m {seconds:.1f}s"
 
-    # 构建内容行
-    content_rows = []
-
-    # 更新时间
     tz_str = format_timezone_string(user_id)
-    content_rows.append({
-        "type": "box",
-        "layout": "vertical",
-        "margin": "md",
-        "contents": [
-            {
-                "type": "text",
-                "text": f"{get_multilingual_text(texts['update_time_label'], language=lang)} {tz_str}",
-                "size": "xs",
-                "color": COLOR_TEXT_MUTED
-            },
-            {
-                "type": "text",
-                "text": update_time,
-                "size": "sm",
-                "weight": "bold",
-                "margin": "xs"
-            }
-        ]
-    })
-
-    # 分隔线
-    content_rows.append({
-        "type": "separator",
-        "margin": "md"
-    })
-
-    # 耗时
-    content_rows.append({
-        "type": "box",
-        "layout": "vertical",
-        "margin": "md",
-        "contents": [
-            {
-                "type": "text",
-                "text": get_multilingual_text(texts['elapsed_time_label'], language=lang),
-                "size": "xs",
-                "color": COLOR_TEXT_MUTED
-            },
-            {
-                "type": "text",
-                "text": elapsed_str,
-                "size": "sm",
-                "weight": "bold",
-                "margin": "xs",
-                "color": COLOR_SUCCESS if success else COLOR_DANGER
-            }
-        ]
-    })
+    summary_rows = [
+        _help_filter_row(
+            f"{get_multilingual_text(texts['update_time_label'], language=lang)} {tz_str}",
+            update_time,
+        ),
+        _help_filter_row(
+            get_multilingual_text(texts['elapsed_time_label'], language=lang),
+            elapsed_str,
+        ),
+    ]
 
     failed_statuses = {
         func_name: status
         for func_name, status in func_status.items()
         if not status
     }
+    sections = [
+        (
+            get_multilingual_text(texts['summary_section'], language=lang),
+            summary_rows,
+        )
+    ]
     if failed_statuses:
-        content_rows.append({
-            "type": "separator",
-            "margin": "md"
-        })
-
-        status_contents = [
-            {
-                "type": "text",
-                "text": get_multilingual_text(texts['status_label'], language=lang),
-                "size": "xs",
-                "color": COLOR_TEXT_MUTED
-            }
-        ]
-
-        for func_name, status in failed_statuses.items():
+        failed_rows = []
+        for func_name, _status in failed_statuses.items():
             status_text = get_multilingual_text(texts['failed'], language=lang)
             func_label = _update_status_label(func_name, lang)
-            status_contents.append({
-                "type": "text",
-                "text": f"・{func_label}: {status_text}",
-                "size": "xs",
-                "color": COLOR_DANGER,
-                "margin": "sm"
-            })
+            failed_rows.append(_help_filter_row(func_label, status_text))
+        sections.append((
+            get_multilingual_text(texts['status_label'], language=lang),
+            failed_rows,
+        ))
 
-        content_rows.append({
-            "type": "box",
-            "layout": "vertical",
-            "margin": "md",
-            "contents": status_contents
-        })
-
-    # 获取随机tip和ad并添加到内容中
     random_tip = get_random_tip()
     random_ad = get_random_ad()
-
-    # 分割线
-    if random_tip or random_ad:
-        content_rows.append({
-            "type": "separator",
-            "margin": "md"
-        })
-
-    # 添加tip
+    extra_rows = []
     if random_tip:
-        tip_box = generate_tip_ad_box(random_tip, lang)
-        content_rows.append(tip_box)
-
-    # 添加ad
+        extra_rows.append(generate_tip_ad_box(random_tip, lang))
     if random_ad:
-        ad_box = generate_tip_ad_box(random_ad, lang)
-        content_rows.append(ad_box)
+        extra_rows.append(generate_tip_ad_box(random_ad, lang))
+    if extra_rows:
+        sections.append((_help_ui("notes", user_id), extra_rows))
 
-    # 创建 bubble
     title_text = texts['title_success'] if success else texts['title_error']
-    header_color = COLOR_SUCCESS if success else COLOR_DANGER
-
-    bubble = {
-        "type": "bubble",
-        "size": "mega",
-        "header": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": get_multilingual_text(title_text, language=lang),
-                    "weight": "bold",
-                    "size": "lg",
-                    "color": COLOR_TEXT_INVERSE
-                }
-            ],
-            "paddingAll": "16px",
-            "backgroundColor": header_color
-        },
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": content_rows,
-            "paddingAll": "16px"
-        }
-    }
-
     alt_text = texts['alt_text_success'] if success else texts['alt_text_error']
-    return FlexMessage(
+    return _standard_help_bubble(
+        title=get_multilingual_text(title_text, language=lang),
+        subtitle="JiETNG",
+        sections=sections,
         alt_text=get_multilingual_text(alt_text, language=lang),
-        contents=FlexContainer.from_dict(bubble)
     )
 
 def generate_tip_ad_box(tip_ad, lang):
@@ -2181,21 +1898,7 @@ def _build_calc_bubble(notes, scores, difficulty=None, level=None):
     bubble = {
         "type": "bubble",
         "size": "mega",
-        "header": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": title_text,
-                    "weight": "bold",
-                    "size": "lg",
-                    "color": "#FFFFFF"
-                }
-            ],
-            "paddingAll": "16px",
-            "backgroundColor": header_color
-        },
+        "header": _standard_header_box(title_text, "Note Calc", accent=header_color),
         "body": {
             "type": "box",
             "layout": "vertical",
@@ -2320,25 +2023,7 @@ def generate_search_results_flex(user_id, matching_songs, search_type='song', id
 
     title_text = select_text(config['title'], language=language, default_language='ja')
 
-    header_box = {
-        "type": "box",
-        "layout": "vertical",
-        "paddingAll": "16px",
-        "contents": [
-            {
-                "type": "text",
-                "text": title_text,
-                "weight": "bold",
-                "size": "lg",
-                "color": "#000000"
-            },
-            {
-                "type": "separator",
-                "color": "#DDDDDD",
-                "margin": "md"
-            }
-        ]
-    }
+    header_box = _standard_header_box(title_text, "JiETNG")
 
     bubble = {
         "type": "bubble",
@@ -2376,31 +2061,7 @@ def generate_ranking_flex(user_id, top5, nearby_entries=None, ver="jp"):
     title_text = get_multilingual_text(ranking_title_text, user_id)
     ver_label = "JP" if ver == "jp" else "INTL"
 
-    # Header
-    header = {
-        "type": "box",
-        "layout": "horizontal",
-        "contents": [
-            {
-                "type": "text",
-                "text": title_text,
-                "weight": "bold",
-                "size": "lg",
-                "color": "#000000",
-                "flex": 1
-            },
-            {
-                "type": "text",
-                "text": ver_label,
-                "size": "sm",
-                "color": "#999999",
-                "align": "end",
-                "gravity": "center",
-                "flex": 0
-            }
-        ],
-        "paddingAll": "16px"
-    }
+    header = _standard_header_box(title_text, ver_label)
 
     body_contents = [
         {"type": "separator", "color": "#000000"}
@@ -2660,32 +2321,7 @@ def generate_song_list_flex(user_id, title, matching_songs, page, command_prefix
             "margin": "sm"
         })
 
-    header_box = {
-        "type": "box",
-        "layout": "vertical",
-        "paddingAll": "16px",
-        "contents": [
-            {
-                "type": "text",
-                "text": title,
-                "weight": "bold",
-                "size": "lg",
-                "color": "#000000"
-            },
-            {
-                "type": "text",
-                "text": f"Page {page}/{total_pages} • {total} songs",
-                "size": "xs",
-                "color": "#666666",
-                "margin": "sm"
-            },
-            {
-                "type": "separator",
-                "color": "#DDDDDD",
-                "margin": "md"
-            }
-        ]
-    }
+    header_box = _standard_header_box(title, f"Page {page}/{total_pages} · {total} songs")
 
     bubble = {
         "type": "bubble",
@@ -2796,31 +2432,10 @@ def generate_friend_buttons(user_id, alt_text, friend_list, group_size):
         bubble = {
             "type": "bubble",
             "size": "mega",
-            "header": {
-                "type": "box",
-                "layout": "vertical",
-                "contents": [
-                    {
-                        "type": "text",
-                        "text": alt_text,
-                        "weight": "bold",
-                        "size": "lg"
-                    },
-                    {
-                        "type": "text",
-                        "text": f"Page {page_num}/{total_pages} • {len(group)} friends",
-                        "size": "xs",
-                        "color": "#999999",
-                        "margin": "sm"
-                    },
-                    {
-                        "type": "separator",
-                        "color": "#DDDDDD",
-                        "margin": "md"
-                    }
-                ],
-                "paddingAll": "16px"
-            },
+            "header": _standard_header_box(
+                alt_text,
+                f"Page {page_num}/{total_pages} · {len(group)} friends",
+            ),
             "body": {
                 "type": "box",
                 "layout": "vertical",
@@ -2937,21 +2552,7 @@ def generate_rc_flex(level: float, rc_data: list, user_id=None):
     bubble = {
         "type": "bubble",
         "size": "mega",
-        "header": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": title_text,
-                    "weight": "bold",
-                    "size": "lg",
-                    "color": "#FFFFFF"
-                }
-            ],
-            "paddingAll": "16px",
-            "backgroundColor": "#AF52DE"
-        },
+        "header": _standard_header_box(title_text, "Rating Constant", accent="#AF52DE"),
         "body": {
             "type": "box",
             "layout": "vertical",
@@ -2990,89 +2591,38 @@ def generate_bot_status_flex(uptime_str, image_queue_size, web_queue_size,
         'queue':       {'ja': 'キュー状況',    'en': 'Queue Status',    'zh': '队列状态'},
         'tasks_today': {'ja': '本日のタスク',  'en': 'Tasks Today',     'zh': '今日任务'},
         'songs':       {'ja': '楽曲データ',    'en': 'Songs DB',        'zh': '歌曲数据'},
+        'summary':     {'ja': '概要',          'en': 'Summary',         'zh': '概要'},
     }
     # "曲" / songs / 首
     song_unit = select_text({'ja': '曲', 'en': 'songs', 'zh': '首'}, language=lang)
 
-    queue_busy = (image_queue_size + web_queue_size) > 0
     queue_text = f"Image {image_queue_size} · Web {web_queue_size}"
-    queue_color = "#FF9500" if queue_busy else "#34C759"
     songs_text = f"{song_count} {song_unit} · {dxdata_date}"
 
-    def _row(label, value, value_color="#111111", margin="md"):
-        return {
-            "type": "box",
-            "layout": "horizontal",
-            "contents": [
-                {"type": "text", "text": label, "size": "xs", "color": "#666666", "flex": 0},
-                {"type": "text", "text": value, "size": "sm", "weight": "bold",
-                 "color": value_color, "align": "end"},
-            ],
-            "margin": margin,
-        }
-
-    _sep = {"type": "separator", "margin": "md"}
-    content_rows = [
-        _row(select_text(texts['uptime'], language=lang),      uptime_str, margin="none"),
-        _sep,
-        _row(select_text(texts['queue'], language=lang),       queue_text, value_color=queue_color),
-        _sep,
-        _row(select_text(texts['tasks_today'], language=lang), str(tasks_today), value_color="#AF52DE"),
-        _sep,
-        _row(select_text(texts['songs'], language=lang),       songs_text),
+    status_rows = [
+        _help_filter_row(select_text(texts['uptime'], language=lang), uptime_str),
+        _help_filter_row(select_text(texts['queue'], language=lang), queue_text),
+        _help_filter_row(select_text(texts['tasks_today'], language=lang), str(tasks_today)),
+        _help_filter_row(select_text(texts['songs'], language=lang), songs_text),
     ]
-    
-    # 获取随机tip和ad并添加到内容中
+
+    sections = [
+        (select_text(texts['summary'], language=lang), status_rows)
+    ]
+
     random_tip = get_random_tip()
     random_ad = get_random_ad()
-
-    # 分割线
-    if random_tip or random_ad:
-        content_rows.append({
-            "type": "separator",
-            "margin": "md"
-        })
-
-    # 添加tip
+    extra_rows = []
     if random_tip:
-        tip_box = generate_tip_ad_box(random_tip, lang)
-        content_rows.append(tip_box)
-
-    # 添加ad
+        extra_rows.append(generate_tip_ad_box(random_tip, lang))
     if random_ad:
-        ad_box = generate_tip_ad_box(random_ad, lang)
-        content_rows.append(ad_box)
+        extra_rows.append(generate_tip_ad_box(random_ad, lang))
+    if extra_rows:
+        sections.append((_help_ui("notes", user_id), extra_rows))
 
-    bubble = {
-        "type": "bubble",
-        "size": "mega",
-        "header": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": select_text(texts['title'], language=lang),
-                    "weight": "bold",
-                    "size": "lg",
-                    "color": "#000000"
-                }
-            ],
-        "paddingTop": "16px",
-        "paddingBottom": "0px",
-        "paddingStart": "16px",
-        "paddingEnd": "16px",
-        "backgroundColor": "#FFFFFF"
-        },
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": content_rows,
-            "paddingAll": "16px"
-        }
-    }
-
-    return FlexMessage(
-        alt_text="Service Status",
-        contents=FlexContainer.from_dict(bubble)
+    return _standard_help_bubble(
+        title=select_text(texts['title'], language=lang),
+        subtitle="JiETNG",
+        sections=sections,
+        alt_text=select_text(texts['title'], language=lang),
     )

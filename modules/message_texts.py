@@ -700,6 +700,21 @@ user_info_flex_text = {
         'en': 'LINE ID',
         'zh': 'LINE ID'
     },
+    'account_section': {
+        'ja': 'アカウント',
+        'en': 'Account',
+        'zh': '账号'
+    },
+    'profile_section': {
+        'ja': 'プレイ情報',
+        'en': 'Player Info',
+        'zh': '玩家信息'
+    },
+    'settings_section': {
+        'ja': '設定',
+        'en': 'Settings',
+        'zh': '设置'
+    },
     'name_label': {
         'ja': 'プレイヤー名',
         'en': 'Player Name',
@@ -797,6 +812,11 @@ update_result_flex_text = {
         'ja': '処理時間',
         'en': 'Elapsed Time',
         'zh': '耗时'
+    },
+    'summary_section': {
+        'ja': '概要',
+        'en': 'Summary',
+        'zh': '概要'
     },
     'status_label': {
         'ja': '取得できなかった項目',
