@@ -906,10 +906,19 @@ def generate_plate_image(target_data, title, img_width=1700, img_height=600, max
 
 
 def _level_group_sort_key(level):
+    if str(level) == "10-":
+        return (9, "~")
     match = re.match(r"^(\d+)(\+?)$", str(level))
     if not match:
         return (-1, "")
     return (int(match.group(1)), match.group(2))
+
+
+def _progress_level_group_label(level):
+    match = re.match(r"^(\d+)(\+?)$", str(level))
+    if match and int(match.group(1)) < 10:
+        return "10-"
+    return str(level)
 
 
 def _fit_font_to_width(draw, text, max_width, start_size, min_size):
@@ -956,7 +965,7 @@ def generate_level_rank_progress_image(
 
     if group_by == "level":
         group_values = sorted(
-            {entry.get("level", "") for entry in target_data},
+            {_progress_level_group_label(entry.get("level", "")) for entry in target_data},
             key=_level_group_sort_key,
             reverse=True,
         )
@@ -965,7 +974,13 @@ def generate_level_rank_progress_image(
 
     for group_value in group_values:
         level_str = str(group_value) if group_by == "level" else f"{group_value:.1f}"
-        row_entries = [entry for entry in target_data if entry.get(group_by) == group_value]
+        if group_by == "level":
+            row_entries = [
+                entry for entry in target_data
+                if _progress_level_group_label(entry.get("level", "")) == group_value
+            ]
+        else:
+            row_entries = [entry for entry in target_data if entry.get(group_by) == group_value]
 
         row_entries.sort(key=lambda x: (not x["achieved"], -x.get("achievement_rate", 0.0)))
 
