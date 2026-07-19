@@ -4242,9 +4242,9 @@ COMMAND_HELP = {
         "命令: <レベルまたは定数> records [ページ] / <レベルまたは定数> record-list [ページ]\n说明: 指定レベルまたは定数の成績リストを表示します。\n参数: 必須: <レベルまたは定数>。13、13+、14、13.6 などに対応します。\n任意: [ページ]。1 から始まる正整数。省略時は 1 ページ目です。\n検索: 整数/+ はレベル、小数は定数の完全一致です。\n示例: 13.6 records\n14 records 2",
     ),
     "level_rank_progress": _help_text(
-        "命令: <等级><评价> progress [-uc|-up|-c]\n说明: 查看指定等级和评价目标的达成进度。\n参数: 必填: <等级>，支持 1-15、带 + 等级，例如 13+、14。\n必填: <评价>，紧跟等级书写，支持 s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+。\n可选: -uc 仅看未 FC，-up 仅看未 AP，-c 仅看已完成项目。\n格式: 等级和评价中间不要空格，例如 14sss+ progress。\n示例: 14sss+ progress\n13ap progress -uc",
-        "命令: <level><rank> progress [-uc|-up|-c]\n说明: Show progress toward a rank target at a level.\n参数: Required: <level>, supports 1-15 and plus levels such as 13+ and 14.\nRequired: <rank>, written immediately after level; supports s, s+, ss, ss+, sss, sss+, fc, fc+, ap, ap+, fdx, fdx+.\nOptional: -uc shows charts without FC, -up shows charts without AP, -c shows completed items only.\nFormat: do not put a space between level and rank, for example 14sss+ progress.\n示例: 14sss+ progress\n13ap progress -uc",
-        "命令: <レベル><評価> progress [-uc|-up|-c]\n说明: 指定レベルと評価目標の進捗を表示します。\n参数: 必須: <レベル>。1-15、13+、14 などに対応します。\n必須: <評価>。レベル直後に書きます。s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+ に対応します。\n任意: -uc は未 FC、-up は未 AP、-c は達成済みのみを表示します。\n形式: レベルと評価の間に空白を入れません。例: 14sss+ progress。\n示例: 14sss+ progress\n13ap progress -uc",
+        "命令: <等级><评价> progress [-uc|-up|-c]\n说明: 查看指定等级和评价目标的达成进度。\n参数: 必填: <等级>，支持 1-15、带 + 等级，例如 13+、14。\n必填: <评价>，紧跟等级书写，支持 s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+。\n可选: -uc 仅看未完成目标，-up 仅看未游玩，-c 仅看已完成目标。\n格式: 等级和评价中间不要空格，例如 14sss+ progress。\n示例: 14sss+ progress\n13ap progress -uc",
+        "命令: <level><rank> progress [-uc|-up|-c]\n说明: Show progress toward a rank target at a level.\n参数: Required: <level>, supports 1-15 and plus levels such as 13+ and 14.\nRequired: <rank>, written immediately after level; supports s, s+, ss, ss+, sss, sss+, fc, fc+, ap, ap+, fdx, fdx+.\nOptional: -uc shows unfinished target charts, -up shows unplayed charts, -c shows completed target charts.\nFormat: do not put a space between level and rank, for example 14sss+ progress.\n示例: 14sss+ progress\n13ap progress -uc",
+        "命令: <レベル><評価> progress [-uc|-up|-c]\n说明: 指定レベルと評価目標の進捗を表示します。\n参数: 必須: <レベル>。1-15、13+、14 などに対応します。\n必須: <評価>。レベル直後に書きます。s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+ に対応します。\n任意: -uc は目標未達成のみ、-up は未プレイのみ、-c は目標達成済みのみを表示します。\n形式: レベルと評価の間に空白を入れません。例: 14sss+ progress。\n示例: 14sss+ progress\n13ap progress -uc",
     ),
     "song_info": _help_text(
         "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 查询歌曲基本信息、谱面信息和 BPM。\n参数: 必填: <曲名>，写在 info / song-info 前面，可以是完整曲名、部分曲名或别名。\n匹配: 如果匹配到多首歌，会返回可选择的候选结果。\n示例: ヒバナ info\nヒバナってどんな曲",
@@ -4252,9 +4252,9 @@ COMMAND_HELP = {
         "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 楽曲情報、譜面情報、BPM を表示します。\n参数: 必須: <曲名>。info / song-info の前に置き、正式名・部分一致・別名を指定できます。\n検索: 複数候補がある場合は選択候補を返します。\n示例: ヒバナ info\nヒバナってどんな曲",
     ),
     "plate": _help_text(
-        "命令: <牌子名> achievement [-uc|-up|-c] / <牌子名>の達成状況\n说明: 查看版本牌子或称号类目标的完成情况。\n参数: 必填: <牌子名>，写在 achievement 前面，例如 真極、檄将 等。\n可选: -uc 仅看未 FC，-up 仅看未 AP，-c 仅看已完成项目。\n格式: 过滤项写在命令最后；不写过滤项时显示完整完成度。\n示例: 真極 achievement\n真極 achievement -uc",
-        "命令: <plate title> achievement [-uc|-up|-c] / <plate title>の達成状況\n说明: Show completion status for plate/title goals.\n参数: Required: <plate title>, placed before achievement, such as 真極 or 檄将.\nOptional: -uc shows items without FC, -up shows items without AP, -c shows completed items only.\nFormat: put the filter at the end; omit it to show full completion.\n示例: 真極 achievement\n真極 achievement -uc",
-        "命令: <プレート名> achievement [-uc|-up|-c] / <プレート名>の達成状況\n说明: プレートや称号系目標の達成状況を表示します。\n参数: 必須: <プレート名>。achievement の前に置きます。例: 真極、檄将。\n任意: -uc は未 FC、-up は未 AP、-c は達成済みのみを表示します。\n形式: フィルターは末尾に置きます。省略時は全体の達成状況です。\n示例: 真極 achievement\n真極 achievement -uc",
+        "命令: <牌子名> achievement [-uc|-up|-c] / <牌子名>の達成状況\n说明: 查看版本牌子或称号类目标的完成情况。\n参数: 必填: <牌子名>，写在 achievement 前面，例如 真極、檄将 等。\n可选: -uc 仅看未完成项目，-up 仅看未游玩项目，-c 仅看已完成项目。\n格式: 过滤项写在命令最后；不写过滤项时显示完整完成度。\n示例: 真極 achievement\n真極 achievement -uc",
+        "命令: <plate title> achievement [-uc|-up|-c] / <plate title>の達成状況\n说明: Show completion status for plate/title goals.\n参数: Required: <plate title>, placed before achievement, such as 真極 or 檄将.\nOptional: -uc shows unfinished items, -up shows unplayed items, -c shows completed items.\nFormat: put the filter at the end; omit it to show full completion.\n示例: 真極 achievement\n真極 achievement -uc",
+        "命令: <プレート名> achievement [-uc|-up|-c] / <プレート名>の達成状況\n说明: プレートや称号系目標の達成状況を表示します。\n参数: 必須: <プレート名>。achievement の前に置きます。例: 真極、檄将。\n任意: -uc は未完成項目のみ、-up は未プレイ項目のみ、-c は達成済み項目のみを表示します。\n形式: フィルターは末尾に置きます。省略時は全体の達成状況です。\n示例: 真極 achievement\n真極 achievement -uc",
     ),
     "version_songs": _help_text(
         "命令: <版本名> version-list / <版本名>のバージョンリスト\n说明: 查看指定版本歌曲列表。\n参数: 必填: <版本名>，写在 version-list 前面，支持版本完整名或可识别简称。\n格式: 版本名可包含空格；整段 version-list 前的文本都会作为版本查询词。\n示例: BUDDiES version-list\nPRiSM PLUS version-list",
