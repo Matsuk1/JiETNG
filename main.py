@@ -4212,14 +4212,14 @@ def _help_text(zh, en, ja):
 
 COMMAND_HELP = {
     "maimai_update": _help_text(
-        "命令: maimai update / update\n说明: 从 maimai NET 获取并更新已游玩的歌曲成绩数据。\n参数: 无参数: 直接发送命令即可开始同步。\n示例: maimai update\n注意: 需要先绑定 SEGA 账号。",
-        "命令: maimai update / update\n说明: Sync played song records from maimai NET.\n参数: No arguments: send the command as-is to start syncing.\n示例: maimai update\n注意: A linked SEGA account is required.",
-        "命令: maimai update / update\n说明: maimai NET からプレイ済み楽曲成績を同期します。\n参数: 引数なし: そのまま送信すると同期を開始します。\n示例: maimai update\n注意: SEGA アカウント連携が必要です。",
+        "命令: maimai update / update\n说明: 从 maimai NET 获取并更新已游玩的歌曲成绩数据。\n参数: 无需参数: 直接发送命令即可开始同步。\n示例: maimai update\n注意: 需要先绑定 SEGA 账号。",
+        "命令: maimai update / update\n说明: Sync played song records from maimai NET.\n参数: No arguments: send maimai update or update as-is.\n示例: maimai update\n注意: A linked SEGA account is required.",
+        "命令: maimai update / update\n说明: maimai NET からプレイ済み楽曲成績を同期します。\n参数: 引数なし: maimai update または update をそのまま送信します。\n示例: maimai update\n注意: SEGA アカウント連携が必要です。",
     ),
     "friend_list": _help_text(
-        "命令: friend list / friends\n说明: 查看已添加的好友列表。\n参数: 无参数: 直接发送命令，会从 maimai NET 读取好友列表。\n示例: friends",
-        "命令: friend list / friends\n说明: Show your saved friend list.\n参数: No arguments: send the command as-is; the bot reads your friend list from maimai NET.\n示例: friends",
-        "命令: friend list / friends\n说明: 登録済みフレンド一覧を表示します。\n参数: 引数なし: そのまま送信すると maimai NET からフレンド一覧を取得します。\n示例: friends",
+        "命令: friend list / friends\n说明: 查看已添加的好友列表。\n参数: 无需参数: 直接发送命令，会从 maimai NET 读取好友列表。\n示例: friends",
+        "命令: friend list / friends\n说明: Show your saved friend list from maimai NET.\n参数: No arguments: send friend list or friends as-is.\n示例: friends",
+        "命令: friend list / friends\n说明: maimai NET から登録済みフレンド一覧を表示します。\n参数: 引数なし: friend list または friends をそのまま送信します。\n示例: friends",
     ),
     "friend_rcd": _help_text(
         "命令: friend-rcd <好友编号或名称> [成绩图类型] [筛选参数]\n说明: 查看指定好友的成绩。\n参数: 必填: <好友编号或名称>，编号来自 friends 列表，也可以填写可匹配的好友名。\n可选: [成绩图类型]，默认 best50；支持 b50、b40、ab50、ap50、fdx50、r50 等 B 系列类型。\n可选: [筛选参数]，与 b50-help 中的筛选参数一致，例如 -lv、-diff、-scr、-page。\n示例: friend-rcd 1\nfriend-rcd 1 b50 -lv 14 14.9",
@@ -4272,9 +4272,9 @@ COMMAND_HELP = {
         "命令: random [条件]\n说明: ランダムに 1 曲おすすめします。\n参数: 任意: [条件]。レベル、定数、譜面種別、難易度などのキーワードを指定できます。\n形式: 複数条件は空白で区切ります。省略時は全曲からランダムです。\n示例: random\nrandom 13+ dx\nrandom 14 mas",
     ),
     "unbind_prompt": _help_text(
-        "命令: unbind\n说明: 开始解除 SEGA 账号绑定流程。\n参数: 无参数: 直接发送 unbind 会显示确认说明，不会立刻删除账号。\n示例: unbind\n注意: 确认解绑请发送 unbind confirm。",
-        "命令: unbind\n说明: Start the SEGA account unlink flow.\n参数: No arguments: sending unbind shows a confirmation prompt and does not delete immediately.\n示例: unbind\n注意: Send unbind confirm to complete unlinking.",
-        "命令: unbind\n说明: SEGA アカウント連携解除を開始します。\n参数: 引数なし: unbind を送信すると確認案内を表示します。すぐには削除されません。\n示例: unbind\n注意: 確認するには unbind confirm を送信してください。",
+        "命令: unbind\n说明: 开始解除 SEGA 账号绑定流程，显示确认说明但不会立刻删除账号。\n参数: 无需参数: 直接发送 unbind。\n示例: unbind\n注意: 确认解绑请发送 unbind confirm。",
+        "命令: unbind\n说明: Start the SEGA account unlink flow and show a confirmation prompt without deleting immediately.\n参数: No arguments: send unbind as-is.\n示例: unbind\n注意: Send unbind confirm to complete unlinking.",
+        "命令: unbind\n说明: SEGA アカウント連携解除を開始し、すぐには削除せず確認案内を表示します。\n参数: 引数なし: unbind をそのまま送信します。\n示例: unbind\n注意: 確認するには unbind confirm を送信してください。",
     ),
     "unbind_execute": _help_text(
         "命令: unbind confirm\n说明: 确认解除当前 SEGA 账号绑定。\n参数: 固定参数: confirm 必须紧跟在 unbind 后面，用于确认删除绑定资料。\n示例: unbind confirm",
@@ -4282,34 +4282,34 @@ COMMAND_HELP = {
         "命令: unbind confirm\n说明: 現在の SEGA アカウント連携解除を確定します。\n参数: 固定引数: confirm を unbind の後に付けると、連携情報の削除を確定します。\n示例: unbind confirm",
     ),
     "bind": _help_text(
-        "命令: bind\n说明: 打开 SEGA 账号绑定页面。\n参数: 无参数: 直接发送命令，Bot 会返回一次性的绑定链接。\n限制: 只能在私聊使用，群聊会返回安全提示。\n示例: bind\n注意: 请在私聊使用。",
-        "命令: bind\n说明: Open the SEGA account binding page.\n参数: No arguments: send the command as-is; the bot returns a one-time binding URL.\nRestriction: private chat only; group chats receive a safety warning.\n示例: bind\n注意: Use this in a private chat.",
-        "命令: bind\n说明: SEGA アカウント連携ページを開きます。\n参数: 引数なし: そのまま送信すると一回限りの連携 URL を返します。\n制限: 個人チャット専用です。グループでは安全警告を返します。\n示例: bind\n注意: 個人チャットで使用してください。",
+        "命令: bind\n说明: 返回一次性 SEGA 账号绑定链接，用于首次绑定账号。\n参数: 无需参数: 直接发送 bind。\n限制: 只能在私聊使用，群聊会返回安全提示。\n示例: bind",
+        "命令: bind\n说明: Return a one-time SEGA account binding URL for first-time linking.\n参数: No arguments: send bind as-is.\nRestriction: private chat only; group chats receive a safety warning.\n示例: bind",
+        "命令: bind\n说明: 初回連携用の SEGA アカウント連携 URL を返します。\n参数: 引数なし: bind をそのまま送信します。\n制限: 個人チャット専用です。グループでは安全警告を返します。\n示例: bind",
     ),
     "rebind": _help_text(
-        "命令: rebind\n说明: 更新已绑定的 SEGA 账号信息。\n参数: 无参数: 直接发送命令，Bot 会返回账号编辑链接。\n要求: 必须已经绑定 SEGA 账号。\n限制: 只能在私聊使用。\n示例: rebind\n注意: 请在私聊使用。",
-        "命令: rebind\n说明: Update linked SEGA account information.\n参数: No arguments: send the command as-is; the bot returns an account edit URL.\nRequirement: a SEGA account must already be linked.\nRestriction: private chat only.\n示例: rebind\n注意: Use this in a private chat.",
-        "命令: rebind\n说明: 連携済み SEGA アカウント情報を更新します。\n参数: 引数なし: そのまま送信するとアカウント編集 URL を返します。\n条件: SEGA アカウント連携済みである必要があります。\n制限: 個人チャット専用です。\n示例: rebind\n注意: 個人チャットで使用してください。",
+        "命令: rebind\n说明: 返回 SEGA 账号编辑链接，用于更新已绑定账号的信息。\n参数: 无需参数: 直接发送 rebind。\n要求: 必须已经绑定 SEGA 账号。\n限制: 只能在私聊使用。\n示例: rebind",
+        "命令: rebind\n说明: Return an account edit URL for updating an already linked SEGA account.\n参数: No arguments: send rebind as-is.\nRequirement: a SEGA account must already be linked.\nRestriction: private chat only.\n示例: rebind",
+        "命令: rebind\n说明: 連携済み SEGA アカウント情報を更新する編集 URL を返します。\n参数: 引数なし: rebind をそのまま送信します。\n条件: SEGA アカウント連携済みである必要があります。\n制限: 個人チャット専用です。\n示例: rebind",
     ),
     "settings": _help_text(
-        "命令: settings\n说明: 打开个人设置页面。\n参数: 无参数: 直接发送命令，Bot 会返回设置页面链接。\n可设置: 时区、语言、背景图片、隐私等个人选项。\n限制: 只能在私聊使用。\n示例: settings\n注意: 请在私聊使用。",
-        "命令: settings\n说明: Open your settings page.\n参数: No arguments: send the command as-is; the bot returns a settings URL.\nAvailable settings: timezone, language, background image, privacy, and personal options.\nRestriction: private chat only.\n示例: settings\n注意: Use this in a private chat.",
-        "命令: settings\n说明: 個人設定ページを開きます。\n参数: 引数なし: そのまま送信すると設定ページ URL を返します。\n設定項目: タイムゾーン、言語、背景画像、プライバシーなど。\n制限: 個人チャット専用です。\n示例: settings\n注意: 個人チャットで使用してください。",
+        "命令: settings\n说明: 返回个人设置页面链接，用于修改时区、语言、背景图片、隐私等选项。\n参数: 无需参数: 直接发送 settings。\n限制: 只能在私聊使用。\n示例: settings",
+        "命令: settings\n说明: Return your settings page URL for timezone, language, background image, privacy, and other options.\n参数: No arguments: send settings as-is.\nRestriction: private chat only.\n示例: settings",
+        "命令: settings\n说明: タイムゾーン、言語、背景画像、プライバシーなどを変更する設定 URL を返します。\n参数: 引数なし: settings をそのまま送信します。\n制限: 個人チャット専用です。\n示例: settings",
     ),
     "profile": _help_text(
-        "命令: profile / getme\n说明: 查看自己的 JiETNG 账号信息。\n参数: 无参数: 直接发送命令，会显示绑定状态、服务器、语言等个人资料。\n限制: 只能在私聊使用，避免公开个人信息。\n示例: profile\ngetme",
-        "命令: profile / getme\n说明: Show your JiETNG account profile.\n参数: No arguments: send the command as-is to show binding status, server, language, and profile data.\nRestriction: private chat only to avoid exposing personal information.\n示例: profile\ngetme",
-        "命令: profile / getme\n说明: JiETNG アカウント情報を表示します。\n参数: 引数なし: 連携状態、サーバー、言語などの個人情報を表示します。\n制限: 個人情報保護のため個人チャット専用です。\n示例: profile\ngetme",
+        "命令: profile / getme\n说明: 查看自己的 JiETNG 账号信息，包括绑定状态、服务器和语言设置。\n参数: 无需参数: 直接发送 profile 或 getme。\n限制: 只能在私聊使用，避免公开个人信息。\n示例: profile\ngetme",
+        "命令: profile / getme\n说明: Show your JiETNG account profile, including binding status, server, and language settings.\n参数: No arguments: send profile or getme as-is.\nRestriction: private chat only to avoid exposing personal information.\n示例: profile\ngetme",
+        "命令: profile / getme\n说明: 連携状態、サーバー、言語設定などの JiETNG アカウント情報を表示します。\n参数: 引数なし: profile または getme をそのまま送信します。\n制限: 個人情報保護のため個人チャット専用です。\n示例: profile\ngetme",
     ),
     "status": _help_text(
-        "命令: status\n说明: 查看机器人服务状态。\n参数: 无参数: 直接发送命令，会显示运行时间、队列、系统资源等状态。\n示例: status",
-        "命令: status\n说明: Show bot service status.\n参数: No arguments: send the command as-is to show uptime, queues, and system resource status.\n示例: status",
-        "命令: status\n说明: Bot の稼働状態を表示します。\n参数: 引数なし: 稼働時間、キュー、システムリソースなどを表示します。\n示例: status",
+        "命令: status\n说明: 查看机器人服务状态，包括运行时间、任务队列和系统资源。\n参数: 无需参数: 直接发送 status。\n示例: status",
+        "命令: status\n说明: Show bot service status, including uptime, task queues, and system resources.\n参数: No arguments: send status as-is.\n示例: status",
+        "命令: status\n说明: 稼働時間、キュー、システムリソースなど Bot の状態を表示します。\n参数: 引数なし: status をそのまま送信します。\n示例: status",
     ),
     "refreshmenu": _help_text(
-        "命令: refreshmenu\n说明: 重新绑定当前状态对应的 LINE Rich Menu。\n参数: 无参数: 直接发送命令，根据当前绑定状态重新关联菜单。\n限制: 仅影响发送者自己的 Rich Menu。\n示例: refreshmenu",
-        "命令: refreshmenu\n说明: Re-link the LINE Rich Menu for your current state.\n参数: No arguments: send the command as-is; the bot re-links the menu based on current binding state.\nRestriction: only affects the sender's Rich Menu.\n示例: refreshmenu",
-        "命令: refreshmenu\n说明: 現在の状態に対応する LINE リッチメニューを再連携します。\n参数: 引数なし: 現在の連携状態に応じてメニューを再連携します。\n制限: 送信者本人の Rich Menu のみに影響します。\n示例: refreshmenu",
+        "命令: refreshmenu\n说明: 根据当前绑定状态重新关联发送者自己的 LINE Rich Menu。\n参数: 无需参数: 直接发送 refreshmenu。\n限制: 仅影响发送者自己的 Rich Menu。\n示例: refreshmenu",
+        "命令: refreshmenu\n说明: Re-link the sender's LINE Rich Menu based on current binding state.\n参数: No arguments: send refreshmenu as-is.\nRestriction: only affects the sender's Rich Menu.\n示例: refreshmenu",
+        "命令: refreshmenu\n说明: 現在の連携状態に応じて送信者本人の LINE リッチメニューを再連携します。\n参数: 引数なし: refreshmenu をそのまま送信します。\n制限: 送信者本人の Rich Menu のみに影響します。\n示例: refreshmenu",
     ),
     "ranking": _help_text(
         "命令: rank [jp|intl] / ranking [jp|intl]\n说明: 查看 DX Rating 排行榜。\n参数: 可选: [服务器]，支持 jp、intl、cn；省略时使用当前用户绑定的服务器。\n格式: 服务器参数写在 rank / ranking 后面，用空格分隔。\n示例: rank\nranking intl",
@@ -4347,9 +4347,9 @@ COMMAND_HELP = {
         "命令: rc <定数>\n说明: Rating Composition / レート内訳の情報を検索します。\n参数: 必須: <定数>。1.0 から 15.0 までの数値です。\n形式: 13、13.6、14.9 のような整数または小数に対応します。\n制限: 1.0-15.0 の範囲外、または数値化できない入力はエラーです。\n示例: rc 14\nrc 13.6",
     ),
     "export": _help_text(
-        "命令: export <json|xml> / 成绩导出 <json|xml>\n说明: 导出自己的成绩数据。\n参数: 必填: <格式>，只能填写 json 或 xml。\n输出: 成功后返回临时下载链接和复制链接按钮。\n要求: 需要已有成绩数据；如果没有数据会返回空数据提示。\n示例: export json\n成绩导出 xml",
-        "命令: export <json|xml>\n说明: Export your score data.\n参数: Required: <format>, must be json or xml.\nOutput: returns a temporary download URL and a copy-link button on success.\nRequirement: score data must exist; empty data returns an empty-data message.\n示例: export json\nexport xml",
-        "命令: export <json|xml> / 成績エクスポート <json|xml>\n说明: 自分の成績データを書き出します。\n参数: 必須: <形式>。json または xml のみ指定できます。\n出力: 成功時は一時ダウンロード URL とコピー用ボタンを返します。\n条件: 成績データが必要です。空の場合は空データの案内を返します。\n示例: export json\n成績エクスポート xml",
+        "命令: export <json|xml> / 成绩导出 <json|xml>\n说明: 将自己的成绩数据导出为指定格式。\n参数: 必填: <格式>，只能填写 json 或 xml。\n输出: 成功后返回临时下载链接和复制链接按钮。\n要求: 需要已有成绩数据；如果没有数据会返回空数据提示。\n示例: export json\n成绩导出 xml",
+        "命令: export <json|xml>\n说明: Export your score data in the selected format.\n参数: Required: <format>, must be json or xml.\nOutput: returns a temporary download URL and a copy-link button on success.\nRequirement: score data must exist; empty data returns an empty-data message.\n示例: export json\nexport xml",
+        "命令: export <json|xml> / 成績エクスポート <json|xml>\n说明: 自分の成績データを指定形式で書き出します。\n参数: 必須: <形式>。json または xml のみ指定できます。\n出力: 成功時は一時ダウンロード URL とコピー用ボタンを返します。\n条件: 成績データが必要です。空の場合は空データの案内を返します。\n示例: export json\n成績エクスポート xml",
     ),
     "calc_notes": _help_text(
         "命令: calc <tap> <hold> <slide> [touch] <break>\n说明: 根据谱面物量计算单个 Note 分值。\n参数: 必填: <tap> <hold> <slide> <break>，当只给 4 个数字时按 TAP/HOLD/SLIDE/BREAK 解析。\n可选: [touch]，当给 5 个数字时第 4 个为 TOUCH，第 5 个为 BREAK。\n格式: 所有参数必须是非负整数，用空格分隔。\n示例: calc 500 50 80 30\ncalc 500 50 80 20 30",

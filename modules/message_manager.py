@@ -83,6 +83,13 @@ HELP_UI_TEXT = {
     "detail_hint": {"zh": "详细说明", "en": "Detailed Help", "ja": "詳細ヘルプ"},
 }
 
+HELP_NOTE_DETAIL_LABELS = {
+    "限制", "Restriction", "制限",
+    "要求", "Requirement", "条件",
+    "输出", "Output", "出力",
+    "可设置", "Available settings", "設定項目",
+}
+
 
 def _help_ui(key, user_id=None):
     return get_multilingual_text(HELP_UI_TEXT[key], user_id)
@@ -549,10 +556,7 @@ def generate_standard_help_flex(help_data, user_id=None):
     params = fields.get("params") or fields.get("参数")
     examples = fields.get("examples") or fields.get("示例")
     notes = fields.get("notes") or fields.get("注意")
-    params, param_note_lines = _partition_help_detail_lines(
-        params,
-        {"限制", "Restriction", "制限", "要求", "Requirement", "条件"},
-    )
+    params, param_note_lines = _partition_help_detail_lines(params, HELP_NOTE_DETAIL_LABELS)
     note_lines = [*_split_help_lines(notes), *param_note_lines]
     none_text = _help_ui("none", user_id)
     sections = [

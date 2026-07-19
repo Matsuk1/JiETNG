@@ -382,10 +382,26 @@ dxdata_initial_stats_sheets_text = {
 }
 
 # SEGA 账号绑定消息
-sega_bind_title_text = "SEGA Account Link"
-sega_bind_description_text = "绑定你的 SEGA 账号\n綁定你的 SEGA 帳號\nSEGA アカウントを連携"
-sega_bind_button_text = "Tap Here"
-sega_bind_alt_text = "SEGA Account Link / SEGA 账号绑定 / SEGA 帳號綁定 / SEGA アカウント連携"
+sega_bind_title_text = {
+    "ja": "SEGA アカウント連携",
+    "en": "Link SEGA Account",
+    "zh": "绑定 SEGA 账号"
+}
+sega_bind_description_text = {
+    "ja": "初回連携用の SEGA アカウント連携ページを開きます。",
+    "en": "Open the SEGA account binding page for first-time linking.",
+    "zh": "打开首次绑定用的 SEGA 账号绑定页面。"
+}
+sega_bind_button_text = {
+    "ja": "連携を開始",
+    "en": "Start Linking",
+    "zh": "开始绑定"
+}
+sega_bind_alt_text = {
+    "ja": "SEGA アカウント連携",
+    "en": "Link SEGA Account",
+    "zh": "绑定 SEGA 账号"
+}
 
 # 语言选择消息（用于首次绑定时）
 # 这些文本在用户未选择语言时显示，所以直接显示多语言
@@ -409,56 +425,56 @@ language_set_success_text = {
 
 # 已绑定账号的提示
 already_bound_text = {
-    "ja": "⚠️ すでに SEGA アカウントが連携されています。\n再度連携する場合は、先に unbind コマンドで連携を解除してください。\n\n💡 パスワードやバージョンを変更したい場合は rebind コマンド、タイムゾーンや言語などの設定は settings コマンドを使用してください。",
-    "en": "⚠️ A SEGA account is already linked.\nTo rebind, please use the unbind command first to unlink your account.\n\n💡 Use rebind to change password or version, and settings for timezone, language, and other preferences.",
-    "zh": "⚠️ 已绑定 SEGA 账号。\n如需重新绑定，请先使用 unbind 命令解除绑定。\n\n💡 修改密码或版本请使用 rebind 命令，修改时区、语言等设置请使用 settings 命令。"
+    "ja": "SEGA アカウントはすでに連携済みです。\n\nパスワード、バージョン、Aime を変更する場合は rebind を使用してください。\nタイムゾーン、言語、背景画像、プライバシー設定は settings から変更できます。\n別のアカウントを連携する場合は、先に unbind で連携を解除してください。",
+    "en": "A SEGA account is already linked.\n\nUse rebind to change password, version, or Aime.\nUse settings for timezone, language, background image, and privacy options.\nTo link a different account, unlink the current account with unbind first.",
+    "zh": "当前已经绑定 SEGA 账号。\n\n修改密码、服务器版本或 Aime 请使用 rebind。\n修改时区、语言、背景图片、隐私等个人设置请使用 settings。\n如需绑定其他账号，请先使用 unbind 解除当前绑定。"
 }
 
 # Unbind 确认消息
 unbind_confirm_text = {
-    "ja": "⚠️ アカウント連携を解除しようとしています。\n\nこの操作により、連携されている SEGA ID、パスワード、その他すべての設定が削除されます。\n\n🔴 この操作は取り消せません。\n\n続行するには、以下のコマンドを送信してください：\nunbind confirm",
-    "en": "⚠️ You are about to unbind your account.\n\nThis will delete your linked SEGA ID, password, and all other settings.\n\n🔴 This action cannot be undone.\n\nTo proceed, please send the following command:\nunbind confirm",
-    "zh": "⚠️ 您即将解除账号绑定。\n\n此操作将删除您绑定的 SEGA ID、密码以及所有其他设置。\n\n🔴 此操作无法撤销。\n\n若要继续，请发送以下命令：\nunbind confirm"
+    "ja": "SEGA アカウント連携を解除します。\n\n連携済みの SEGA ID、パスワード、関連設定が削除されます。この操作は取り消せません。\n\n続行するには unbind confirm を送信してください。",
+    "en": "This will unlink your SEGA account.\n\nYour linked SEGA ID, password, and related settings will be deleted. This action cannot be undone.\n\nTo continue, send unbind confirm.",
+    "zh": "即将解除 SEGA 账号绑定。\n\n已保存的 SEGA ID、密码和相关设置都会被删除，且无法撤销。\n\n若要继续，请发送 unbind confirm。"
 }
 
 # Bind 命令群聊警告
 bind_group_warning_text = {
-    "ja": "⚠️ セキュリティのため、bind コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
-    "en": "⚠️ For security reasons, the bind command can only be used in private chat. Please message the bot directly.",
-    "zh": "⚠️ 出于安全考虑，bind 命令只能在私聊中使用。请直接向机器人发送消息。"
+    "ja": "bind は個人チャット専用です。ボットに直接メッセージを送信してください。",
+    "en": "bind is only available in private chat. Message the bot directly.",
+    "zh": "bind 只能在私聊使用。请直接向机器人发送消息。"
 }
 
 # Rebind 命令群聊警告
 rebind_group_warning_text = {
-    "ja": "⚠️ セキュリティのため、rebind コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
-    "en": "⚠️ For security reasons, the rebind command can only be used in private chat. Please message the bot directly.",
-    "zh": "⚠️ 出于安全考虑，rebind 命令只能在私聊中使用。请直接向机器人发送消息。"
+    "ja": "rebind は個人チャット専用です。ボットに直接メッセージを送信してください。",
+    "en": "rebind is only available in private chat. Message the bot directly.",
+    "zh": "rebind 只能在私聊使用。请直接向机器人发送消息。"
 }
 
 # Settings 命令群聊警告
 settings_group_warning_text = {
-    "ja": "⚠️ セキュリティのため、settings コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
-    "en": "⚠️ For security reasons, the settings command can only be used in private chat. Please message the bot directly.",
-    "zh": "⚠️ 出于安全考虑，settings 命令只能在私聊中使用。请直接向机器人发送消息。"
+    "ja": "settings は個人チャット専用です。ボットに直接メッセージを送信してください。",
+    "en": "settings is only available in private chat. Message the bot directly.",
+    "zh": "settings 只能在私聊使用。请直接向机器人发送消息。"
 }
 
 private_info_group_warning_text = {
-    "ja": "⚠️ セキュリティのため、個人情報コマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
-    "en": "⚠️ For security reasons, personal info commands can only be used in private chat. Please message the bot directly.",
-    "zh": "⚠️ 出于安全考虑，个人信息命令只能在私聊中使用。请直接向机器人发送消息。"
+    "ja": "個人情報コマンドは個人チャット専用です。ボットに直接メッセージを送信してください。",
+    "en": "Personal info commands are only available in private chat. Message the bot directly.",
+    "zh": "个人信息命令只能在私聊使用。请直接向机器人发送消息。"
 }
 
 friend_rcd_group_warning_text = {
-    "ja": "⚠️ セキュリティのため、フレンドレコードコマンドは個人チャットでのみ使用できます。ボットに直接メッセージを送信してください。",
-    "en": "⚠️ For security reasons, friend record commands can only be used in private chat. Please message the bot directly.",
-    "zh": "⚠️ 出于安全考虑，好友记录命令只能在私聊中使用。请直接向机器人发送消息。"
+    "ja": "フレンド成績コマンドは個人チャット専用です。ボットに直接メッセージを送信してください。",
+    "en": "Friend record commands are only available in private chat. Message the bot directly.",
+    "zh": "好友成绩命令只能在私聊使用。请直接向机器人发送消息。"
 }
 
 # 搜索命令群聊警告
 search_group_warning_text = {
-    "ja": "⚠️ グループチャットでの荒らし防止のため、artist / designer / bpm 検索コマンドは個人チャットでのみ使用できます。",
-    "en": "⚠️ To prevent spam, artist / designer / bpm search commands can only be used in private chat.",
-    "zh": "⚠️ 为防止刷屏，artist / designer / bpm 搜索命令仅限私聊使用。"
+    "ja": "artist / designer / bpm 検索は個人チャット専用です。",
+    "en": "artist / designer / bpm search is only available in private chat.",
+    "zh": "artist / designer / bpm 搜索只能在私聊使用。"
 }
 
 # 排行榜
@@ -482,9 +498,9 @@ ranking_no_data_text = {
 
 # Rebind 未绑定提示
 rebind_not_bound_text = {
-    "ja": "まだ SEGA アカウントが連携されていません。bind コマンドで連携してください。",
-    "en": "No SEGA account linked yet. Please use the bind command to link your account.",
-    "zh": "尚未绑定 SEGA 账号。请使用 bind 命令进行绑定。"
+    "ja": "SEGA アカウントがまだ連携されていません。先に bind で連携してください。",
+    "en": "No SEGA account is linked yet. Link one with bind first.",
+    "zh": "尚未绑定 SEGA 账号。请先使用 bind 完成绑定。"
 }
 
 # Rebind 按钮模板 - 标题 / Alt
@@ -496,9 +512,9 @@ rebind_title_alt_text = {
 
 # Rebind 按钮模板 - 描述
 rebind_description_text = {
-    "ja": "パスワード、バージョン、Aimeを変更できます。",
-    "en": "You can change password, version, and Aime.",
-    "zh": "您可以更改密码、版本和 Aime。"
+    "ja": "連携済み SEGA アカウントのパスワード、サーバー、Aime を変更します。",
+    "en": "Update password, server, or Aime for your linked SEGA account.",
+    "zh": "修改已绑定 SEGA 账号的密码、服务器版本或 Aime。"
 }
 
 # Rebind 按钮模板 - 按钮标签
@@ -517,9 +533,9 @@ settings_title_alt_text = {
 
 # Settings 按钮模板 - 描述
 settings_description_text = {
-    "ja": "タイムゾーン、言語、背景画像を変更できます。",
-    "en": "You can change timezone, language, and background image.",
-    "zh": "您可以更改时区、语言和背景图片。"
+    "ja": "タイムゾーン、言語、背景画像、プライバシー設定を変更します。",
+    "en": "Change timezone, language, background image, and privacy settings.",
+    "zh": "修改时区、语言、背景图片和隐私设置。"
 }
 
 # Settings 按钮模板 - 按钮标签
