@@ -60,7 +60,6 @@ HELP_UI_TEXT = {
     "examples": {"zh": "示例", "en": "Examples", "ja": "例"},
     "notes": {"zh": "注意", "en": "Notes", "ja": "注意"},
     "command": {"zh": "命令", "en": "Command", "ja": "コマンド"},
-    "purpose": {"zh": "用途", "en": "Purpose", "ja": "用途"},
     "none": {"zh": "无", "en": "None", "ja": "なし"},
     "default_purpose": {
         "zh": "查看该命令的说明。",
@@ -210,6 +209,20 @@ def _help_note_row(label, desc):
     }
 
 
+def _help_body_row(desc):
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "xs",
+        "paddingAll": "9px",
+        "cornerRadius": "8px",
+        "backgroundColor": "#F8FAFC",
+        "contents": [
+            _help_flex_text(desc, size="xxs", color="#555555"),
+        ],
+    }
+
+
 def _standard_help_bubble(title, subtitle, sections, alt_text):
     body_contents = [
         {
@@ -266,12 +279,12 @@ def _standard_action_bubble(title, subtitle, body_text, alt_text, actions=None, 
                             accent=COLOR_BRAND, user_id=None):
     sections = [
         (_help_ui("function", user_id), [
-            _help_note_row(_help_ui("purpose", user_id), body_text)
+            _help_body_row(body_text)
         ])
     ]
     if note_text:
         sections.append((_help_ui("notes", user_id), [
-            _help_note_row(_help_ui("notes", user_id), note_text)
+            _help_body_row(note_text)
         ]))
 
     body_contents = [
@@ -461,7 +474,7 @@ def _clean_help_text(text):
 
 
 def _parse_plain_help(text):
-    fields = {"命令": "", "用途": "", "参数": "", "示例": "", "注意": ""}
+    fields = {"命令": "", "说明": "", "参数": "", "示例": "", "注意": ""}
     current_key = None
     for raw_line in _clean_help_text(text).splitlines():
         line = raw_line.strip()
@@ -481,13 +494,34 @@ def _parse_plain_help(text):
 
 
 def _split_help_lines(text):
+    if isinstance(text, (list, tuple)):
+        return [str(line).strip() for line in text if str(line).strip()]
     return [line.strip() for line in str(text or "").splitlines() if line.strip()]
+
+
+def _detail_line_label(line):
+    if ":" not in line:
+        return None
+    head, tail = line.split(":", 1)
+    return head.strip() if head.strip() and tail.strip() else None
+
+
+def _partition_help_detail_lines(text, note_labels):
+    detail_lines = []
+    note_lines = []
+    for line in _split_help_lines(text):
+        label = _detail_line_label(line)
+        if label in note_labels:
+            note_lines.append(line)
+        else:
+            detail_lines.append(line)
+    return detail_lines, note_lines
 
 
 def _help_detail_rows(text, fallback_label, none_text):
     lines = _split_help_lines(text)
     if not lines:
-        return [_help_filter_row(fallback_label, none_text)]
+        return [_help_filter_row(fallback_label, none_text)] if fallback_label else [_help_body_row(none_text)]
 
     rows = []
     for line in lines:
@@ -498,8 +532,12 @@ def _help_detail_rows(text, fallback_label, none_text):
             if head.strip() and tail.strip():
                 label = head.strip()
                 desc = tail.strip()
-        rows.append(_help_filter_row(label, desc))
+        rows.append(_help_filter_row(label, desc) if label else _help_body_row(desc))
     return rows
+
+
+def _format_help_command_title(command):
+    return "\n".join(part.strip() for part in str(command or "").split("/") if part.strip())
 
 
 def generate_standard_help_flex(help_data, user_id=None):
@@ -507,22 +545,27 @@ def generate_standard_help_flex(help_data, user_id=None):
     if not isinstance(fields, dict):
         fields = _parse_plain_help(fields)
     command = fields.get("command") or fields.get("命令") or _help_ui("help_title", user_id)
-    purpose = fields.get("purpose") or fields.get("用途")
+    purpose = fields.get("purpose") or fields.get("说明")
     params = fields.get("params") or fields.get("参数")
     examples = fields.get("examples") or fields.get("示例")
     notes = fields.get("notes") or fields.get("注意")
+    params, param_note_lines = _partition_help_detail_lines(
+        params,
+        {"限制", "Restriction", "制限", "要求", "Requirement", "条件"},
+    )
+    note_lines = [*_split_help_lines(notes), *param_note_lines]
     none_text = _help_ui("none", user_id)
     sections = [
         (_help_ui("function", user_id), [
-            _help_note_row(_help_ui("purpose", user_id), purpose or _help_ui("default_purpose", user_id))
+            _help_body_row(purpose or _help_ui("default_purpose", user_id))
         ]),
         (_help_ui("params", user_id), _help_detail_rows(params, _help_ui("params", user_id), none_text)),
-        (_help_ui("examples", user_id), _help_detail_rows(examples, _help_ui("examples", user_id), none_text)),
+        (_help_ui("examples", user_id), _help_detail_rows(examples, None, none_text)),
     ]
-    if notes:
-        sections.append((_help_ui("notes", user_id), [_help_note_row(_help_ui("notes", user_id), notes)]))
+    if note_lines:
+        sections.append((_help_ui("notes", user_id), _help_detail_rows(note_lines, None, none_text)))
     return _standard_help_bubble(
-        title=command,
+        title=_format_help_command_title(command),
         subtitle=_help_ui("help_title", user_id),
         sections=sections,
         alt_text=f"{command} {_help_ui('help_title', user_id)}",
@@ -568,7 +611,7 @@ def generate_b_records_help_flex(user_id=None):
             _help_filter_row(_help_ui("command", user_id), "b50 / b40 / b35 / b15 / ab50 / ap50 / fdx50 / r50 / idlb50 / s50"),
         ]),
         (_help_ui("function", user_id), [
-            _help_note_row(_help_ui("purpose", user_id), _help_i18n(
+            _help_body_row(_help_i18n(
                 user_id,
                 "生成 Best / All Best / 特殊成绩图，可追加筛选参数。",
                 "Generate Best / All Best / special score images with optional filters.",
