@@ -2657,8 +2657,8 @@ def generate_bot_status_flex(uptime_str, image_queue_size, web_queue_size,
     # "曲" / songs / 首
     song_unit = select_text({'ja': '曲', 'en': 'songs', 'zh': '首'}, language=lang)
 
-    queue_text = f"Image {image_queue_size} · Web {web_queue_size}"
-    songs_text = f"{song_count} {song_unit} · {dxdata_date}"
+    queue_text = f"Image {image_queue_size}\nWeb {web_queue_size}"
+    songs_text = f"{song_count} {song_unit}\n{dxdata_date}"
 
     queue_busy = (image_queue_size + web_queue_size) > 0
     queue_color = COLOR_WARNING if queue_busy else COLOR_SUCCESS
