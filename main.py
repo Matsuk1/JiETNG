@@ -4331,10 +4331,6 @@ def _command_help_message(help_key):
 
 
 HIDDEN_HELP_COMMAND_WORDS = {"unknown"}
-HELP_B_COMMAND_WORDS = tuple(
-    word for word in _B_COMMAND_WORDS
-    if word not in HIDDEN_HELP_COMMAND_WORDS
-)
 
 
 def _flex_text(text, size="sm", color="#222222", weight=None, wrap=True, margin=None, align=None):
@@ -4935,6 +4931,10 @@ def cmd_settings(ctx):
 
 # ---- B 系列命令的 first-word 集合（从 RANK_COMMANDS 自动展开）----
 _B_COMMAND_WORDS = tuple(sorted({alias for aliases in RANK_COMMANDS for alias in aliases}))
+HELP_B_COMMAND_WORDS = tuple(
+    word for word in _B_COMMAND_WORDS
+    if word not in HIDDEN_HELP_COMMAND_WORDS
+)
 
 
 # ---- 命令注册表 ----
