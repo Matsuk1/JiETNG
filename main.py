@@ -4238,39 +4238,171 @@ def _enqueue_task(cmd, ctx, target_queue, lane_name, payload):
         )
 
 
+def _help_text(zh, en, ja):
+    return {"zh": zh, "en": en, "ja": ja}
+
+
 COMMAND_HELP = {
-    "maimai_update": "命令: `maimai update` / `update`\n用途: 从 maimai NET 获取并更新已游玩的歌曲成绩数据。\n参数: 无。\n注意: 需要先绑定 SEGA 账号。",
-    "friend_list": "命令: `friend list` / `friends`\n用途: 查看已添加的好友列表。\n参数: 无。",
-    "friend_rcd": "命令: `friend-rcd <好友编号或名称>`\n用途: 查看指定好友的成绩。\n示例: `friend-rcd 1`",
-    "search_record": "命令: `search-record <6位歌曲ID>`\n用途: 用歌曲 ID 精确查询自己的单曲成绩。\n示例: `search-record 114514`",
-    "song_record": "命令: `<曲名> record` / `<曲名> song-record` / `<曲名>のレコード`\n用途: 按曲名或别名查询自己的单曲成绩。\n示例: `ヒバナ record`",
-    "level_records": "命令: `<等级或定数> records [页码]` / `<等级或定数> record-list [页码]`\n用途: 查看指定等级或定数的成绩列表。\n示例: `13.6 records` / `14 records 2`",
-    "level_rank_progress": "命令: `<等级><评价> progress [-uc|-up|-c]`\n用途: 查看指定等级和评价目标的达成进度。\n示例: `14sss+ progress` / `13ap progress -uc`",
-    "song_info": "命令: `<曲名> info` / `<曲名> song-info` / `<曲名>ってどんな曲`\n用途: 查询歌曲基本信息、谱面信息和 BPM。\n示例: `ヒバナ info`",
-    "plate": "命令: `<牌子名> achievement [-uc|-up|-c]` / `<牌子名>の達成状況`\n用途: 查看版本牌子或称号类目标的完成情况。\n示例: `真極 achievement`",
-    "version_songs": "命令: `<版本名> version-list` / `<版本名>のバージョンリスト`\n用途: 查看指定版本歌曲列表。\n示例: `BUDDiES version-list`",
-    "level_rank_list": "命令: `<等级或定数> level-list` / `<等级或定数>の定数リスト`\n用途: 查看指定等级或定数相关歌曲列表。\n示例: `13.6 level-list`",
-    "random_song": "命令: `random [条件]`\n用途: 随机推荐一首歌曲。\n示例: `random` / `random 13+ dx`",
-    "unbind_prompt": "命令: `unbind`\n用途: 开始解除 SEGA 账号绑定流程。\n参数: 无。确认解绑请发送 `unbind confirm`。",
-    "unbind_execute": "命令: `unbind confirm`\n用途: 确认解除当前 SEGA 账号绑定。\n参数: 无。",
-    "bind": "命令: `bind`\n用途: 打开 SEGA 账号绑定页面。\n参数: 无。请在私聊使用。",
-    "rebind": "命令: `rebind`\n用途: 更新已绑定的 SEGA 账号信息。\n参数: 无。请在私聊使用。",
-    "settings": "命令: `settings`\n用途: 打开个人设置页面。\n参数: 无。请在私聊使用。",
-    "donate": "命令: `donate`\n用途: 查看捐赠/支持信息。\n参数: 无。",
-    "profile": "命令: `profile` / `getme`\n用途: 查看自己的 JiETNG 账号信息。\n参数: 无。",
-    "status": "命令: `status`\n用途: 查看机器人服务状态。\n参数: 无。",
-    "refreshmenu": "命令: `refreshmenu`\n用途: 重新绑定当前状态对应的 LINE Rich Menu。\n参数: 无。",
-    "ranking": "命令: `rank [jp|intl]` / `ranking [jp|intl]`\n用途: 查看 DX Rating 排行榜。\n示例: `rank` / `ranking intl`",
-    "search_by_id": "命令: `search <6位歌曲ID>`\n用途: 用歌曲 ID 精确查询歌曲信息。\n示例: `search 114514`",
-    "calc_song": "命令: `calc-song <6位歌曲ID>`\n用途: 计算指定歌曲的达成率相关信息。\n示例: `calc-song 114514`",
-    "search_by_artist": "命令: `artist <关键词> [页码]`\n用途: 按艺术家名搜索歌曲。\n示例: `artist Nanahira` / `artist sasakure 2`",
-    "search_by_designer": "命令: `designer <关键词> [页码]`\n用途: 按谱面设计师名搜索歌曲。\n示例: `designer Jack`",
-    "search_by_bpm": "命令: `bpm <BPM或范围> [页码]`\n用途: 按 BPM 精确值或范围搜索歌曲。\n示例: `bpm 180` / `bpm 120-180` / `bpm 120 180`",
-    "rc": "命令: `rc <参数>`\n用途: 查询 Rating Composition / レート内訳相关信息。\n示例: `rc 14`",
-    "export": "命令: `export <json|xml>` / `成绩导出 <json|xml>`\n用途: 导出自己的成绩数据。\n示例: `export json`",
-    "accept_perm": "命令: `accept-perm-request <请求ID>`\n用途: 接受第三方访问权限请求。\n示例: `accept-perm-request req_xxx`",
-    "reject_perm": "命令: `reject-perm-request <请求ID>`\n用途: 拒绝第三方访问权限请求。\n示例: `reject-perm-request req_xxx`",
-    "calc_notes": "命令: `calc <tap> <hold> <slide> [touch] <break>`\n用途: 根据谱面物量计算单个 Note 分值。\n示例: `calc 500 50 80 20 30`",
+    "maimai_update": _help_text(
+        "命令: maimai update / update\n用途: 从 maimai NET 获取并更新已游玩的歌曲成绩数据。\n参数: 无\n示例: maimai update\n注意: 需要先绑定 SEGA 账号。",
+        "命令: maimai update / update\n用途: Sync played song records from maimai NET.\n参数: None\n示例: maimai update\n注意: A linked SEGA account is required.",
+        "命令: maimai update / update\n用途: maimai NET からプレイ済み楽曲成績を同期します。\n参数: なし\n示例: maimai update\n注意: SEGA アカウント連携が必要です。",
+    ),
+    "friend_list": _help_text(
+        "命令: friend list / friends\n用途: 查看已添加的好友列表。\n参数: 无\n示例: friends",
+        "命令: friend list / friends\n用途: Show your saved friend list.\n参数: None\n示例: friends",
+        "命令: friend list / friends\n用途: 登録済みフレンド一覧を表示します。\n参数: なし\n示例: friends",
+    ),
+    "friend_rcd": _help_text(
+        "命令: friend-rcd <好友编号或名称>\n用途: 查看指定好友的成绩。\n参数: 好友编号或名称\n示例: friend-rcd 1",
+        "命令: friend-rcd <friend number or name>\n用途: Show records for a selected friend.\n参数: Friend number or name\n示例: friend-rcd 1",
+        "命令: friend-rcd <フレンド番号または名前>\n用途: 指定したフレンドの成績を表示します。\n参数: フレンド番号または名前\n示例: friend-rcd 1",
+    ),
+    "search_record": _help_text(
+        "命令: search-record <6位歌曲ID>\n用途: 用歌曲 ID 精确查询自己的单曲成绩。\n参数: 6 位歌曲 ID\n示例: search-record 114514",
+        "命令: search-record <6-character song ID>\n用途: Look up your record for one song by exact song ID.\n参数: 6-character song ID\n示例: search-record 114514",
+        "命令: search-record <6桁楽曲ID>\n用途: 楽曲 ID で自分の単曲成績を検索します。\n参数: 6桁楽曲ID\n示例: search-record 114514",
+    ),
+    "song_record": _help_text(
+        "命令: <曲名> record / <曲名> song-record / <曲名>のレコード\n用途: 按曲名或别名查询自己的单曲成绩。\n参数: 曲名或别名\n示例: ヒバナ record",
+        "命令: <song> record / <song> song-record / <song>のレコード\n用途: Look up your record by title or alias.\n参数: Song title or alias\n示例: ヒバナ record",
+        "命令: <曲名> record / <曲名> song-record / <曲名>のレコード\n用途: 曲名または別名で自分の単曲成績を検索します。\n参数: 曲名または別名\n示例: ヒバナ record",
+    ),
+    "level_records": _help_text(
+        "命令: <等级或定数> records [页码] / <等级或定数> record-list [页码]\n用途: 查看指定等级或定数的成绩列表。\n参数: 等级/定数；页码可选\n示例: 13.6 records / 14 records 2",
+        "命令: <level or constant> records [page] / <level or constant> record-list [page]\n用途: Show a record list for a level or constant.\n参数: Level/constant; optional page\n示例: 13.6 records / 14 records 2",
+        "命令: <レベルまたは定数> records [ページ] / <レベルまたは定数> record-list [ページ]\n用途: 指定レベルまたは定数の成績リストを表示します。\n参数: レベル/定数、ページ任意\n示例: 13.6 records / 14 records 2",
+    ),
+    "level_rank_progress": _help_text(
+        "命令: <等级><评价> progress [-uc|-up|-c]\n用途: 查看指定等级和评价目标的达成进度。\n参数: 等级、评价；过滤项可选\n示例: 14sss+ progress / 13ap progress -uc",
+        "命令: <level><rank> progress [-uc|-up|-c]\n用途: Show progress toward a rank target at a level.\n参数: Level, rank; optional filter\n示例: 14sss+ progress / 13ap progress -uc",
+        "命令: <レベル><評価> progress [-uc|-up|-c]\n用途: 指定レベルと評価目標の進捗を表示します。\n参数: レベル、評価、任意フィルター\n示例: 14sss+ progress / 13ap progress -uc",
+    ),
+    "song_info": _help_text(
+        "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n用途: 查询歌曲基本信息、谱面信息和 BPM。\n参数: 曲名或别名\n示例: ヒバナ info",
+        "命令: <song> info / <song> song-info / <song>ってどんな曲\n用途: Show song details, chart data, and BPM.\n参数: Song title or alias\n示例: ヒバナ info",
+        "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n用途: 楽曲情報、譜面情報、BPM を表示します。\n参数: 曲名または別名\n示例: ヒバナ info",
+    ),
+    "plate": _help_text(
+        "命令: <牌子名> achievement [-uc|-up|-c] / <牌子名>の達成状況\n用途: 查看版本牌子或称号类目标的完成情况。\n参数: 牌子名；过滤项可选\n示例: 真極 achievement",
+        "命令: <plate title> achievement [-uc|-up|-c] / <plate title>の達成状況\n用途: Show completion status for plate/title goals.\n参数: Plate/title name; optional filter\n示例: 真極 achievement",
+        "命令: <プレート名> achievement [-uc|-up|-c] / <プレート名>の達成状況\n用途: プレートや称号系目標の達成状況を表示します。\n参数: プレート名、任意フィルター\n示例: 真極 achievement",
+    ),
+    "version_songs": _help_text(
+        "命令: <版本名> version-list / <版本名>のバージョンリスト\n用途: 查看指定版本歌曲列表。\n参数: 版本名\n示例: BUDDiES version-list",
+        "命令: <version> version-list / <version>のバージョンリスト\n用途: Show the song list for a version.\n参数: Version name\n示例: BUDDiES version-list",
+        "命令: <バージョン名> version-list / <バージョン名>のバージョンリスト\n用途: 指定バージョンの楽曲一覧を表示します。\n参数: バージョン名\n示例: BUDDiES version-list",
+    ),
+    "level_rank_list": _help_text(
+        "命令: <等级或定数> level-list / <等级或定数>の定数リスト\n用途: 查看指定等级或定数相关歌曲列表。\n参数: 等级或定数\n示例: 13.6 level-list",
+        "命令: <level or constant> level-list / <level or constant>の定数リスト\n用途: Show songs for a level or constant.\n参数: Level or constant\n示例: 13.6 level-list",
+        "命令: <レベルまたは定数> level-list / <レベルまたは定数>の定数リスト\n用途: 指定レベルまたは定数の楽曲一覧を表示します。\n参数: レベルまたは定数\n示例: 13.6 level-list",
+    ),
+    "random_song": _help_text(
+        "命令: random [条件]\n用途: 随机推荐一首歌曲。\n参数: 条件可选\n示例: random / random 13+ dx",
+        "命令: random [condition]\n用途: Recommend a random song.\n参数: Optional condition\n示例: random / random 13+ dx",
+        "命令: random [条件]\n用途: ランダムに 1 曲おすすめします。\n参数: 条件任意\n示例: random / random 13+ dx",
+    ),
+    "unbind_prompt": _help_text(
+        "命令: unbind\n用途: 开始解除 SEGA 账号绑定流程。\n参数: 无\n示例: unbind\n注意: 确认解绑请发送 unbind confirm。",
+        "命令: unbind\n用途: Start the SEGA account unlink flow.\n参数: None\n示例: unbind\n注意: Send unbind confirm to complete unlinking.",
+        "命令: unbind\n用途: SEGA アカウント連携解除を開始します。\n参数: なし\n示例: unbind\n注意: 確認するには unbind confirm を送信してください。",
+    ),
+    "unbind_execute": _help_text(
+        "命令: unbind confirm\n用途: 确认解除当前 SEGA 账号绑定。\n参数: 无\n示例: unbind confirm",
+        "命令: unbind confirm\n用途: Confirm unlinking the current SEGA account.\n参数: None\n示例: unbind confirm",
+        "命令: unbind confirm\n用途: 現在の SEGA アカウント連携解除を確定します。\n参数: なし\n示例: unbind confirm",
+    ),
+    "bind": _help_text(
+        "命令: bind\n用途: 打开 SEGA 账号绑定页面。\n参数: 无\n示例: bind\n注意: 请在私聊使用。",
+        "命令: bind\n用途: Open the SEGA account binding page.\n参数: None\n示例: bind\n注意: Use this in a private chat.",
+        "命令: bind\n用途: SEGA アカウント連携ページを開きます。\n参数: なし\n示例: bind\n注意: 個人チャットで使用してください。",
+    ),
+    "rebind": _help_text(
+        "命令: rebind\n用途: 更新已绑定的 SEGA 账号信息。\n参数: 无\n示例: rebind\n注意: 请在私聊使用。",
+        "命令: rebind\n用途: Update linked SEGA account information.\n参数: None\n示例: rebind\n注意: Use this in a private chat.",
+        "命令: rebind\n用途: 連携済み SEGA アカウント情報を更新します。\n参数: なし\n示例: rebind\n注意: 個人チャットで使用してください。",
+    ),
+    "settings": _help_text(
+        "命令: settings\n用途: 打开个人设置页面。\n参数: 无\n示例: settings\n注意: 请在私聊使用。",
+        "命令: settings\n用途: Open your settings page.\n参数: None\n示例: settings\n注意: Use this in a private chat.",
+        "命令: settings\n用途: 個人設定ページを開きます。\n参数: なし\n示例: settings\n注意: 個人チャットで使用してください。",
+    ),
+    "donate": _help_text(
+        "命令: donate\n用途: 查看捐赠/支持信息。\n参数: 无\n示例: donate",
+        "命令: donate\n用途: Show donation/support information.\n参数: None\n示例: donate",
+        "命令: donate\n用途: 寄付/サポート情報を表示します。\n参数: なし\n示例: donate",
+    ),
+    "profile": _help_text(
+        "命令: profile / getme\n用途: 查看自己的 JiETNG 账号信息。\n参数: 无\n示例: profile",
+        "命令: profile / getme\n用途: Show your JiETNG account profile.\n参数: None\n示例: profile",
+        "命令: profile / getme\n用途: JiETNG アカウント情報を表示します。\n参数: なし\n示例: profile",
+    ),
+    "status": _help_text(
+        "命令: status\n用途: 查看机器人服务状态。\n参数: 无\n示例: status",
+        "命令: status\n用途: Show bot service status.\n参数: None\n示例: status",
+        "命令: status\n用途: Bot の稼働状態を表示します。\n参数: なし\n示例: status",
+    ),
+    "refreshmenu": _help_text(
+        "命令: refreshmenu\n用途: 重新绑定当前状态对应的 LINE Rich Menu。\n参数: 无\n示例: refreshmenu",
+        "命令: refreshmenu\n用途: Re-link the LINE Rich Menu for your current state.\n参数: None\n示例: refreshmenu",
+        "命令: refreshmenu\n用途: 現在の状態に対応する LINE リッチメニューを再連携します。\n参数: なし\n示例: refreshmenu",
+    ),
+    "ranking": _help_text(
+        "命令: rank [jp|intl] / ranking [jp|intl]\n用途: 查看 DX Rating 排行榜。\n参数: 服务器可选，jp 或 intl\n示例: rank / ranking intl",
+        "命令: rank [jp|intl] / ranking [jp|intl]\n用途: Show the DX Rating ranking.\n参数: Optional server, jp or intl\n示例: rank / ranking intl",
+        "命令: rank [jp|intl] / ranking [jp|intl]\n用途: DX Rating ランキングを表示します。\n参数: サーバー任意、jp または intl\n示例: rank / ranking intl",
+    ),
+    "search_by_id": _help_text(
+        "命令: search <6位歌曲ID>\n用途: 用歌曲 ID 精确查询歌曲信息。\n参数: 6 位歌曲 ID\n示例: search 114514",
+        "命令: search <6-character song ID>\n用途: Look up song details by exact song ID.\n参数: 6-character song ID\n示例: search 114514",
+        "命令: search <6桁楽曲ID>\n用途: 楽曲 ID で楽曲情報を検索します。\n参数: 6桁楽曲ID\n示例: search 114514",
+    ),
+    "calc_song": _help_text(
+        "命令: calc-song <6位歌曲ID>\n用途: 计算指定歌曲的达成率相关信息。\n参数: 6 位歌曲 ID\n示例: calc-song 114514",
+        "命令: calc-song <6-character song ID>\n用途: Calculate achievement-related values for a song.\n参数: 6-character song ID\n示例: calc-song 114514",
+        "命令: calc-song <6桁楽曲ID>\n用途: 指定楽曲の達成率関連情報を計算します。\n参数: 6桁楽曲ID\n示例: calc-song 114514",
+    ),
+    "search_by_artist": _help_text(
+        "命令: artist <关键词> [页码]\n用途: 按艺术家名搜索歌曲。\n参数: 关键词；页码可选\n示例: artist Nanahira / artist sasakure 2",
+        "命令: artist <keyword> [page]\n用途: Search songs by artist name.\n参数: Keyword; optional page\n示例: artist Nanahira / artist sasakure 2",
+        "命令: artist <キーワード> [ページ]\n用途: アーティスト名で楽曲を検索します。\n参数: キーワード、ページ任意\n示例: artist Nanahira / artist sasakure 2",
+    ),
+    "search_by_designer": _help_text(
+        "命令: designer <关键词> [页码]\n用途: 按谱面设计师名搜索歌曲。\n参数: 关键词；页码可选\n示例: designer Jack",
+        "命令: designer <keyword> [page]\n用途: Search songs by chart designer.\n参数: Keyword; optional page\n示例: designer Jack",
+        "命令: designer <キーワード> [ページ]\n用途: 譜面制作者名で楽曲を検索します。\n参数: キーワード、ページ任意\n示例: designer Jack",
+    ),
+    "search_by_bpm": _help_text(
+        "命令: bpm <BPM或范围> [页码]\n用途: 按 BPM 精确值或范围搜索歌曲。\n参数: BPM 值或范围；页码可选\n示例: bpm 180 / bpm 0-120 / bpm 120 180",
+        "命令: bpm <BPM or range> [page]\n用途: Search songs by exact BPM or BPM range.\n参数: BPM value or range; optional page\n示例: bpm 180 / bpm 0-120 / bpm 120 180",
+        "命令: bpm <BPMまたは範囲> [ページ]\n用途: BPM の完全一致または範囲で楽曲を検索します。\n参数: BPM 値または範囲、ページ任意\n示例: bpm 180 / bpm 0-120 / bpm 120 180",
+    ),
+    "rc": _help_text(
+        "命令: rc <参数>\n用途: 查询 Rating Composition / レート内訳相关信息。\n参数: 查询参数\n示例: rc 14",
+        "命令: rc <argument>\n用途: Query Rating Composition / rating breakdown information.\n参数: Query argument\n示例: rc 14",
+        "命令: rc <引数>\n用途: Rating Composition / レート内訳の情報を検索します。\n参数: 検索引数\n示例: rc 14",
+    ),
+    "export": _help_text(
+        "命令: export <json|xml> / 成绩导出 <json|xml>\n用途: 导出自己的成绩数据。\n参数: 导出格式，json 或 xml\n示例: export json",
+        "命令: export <json|xml>\n用途: Export your score data.\n参数: Export format, json or xml\n示例: export json",
+        "命令: export <json|xml> / 成績エクスポート <json|xml>\n用途: 自分の成績データを書き出します。\n参数: 出力形式、json または xml\n示例: export json",
+    ),
+    "accept_perm": _help_text(
+        "命令: accept-perm-request <请求ID>\n用途: 接受第三方访问权限请求。\n参数: 请求 ID\n示例: accept-perm-request req_xxx",
+        "命令: accept-perm-request <request ID>\n用途: Accept a third-party access permission request.\n参数: Request ID\n示例: accept-perm-request req_xxx",
+        "命令: accept-perm-request <リクエストID>\n用途: 外部アクセス権限リクエストを承認します。\n参数: リクエスト ID\n示例: accept-perm-request req_xxx",
+    ),
+    "reject_perm": _help_text(
+        "命令: reject-perm-request <请求ID>\n用途: 拒绝第三方访问权限请求。\n参数: 请求 ID\n示例: reject-perm-request req_xxx",
+        "命令: reject-perm-request <request ID>\n用途: Reject a third-party access permission request.\n参数: Request ID\n示例: reject-perm-request req_xxx",
+        "命令: reject-perm-request <リクエストID>\n用途: 外部アクセス権限リクエストを拒否します。\n参数: リクエスト ID\n示例: reject-perm-request req_xxx",
+    ),
+    "calc_notes": _help_text(
+        "命令: calc <tap> <hold> <slide> [touch] <break>\n用途: 根据谱面物量计算单个 Note 分值。\n参数: TAP、HOLD、SLIDE、可选 TOUCH、BREAK 数量\n示例: calc 500 50 80 20 30",
+        "命令: calc <tap> <hold> <slide> [touch] <break>\n用途: Calculate per-note score values from note counts.\n参数: TAP, HOLD, SLIDE, optional TOUCH, BREAK counts\n示例: calc 500 50 80 20 30",
+        "命令: calc <tap> <hold> <slide> [touch] <break>\n用途: ノーツ数から 1 ノーツあたりの点数を計算します。\n参数: TAP、HOLD、SLIDE、任意 TOUCH、BREAK 数\n示例: calc 500 50 80 20 30",
+    ),
 }
 
 EXACT_HELP_ALIASES = {
@@ -4323,14 +4455,42 @@ REQUIRED_PARAM_HELP_WORDS = set(FIRST_WORD_HELP_ALIASES) | {
 }
 
 
-def _command_help_message(help_key):
+def _command_help_message(help_key, user_id=None):
     if help_key == "b_records":
-        return _build_b_records_help_flex()
-    text = COMMAND_HELP.get(help_key)
-    return TextMessage(text=text) if text else None
+        return _build_b_records_help_flex(user_id)
+    text = get_multilingual_text(COMMAND_HELP.get(help_key), user_id)
+    return _build_standard_help_flex(text, user_id) if text else None
 
 
 HIDDEN_HELP_COMMAND_WORDS = {"unknown"}
+
+HELP_UI_TEXT = {
+    "help_title": {"zh": "命令帮助", "en": "Command Help", "ja": "コマンドヘルプ"},
+    "usage": {"zh": "用法", "en": "Usage", "ja": "使い方"},
+    "function": {"zh": "功能", "en": "Function", "ja": "機能"},
+    "params": {"zh": "参数", "en": "Parameters", "ja": "引数"},
+    "examples": {"zh": "示例", "en": "Examples", "ja": "例"},
+    "notes": {"zh": "注意", "en": "Notes", "ja": "注意"},
+    "command": {"zh": "命令", "en": "Command", "ja": "コマンド"},
+    "purpose": {"zh": "用途", "en": "Purpose", "ja": "用途"},
+    "none": {"zh": "无", "en": "None", "ja": "なし"},
+    "default_purpose": {
+        "zh": "查看该命令的说明。",
+        "en": "Show help for this command.",
+        "ja": "このコマンドの説明を表示します。",
+    },
+    "b_title": {"zh": "B 系列成绩图", "en": "B-Series Score Images", "ja": "B 系スコア画像"},
+    "b_subtitle": {
+        "zh": "Best / All Best / 特殊成绩图与筛选参数",
+        "en": "Best / All Best / special score images and filters",
+        "ja": "Best / All Best / 特殊成績画像とフィルター",
+    },
+    "modes": {"zh": "可用模式", "en": "Modes", "ja": "モード"},
+}
+
+
+def _help_ui(key, user_id=None):
+    return get_multilingual_text(HELP_UI_TEXT[key], user_id)
 
 
 def _flex_text(text, size="sm", color="#222222", weight=None, wrap=True, margin=None, align=None):
@@ -4450,26 +4610,31 @@ def _note_row(label, desc):
     }
 
 
-def _build_b_records_help_flex():
-    modes = [
-        ("Best", "b50 / best50, b40 / best40, b35 / best35, b15 / best15", "#E85D75"),
-        ("All Best", "ab50 / allb50, ab35 / allb35", "#8A63D2"),
-        ("Special", "ap50, fdx50, r50 / rct50, idlb50, s50 / sun50", "#267D8B"),
-    ]
-    filters = [
-        ("-lv / -level", "等级或定数。1 个值精确匹配，2 个值范围。", "-lv 13.6   /   -lv 14 14.9"),
-        ("-diff / -difficulty", "难度。支持 bas、adv、exp、mas、rem 或完整名，可多个。", "-diff mas rem"),
-        ("-ra / -rating", "单谱 Rating。1 个值精确匹配，2 个值范围。", "-ra 320 360"),
-        ("-scr / -score", "达成率。1 个值为下限，2 个值为范围。", "-scr 100.5   /   -scr 100 100.5"),
-        ("-dx / -dxscore", "无参数时按 DX 分排序；带值时筛 DX Score 百分比。", "-dx   /   -dx 95 100"),
-        ("-star / -dxstar", "DX 星数。1 个值精确匹配，2 个值范围。", "-star 5"),
-        ("-ver / -version", "版本名，可多个。+ 会识别为 PLUS，dx / deluxe 会归一。", "-ver buddies prism+"),
-        ("-type / -tp", "谱面类型。支持 dx、std，可多个。", "-type dx"),
-        ("-next / -nxt", "下版本预览。按下一版本 Rating 结构预览成绩图。", "-nxt"),
-        ("-page / -pg", "页码，从 1 开始。", "-page 2"),
-        ("-times / -tm", "扩大输出数量倍率，最大 2.5。", "-times 2"),
-    ]
+def _clean_help_text(text):
+    return str(text or "").replace("`", "").strip()
 
+
+def _parse_plain_help(text):
+    fields = {"命令": "", "用途": "", "参数": "", "示例": "", "注意": ""}
+    current_key = None
+    for raw_line in _clean_help_text(text).splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        matched = False
+        for key in fields:
+            prefix = f"{key}:"
+            if line.startswith(prefix):
+                fields[key] = line[len(prefix):].strip() or fields[key]
+                current_key = key
+                matched = True
+                break
+        if not matched and current_key:
+            fields[current_key] = f"{fields[current_key]}\n{line}".strip()
+    return fields
+
+
+def _standard_help_bubble(title, subtitle, sections, alt_text):
     body_contents = [
         {
             "type": "box",
@@ -4479,55 +4644,19 @@ def _build_b_records_help_flex():
             "cornerRadius": "8px",
             "backgroundColor": "#111827",
             "contents": [
-                _flex_text("B 系列成绩图", size="lg", color="#FFFFFF", weight="bold"),
-                _flex_text("Best / All Best / 特殊成绩图与筛选参数", size="xs", color="#D1D5DB", margin="xs"),
-            ],
-        },
-        _section_title("可用模式"),
-        {
-            "type": "box",
-            "layout": "vertical",
-            "spacing": "sm",
-            "contents": [
-                _mode_card(title, body, color)
-                for title, body, color in modes
-            ],
-        },
-        _section_title("筛选参数"),
-        {
-            "type": "box",
-            "layout": "vertical",
-            "spacing": "sm",
-            "contents": [
-                _filter_row(label, desc, example)
-                for label, desc, example in filters
-            ],
-        },
-        _section_title("组合示例"),
-        {
-            "type": "box",
-            "layout": "vertical",
-            "spacing": "xs",
-            "paddingAll": "10px",
-            "cornerRadius": "8px",
-            "backgroundColor": "#F7F8FA",
-            "contents": [
-                _flex_text("b50 -lv 14 14.9 -diff mas rem -scr 100.5", size="xxs", color="#111111"),
-                _flex_text("ab50 -ver buddies -type dx", size="xxs", color="#111111"),
-                _flex_text("r50 -page 2", size="xxs", color="#111111"),
-            ],
-        },
-        {
-            "type": "box",
-            "layout": "vertical",
-            "spacing": "sm",
-            "margin": "lg",
-            "contents": [
-                _note_row("数据要求", "需要已绑定账号并完成 maimai update，或已有 Import Token / 开发者 API 导入的数据。"),
-                _note_row("查询他人", "支持 LINE mention 查询已注册用户；仅限本人命令不会接受 mention。"),
+                _flex_text(title, size="lg", color="#FFFFFF", weight="bold"),
+                _flex_text(subtitle, size="xs", color="#D1D5DB", margin="xs"),
             ],
         },
     ]
+    for title, rows in sections:
+        body_contents.append(_section_title(title))
+        body_contents.append({
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": rows,
+        })
     bubble = {
         "type": "bubble",
         "size": "mega",
@@ -4540,8 +4669,120 @@ def _build_b_records_help_flex():
         },
     }
     return FlexMessage(
-        alt_text="B 系列成绩图命令说明",
+        alt_text=alt_text,
         contents=FlexContainer.from_dict(bubble),
+    )
+
+
+def _build_standard_help_flex(help_text, user_id=None):
+    fields = _parse_plain_help(help_text)
+    command = fields["命令"] or _help_ui("help_title", user_id)
+    none_text = _help_ui("none", user_id)
+    sections = [
+        (_help_ui("usage", user_id), [_filter_row(_help_ui("command", user_id), command)]),
+        (_help_ui("function", user_id), [
+            _note_row(_help_ui("purpose", user_id), fields["用途"] or _help_ui("default_purpose", user_id))
+        ]),
+        (_help_ui("params", user_id), [_filter_row(_help_ui("params", user_id), fields["参数"] or none_text)]),
+        (_help_ui("examples", user_id), [_filter_row(_help_ui("examples", user_id), fields["示例"] or none_text)]),
+    ]
+    if fields["注意"]:
+        sections.append((_help_ui("notes", user_id), [_note_row(_help_ui("notes", user_id), fields["注意"])]))
+    return _standard_help_bubble(
+        title=_help_ui("help_title", user_id),
+        subtitle=command,
+        sections=sections,
+        alt_text=f"{command} {_help_ui('help_title', user_id)}",
+    )
+
+
+def _build_b_records_help_flex(user_id=None):
+    def t(zh, en, ja):
+        return get_multilingual_text({"zh": zh, "en": en, "ja": ja}, user_id)
+
+    modes = [
+        ("Best", t(
+            "b50 / best50, b40 / best40, b35 / best35, b15 / best15",
+            "b50 / best50, b40 / best40, b35 / best35, b15 / best15",
+            "b50 / best50, b40 / best40, b35 / best35, b15 / best15",
+        ), "#E85D75"),
+        ("All Best", t(
+            "ab50 / allb50, ab35 / allb35",
+            "ab50 / allb50, ab35 / allb35",
+            "ab50 / allb50, ab35 / allb35",
+        ), "#8A63D2"),
+        ("Special", t(
+            "ap50, fdx50, r50 / rct50, idlb50, s50 / sun50",
+            "ap50, fdx50, r50 / rct50, idlb50, s50 / sun50",
+            "ap50, fdx50, r50 / rct50, idlb50, s50 / sun50",
+        ), "#267D8B"),
+    ]
+    filters = [
+        ("-lv / -level", t("等级或定数。1 个值精确匹配，2 个值范围。", "Level or constant. One value is exact; two values are a range.", "レベルまたは定数。1 つは完全一致、2 つは範囲です。"), "-lv 13.6   /   -lv 14 14.9"),
+        ("-diff / -difficulty", t("难度。支持 bas、adv、exp、mas、rem 或完整名，可多个。", "Difficulty. Supports bas, adv, exp, mas, rem, or full names; multiple values are allowed.", "難易度。bas、adv、exp、mas、rem または正式名を複数指定できます。"), "-diff mas rem"),
+        ("-ra / -rating", t("单谱 Rating。1 个值精确匹配，2 个值范围。", "Chart rating. One value is exact; two values are a range.", "単曲 Rating。1 つは完全一致、2 つは範囲です。"), "-ra 320 360"),
+        ("-scr / -score", t("达成率。1 个值为下限，2 个值为范围。", "Achievement. One value is a lower bound; two values are a range.", "達成率。1 つは下限、2 つは範囲です。"), "-scr 100.5   /   -scr 100 100.5"),
+        ("-dx / -dxscore", t("无参数时按 DX 分排序；带值时筛 DX Score 百分比。", "Without values, sort by DX score; with values, filter DX score percentage.", "値なしでは DX スコア順、値ありでは DX スコア割合で絞り込みます。"), "-dx   /   -dx 95 100"),
+        ("-star / -dxstar", t("DX 星数。1 个值精确匹配，2 个值范围。", "DX stars. One value is exact; two values are a range.", "DX 星数。1 つは完全一致、2 つは範囲です。"), "-star 5"),
+        ("-ver / -version", t("版本名，可多个。+ 会识别为 PLUS，dx / deluxe 会归一。", "Version names. Multiple values are allowed; + is treated as PLUS, and dx/deluxe are normalized.", "バージョン名。複数指定可。+ は PLUS、dx / deluxe は正規化されます。"), "-ver buddies prism+"),
+        ("-type / -tp", t("谱面类型。支持 dx、std，可多个。", "Chart type. Supports dx and std; multiple values are allowed.", "譜面種別。dx、std を複数指定できます。"), "-type dx"),
+        ("-next / -nxt", t("下版本预览。按下一版本 Rating 结构预览成绩图。", "Next-version preview using the next rating structure.", "次バージョンプレビュー。次の Rating 構成で成績画像を表示します。"), "-nxt"),
+        ("-page / -pg", t("页码，从 1 开始。", "Page number, starting from 1.", "ページ番号。1 から始まります。"), "-page 2"),
+        ("-times / -tm", t("扩大输出数量倍率，最大 2.5。", "Display multiplier, capped at 2.5.", "表示件数の倍率。最大 2.5 です。"), "-times 2"),
+    ]
+
+    sections = [
+        (_help_ui("usage", user_id), [
+            _filter_row(_help_ui("command", user_id), "b50 / b40 / b35 / b15 / ab50 / ap50 / fdx50 / r50 / idlb50 / s50"),
+        ]),
+        (_help_ui("function", user_id), [
+            _note_row(_help_ui("purpose", user_id), t(
+                "生成 Best / All Best / 特殊成绩图，可追加筛选参数。",
+                "Generate Best / All Best / special score images with optional filters.",
+                "Best / All Best / 特殊成績画像を生成し、フィルターを追加できます。",
+            )),
+        ]),
+        (_help_ui("modes", user_id), [
+                _mode_card(title, body, color)
+                for title, body, color in modes
+        ]),
+        (_help_ui("params", user_id), [
+                _filter_row(label, desc, example)
+                for label, desc, example in filters
+        ]),
+        (_help_ui("examples", user_id), [
+            {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "xs",
+                "paddingAll": "10px",
+                "cornerRadius": "8px",
+                "backgroundColor": "#F7F8FA",
+                "contents": [
+                    _flex_text("b50 -lv 14 14.9 -diff mas rem -scr 100.5", size="xxs", color="#111111"),
+                    _flex_text("ab50 -ver buddies -type dx", size="xxs", color="#111111"),
+                    _flex_text("r50 -page 2", size="xxs", color="#111111"),
+                ],
+            },
+        ]),
+        (_help_ui("notes", user_id), [
+            _note_row(t("数据要求", "Data required", "データ要件"), t(
+                "需要已绑定账号并完成 maimai update，或已有 Import Token / 开发者 API 导入的数据。",
+                "Requires a linked account with maimai update completed, or data imported through Import Token / Developer API.",
+                "maimai update 済みの連携アカウント、または Import Token / Developer API で取り込んだデータが必要です。",
+            )),
+            _note_row(t("查询他人", "Querying others", "他ユーザー検索"), t(
+                "支持 LINE mention 查询已注册用户；仅限本人命令不会接受 mention。",
+                "LINE mentions can query registered users; self-only commands do not accept mentions.",
+                "LINE メンションで登録済みユーザーを検索できます。本人専用コマンドはメンション不可です。",
+            )),
+        ]),
+    ]
+    return _standard_help_bubble(
+        title=_help_ui("b_title", user_id),
+        subtitle=_help_ui("b_subtitle", user_id),
+        sections=sections,
+        alt_text=f"{_help_ui('b_title', user_id)} {_help_ui('help_title', user_id)}",
     )
 
 
@@ -4614,7 +4855,7 @@ def _reply_command_help_if_needed(ctx):
     help_match = re.match(r"^(?P<body>.*?)\s*-help\s*$", ctx.text, re.IGNORECASE)
     if help_match:
         help_key = _detect_command_help_key(help_match.group("body"))
-        reply = _command_help_message(help_key)
+        reply = _command_help_message(help_key, ctx.user_id)
         if reply is None:
             reply = input_error(ctx.user_id)
         _bump_stats()
@@ -4624,7 +4865,7 @@ def _reply_command_help_if_needed(ctx):
 
     help_key = _detect_missing_param_help_key(ctx.text)
     if help_key:
-        reply = _command_help_message(help_key)
+        reply = _command_help_message(help_key, ctx.user_id)
         _bump_stats()
         smart_reply(ctx.user_id, ctx.reply_token, reply, configuration,
                     addition=False, source_type=ctx.source_type)
