@@ -4465,6 +4465,7 @@ def _command_help_message(help_key, user_id=None):
 
 
 HIDDEN_HELP_COMMAND_WORDS = {"unknown"}
+HELP_INDEX_WORDS = {"help", "commands", "command", "帮助", "幫助", "ヘルプ", "コマンド"}
 
 HELP_UI_TEXT = {
     "help_title": {"zh": "命令帮助", "en": "Command Help", "ja": "コマンドヘルプ"},
@@ -4883,7 +4884,7 @@ def _detect_command_help_key(text):
 
     if lowered in EXACT_HELP_ALIASES:
         return EXACT_HELP_ALIASES[lowered]
-    if lowered in {"help", "commands", "command", "帮助", "幫助", "ヘルプ", "コマンド"}:
+    if lowered in HELP_INDEX_WORDS:
         return "help_index"
 
     first_word = re.split(r"[ \n]", lowered, 1)[0]
@@ -4943,9 +4944,9 @@ def _detect_missing_param_help_key(text):
 
 
 def _reply_command_help_if_needed(ctx):
-    if ctx.text.strip().lower() in {"help", "commands", "command", "帮助", "幫助", "ヘルプ", "コマンド"}:
+    if ctx.text.strip().lower() in HELP_INDEX_WORDS:
         _bump_stats()
-        smart_reply(ctx.user_id, ctx.reply_token, _build_help_index_flex(ctx.user_id),
+        smart_reply(ctx.user_id, ctx.reply_token, _command_help_message("help_index", ctx.user_id),
                     configuration, addition=False, source_type=ctx.source_type)
         return True
 
