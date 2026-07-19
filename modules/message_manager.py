@@ -434,35 +434,6 @@ def generate_export_flex(user_id, meta):
     )
 
 
-def generate_donate_flex(user_id=None):
-    title = "カヰテーを支援 · Support JiETNG"
-    body = (
-        "一起为 JiETNG 的开发与未来加油！\n"
-        "JiETNG の開発と未来を応援しよう！\n"
-        "Support JiETNG's journey ahead!"
-    )
-    return _standard_action_bubble(
-        title=title,
-        subtitle="JiETNG",
-        body_text=body,
-        note_text="Thank you for supporting JiETNG",
-        alt_text="JiETNGを支援 · Support JiETNG",
-        actions=[
-            _flex_action_button("Liberapay", {
-                "type": "uri",
-                "label": "Liberapay",
-                "uri": "https://ja.liberapay.com/_matsuk1/donate?currency=JPY",
-            }),
-            _flex_action_button("爱发电", {
-                "type": "uri",
-                "label": "爱发电",
-                "uri": "https://afdian.com/a/matsuki",
-            }, style="secondary"),
-        ],
-        accent=COLOR_TIP,
-        user_id=user_id,
-    )
-
 def get_quick_reply_label(key, user_id=None):
     """获取 QuickReply 按钮的多语言标签"""
     if key not in quick_reply_labels:
@@ -520,7 +491,6 @@ def generate_standard_help_flex(help_data, user_id=None):
     notes = fields.get("notes") or fields.get("注意")
     none_text = _help_ui("none", user_id)
     sections = [
-        (_help_ui("usage", user_id), [_help_filter_row(_help_ui("command", user_id), command)]),
         (_help_ui("function", user_id), [
             _help_note_row(_help_ui("purpose", user_id), purpose or _help_ui("default_purpose", user_id))
         ]),
@@ -530,8 +500,8 @@ def generate_standard_help_flex(help_data, user_id=None):
     if notes:
         sections.append((_help_ui("notes", user_id), [_help_note_row(_help_ui("notes", user_id), notes)]))
     return _standard_help_bubble(
-        title=_help_ui("help_title", user_id),
-        subtitle=command,
+        title=command,
+        subtitle=_help_ui("help_title", user_id),
         sections=sections,
         alt_text=f"{command} {_help_ui('help_title', user_id)}",
     )
@@ -669,7 +639,7 @@ def generate_help_index_flex(user_id=None):
         ),
         (
             _help_i18n(user_id, "工具", "Tools", "ツール"),
-            "rank / rc / calc / donate / refreshmenu",
+            "rank / rc / calc / refreshmenu",
             _help_i18n(user_id, "排行榜、Rating 内訳、分值计算和辅助功能。", "Ranking, rating breakdown, note scoring, and utility commands.", "ランキング、レート内訳、ノーツ点数計算、補助機能。"),
             "#6B7280",
         ),

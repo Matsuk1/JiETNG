@@ -4296,11 +4296,6 @@ COMMAND_HELP = {
         "命令: settings\n用途: Open your settings page.\n参数: None\n示例: settings\n注意: Use this in a private chat.",
         "命令: settings\n用途: 個人設定ページを開きます。\n参数: なし\n示例: settings\n注意: 個人チャットで使用してください。",
     ),
-    "donate": _help_text(
-        "命令: donate\n用途: 查看捐赠/支持信息。\n参数: 无\n示例: donate",
-        "命令: donate\n用途: Show donation/support information.\n参数: None\n示例: donate",
-        "命令: donate\n用途: 寄付/サポート情報を表示します。\n参数: なし\n示例: donate",
-    ),
     "profile": _help_text(
         "命令: profile / getme\n用途: 查看自己的 JiETNG 账号信息。\n参数: 无\n示例: profile",
         "命令: profile / getme\n用途: Show your JiETNG account profile.\n参数: None\n示例: profile",
@@ -4383,7 +4378,6 @@ EXACT_HELP_ALIASES = {
     "bind": "bind",
     "rebind": "rebind",
     "settings": "settings",
-    "donate": "donate",
     "profile": "profile",
     "getme": "profile",
     "status": "status",
@@ -4582,9 +4576,6 @@ def dispatch_command(ctx):
 
 
 # ---- sync/image 命令 handlers，签名 (ctx) -> Optional[Message] ----
-
-def cmd_donate(ctx):
-    return generate_donate_flex(ctx.user_id)
 
 def cmd_profile(ctx):
     return get_user_info(ctx.user_id, ctx.source_type)
@@ -4908,7 +4899,6 @@ COMMANDS = [
     Command(Exact("settings"), cmd_settings,
             self_only=True, addition=False, name="settings"),
 
-    Command(Exact("donate"), cmd_donate, name="donate"),
     Command(Exact("profile", "getme"), cmd_profile, name="profile"),
     Command(Exact("status"), cmd_status, name="status"),
     Command(Exact("refreshmenu"), cmd_refresh_menu,
