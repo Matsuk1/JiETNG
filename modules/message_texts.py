@@ -629,6 +629,34 @@ calc_button_text = {
     "zh": "Note 计算"
 }
 
+calc_flex_text = {
+    "title_distribution": {
+        "ja": "ノーツ分布",
+        "en": "Note Distribution",
+        "zh": "Note 分布"
+    },
+    "subtitle": {
+        "ja": "ノーツ計算",
+        "en": "Note Calc",
+        "zh": "Note 计算"
+    },
+    "alt_single": {
+        "ja": "ノーツ計算結果",
+        "en": "Note Calc Result",
+        "zh": "Note 计算结果"
+    },
+    "alt_multi": {
+        "ja": "ノーツ計算結果",
+        "en": "Note Calc Results",
+        "zh": "Note 计算结果"
+    },
+    "max_tap_great": {
+        "ja": "最大 {count} TAP GREAT",
+        "en": "Max {count} TAP GREAT",
+        "zh": "最多 {count} 个 TAP GREAT"
+    }
+}
+
 # 歌曲信息 alt_text
 song_info_alt_text = {
     "ja": "楽曲情報",

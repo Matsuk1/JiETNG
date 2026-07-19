@@ -276,6 +276,36 @@ def _standard_header_box(title, subtitle=None, accent="#111827", title_color="#F
     }
 
 
+def _metric_card(label, value, value_color=COLOR_TEXT_PRIMARY, bg_color="#F8FAFC"):
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "xs",
+        "paddingAll": "11px",
+        "cornerRadius": "8px",
+        "backgroundColor": bg_color,
+        "contents": [
+            _help_flex_text(label, size="xxs", color=COLOR_TEXT_MUTED),
+            _help_flex_text(str(value), size="sm", color=value_color, weight="bold"),
+        ],
+    }
+
+
+def _metric_grid(cards):
+    rows = []
+    for i in range(0, len(cards), 2):
+        row_cards = cards[i:i + 2]
+        if len(row_cards) == 1:
+            row_cards.append({"type": "filler"})
+        rows.append({
+            "type": "box",
+            "layout": "horizontal",
+            "spacing": "sm",
+            "contents": row_cards,
+        })
+    return rows
+
+
 def _flex_action_button(label, action, style="primary", color=COLOR_BRAND):
     button = {
         "type": "button",
@@ -1468,28 +1498,35 @@ def generate_update_result_flex(
         seconds = elapsed_time % 60
         elapsed_str = f"{minutes}m {seconds:.1f}s"
 
-    tz_str = format_timezone_string(user_id)
-    summary_rows = [
-        _help_filter_row(
-            f"{get_multilingual_text(texts['update_time_label'], language=lang)} {tz_str}",
-            update_time,
-        ),
-        _help_filter_row(
-            get_multilingual_text(texts['elapsed_time_label'], language=lang),
-            elapsed_str,
-        ),
-    ]
-
     failed_statuses = {
         func_name: status
         for func_name, status in func_status.items()
         if not status
     }
-    sections = [
-        (
-            get_multilingual_text(texts['summary_section'], language=lang),
-            summary_rows,
-        )
+    tz_str = format_timezone_string(user_id)
+    accent = COLOR_SUCCESS if success else COLOR_DANGER
+    body_contents = [
+        _standard_header_box(
+            get_multilingual_text(texts['title_success'] if success else texts['title_error'], language=lang),
+            "JiETNG",
+            accent=accent,
+        ),
+        {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": _metric_grid([
+                _metric_card(
+                    f"{get_multilingual_text(texts['update_time_label'], language=lang)} {tz_str}",
+                    update_time,
+                ),
+                _metric_card(
+                    get_multilingual_text(texts['elapsed_time_label'], language=lang),
+                    elapsed_str,
+                    value_color=accent,
+                ),
+            ]),
+        },
     ]
     if failed_statuses:
         failed_rows = []
@@ -1497,10 +1534,13 @@ def generate_update_result_flex(
             status_text = get_multilingual_text(texts['failed'], language=lang)
             func_label = _update_status_label(func_name, lang)
             failed_rows.append(_help_filter_row(func_label, status_text))
-        sections.append((
-            get_multilingual_text(texts['status_label'], language=lang),
-            failed_rows,
-        ))
+        body_contents.append(_help_section_title(get_multilingual_text(texts['status_label'], language=lang), accent=COLOR_DANGER))
+        body_contents.append({
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": failed_rows,
+        })
 
     random_tip = get_random_tip()
     random_ad = get_random_ad()
@@ -1510,15 +1550,24 @@ def generate_update_result_flex(
     if random_ad:
         extra_rows.append(generate_tip_ad_box(random_ad, lang))
     if extra_rows:
-        sections.append((_help_ui("notes", user_id), extra_rows))
+        body_contents.append(_help_section_title(_help_ui("notes", user_id)))
+        body_contents.extend(extra_rows)
 
-    title_text = texts['title_success'] if success else texts['title_error']
     alt_text = texts['alt_text_success'] if success else texts['alt_text_error']
-    return _standard_help_bubble(
-        title=get_multilingual_text(title_text, language=lang),
-        subtitle="JiETNG",
-        sections=sections,
+    bubble = {
+        "type": "bubble",
+        "size": "mega",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "md",
+            "paddingAll": "16px",
+            "contents": body_contents,
+        },
+    }
+    return FlexMessage(
         alt_text=get_multilingual_text(alt_text, language=lang),
+        contents=FlexContainer.from_dict(bubble),
     )
 
 def generate_tip_ad_box(tip_ad, lang):
@@ -1628,7 +1677,7 @@ def generate_tip_ad_box(tip_ad, lang):
 # ============================================================
 
 
-def generate_calc_result_flex(notes, scores, difficulty=None, level=None):
+def generate_calc_result_flex(notes, scores, difficulty=None, level=None, user_id=None):
     """
     生成计算结果 Flex Message
 
@@ -1641,14 +1690,15 @@ def generate_calc_result_flex(notes, scores, difficulty=None, level=None):
     Returns:
         FlexMessage: 计算结果 Flex Message
     """
-    bubble = _build_calc_bubble(notes, scores, difficulty, level)
+    lang = get_user_language(user_id)
+    bubble = _build_calc_bubble(notes, scores, difficulty, level, lang)
     return FlexMessage(
-        alt_text="Calc Result",
+        alt_text=get_multilingual_text(calc_flex_text['alt_single'], language=lang),
         contents=FlexContainer.from_dict(bubble)
     )
 
 
-def generate_calc_carousel(calc_bubbles_data):
+def generate_calc_carousel(calc_bubbles_data, user_id=None):
     """
     生成calc结果的carousel Flex Message
 
@@ -1658,16 +1708,17 @@ def generate_calc_carousel(calc_bubbles_data):
     Returns:
         FlexMessage: Carousel格式的calc结果
     """
+    lang = get_user_language(user_id)
     if len(calc_bubbles_data) == 1:
         # 只有一个bubble，直接返回单个flex message
         notes, scores, difficulty, level = calc_bubbles_data[0]
-        return generate_calc_result_flex(notes, scores, difficulty, level)
+        return generate_calc_result_flex(notes, scores, difficulty, level, user_id)
 
     # 多个bubble，构建carousel
     bubbles = []
     for notes, scores, difficulty, level in calc_bubbles_data:
         # 直接构建bubble字典，复制generate_calc_result_flex的逻辑
-        bubble = _build_calc_bubble(notes, scores, difficulty, level)
+        bubble = _build_calc_bubble(notes, scores, difficulty, level, lang)
         bubbles.append(bubble)
 
     carousel = {
@@ -1675,12 +1726,12 @@ def generate_calc_carousel(calc_bubbles_data):
         "contents": bubbles
     }
     return FlexMessage(
-        alt_text="Calc Results",
+        alt_text=get_multilingual_text(calc_flex_text['alt_multi'], language=lang),
         contents=FlexContainer.from_dict(carousel)
     )
 
 
-def _build_calc_bubble(notes, scores, difficulty=None, level=None):
+def _build_calc_bubble(notes, scores, difficulty=None, level=None, lang="ja"):
     """
     构建calc结果的bubble字典（内部辅助函数）
 
@@ -1811,12 +1862,12 @@ def _build_calc_bubble(notes, scores, difficulty=None, level=None):
     # 生成标题文本
     if difficulty:
         diff_info = difficulty_map.get(difficulty, {'name': difficulty.upper(), 'color': '#007AFF'})
-        title_text = f"🗒️ {diff_info['name']}"
+        title_text = diff_info['name']
         if level:
             title_text += f" (Lv. {level:.1f})"
         header_color = diff_info['color']
     else:
-        title_text = "🗒️ Note Distribution"
+        title_text = get_multilingual_text(calc_flex_text['title_distribution'], language=lang)
         header_color = "#007AFF"
 
     # 计算 tap_great 容错数
@@ -1850,7 +1901,10 @@ def _build_calc_bubble(notes, scores, difficulty=None, level=None):
                         },
                         {
                             "type": "text",
-                            "text": f"Max {max_tap_great_to_half} TAP GREAT",
+                            "text": get_multilingual_text(
+                                calc_flex_text['max_tap_great'],
+                                language=lang,
+                            ).format(count=max_tap_great_to_half),
                             "size": "xs",
                             "color": "#FF69B4",
                             "align": "end",
@@ -1873,7 +1927,10 @@ def _build_calc_bubble(notes, scores, difficulty=None, level=None):
                         },
                         {
                             "type": "text",
-                            "text": f"Max {max_tap_great_to_full} TAP GREAT",
+                            "text": get_multilingual_text(
+                                calc_flex_text['max_tap_great'],
+                                language=lang,
+                            ).format(count=max_tap_great_to_full),
                             "size": "xs",
                             "color": "#FF69B4",
                             "align": "end",
@@ -1898,7 +1955,11 @@ def _build_calc_bubble(notes, scores, difficulty=None, level=None):
     bubble = {
         "type": "bubble",
         "size": "mega",
-        "header": _standard_header_box(title_text, "Note Calc", accent=header_color),
+        "header": _standard_header_box(
+            title_text,
+            get_multilingual_text(calc_flex_text['subtitle'], language=lang),
+            accent=header_color,
+        ),
         "body": {
             "type": "box",
             "layout": "vertical",
@@ -2599,15 +2660,25 @@ def generate_bot_status_flex(uptime_str, image_queue_size, web_queue_size,
     queue_text = f"Image {image_queue_size} · Web {web_queue_size}"
     songs_text = f"{song_count} {song_unit} · {dxdata_date}"
 
-    status_rows = [
-        _help_filter_row(select_text(texts['uptime'], language=lang), uptime_str),
-        _help_filter_row(select_text(texts['queue'], language=lang), queue_text),
-        _help_filter_row(select_text(texts['tasks_today'], language=lang), str(tasks_today)),
-        _help_filter_row(select_text(texts['songs'], language=lang), songs_text),
-    ]
-
-    sections = [
-        (select_text(texts['summary'], language=lang), status_rows)
+    queue_busy = (image_queue_size + web_queue_size) > 0
+    queue_color = COLOR_WARNING if queue_busy else COLOR_SUCCESS
+    body_contents = [
+        _standard_header_box(
+            select_text(texts['title'], language=lang),
+            "JiETNG",
+            accent="#111827",
+        ),
+        {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": _metric_grid([
+                _metric_card(select_text(texts['uptime'], language=lang), uptime_str),
+                _metric_card(select_text(texts['queue'], language=lang), queue_text, value_color=queue_color),
+                _metric_card(select_text(texts['tasks_today'], language=lang), str(tasks_today), value_color="#8A63D2"),
+                _metric_card(select_text(texts['songs'], language=lang), songs_text),
+            ]),
+        },
     ]
 
     random_tip = get_random_tip()
@@ -2618,11 +2689,21 @@ def generate_bot_status_flex(uptime_str, image_queue_size, web_queue_size,
     if random_ad:
         extra_rows.append(generate_tip_ad_box(random_ad, lang))
     if extra_rows:
-        sections.append((_help_ui("notes", user_id), extra_rows))
+        body_contents.append(_help_section_title(_help_ui("notes", user_id)))
+        body_contents.extend(extra_rows)
 
-    return _standard_help_bubble(
-        title=select_text(texts['title'], language=lang),
-        subtitle="JiETNG",
-        sections=sections,
+    bubble = {
+        "type": "bubble",
+        "size": "mega",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "md",
+            "paddingAll": "16px",
+            "contents": body_contents,
+        },
+    }
+    return FlexMessage(
         alt_text=select_text(texts['title'], language=lang),
+        contents=FlexContainer.from_dict(bubble),
     )

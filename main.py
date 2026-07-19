@@ -2635,7 +2635,7 @@ def calc_by_id(user_id, song_id, ver="jp"):
         scores = get_note_score(notes)
         calc_data.append((notes, scores, difficulty, level))
 
-    calc_carousel = generate_calc_carousel(calc_data)
+    calc_carousel = generate_calc_carousel(calc_data, user_id)
     return calc_carousel
 
 def get_user_info(user_id, source_type):
@@ -4746,7 +4746,7 @@ def cmd_calc_notes(ctx):
         if len(num) != 5:
             raise ValueError
         notes = dict(zip(['tap', 'hold', 'slide', 'touch', 'break'], num))
-        return generate_calc_result_flex(notes, get_note_score(notes))
+        return generate_calc_result_flex(notes, get_note_score(notes), user_id=ctx.user_id)
     except Exception:
         return input_error(ctx.user_id)
 
