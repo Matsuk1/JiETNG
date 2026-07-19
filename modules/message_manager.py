@@ -632,9 +632,9 @@ def generate_help_index_flex(user_id=None):
             "#B86E19",
         ),
         (
-            _help_i18n(user_id, "社交与权限", "Social and Permissions", "フレンドと権限"),
-            "friends / friend-rcd / accept-perm-request / reject-perm-request",
-            _help_i18n(user_id, "好友成绩和第三方访问权限管理。", "Friend records and third-party access permission management.", "フレンド成績と外部アクセス権限管理。"),
+            _help_i18n(user_id, "社交", "Social", "フレンド"),
+            "friends / friend-rcd",
+            _help_i18n(user_id, "好友列表和好友成绩查询。", "Friend list and friend record lookup.", "フレンド一覧とフレンド成績検索。"),
             "#315B7D",
         ),
         (

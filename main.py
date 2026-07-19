@@ -4351,16 +4351,6 @@ COMMAND_HELP = {
         "命令: export <json|xml>\n用途: Export your score data.\n参数: Export format, json or xml\n示例: export json",
         "命令: export <json|xml> / 成績エクスポート <json|xml>\n用途: 自分の成績データを書き出します。\n参数: 出力形式、json または xml\n示例: export json",
     ),
-    "accept_perm": _help_text(
-        "命令: accept-perm-request <请求ID>\n用途: 接受第三方访问权限请求。\n参数: 请求 ID\n示例: accept-perm-request req_xxx",
-        "命令: accept-perm-request <request ID>\n用途: Accept a third-party access permission request.\n参数: Request ID\n示例: accept-perm-request req_xxx",
-        "命令: accept-perm-request <リクエストID>\n用途: 外部アクセス権限リクエストを承認します。\n参数: リクエスト ID\n示例: accept-perm-request req_xxx",
-    ),
-    "reject_perm": _help_text(
-        "命令: reject-perm-request <请求ID>\n用途: 拒绝第三方访问权限请求。\n参数: 请求 ID\n示例: reject-perm-request req_xxx",
-        "命令: reject-perm-request <request ID>\n用途: Reject a third-party access permission request.\n参数: Request ID\n示例: reject-perm-request req_xxx",
-        "命令: reject-perm-request <リクエストID>\n用途: 外部アクセス権限リクエストを拒否します。\n参数: リクエスト ID\n示例: reject-perm-request req_xxx",
-    ),
     "calc_notes": _help_text(
         "命令: calc <tap> <hold> <slide> [touch] <break>\n用途: 根据谱面物量计算单个 Note 分值。\n参数: TAP、HOLD、SLIDE、可选 TOUCH、BREAK 数量\n示例: calc 500 50 80 20 30",
         "命令: calc <tap> <hold> <slide> [touch] <break>\n用途: Calculate per-note score values from note counts.\n参数: TAP, HOLD, SLIDE, optional TOUCH, BREAK counts\n示例: calc 500 50 80 20 30",
@@ -4399,8 +4389,6 @@ FIRST_WORD_HELP_ALIASES = {
     "export": "export",
     "成績エクスポート": "export",
     "成绩导出": "export",
-    "accept-perm-request": "accept_perm",
-    "reject-perm-request": "reject_perm",
     "calc": "calc_notes",
 }
 
