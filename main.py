@@ -56,22 +56,10 @@ from linebot.v3.messaging import (
     MessagingApiBlob,
     TextMessage,
     ImageMessage,
-    TemplateMessage,
-    ButtonsTemplate,
-    MessageAction,
-    URIAction,
-    FlexMessage,
-    FlexContainer
 )
 from linebot.v3.messaging.models import (
     MarkMessagesAsReadByTokenRequest,
     ShowLoadingAnimationRequest,
-    FlexBubble,
-    FlexBox,
-    FlexText,
-    FlexButton,
-    FlexSeparator,
-    ClipboardAction,
 )
 from linebot.v3.webhooks import (
     FollowEvent,
@@ -1807,7 +1795,18 @@ def async_get_friend_list_task(event):
 
     source_type = getattr(event.source, 'type', 'user')
     if source_type != 'user':
-        smart_reply(user_id, reply_token, TextMessage(text=get_multilingual_text(friend_rcd_group_warning_text, user_id)), configuration, addition=False)
+        smart_reply(
+            user_id,
+            reply_token,
+            generate_status_flex(
+                {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+                friend_rcd_group_warning_text,
+                user_id,
+                tone="warning",
+            ),
+            configuration,
+            addition=False,
+        )
         return
 
     _udata = get_user(user_id)
@@ -1863,8 +1862,12 @@ def async_generate_friend_record_task(event):
     # 检查是否在群聊中发送
     source_type = getattr(event.source, 'type', 'user')
     if source_type != 'user':
-        # 在群聊中，返回警告消息
-        reply_message = TextMessage(text=get_multilingual_text(friend_rcd_group_warning_text, user_id))
+        reply_message = generate_status_flex(
+            {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+            friend_rcd_group_warning_text,
+            user_id,
+            tone="warning",
+        )
         return smart_reply(user_id, reply_token, reply_message, configuration, addition=False)
 
     # 只拆分前两个空格，剩余内容作为 command
@@ -2155,60 +2158,6 @@ async def maimai_update(user_id, ver="jp"):
 
     return messages
 
-def _build_export_flex(user_id: str, meta: dict) -> FlexMessage:
-    """根据 export_records 返回的 meta 拼一张下载卡。"""
-    size_kb = max(1, round(meta["size"] / 1024))
-    fmt_label = meta["fmt"].upper()
-
-    title  = get_multilingual_text(export_flex_title_text, user_id)
-    body   = get_multilingual_text(export_flex_summary_text, user_id).format(
-        best=meta["best_count"], recent=meta["recent_count"],
-        fmt=fmt_label, size_kb=size_kb,
-    )
-    foot   = get_multilingual_text(export_flex_footnote_text, user_id).format(ttl=meta["ttl_minutes"])
-    btn    = get_multilingual_text(export_flex_button_text, user_id)
-    alt    = get_multilingual_text(export_alt_text, user_id)
-
-    copy_btn = get_multilingual_text(export_flex_copy_button_text, user_id)
-
-    bubble = FlexBubble(
-        body=FlexBox(
-            layout="vertical",
-            spacing="md",
-            paddingAll="16px",
-            contents=[
-                FlexText(text=title, weight="bold", size="md", wrap=True, color=COLOR_TEXT_PRIMARY),
-                FlexSeparator(margin="md"),
-                FlexText(text=body, size="sm", wrap=True, color=COLOR_TEXT_SECONDARY),
-                FlexText(text=foot, size="xs", wrap=True, margin="md", color=COLOR_TEXT_MUTED),
-            ],
-        ),
-        footer=FlexBox(
-            layout="vertical",
-            spacing="sm",
-            paddingAll="12px",
-            contents=[
-                FlexButton(
-                    style="primary",
-                    color=COLOR_BRAND,
-                    height="sm",
-                    # `openExternalBrowser=1` 让 LINE 用系统默认浏览器打开，
-                    # 外部浏览器会正常响应 Content-Disposition: attachment 触发下载，
-                    # 否则 LINE 内置 WebView 会把 .json/.xml 当文本预览。
-                    action=URIAction(label=btn, uri=f"{meta['url']}?openExternalBrowser=1"),
-                ),
-                FlexButton(
-                    style="secondary",
-                    height="sm",
-                    # ClipboardAction：原生复制到剪贴板，复制不带 LINE 专用 query param 的纯链接
-                    action=ClipboardAction(label=copy_btn, clipboard_text=meta["url"]),
-                ),
-            ],
-        ),
-    )
-    return FlexMessage(alt_text=alt, contents=bubble)
-
-
 def handle_export_command(user_id: str, fmt: str):
     """
     处理成绩导出命令（export json / export xml）
@@ -2234,7 +2183,7 @@ def handle_export_command(user_id: str, fmt: str):
 
     logger.info(f"[Export] ✓ Export delivered: user_id={user_id}, fmt={fmt}, "
                 f"size={meta['size']}, best={meta['best_count']}, recent={meta['recent_count']}")
-    return _build_export_flex(user_id, meta)
+    return generate_export_flex(user_id, meta)
 
 
 def handle_rc_command(msg: str, user_id: str):
@@ -2504,7 +2453,12 @@ def search_by_artist(user_id, artist_query, ver="jp", page=1, source_type="user"
         FlexMessage 歌曲列表 或错误消息
     """
     if source_type != 'user':
-        return TextMessage(text=get_multilingual_text(search_group_warning_text, user_id))
+        return generate_status_flex(
+            {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+            search_group_warning_text,
+            user_id,
+            tone="warning",
+        )
 
     songs, _ = read_dxdata(ver)
 
@@ -2536,7 +2490,12 @@ def search_by_designer(user_id, designer_query, ver="jp", page=1, source_type="u
         FlexMessage 歌曲列表 或错误消息
     """
     if source_type != 'user':
-        return TextMessage(text=get_multilingual_text(search_group_warning_text, user_id))
+        return generate_status_flex(
+            {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+            search_group_warning_text,
+            user_id,
+            tone="warning",
+        )
 
     songs, _ = read_dxdata(ver)
 
@@ -2590,7 +2549,12 @@ def search_by_bpm(user_id, bpm_min, bpm_max=None, ver="jp", page=1, source_type=
         FlexMessage 歌曲列表 或错误消息
     """
     if source_type != 'user':
-        return TextMessage(text=get_multilingual_text(search_group_warning_text, user_id))
+        return generate_status_flex(
+            {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+            search_group_warning_text,
+            user_id,
+            tone="warning",
+        )
 
     songs, _ = read_dxdata(ver)
     exact_match = bpm_max is None
@@ -2676,8 +2640,12 @@ def calc_by_id(user_id, song_id, ver="jp"):
 
 def get_user_info(user_id, source_type):
     if source_type != 'user':
-        # 在群聊中，返回警告消息
-        return TextMessage(text=get_multilingual_text(private_info_group_warning_text, user_id))
+        return generate_status_flex(
+            {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+            private_info_group_warning_text,
+            user_id,
+            tone="warning",
+        )
 
     return generate_user_info_flex(user_id)
 
@@ -4616,7 +4584,7 @@ def dispatch_command(ctx):
 # ---- sync/image 命令 handlers，签名 (ctx) -> Optional[Message] ----
 
 def cmd_donate(ctx):
-    return donate_message
+    return generate_donate_flex(ctx.user_id)
 
 def cmd_profile(ctx):
     return get_user_info(ctx.user_id, ctx.source_type)
@@ -4632,7 +4600,12 @@ def cmd_refresh_menu(ctx):
     return None
 
 def cmd_unbind_prompt(ctx):
-    return TextMessage(text=get_multilingual_text(unbind_confirm_text, ctx.user_id))
+    return generate_status_flex(
+        {"ja": "アカウント連携解除", "en": "Unbind Account", "zh": "解除账号绑定"},
+        unbind_confirm_text,
+        ctx.user_id,
+        tone="danger",
+    )
 
 def cmd_unbind_execute(ctx):
     return user_unbind(ctx.user_id)
@@ -4797,7 +4770,12 @@ def cmd_calc_notes(ctx):
 
 def _check_private_or_warn(ctx, warn_text_dict):
     if ctx.source_type != 'user':
-        return TextMessage(text=get_multilingual_text(warn_text_dict, ctx.user_id))
+        return generate_status_flex(
+            {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+            warn_text_dict,
+            ctx.user_id,
+            tone="warning",
+        )
     return None
 
 def _has_full_account(user_data):
@@ -4816,47 +4794,42 @@ def cmd_bind(ctx):
         return warn
     add_user(ctx.user_id)
     if _has_full_account(get_user(ctx.user_id) or {}):
-        return TextMessage(text=get_multilingual_text(already_bound_text, ctx.user_id))
+        return generate_status_flex(
+            {"ja": "連携済み", "en": "Already Linked", "zh": "已绑定"},
+            already_bound_text,
+            ctx.user_id,
+            tone="warning",
+        )
     url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(ctx.user_id)}"
-    return TemplateMessage(
-        alt_text=sega_bind_alt_text,
-        template=ButtonsTemplate(
-            title=sega_bind_title_text, text=sega_bind_description_text,
-            actions=[URIAction(label=sega_bind_button_text, uri=url)],
-        ),
-    )
+    return generate_account_action_flex("bind", url, ctx.user_id)
 
 def cmd_rebind(ctx):
     warn = _check_private_or_warn(ctx, rebind_group_warning_text)
     if warn is not None:
         return warn
     if not _has_full_account(get_user(ctx.user_id) or {}):
-        return TextMessage(text=get_multilingual_text(rebind_not_bound_text, ctx.user_id))
+        return generate_status_flex(
+            {"ja": "未連携", "en": "Not Linked", "zh": "未绑定"},
+            rebind_not_bound_text,
+            ctx.user_id,
+            tone="warning",
+        )
     url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(ctx.user_id)}&mode=rebind"
-    return TemplateMessage(
-        alt_text=get_multilingual_text(rebind_title_alt_text, ctx.user_id),
-        template=ButtonsTemplate(
-            title=get_multilingual_text(rebind_title_alt_text, ctx.user_id),
-            text=get_multilingual_text(rebind_description_text, ctx.user_id),
-            actions=[URIAction(label=get_multilingual_text(rebind_button_text, ctx.user_id), uri=url)],
-        ),
-    )
+    return generate_account_action_flex("rebind", url, ctx.user_id)
 
 def cmd_settings(ctx):
     warn = _check_private_or_warn(ctx, settings_group_warning_text)
     if warn is not None:
         return warn
     if not _can_open_settings(get_user(ctx.user_id) or {}):
-        return TextMessage(text=get_multilingual_text(rebind_not_bound_text, ctx.user_id))
+        return generate_status_flex(
+            {"ja": "未連携", "en": "Not Linked", "zh": "未绑定"},
+            rebind_not_bound_text,
+            ctx.user_id,
+            tone="warning",
+        )
     url = f"https://{DOMAIN}/linebot/settings?token={generate_settings_token(ctx.user_id)}"
-    return TemplateMessage(
-        alt_text=get_multilingual_text(settings_title_alt_text, ctx.user_id),
-        template=ButtonsTemplate(
-            title=get_multilingual_text(settings_title_alt_text, ctx.user_id),
-            text=get_multilingual_text(settings_description_text, ctx.user_id),
-            actions=[URIAction(label=get_multilingual_text(settings_button_text, ctx.user_id), uri=url)],
-        ),
-    )
+    return generate_account_action_flex("settings", url, ctx.user_id)
 
 
 # ---- B 系列命令的 first-word 集合（从 RANK_COMMANDS 自动展开）----
@@ -5135,22 +5108,7 @@ def handle_follow(event):
     link_rich_menu_for_state(user_id, get_user(user_id))
         
     bind_url = f"https://{DOMAIN}/linebot/sega_bind?token={generate_bind_token(user_id)}"
-    buttons_template = ButtonsTemplate(
-        title=sega_bind_title_text,
-        text=sega_bind_description_text,
-        actions=[URIAction(
-            label=sega_bind_button_text,
-            uri=bind_url
-        )]
-    )
-
-    reply_message = [
-        TextMessage(text=welcome_msg_text),
-        TemplateMessage(
-            alt_text=sega_bind_alt_text,
-            template=buttons_template
-        )
-    ]
+    reply_message = generate_welcome_flex(user_id, bind_url=bind_url)
 
     return smart_reply(user_id, reply_token, reply_message, configuration, False)
 
@@ -5173,7 +5131,7 @@ def handle_join(event):
     reply_token = event.reply_token
     group_id = event.source.group_id
     logger.info(f"[JoinEvent] Joined {group_id}")
-    reply_msg = TextMessage(text=welcome_msg_text)
+    reply_msg = generate_welcome_flex(group=True)
     return smart_reply(None, reply_token, reply_msg, configuration, False)
 
 
@@ -5182,7 +5140,7 @@ def handle_join(event):
 def handle_member_joined(event):
     reply_token = event.reply_token
     logger.info(f"[MemberJoinedEvent] New Member(s) Joined")
-    reply_msg = TextMessage(text=group_welcome_msg_text)
+    reply_msg = generate_welcome_flex(group=True)
     return smart_reply(None, reply_token, reply_msg, configuration, False)
 
 

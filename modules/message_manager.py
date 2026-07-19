@@ -249,6 +249,220 @@ def _standard_help_bubble(title, subtitle, sections, alt_text):
         contents=FlexContainer.from_dict(bubble),
     )
 
+
+def _flex_action_button(label, action, style="primary", color=COLOR_BRAND):
+    button = {
+        "type": "button",
+        "height": "sm",
+        "style": style,
+        "action": action,
+    }
+    if style == "primary":
+        button["color"] = color
+    return button
+
+
+def _standard_action_bubble(title, subtitle, body_text, alt_text, actions=None, note_text=None,
+                            accent=COLOR_BRAND, user_id=None):
+    sections = [
+        (_help_ui("function", user_id), [
+            _help_note_row(_help_ui("purpose", user_id), body_text)
+        ])
+    ]
+    if note_text:
+        sections.append((_help_ui("notes", user_id), [
+            _help_note_row(_help_ui("notes", user_id), note_text)
+        ]))
+
+    body_contents = [
+        {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "xs",
+            "paddingAll": "14px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#111827",
+            "contents": [
+                _help_flex_text(title, size="lg", color="#FFFFFF", weight="bold"),
+                _help_flex_text(subtitle, size="xs", color="#D1D5DB", margin="xs"),
+            ],
+        },
+    ]
+    for section_title, rows in sections:
+        body_contents.append(_help_section_title(section_title, accent=accent))
+        body_contents.append({
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": rows,
+        })
+
+    bubble = {
+        "type": "bubble",
+        "size": "mega",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "md",
+            "paddingAll": "16px",
+            "contents": body_contents,
+        },
+    }
+    if actions:
+        bubble["footer"] = {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "paddingAll": "12px",
+            "contents": actions,
+        }
+    return FlexMessage(alt_text=alt_text, contents=FlexContainer.from_dict(bubble))
+
+
+def generate_status_flex(title_text, body_text, user_id=None, alt_text=None, tone="info"):
+    accent_by_tone = {
+        "info": "#315B7D",
+        "warning": COLOR_WARNING,
+        "danger": COLOR_DANGER,
+        "success": COLOR_SUCCESS,
+    }
+    title = get_multilingual_text(title_text, user_id)
+    body = get_multilingual_text(body_text, user_id)
+    alt = get_multilingual_text(alt_text, user_id) if alt_text is not None else title
+    return _standard_action_bubble(
+        title=title,
+        subtitle="JiETNG",
+        body_text=body,
+        alt_text=alt,
+        accent=accent_by_tone.get(tone, "#315B7D"),
+        user_id=user_id,
+    )
+
+
+def generate_account_action_flex(action_type, url, user_id=None):
+    configs = {
+        "bind": {
+            "title": sega_bind_title_text,
+            "body": sega_bind_description_text,
+            "button": sega_bind_button_text,
+            "alt": sega_bind_alt_text,
+            "accent": COLOR_BRAND,
+        },
+        "rebind": {
+            "title": rebind_title_alt_text,
+            "body": rebind_description_text,
+            "button": rebind_button_text,
+            "alt": rebind_title_alt_text,
+            "accent": "#8A63D2",
+        },
+        "settings": {
+            "title": settings_title_alt_text,
+            "body": settings_description_text,
+            "button": settings_button_text,
+            "alt": settings_title_alt_text,
+            "accent": "#315B7D",
+        },
+    }
+    config = configs[action_type]
+    title = get_multilingual_text(config["title"], user_id)
+    body = get_multilingual_text(config["body"], user_id)
+    button = get_multilingual_text(config["button"], user_id)
+    alt = get_multilingual_text(config["alt"], user_id)
+    return _standard_action_bubble(
+        title=title,
+        subtitle="JiETNG",
+        body_text=body,
+        alt_text=alt,
+        actions=[
+            _flex_action_button(button, {"type": "uri", "label": button, "uri": url}, color=config["accent"])
+        ],
+        accent=config["accent"],
+        user_id=user_id,
+    )
+
+
+def generate_welcome_flex(user_id=None, bind_url=None, group=False):
+    title = "JiETNG"
+    body = group_welcome_msg_text if group else welcome_msg_text
+    actions = None
+    if bind_url:
+        label = get_multilingual_text(sega_bind_button_text, user_id)
+        actions = [
+            _flex_action_button(label, {"type": "uri", "label": label, "uri": bind_url}, color=COLOR_BRAND)
+        ]
+    return _standard_action_bubble(
+        title=title,
+        subtitle="Maimai DX LINE Bot",
+        body_text=body,
+        alt_text=title,
+        actions=actions,
+        accent=COLOR_BRAND,
+        user_id=user_id,
+    )
+
+
+def generate_export_flex(user_id, meta):
+    size_kb = max(1, round(meta["size"] / 1024))
+    fmt_label = meta["fmt"].upper()
+    title = get_multilingual_text(export_flex_title_text, user_id)
+    body = get_multilingual_text(export_flex_summary_text, user_id).format(
+        best=meta["best_count"],
+        recent=meta["recent_count"],
+        fmt=fmt_label,
+        size_kb=size_kb,
+    )
+    foot = get_multilingual_text(export_flex_footnote_text, user_id).format(ttl=meta["ttl_minutes"])
+    btn = get_multilingual_text(export_flex_button_text, user_id)
+    copy_btn = get_multilingual_text(export_flex_copy_button_text, user_id)
+    alt = get_multilingual_text(export_alt_text, user_id)
+    return _standard_action_bubble(
+        title=title,
+        subtitle=fmt_label,
+        body_text=body,
+        note_text=foot,
+        alt_text=alt,
+        actions=[
+            _flex_action_button(btn, {"type": "uri", "label": btn, "uri": f"{meta['url']}?openExternalBrowser=1"}),
+            _flex_action_button(
+                copy_btn,
+                {"type": "clipboard", "label": copy_btn, "clipboardText": meta["url"]},
+                style="secondary",
+            ),
+        ],
+        accent=COLOR_SUCCESS,
+        user_id=user_id,
+    )
+
+
+def generate_donate_flex(user_id=None):
+    title = "カヰテーを支援 · Support JiETNG"
+    body = (
+        "一起为 JiETNG 的开发与未来加油！\n"
+        "JiETNG の開発と未来を応援しよう！\n"
+        "Support JiETNG's journey ahead!"
+    )
+    return _standard_action_bubble(
+        title=title,
+        subtitle="JiETNG",
+        body_text=body,
+        note_text="Thank you for supporting JiETNG",
+        alt_text="JiETNGを支援 · Support JiETNG",
+        actions=[
+            _flex_action_button("Liberapay", {
+                "type": "uri",
+                "label": "Liberapay",
+                "uri": "https://ja.liberapay.com/_matsuk1/donate?currency=JPY",
+            }),
+            _flex_action_button("爱发电", {
+                "type": "uri",
+                "label": "爱发电",
+                "uri": "https://afdian.com/a/matsuki",
+            }, style="secondary"),
+        ],
+        accent=COLOR_TIP,
+        user_id=user_id,
+    )
+
 def get_quick_reply_label(key, user_id=None):
     """获取 QuickReply 按钮的多语言标签"""
     if key not in quick_reply_labels:

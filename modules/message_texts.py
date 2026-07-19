@@ -5,19 +5,6 @@
 This module contains all multilingual message text definitions for use by message_manager.py.
 """
 
-from linebot.v3.messaging import (
-    FlexMessage,
-    URIAction
-)
-
-from linebot.v3.messaging.models import (
-    FlexBubble,
-    FlexBox,
-    FlexText,
-    FlexSeparator
-)
-
-
 welcome_msg_text = "『JiETNG・カヰテー』で有りんす。\nお願ひ申し候。"
 group_welcome_msg_text = "『JiETNG・カヰテー』で有りんす。\nお出迎え有りんす。"
 
@@ -667,116 +654,6 @@ nearby_stores_alt_text = {
     "en": "Nearby maimai Arcade Stores",
     "zh": "附近的 maimai 机厅"
 }
-
-donate_message = FlexMessage(
-    alt_text="JiETNGを支援 · Support JiETNG",
-    contents=FlexBubble(
-        body=FlexBox(
-            layout="vertical",
-            spacing="md",
-            paddingAll="16px",
-            backgroundColor="#FFFFFF",
-            contents=[
-                # 标题
-                FlexText(
-                    text="カヰテーを支援 · Support JiETNG",
-                    weight="bold",
-                    size="md",
-                    wrap=True,
-                    align="center",
-                    color="#000000"
-                ),
-                # 多语言说明文本
-                FlexText(
-                    text=(
-                        "一起为 JiETNG 的开发与未来加油！\n"
-                        "JiETNG の開発と未来を応援しよう！\n"
-                        "Support JiETNG's journey ahead!"
-                    ),
-                    size="sm",
-                    wrap=True,
-                    margin="md",
-                    align="center",
-                    color="#555555"
-                ),
-                # 按钮容器
-                FlexBox(
-                    layout="horizontal",
-                    spacing="md",
-                    margin="lg",
-                    justifyContent="center",
-                    contents=[
-                        # Liberapay
-                        FlexBox(
-                            layout="vertical",
-                            flex=0,
-                            width="100px",
-                            height="40px",
-                            cornerRadius="6px",
-                            borderColor="#000000",
-                            borderWidth="1px",
-                            backgroundColor="#FFFFFF",
-                            justifyContent="center",
-                            alignItems="center",
-                            contents=[
-                                FlexText(
-                                    text="Liberapay",
-                                    weight="bold",
-                                    color="#000000",
-                                    size="sm",
-                                    align="center",
-                                    action=URIAction(
-                                        label="Liberapay",
-                                        uri="https://ja.liberapay.com/_matsuk1/donate?currency=JPY"
-                                    )
-                                )
-                            ]
-                        ),
-                        # 爱发电
-                        FlexBox(
-                            layout="vertical",
-                            flex=0,
-                            width="100px",
-                            height="40px",
-                            cornerRadius="6px",
-                            borderColor="#000000",
-                            borderWidth="1px",
-                            backgroundColor="#FFFFFF",
-                            justifyContent="center",
-                            alignItems="center",
-                            contents=[
-                                FlexText(
-                                    text="爱发电",
-                                    weight="bold",
-                                    color="#000000",
-                                    size="sm",
-                                    align="center",
-                                    action=URIAction(
-                                        label="爱发电",
-                                        uri="https://afdian.com/a/matsuki"
-                                    )
-                                )
-                            ]
-                        ),
-                    ],
-                ),
-                # 底部灰分割线
-                FlexSeparator(
-                    margin="lg",
-                    color="#DDDDDD"
-                ),
-                # 底部说明
-                FlexText(
-                    text="Thank you for supporting JiETNG",
-                    size="xs",
-                    color="#666666",
-                    align="center",
-                    margin="md"
-                ),
-            ],
-        )
-    ),
-)
 
 # ============================================================
 # QuickReply 按钮标签多语言
