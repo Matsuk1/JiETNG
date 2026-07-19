@@ -2565,7 +2565,7 @@ def _parse_bpm_number(value):
         bpm = float(value)
     except (TypeError, ValueError):
         return None
-    if bpm <= 0:
+    if bpm < 0:
         return None
     return bpm
 
@@ -4238,8 +4238,279 @@ def _enqueue_task(cmd, ctx, target_queue, lane_name, payload):
         )
 
 
+COMMAND_HELP = {
+    "maimai_update": "命令: `maimai update` / `update`\n用途: 从 maimai NET 获取并更新已游玩的歌曲成绩数据。\n参数: 无。\n注意: 需要先绑定 SEGA 账号。",
+    "friend_list": "命令: `friend list` / `friends`\n用途: 查看已添加的好友列表。\n参数: 无。",
+    "friend_rcd": "命令: `friend-rcd <好友编号或名称>`\n用途: 查看指定好友的成绩。\n示例: `friend-rcd 1`",
+    "search_record": "命令: `search-record <6位歌曲ID>`\n用途: 用歌曲 ID 精确查询自己的单曲成绩。\n示例: `search-record 114514`",
+    "song_record": "命令: `<曲名> record` / `<曲名> song-record` / `<曲名>のレコード`\n用途: 按曲名或别名查询自己的单曲成绩。\n示例: `ヒバナ record`",
+    "level_records": "命令: `<等级或定数> records [页码]` / `<等级或定数> record-list [页码]`\n用途: 查看指定等级或定数的成绩列表。\n示例: `13.6 records` / `14 records 2`",
+    "level_rank_progress": "命令: `<等级><评价> progress [-uc|-up|-c]`\n用途: 查看指定等级和评价目标的达成进度。\n示例: `14sss+ progress` / `13ap progress -uc`",
+    "song_info": "命令: `<曲名> info` / `<曲名> song-info` / `<曲名>ってどんな曲`\n用途: 查询歌曲基本信息、谱面信息和 BPM。\n示例: `ヒバナ info`",
+    "plate": "命令: `<牌子名> achievement [-uc|-up|-c]` / `<牌子名>の達成状況`\n用途: 查看版本牌子或称号类目标的完成情况。\n示例: `真極 achievement`",
+    "version_songs": "命令: `<版本名> version-list` / `<版本名>のバージョンリスト`\n用途: 查看指定版本歌曲列表。\n示例: `BUDDiES version-list`",
+    "level_rank_list": "命令: `<等级或定数> level-list` / `<等级或定数>の定数リスト`\n用途: 查看指定等级或定数相关歌曲列表。\n示例: `13.6 level-list`",
+    "random_song": "命令: `random [条件]`\n用途: 随机推荐一首歌曲。\n示例: `random` / `random 13+ dx`",
+    "unbind_prompt": "命令: `unbind`\n用途: 开始解除 SEGA 账号绑定流程。\n参数: 无。确认解绑请发送 `unbind confirm`。",
+    "unbind_execute": "命令: `unbind confirm`\n用途: 确认解除当前 SEGA 账号绑定。\n参数: 无。",
+    "bind": "命令: `bind`\n用途: 打开 SEGA 账号绑定页面。\n参数: 无。请在私聊使用。",
+    "rebind": "命令: `rebind`\n用途: 更新已绑定的 SEGA 账号信息。\n参数: 无。请在私聊使用。",
+    "settings": "命令: `settings`\n用途: 打开个人设置页面。\n参数: 无。请在私聊使用。",
+    "donate": "命令: `donate`\n用途: 查看捐赠/支持信息。\n参数: 无。",
+    "profile": "命令: `profile` / `getme`\n用途: 查看自己的 JiETNG 账号信息。\n参数: 无。",
+    "status": "命令: `status`\n用途: 查看机器人服务状态。\n参数: 无。",
+    "refreshmenu": "命令: `refreshmenu`\n用途: 重新绑定当前状态对应的 LINE Rich Menu。\n参数: 无。",
+    "ranking": "命令: `rank [jp|intl]` / `ranking [jp|intl]`\n用途: 查看 DX Rating 排行榜。\n示例: `rank` / `ranking intl`",
+    "search_by_id": "命令: `search <6位歌曲ID>`\n用途: 用歌曲 ID 精确查询歌曲信息。\n示例: `search 114514`",
+    "calc_song": "命令: `calc-song <6位歌曲ID>`\n用途: 计算指定歌曲的达成率相关信息。\n示例: `calc-song 114514`",
+    "search_by_artist": "命令: `artist <关键词> [页码]`\n用途: 按艺术家名搜索歌曲。\n示例: `artist Nanahira` / `artist sasakure 2`",
+    "search_by_designer": "命令: `designer <关键词> [页码]`\n用途: 按谱面设计师名搜索歌曲。\n示例: `designer Jack`",
+    "search_by_bpm": "命令: `bpm <BPM或范围> [页码]`\n用途: 按 BPM 精确值或范围搜索歌曲。\n示例: `bpm 180` / `bpm 120-180` / `bpm 120 180`",
+    "rc": "命令: `rc <参数>`\n用途: 查询 Rating Composition / レート内訳相关信息。\n示例: `rc 14`",
+    "export": "命令: `export <json|xml>` / `成绩导出 <json|xml>`\n用途: 导出自己的成绩数据。\n示例: `export json`",
+    "accept_perm": "命令: `accept-perm-request <请求ID>`\n用途: 接受第三方访问权限请求。\n示例: `accept-perm-request req_xxx`",
+    "reject_perm": "命令: `reject-perm-request <请求ID>`\n用途: 拒绝第三方访问权限请求。\n示例: `reject-perm-request req_xxx`",
+    "calc_notes": "命令: `calc <tap> <hold> <slide> [touch] <break>`\n用途: 根据谱面物量计算单个 Note 分值。\n示例: `calc 500 50 80 20 30`",
+}
+
+EXACT_HELP_ALIASES = {
+    "maimai update": "maimai_update",
+    "update": "maimai_update",
+    "friend list": "friend_list",
+    "friends": "friend_list",
+    "unbind": "unbind_prompt",
+    "unbind confirm": "unbind_execute",
+    "bind": "bind",
+    "rebind": "rebind",
+    "settings": "settings",
+    "donate": "donate",
+    "profile": "profile",
+    "getme": "profile",
+    "status": "status",
+    "refreshmenu": "refreshmenu",
+    "rank": "ranking",
+    "ranking": "ranking",
+    "random": "random_song",
+}
+
+FIRST_WORD_HELP_ALIASES = {
+    "friend-rcd": "friend_rcd",
+    "search-record": "search_record",
+    "search": "search_by_id",
+    "calc-song": "calc_song",
+    "artist": "search_by_artist",
+    "designer": "search_by_designer",
+    "bpm": "search_by_bpm",
+    "rc": "rc",
+    "export": "export",
+    "成績エクスポート": "export",
+    "成绩导出": "export",
+    "accept-perm-request": "accept_perm",
+    "reject-perm-request": "reject_perm",
+    "calc": "calc_notes",
+}
+
+REQUIRED_PARAM_HELP_WORDS = set(FIRST_WORD_HELP_ALIASES) | {
+    "record",
+    "song-record",
+    "info",
+    "song-info",
+    "achievement",
+    "version-list",
+    "level-list",
+    "records",
+    "record-list",
+}
+
+
+def _command_help_message(help_key):
+    if help_key == "b_records":
+        return _build_b_records_help_flex()
+    text = COMMAND_HELP.get(help_key)
+    return TextMessage(text=text) if text else None
+
+
+def _flex_text(text, size="sm", color="#222222", weight=None, wrap=True, margin=None):
+    node = {
+        "type": "text",
+        "text": text,
+        "size": size,
+        "color": color,
+        "wrap": wrap,
+    }
+    if weight:
+        node["weight"] = weight
+    if margin:
+        node["margin"] = margin
+    return node
+
+
+def _help_section(title, rows):
+    contents = [
+        _flex_text(title, size="sm", color="#111111", weight="bold"),
+    ]
+    for label, desc in rows:
+        contents.append({
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "xs",
+            "margin": "sm",
+            "contents": [
+                _flex_text(label, size="xs", color="#D64545", weight="bold"),
+                _flex_text(desc, size="xs", color="#555555"),
+            ],
+        })
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "xs",
+        "margin": "lg",
+        "contents": contents,
+    }
+
+
+def _build_b_records_help_flex():
+    modes = [
+        ("Best", "`b50`/`best50`, `b40`/`best40`, `b35`/`best35`, `b15`/`best15`"),
+        ("All Best", "`ab50`/`allb50`, `ab35`/`allb35`"),
+        ("Special", "`ap50`, `fdx50`, `r50`/`rct50`, `idlb50`, `s50`, `unknown`"),
+    ]
+    filters = [
+        ("-lv / -level", "等级或定数；1 个值为精确匹配，2 个值为范围。例: `-lv 13.6` / `-lv 14 14.9`"),
+        ("-diff / -difficulty", "难度；支持 `bas adv exp mas rem` 或完整名，可多个。例: `-diff mas rem`"),
+        ("-ra / -rating", "单谱 Rating；1 个值精确匹配，2 个值范围。例: `-ra 320 360`"),
+        ("-scr / -score", "达成率；1 个值为下限，2 个值为范围。例: `-scr 100.5` / `-scr 100 100.5`"),
+        ("-dx / -dxscore", "无参数时按 DX 分排序；带值时筛 DX Score 百分比。例: `-dx` / `-dx 95 100`"),
+        ("-star / -dxstar", "DX 星数；1 个值精确匹配，2 个值范围。例: `-star 5`"),
+        ("-ver / -version", "版本名，可多个；`+` 会识别为 PLUS，`dx/deluxe` 会归一。例: `-ver buddies prism+`"),
+        ("-type / -tp", "谱面类型；支持 `dx`、`std`，可多个。例: `-type dx`"),
+        ("-next / -nxt", "按当前版本分上下栏：旧曲在上，新曲在下。无需参数。"),
+        ("-page / -pg", "页码，从 1 开始。例: `-page 2`"),
+        ("-times / -tm", "扩大输出数量倍率，最大 2.5。例: `-times 2`"),
+    ]
+    requirements = [
+        ("数据要求", "需要已绑定账号并完成 `maimai update`，或已有 Import Token/开发者 API 导入的数据。"),
+        ("组合规则", "筛选参数可以组合；参数和参数值之间用空格分隔。例: `b50 -lv 14 14.9 -diff mas rem -scr 100.5`"),
+        ("查询他人", "支持 LINE mention 查询已注册用户；仅限本人命令不会接受 mention。"),
+    ]
+
+    body_contents = [
+        _flex_text("B 系列成绩图", size="lg", color="#111111", weight="bold"),
+        _flex_text("生成 Best / All Best / 特殊成绩图，可追加筛选参数。", size="xs", color="#666666", margin="sm"),
+        _help_section("可用模式", modes),
+        _help_section("筛选参数", filters),
+        _help_section("要求与示例", requirements),
+    ]
+    bubble = {
+        "type": "bubble",
+        "size": "mega",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "paddingAll": "16px",
+            "contents": body_contents,
+        },
+    }
+    return FlexMessage(
+        alt_text="B 系列成绩图命令说明",
+        contents=FlexContainer.from_dict(bubble),
+    )
+
+
+def _detect_command_help_key(text):
+    normalized = re.sub(r"\s+", " ", text.strip())
+    lowered = normalized.lower()
+    if not lowered:
+        return None
+
+    if lowered in EXACT_HELP_ALIASES:
+        return EXACT_HELP_ALIASES[lowered]
+
+    first_word = re.split(r"[ \n]", lowered, 1)[0]
+    if first_word in ("rank", "ranking"):
+        return "ranking"
+    if first_word == "random":
+        return "random_song"
+    if first_word in _B_COMMAND_WORDS:
+        return "b_records"
+    if first_word in FIRST_WORD_HELP_ALIASES:
+        return FIRST_WORD_HELP_ALIASES[first_word]
+
+    if lowered.endswith(("のレコード", "song-record", "record")):
+        return "song_record"
+    if lowered.endswith(("ってどんな曲", "info", "song-info")):
+        return "song_info"
+    if lowered.endswith(("のバージョンリスト", "version-list")):
+        return "version_songs"
+    if lowered.endswith(("の定数リスト", "のレベルリスト", "level-list")):
+        return "level_rank_list"
+
+    if re.match(r".+(のレコードリスト|record-list|records)(?:[ 　]*\d*)?$", lowered):
+        return "level_records"
+    if re.match(r"^.+(の達成状況|achievement)(\s*-(uc|up|c))?$", lowered):
+        return "plate"
+    if re.match(
+        r"^(\d+\+?)\s*(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)\s*(progress|進捗|进度)\s*(?:-(uc|up|c))?$",
+        lowered,
+    ):
+        return "level_rank_progress"
+
+    missing_param_help_key = _detect_missing_param_help_key(lowered)
+    if missing_param_help_key:
+        return missing_param_help_key
+    return None
+
+
+def _detect_missing_param_help_key(text):
+    lowered = text.strip().lower()
+    if not lowered:
+        return None
+    if lowered in REQUIRED_PARAM_HELP_WORDS:
+        if lowered in ("record", "song-record"):
+            return "song_record"
+        if lowered in ("info", "song-info"):
+            return "song_info"
+        if lowered == "achievement":
+            return "plate"
+        if lowered == "version-list":
+            return "version_songs"
+        if lowered == "level-list":
+            return "level_rank_list"
+        if lowered in ("records", "record-list"):
+            return "level_records"
+        return FIRST_WORD_HELP_ALIASES.get(lowered)
+    return None
+
+
+def _reply_command_help_if_needed(ctx):
+    help_match = re.match(r"^(?P<body>.*?)\s*-help\s*$", ctx.text, re.IGNORECASE)
+    if help_match:
+        help_key = _detect_command_help_key(help_match.group("body"))
+        reply = _command_help_message(help_key)
+        if reply is None:
+            reply = input_error(ctx.user_id)
+        _bump_stats()
+        smart_reply(ctx.user_id, ctx.reply_token, reply, configuration,
+                    addition=False, source_type=ctx.source_type)
+        return True
+
+    help_key = _detect_missing_param_help_key(ctx.text)
+    if help_key:
+        reply = _command_help_message(help_key)
+        _bump_stats()
+        smart_reply(ctx.user_id, ctx.reply_token, reply, configuration,
+                    addition=False, source_type=ctx.source_type)
+        return True
+
+    return False
+
+
 def dispatch_command(ctx):
     """扫 COMMANDS 表，找到第一个命中的命令并按 queue 派发。"""
+    if _reply_command_help_if_needed(ctx):
+        return True
+
     for cmd in COMMANDS:
         m = cmd.try_match(ctx.text)
         if m is None:
@@ -4363,7 +4634,7 @@ def cmd_bpm(ctx):
         bpm_max = _parse_bpm_number(tokens[1])
         page = int(tokens[2])
 
-    if bpm_min is None or (bpm_max is not None and bpm_max <= 0):
+    if bpm_min is None or (bpm_max is not None and bpm_max < 0):
         return input_error(ctx.user_id)
 
     return search_by_bpm(ctx.user_id, bpm_min, bpm_max, ctx.mai_ver, page, ctx.source_type)

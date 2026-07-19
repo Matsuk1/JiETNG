@@ -7,6 +7,8 @@ description: JiETNG command reference for maimai B50, score tracking, rating bre
 
 This page follows the current command registry. Commands are case-insensitive unless noted.
 
+Append `-help` to any command to see its usage. Commands that require arguments also show their usage when sent without arguments.
+
 ## Account and System
 
 | Command | Description |
@@ -53,7 +55,7 @@ Filters such as `-lv`, `-ra`, `-scr`, `-dx`, `-star`, `-diff`, `-ver`, `-type`, 
 | `calc-song <song_id>` | Song achievement calculation |
 | `artist <keyword> [page]` | Search by artist |
 | `designer <keyword> [page]` | Search by chart designer |
-| `bpm <BPM or range> [page]` | Search by BPM, e.g. `bpm 180` / `bpm 120-180` |
+| `bpm <BPM or range> [page]` | Search by BPM, e.g. `bpm 180` / `bpm 0-120` / `bpm 120-180` |
 
 ## Lists and Progress
 

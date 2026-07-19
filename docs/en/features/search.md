@@ -26,6 +26,7 @@ The result is still rendered as a score image, which is useful for constant-rang
 artist Nanahira
 designer Jack
 bpm 180
+bpm 0-120
 bpm 120-180
 ヒバナ info
 ヒバナってどんな曲
@@ -33,7 +34,7 @@ bpm 120-180
 
 - `artist` searches by artist.
 - `designer` searches by chart designer.
-- `bpm` searches by exact BPM or range; `120-180`, `120~180`, and `120 180` are supported.
+- `bpm` searches by exact BPM or range; ranges can start from `0`, and `120-180`, `120~180`, and `120 180` are supported.
 - `info` / `song-info` / `ってどんな曲` shows song details.
 - Keywords are case-insensitive.
 
