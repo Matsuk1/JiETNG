@@ -4212,149 +4212,149 @@ def _help_text(zh, en, ja):
 
 COMMAND_HELP = {
     "maimai_update": _help_text(
-        "命令: maimai update / update\n用途: 从 maimai NET 获取并更新已游玩的歌曲成绩数据。\n参数: 无\n示例: maimai update\n注意: 需要先绑定 SEGA 账号。",
-        "命令: maimai update / update\n用途: Sync played song records from maimai NET.\n参数: None\n示例: maimai update\n注意: A linked SEGA account is required.",
-        "命令: maimai update / update\n用途: maimai NET からプレイ済み楽曲成績を同期します。\n参数: なし\n示例: maimai update\n注意: SEGA アカウント連携が必要です。",
+        "命令: maimai update / update\n用途: 从 maimai NET 获取并更新已游玩的歌曲成绩数据。\n参数: 无参数: 直接发送命令即可开始同步。\n示例: maimai update\n注意: 需要先绑定 SEGA 账号。",
+        "命令: maimai update / update\n用途: Sync played song records from maimai NET.\n参数: No arguments: send the command as-is to start syncing.\n示例: maimai update\n注意: A linked SEGA account is required.",
+        "命令: maimai update / update\n用途: maimai NET からプレイ済み楽曲成績を同期します。\n参数: 引数なし: そのまま送信すると同期を開始します。\n示例: maimai update\n注意: SEGA アカウント連携が必要です。",
     ),
     "friend_list": _help_text(
-        "命令: friend list / friends\n用途: 查看已添加的好友列表。\n参数: 无\n示例: friends",
-        "命令: friend list / friends\n用途: Show your saved friend list.\n参数: None\n示例: friends",
-        "命令: friend list / friends\n用途: 登録済みフレンド一覧を表示します。\n参数: なし\n示例: friends",
+        "命令: friend list / friends\n用途: 查看已添加的好友列表。\n参数: 无参数: 直接发送命令，会从 maimai NET 读取好友列表。\n示例: friends",
+        "命令: friend list / friends\n用途: Show your saved friend list.\n参数: No arguments: send the command as-is; the bot reads your friend list from maimai NET.\n示例: friends",
+        "命令: friend list / friends\n用途: 登録済みフレンド一覧を表示します。\n参数: 引数なし: そのまま送信すると maimai NET からフレンド一覧を取得します。\n示例: friends",
     ),
     "friend_rcd": _help_text(
-        "命令: friend-rcd <好友编号或名称>\n用途: 查看指定好友的成绩。\n参数: 好友编号或名称\n示例: friend-rcd 1",
-        "命令: friend-rcd <friend number or name>\n用途: Show records for a selected friend.\n参数: Friend number or name\n示例: friend-rcd 1",
-        "命令: friend-rcd <フレンド番号または名前>\n用途: 指定したフレンドの成績を表示します。\n参数: フレンド番号または名前\n示例: friend-rcd 1",
+        "命令: friend-rcd <好友编号或名称> [成绩图类型] [筛选参数]\n用途: 查看指定好友的成绩。\n参数: 必填: <好友编号或名称>，编号来自 friends 列表，也可以填写可匹配的好友名。\n可选: [成绩图类型]，默认 best50；支持 b50、b40、ab50、ap50、fdx50、r50 等 B 系列类型。\n可选: [筛选参数]，与 b50-help 中的筛选参数一致，例如 -lv、-diff、-scr、-page。\n示例: friend-rcd 1\nfriend-rcd 1 b50 -lv 14 14.9",
+        "命令: friend-rcd <friend number or name> [score image type] [filters]\n用途: Show records for a selected friend.\n参数: Required: <friend number or name>; use the number from friends or a matching friend name.\nOptional: [score image type], defaults to best50; supports b50, b40, ab50, ap50, fdx50, r50, and other B-series types.\nOptional: [filters], same filters as b50-help, such as -lv, -diff, -scr, and -page.\n示例: friend-rcd 1\nfriend-rcd 1 b50 -lv 14 14.9",
+        "命令: friend-rcd <フレンド番号または名前> [成績画像タイプ] [フィルター]\n用途: 指定したフレンドの成績を表示します。\n参数: 必須: <フレンド番号または名前>。friends の番号、または一致するフレンド名を指定します。\n任意: [成績画像タイプ]。既定は best50。b50、b40、ab50、ap50、fdx50、r50 などに対応します。\n任意: [フィルター]。b50-help と同じ -lv、-diff、-scr、-page などを使えます。\n示例: friend-rcd 1\nfriend-rcd 1 b50 -lv 14 14.9",
     ),
     "search_record": _help_text(
-        "命令: search-record <6位歌曲ID>\n用途: 用歌曲 ID 精确查询自己的单曲成绩。\n参数: 6 位歌曲 ID\n示例: search-record 114514",
-        "命令: search-record <6-character song ID>\n用途: Look up your record for one song by exact song ID.\n参数: 6-character song ID\n示例: search-record 114514",
-        "命令: search-record <6桁楽曲ID>\n用途: 楽曲 ID で自分の単曲成績を検索します。\n参数: 6桁楽曲ID\n示例: search-record 114514",
+        "命令: search-record <6位歌曲ID>\n用途: 用歌曲 ID 精确查询自己的单曲成绩。\n参数: 必填: <6位歌曲ID>，必须是完整歌曲 ID，不支持曲名。\n格式: 6 个字符，通常为数字；不足或过长都会视为无效。\n示例: search-record 114514",
+        "命令: search-record <6-character song ID>\n用途: Look up your record for one song by exact song ID.\n参数: Required: <6-character song ID>; use the exact song ID, not a title.\nFormat: exactly 6 characters, usually digits; shorter or longer values are invalid.\n示例: search-record 114514",
+        "命令: search-record <6桁楽曲ID>\n用途: 楽曲 ID で自分の単曲成績を検索します。\n参数: 必須: <6桁楽曲ID>。曲名ではなく正確な楽曲 ID を指定します。\n形式: 6 文字ちょうど。短すぎる/長すぎる値は無効です。\n示例: search-record 114514",
     ),
     "song_record": _help_text(
-        "命令: <曲名> record / <曲名> song-record / <曲名>のレコード\n用途: 按曲名或别名查询自己的单曲成绩。\n参数: 曲名或别名\n示例: ヒバナ record",
-        "命令: <song> record / <song> song-record / <song>のレコード\n用途: Look up your record by title or alias.\n参数: Song title or alias\n示例: ヒバナ record",
-        "命令: <曲名> record / <曲名> song-record / <曲名>のレコード\n用途: 曲名または別名で自分の単曲成績を検索します。\n参数: 曲名または別名\n示例: ヒバナ record",
+        "命令: <曲名> record / <曲名> song-record / <曲名>のレコード\n用途: 按曲名或别名查询自己的单曲成绩。\n参数: 必填: <曲名>，写在 record / song-record 前面，可以是完整曲名、部分曲名或别名。\n匹配: 如果匹配到多首歌，会返回可选择的候选结果。\n示例: ヒバナ record\nヒバナ song-record",
+        "命令: <song> record / <song> song-record / <song>のレコード\n用途: Look up your record by title or alias.\n参数: Required: <song>, placed before record / song-record; accepts full title, partial title, or alias.\nMatching: if multiple songs match, the bot returns selectable candidates.\n示例: ヒバナ record\nヒバナ song-record",
+        "命令: <曲名> record / <曲名> song-record / <曲名>のレコード\n用途: 曲名または別名で自分の単曲成績を検索します。\n参数: 必須: <曲名>。record / song-record の前に置き、正式名・部分一致・別名を指定できます。\n検索: 複数候補がある場合は選択候補を返します。\n示例: ヒバナ record\nヒバナ song-record",
     ),
     "level_records": _help_text(
-        "命令: <等级或定数> records [页码] / <等级或定数> record-list [页码]\n用途: 查看指定等级或定数的成绩列表。\n参数: 等级/定数；页码可选\n示例: 13.6 records / 14 records 2",
-        "命令: <level or constant> records [page] / <level or constant> record-list [page]\n用途: Show a record list for a level or constant.\n参数: Level/constant; optional page\n示例: 13.6 records / 14 records 2",
-        "命令: <レベルまたは定数> records [ページ] / <レベルまたは定数> record-list [ページ]\n用途: 指定レベルまたは定数の成績リストを表示します。\n参数: レベル/定数、ページ任意\n示例: 13.6 records / 14 records 2",
+        "命令: <等级或定数> records [页码] / <等级或定数> record-list [页码]\n用途: 查看指定等级或定数的成绩列表。\n参数: 必填: <等级或定数>，支持 13、13+、14、13.6 等格式。\n可选: [页码]，正整数，从 1 开始；省略时显示第 1 页。\n匹配: 整数/带 + 按等级匹配，小数按定数精确匹配。\n示例: 13.6 records\n14 records 2",
+        "命令: <level or constant> records [page] / <level or constant> record-list [page]\n用途: Show a record list for a level or constant.\n参数: Required: <level or constant>; supports 13, 13+, 14, 13.6, and similar formats.\nOptional: [page], positive integer starting from 1; defaults to page 1.\nMatching: integer/+ values match level; decimals match exact constant.\n示例: 13.6 records\n14 records 2",
+        "命令: <レベルまたは定数> records [ページ] / <レベルまたは定数> record-list [ページ]\n用途: 指定レベルまたは定数の成績リストを表示します。\n参数: 必須: <レベルまたは定数>。13、13+、14、13.6 などに対応します。\n任意: [ページ]。1 から始まる正整数。省略時は 1 ページ目です。\n検索: 整数/+ はレベル、小数は定数の完全一致です。\n示例: 13.6 records\n14 records 2",
     ),
     "level_rank_progress": _help_text(
-        "命令: <等级><评价> progress [-uc|-up|-c]\n用途: 查看指定等级和评价目标的达成进度。\n参数: 等级、评价；过滤项可选\n示例: 14sss+ progress / 13ap progress -uc",
-        "命令: <level><rank> progress [-uc|-up|-c]\n用途: Show progress toward a rank target at a level.\n参数: Level, rank; optional filter\n示例: 14sss+ progress / 13ap progress -uc",
-        "命令: <レベル><評価> progress [-uc|-up|-c]\n用途: 指定レベルと評価目標の進捗を表示します。\n参数: レベル、評価、任意フィルター\n示例: 14sss+ progress / 13ap progress -uc",
+        "命令: <等级><评价> progress [-uc|-up|-c]\n用途: 查看指定等级和评价目标的达成进度。\n参数: 必填: <等级>，支持 1-15、带 + 等级，例如 13+、14。\n必填: <评价>，紧跟等级书写，支持 s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+。\n可选: -uc 仅看未 FC，-up 仅看未 AP，-c 仅看已完成项目。\n格式: 等级和评价中间不要空格，例如 14sss+ progress。\n示例: 14sss+ progress\n13ap progress -uc",
+        "命令: <level><rank> progress [-uc|-up|-c]\n用途: Show progress toward a rank target at a level.\n参数: Required: <level>, supports 1-15 and plus levels such as 13+ and 14.\nRequired: <rank>, written immediately after level; supports s, s+, ss, ss+, sss, sss+, fc, fc+, ap, ap+, fdx, fdx+.\nOptional: -uc shows charts without FC, -up shows charts without AP, -c shows completed items only.\nFormat: do not put a space between level and rank, for example 14sss+ progress.\n示例: 14sss+ progress\n13ap progress -uc",
+        "命令: <レベル><評価> progress [-uc|-up|-c]\n用途: 指定レベルと評価目標の進捗を表示します。\n参数: 必須: <レベル>。1-15、13+、14 などに対応します。\n必須: <評価>。レベル直後に書きます。s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+ に対応します。\n任意: -uc は未 FC、-up は未 AP、-c は達成済みのみを表示します。\n形式: レベルと評価の間に空白を入れません。例: 14sss+ progress。\n示例: 14sss+ progress\n13ap progress -uc",
     ),
     "song_info": _help_text(
-        "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n用途: 查询歌曲基本信息、谱面信息和 BPM。\n参数: 曲名或别名\n示例: ヒバナ info",
-        "命令: <song> info / <song> song-info / <song>ってどんな曲\n用途: Show song details, chart data, and BPM.\n参数: Song title or alias\n示例: ヒバナ info",
-        "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n用途: 楽曲情報、譜面情報、BPM を表示します。\n参数: 曲名または別名\n示例: ヒバナ info",
+        "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n用途: 查询歌曲基本信息、谱面信息和 BPM。\n参数: 必填: <曲名>，写在 info / song-info 前面，可以是完整曲名、部分曲名或别名。\n匹配: 如果匹配到多首歌，会返回可选择的候选结果。\n示例: ヒバナ info\nヒバナってどんな曲",
+        "命令: <song> info / <song> song-info / <song>ってどんな曲\n用途: Show song details, chart data, and BPM.\n参数: Required: <song>, placed before info / song-info; accepts full title, partial title, or alias.\nMatching: if multiple songs match, the bot returns selectable candidates.\n示例: ヒバナ info\nヒバナってどんな曲",
+        "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n用途: 楽曲情報、譜面情報、BPM を表示します。\n参数: 必須: <曲名>。info / song-info の前に置き、正式名・部分一致・別名を指定できます。\n検索: 複数候補がある場合は選択候補を返します。\n示例: ヒバナ info\nヒバナってどんな曲",
     ),
     "plate": _help_text(
-        "命令: <牌子名> achievement [-uc|-up|-c] / <牌子名>の達成状況\n用途: 查看版本牌子或称号类目标的完成情况。\n参数: 牌子名；过滤项可选\n示例: 真極 achievement",
-        "命令: <plate title> achievement [-uc|-up|-c] / <plate title>の達成状況\n用途: Show completion status for plate/title goals.\n参数: Plate/title name; optional filter\n示例: 真極 achievement",
-        "命令: <プレート名> achievement [-uc|-up|-c] / <プレート名>の達成状況\n用途: プレートや称号系目標の達成状況を表示します。\n参数: プレート名、任意フィルター\n示例: 真極 achievement",
+        "命令: <牌子名> achievement [-uc|-up|-c] / <牌子名>の達成状況\n用途: 查看版本牌子或称号类目标的完成情况。\n参数: 必填: <牌子名>，写在 achievement 前面，例如 真極、檄将 等。\n可选: -uc 仅看未 FC，-up 仅看未 AP，-c 仅看已完成项目。\n格式: 过滤项写在命令最后；不写过滤项时显示完整完成度。\n示例: 真極 achievement\n真極 achievement -uc",
+        "命令: <plate title> achievement [-uc|-up|-c] / <plate title>の達成状況\n用途: Show completion status for plate/title goals.\n参数: Required: <plate title>, placed before achievement, such as 真極 or 檄将.\nOptional: -uc shows items without FC, -up shows items without AP, -c shows completed items only.\nFormat: put the filter at the end; omit it to show full completion.\n示例: 真極 achievement\n真極 achievement -uc",
+        "命令: <プレート名> achievement [-uc|-up|-c] / <プレート名>の達成状況\n用途: プレートや称号系目標の達成状況を表示します。\n参数: 必須: <プレート名>。achievement の前に置きます。例: 真極、檄将。\n任意: -uc は未 FC、-up は未 AP、-c は達成済みのみを表示します。\n形式: フィルターは末尾に置きます。省略時は全体の達成状況です。\n示例: 真極 achievement\n真極 achievement -uc",
     ),
     "version_songs": _help_text(
-        "命令: <版本名> version-list / <版本名>のバージョンリスト\n用途: 查看指定版本歌曲列表。\n参数: 版本名\n示例: BUDDiES version-list",
-        "命令: <version> version-list / <version>のバージョンリスト\n用途: Show the song list for a version.\n参数: Version name\n示例: BUDDiES version-list",
-        "命令: <バージョン名> version-list / <バージョン名>のバージョンリスト\n用途: 指定バージョンの楽曲一覧を表示します。\n参数: バージョン名\n示例: BUDDiES version-list",
+        "命令: <版本名> version-list / <版本名>のバージョンリスト\n用途: 查看指定版本歌曲列表。\n参数: 必填: <版本名>，写在 version-list 前面，支持版本完整名或可识别简称。\n格式: 版本名可包含空格；整段 version-list 前的文本都会作为版本查询词。\n示例: BUDDiES version-list\nPRiSM PLUS version-list",
+        "命令: <version> version-list / <version>のバージョンリスト\n用途: Show the song list for a version.\n参数: Required: <version>, placed before version-list; accepts full version names or recognizable aliases.\nFormat: version names may contain spaces; all text before version-list is used as the query.\n示例: BUDDiES version-list\nPRiSM PLUS version-list",
+        "命令: <バージョン名> version-list / <バージョン名>のバージョンリスト\n用途: 指定バージョンの楽曲一覧を表示します。\n参数: 必須: <バージョン名>。version-list の前に置き、正式名または認識可能な略称を指定します。\n形式: バージョン名に空白を含められます。version-list より前の全体を検索語として扱います。\n示例: BUDDiES version-list\nPRiSM PLUS version-list",
     ),
     "level_rank_list": _help_text(
-        "命令: <等级或定数> level-list / <等级或定数>の定数リスト\n用途: 查看指定等级或定数相关歌曲列表。\n参数: 等级或定数\n示例: 13.6 level-list",
-        "命令: <level or constant> level-list / <level or constant>の定数リスト\n用途: Show songs for a level or constant.\n参数: Level or constant\n示例: 13.6 level-list",
-        "命令: <レベルまたは定数> level-list / <レベルまたは定数>の定数リスト\n用途: 指定レベルまたは定数の楽曲一覧を表示します。\n参数: レベルまたは定数\n示例: 13.6 level-list",
+        "命令: <等级或定数> level-list / <等级或定数>の定数リスト\n用途: 查看指定等级或定数相关歌曲列表。\n参数: 必填: <等级或定数>，支持 13、13+、14、13.6 等格式。\n匹配: 整数/带 + 按等级匹配，小数按定数精确匹配。\n示例: 13.6 level-list\n14+ level-list",
+        "命令: <level or constant> level-list / <level or constant>の定数リスト\n用途: Show songs for a level or constant.\n参数: Required: <level or constant>; supports 13, 13+, 14, 13.6, and similar formats.\nMatching: integer/+ values match level; decimals match exact constant.\n示例: 13.6 level-list\n14+ level-list",
+        "命令: <レベルまたは定数> level-list / <レベルまたは定数>の定数リスト\n用途: 指定レベルまたは定数の楽曲一覧を表示します。\n参数: 必須: <レベルまたは定数>。13、13+、14、13.6 などに対応します。\n検索: 整数/+ はレベル、小数は定数の完全一致です。\n示例: 13.6 level-list\n14+ level-list",
     ),
     "random_song": _help_text(
-        "命令: random [条件]\n用途: 随机推荐一首歌曲。\n参数: 条件可选\n示例: random / random 13+ dx",
-        "命令: random [condition]\n用途: Recommend a random song.\n参数: Optional condition\n示例: random / random 13+ dx",
-        "命令: random [条件]\n用途: ランダムに 1 曲おすすめします。\n参数: 条件任意\n示例: random / random 13+ dx",
+        "命令: random [条件]\n用途: 随机推荐一首歌曲。\n参数: 可选: [条件]，可写等级、定数、谱面类型、难度等关键词。\n格式: 多个条件用空格分隔；省略条件时从全部歌曲中随机。\n示例: random\nrandom 13+ dx\nrandom 14 mas",
+        "命令: random [condition]\n用途: Recommend a random song.\n参数: Optional: [condition], such as level, constant, chart type, or difficulty keywords.\nFormat: separate multiple conditions with spaces; omit conditions to randomize from all songs.\n示例: random\nrandom 13+ dx\nrandom 14 mas",
+        "命令: random [条件]\n用途: ランダムに 1 曲おすすめします。\n参数: 任意: [条件]。レベル、定数、譜面種別、難易度などのキーワードを指定できます。\n形式: 複数条件は空白で区切ります。省略時は全曲からランダムです。\n示例: random\nrandom 13+ dx\nrandom 14 mas",
     ),
     "unbind_prompt": _help_text(
-        "命令: unbind\n用途: 开始解除 SEGA 账号绑定流程。\n参数: 无\n示例: unbind\n注意: 确认解绑请发送 unbind confirm。",
-        "命令: unbind\n用途: Start the SEGA account unlink flow.\n参数: None\n示例: unbind\n注意: Send unbind confirm to complete unlinking.",
-        "命令: unbind\n用途: SEGA アカウント連携解除を開始します。\n参数: なし\n示例: unbind\n注意: 確認するには unbind confirm を送信してください。",
+        "命令: unbind\n用途: 开始解除 SEGA 账号绑定流程。\n参数: 无参数: 直接发送 unbind 会显示确认说明，不会立刻删除账号。\n示例: unbind\n注意: 确认解绑请发送 unbind confirm。",
+        "命令: unbind\n用途: Start the SEGA account unlink flow.\n参数: No arguments: sending unbind shows a confirmation prompt and does not delete immediately.\n示例: unbind\n注意: Send unbind confirm to complete unlinking.",
+        "命令: unbind\n用途: SEGA アカウント連携解除を開始します。\n参数: 引数なし: unbind を送信すると確認案内を表示します。すぐには削除されません。\n示例: unbind\n注意: 確認するには unbind confirm を送信してください。",
     ),
     "unbind_execute": _help_text(
-        "命令: unbind confirm\n用途: 确认解除当前 SEGA 账号绑定。\n参数: 无\n示例: unbind confirm",
-        "命令: unbind confirm\n用途: Confirm unlinking the current SEGA account.\n参数: None\n示例: unbind confirm",
-        "命令: unbind confirm\n用途: 現在の SEGA アカウント連携解除を確定します。\n参数: なし\n示例: unbind confirm",
+        "命令: unbind confirm\n用途: 确认解除当前 SEGA 账号绑定。\n参数: 固定参数: confirm 必须紧跟在 unbind 后面，用于确认删除绑定资料。\n示例: unbind confirm",
+        "命令: unbind confirm\n用途: Confirm unlinking the current SEGA account.\n参数: Fixed argument: confirm must follow unbind and confirms deletion of linked account data.\n示例: unbind confirm",
+        "命令: unbind confirm\n用途: 現在の SEGA アカウント連携解除を確定します。\n参数: 固定引数: confirm を unbind の後に付けると、連携情報の削除を確定します。\n示例: unbind confirm",
     ),
     "bind": _help_text(
-        "命令: bind\n用途: 打开 SEGA 账号绑定页面。\n参数: 无\n示例: bind\n注意: 请在私聊使用。",
-        "命令: bind\n用途: Open the SEGA account binding page.\n参数: None\n示例: bind\n注意: Use this in a private chat.",
-        "命令: bind\n用途: SEGA アカウント連携ページを開きます。\n参数: なし\n示例: bind\n注意: 個人チャットで使用してください。",
+        "命令: bind\n用途: 打开 SEGA 账号绑定页面。\n参数: 无参数: 直接发送命令，Bot 会返回一次性的绑定链接。\n限制: 只能在私聊使用，群聊会返回安全提示。\n示例: bind\n注意: 请在私聊使用。",
+        "命令: bind\n用途: Open the SEGA account binding page.\n参数: No arguments: send the command as-is; the bot returns a one-time binding URL.\nRestriction: private chat only; group chats receive a safety warning.\n示例: bind\n注意: Use this in a private chat.",
+        "命令: bind\n用途: SEGA アカウント連携ページを開きます。\n参数: 引数なし: そのまま送信すると一回限りの連携 URL を返します。\n制限: 個人チャット専用です。グループでは安全警告を返します。\n示例: bind\n注意: 個人チャットで使用してください。",
     ),
     "rebind": _help_text(
-        "命令: rebind\n用途: 更新已绑定的 SEGA 账号信息。\n参数: 无\n示例: rebind\n注意: 请在私聊使用。",
-        "命令: rebind\n用途: Update linked SEGA account information.\n参数: None\n示例: rebind\n注意: Use this in a private chat.",
-        "命令: rebind\n用途: 連携済み SEGA アカウント情報を更新します。\n参数: なし\n示例: rebind\n注意: 個人チャットで使用してください。",
+        "命令: rebind\n用途: 更新已绑定的 SEGA 账号信息。\n参数: 无参数: 直接发送命令，Bot 会返回账号编辑链接。\n要求: 必须已经绑定 SEGA 账号。\n限制: 只能在私聊使用。\n示例: rebind\n注意: 请在私聊使用。",
+        "命令: rebind\n用途: Update linked SEGA account information.\n参数: No arguments: send the command as-is; the bot returns an account edit URL.\nRequirement: a SEGA account must already be linked.\nRestriction: private chat only.\n示例: rebind\n注意: Use this in a private chat.",
+        "命令: rebind\n用途: 連携済み SEGA アカウント情報を更新します。\n参数: 引数なし: そのまま送信するとアカウント編集 URL を返します。\n条件: SEGA アカウント連携済みである必要があります。\n制限: 個人チャット専用です。\n示例: rebind\n注意: 個人チャットで使用してください。",
     ),
     "settings": _help_text(
-        "命令: settings\n用途: 打开个人设置页面。\n参数: 无\n示例: settings\n注意: 请在私聊使用。",
-        "命令: settings\n用途: Open your settings page.\n参数: None\n示例: settings\n注意: Use this in a private chat.",
-        "命令: settings\n用途: 個人設定ページを開きます。\n参数: なし\n示例: settings\n注意: 個人チャットで使用してください。",
+        "命令: settings\n用途: 打开个人设置页面。\n参数: 无参数: 直接发送命令，Bot 会返回设置页面链接。\n可设置: 时区、语言、背景图片、隐私等个人选项。\n限制: 只能在私聊使用。\n示例: settings\n注意: 请在私聊使用。",
+        "命令: settings\n用途: Open your settings page.\n参数: No arguments: send the command as-is; the bot returns a settings URL.\nAvailable settings: timezone, language, background image, privacy, and personal options.\nRestriction: private chat only.\n示例: settings\n注意: Use this in a private chat.",
+        "命令: settings\n用途: 個人設定ページを開きます。\n参数: 引数なし: そのまま送信すると設定ページ URL を返します。\n設定項目: タイムゾーン、言語、背景画像、プライバシーなど。\n制限: 個人チャット専用です。\n示例: settings\n注意: 個人チャットで使用してください。",
     ),
     "profile": _help_text(
-        "命令: profile / getme\n用途: 查看自己的 JiETNG 账号信息。\n参数: 无\n示例: profile",
-        "命令: profile / getme\n用途: Show your JiETNG account profile.\n参数: None\n示例: profile",
-        "命令: profile / getme\n用途: JiETNG アカウント情報を表示します。\n参数: なし\n示例: profile",
+        "命令: profile / getme\n用途: 查看自己的 JiETNG 账号信息。\n参数: 无参数: 直接发送命令，会显示绑定状态、服务器、语言等个人资料。\n限制: 只能在私聊使用，避免公开个人信息。\n示例: profile\ngetme",
+        "命令: profile / getme\n用途: Show your JiETNG account profile.\n参数: No arguments: send the command as-is to show binding status, server, language, and profile data.\nRestriction: private chat only to avoid exposing personal information.\n示例: profile\ngetme",
+        "命令: profile / getme\n用途: JiETNG アカウント情報を表示します。\n参数: 引数なし: 連携状態、サーバー、言語などの個人情報を表示します。\n制限: 個人情報保護のため個人チャット専用です。\n示例: profile\ngetme",
     ),
     "status": _help_text(
-        "命令: status\n用途: 查看机器人服务状态。\n参数: 无\n示例: status",
-        "命令: status\n用途: Show bot service status.\n参数: None\n示例: status",
-        "命令: status\n用途: Bot の稼働状態を表示します。\n参数: なし\n示例: status",
+        "命令: status\n用途: 查看机器人服务状态。\n参数: 无参数: 直接发送命令，会显示运行时间、队列、系统资源等状态。\n示例: status",
+        "命令: status\n用途: Show bot service status.\n参数: No arguments: send the command as-is to show uptime, queues, and system resource status.\n示例: status",
+        "命令: status\n用途: Bot の稼働状態を表示します。\n参数: 引数なし: 稼働時間、キュー、システムリソースなどを表示します。\n示例: status",
     ),
     "refreshmenu": _help_text(
-        "命令: refreshmenu\n用途: 重新绑定当前状态对应的 LINE Rich Menu。\n参数: 无\n示例: refreshmenu",
-        "命令: refreshmenu\n用途: Re-link the LINE Rich Menu for your current state.\n参数: None\n示例: refreshmenu",
-        "命令: refreshmenu\n用途: 現在の状態に対応する LINE リッチメニューを再連携します。\n参数: なし\n示例: refreshmenu",
+        "命令: refreshmenu\n用途: 重新绑定当前状态对应的 LINE Rich Menu。\n参数: 无参数: 直接发送命令，根据当前绑定状态重新关联菜单。\n限制: 仅影响发送者自己的 Rich Menu。\n示例: refreshmenu",
+        "命令: refreshmenu\n用途: Re-link the LINE Rich Menu for your current state.\n参数: No arguments: send the command as-is; the bot re-links the menu based on current binding state.\nRestriction: only affects the sender's Rich Menu.\n示例: refreshmenu",
+        "命令: refreshmenu\n用途: 現在の状態に対応する LINE リッチメニューを再連携します。\n参数: 引数なし: 現在の連携状態に応じてメニューを再連携します。\n制限: 送信者本人の Rich Menu のみに影響します。\n示例: refreshmenu",
     ),
     "ranking": _help_text(
-        "命令: rank [jp|intl] / ranking [jp|intl]\n用途: 查看 DX Rating 排行榜。\n参数: 服务器可选，jp 或 intl\n示例: rank / ranking intl",
-        "命令: rank [jp|intl] / ranking [jp|intl]\n用途: Show the DX Rating ranking.\n参数: Optional server, jp or intl\n示例: rank / ranking intl",
-        "命令: rank [jp|intl] / ranking [jp|intl]\n用途: DX Rating ランキングを表示します。\n参数: サーバー任意、jp または intl\n示例: rank / ranking intl",
+        "命令: rank [jp|intl] / ranking [jp|intl]\n用途: 查看 DX Rating 排行榜。\n参数: 可选: [服务器]，支持 jp、intl、cn；省略时使用当前用户绑定的服务器。\n格式: 服务器参数写在 rank / ranking 后面，用空格分隔。\n示例: rank\nranking intl",
+        "命令: rank [jp|intl] / ranking [jp|intl]\n用途: Show the DX Rating ranking.\n参数: Optional: [server], supports jp, intl, and cn; omitted value uses your linked server.\nFormat: put the server after rank / ranking, separated by a space.\n示例: rank\nranking intl",
+        "命令: rank [jp|intl] / ranking [jp|intl]\n用途: DX Rating ランキングを表示します。\n参数: 任意: [サーバー]。jp、intl、cn に対応。省略時はユーザーの連携サーバーを使います。\n形式: rank / ranking の後ろに空白区切りで指定します。\n示例: rank\nranking intl",
     ),
     "search_by_id": _help_text(
-        "命令: search <6位歌曲ID>\n用途: 用歌曲 ID 精确查询歌曲信息。\n参数: 6 位歌曲 ID\n示例: search 114514",
-        "命令: search <6-character song ID>\n用途: Look up song details by exact song ID.\n参数: 6-character song ID\n示例: search 114514",
-        "命令: search <6桁楽曲ID>\n用途: 楽曲 ID で楽曲情報を検索します。\n参数: 6桁楽曲ID\n示例: search 114514",
+        "命令: search <6位歌曲ID>\n用途: 用歌曲 ID 精确查询歌曲信息。\n参数: 必填: <6位歌曲ID>，必须是完整歌曲 ID，不支持曲名。\n格式: search 后空一格再写 ID；ID 长度必须为 6。\n示例: search 114514",
+        "命令: search <6-character song ID>\n用途: Look up song details by exact song ID.\n参数: Required: <6-character song ID>; use the exact song ID, not a title.\nFormat: put one space after search, then the ID; ID length must be 6.\n示例: search 114514",
+        "命令: search <6桁楽曲ID>\n用途: 楽曲 ID で楽曲情報を検索します。\n参数: 必須: <6桁楽曲ID>。曲名ではなく正確な楽曲 ID を指定します。\n形式: search の後に空白を入れて ID を書きます。ID は 6 文字です。\n示例: search 114514",
     ),
     "calc_song": _help_text(
-        "命令: calc-song <6位歌曲ID>\n用途: 计算指定歌曲的达成率相关信息。\n参数: 6 位歌曲 ID\n示例: calc-song 114514",
-        "命令: calc-song <6-character song ID>\n用途: Calculate achievement-related values for a song.\n参数: 6-character song ID\n示例: calc-song 114514",
-        "命令: calc-song <6桁楽曲ID>\n用途: 指定楽曲の達成率関連情報を計算します。\n参数: 6桁楽曲ID\n示例: calc-song 114514",
+        "命令: calc-song <6位歌曲ID>\n用途: 计算指定歌曲的达成率相关信息。\n参数: 必填: <6位歌曲ID>，必须是完整歌曲 ID，不支持曲名。\n格式: calc-song 后空一格再写 ID；ID 长度必须为 6。\n示例: calc-song 114514",
+        "命令: calc-song <6-character song ID>\n用途: Calculate achievement-related values for a song.\n参数: Required: <6-character song ID>; use the exact song ID, not a title.\nFormat: put one space after calc-song, then the ID; ID length must be 6.\n示例: calc-song 114514",
+        "命令: calc-song <6桁楽曲ID>\n用途: 指定楽曲の達成率関連情報を計算します。\n参数: 必須: <6桁楽曲ID>。曲名ではなく正確な楽曲 ID を指定します。\n形式: calc-song の後に空白を入れて ID を書きます。ID は 6 文字です。\n示例: calc-song 114514",
     ),
     "search_by_artist": _help_text(
-        "命令: artist <关键词> [页码]\n用途: 按艺术家名搜索歌曲。\n参数: 关键词；页码可选\n示例: artist Nanahira / artist sasakure 2",
-        "命令: artist <keyword> [page]\n用途: Search songs by artist name.\n参数: Keyword; optional page\n示例: artist Nanahira / artist sasakure 2",
-        "命令: artist <キーワード> [ページ]\n用途: アーティスト名で楽曲を検索します。\n参数: キーワード、ページ任意\n示例: artist Nanahira / artist sasakure 2",
+        "命令: artist <关键词> [页码]\n用途: 按艺术家名搜索歌曲。\n参数: 必填: <关键词>，artist 后面的文本会作为艺术家名进行不区分大小写的包含匹配。\n可选: [页码]，正整数，从 1 开始；写在关键词最后。\n限制: 仅限私聊使用，避免群聊刷屏。\n示例: artist Nanahira\nartist sasakure 2",
+        "命令: artist <keyword> [page]\n用途: Search songs by artist name.\n参数: Required: <keyword>; text after artist is matched against artist names, case-insensitively.\nOptional: [page], positive integer starting from 1; put it at the end.\nRestriction: private chat only to prevent group spam.\n示例: artist Nanahira\nartist sasakure 2",
+        "命令: artist <キーワード> [ページ]\n用途: アーティスト名で楽曲を検索します。\n参数: 必須: <キーワード>。artist 後の文字列をアーティスト名に部分一致で検索します。\n任意: [ページ]。1 から始まる正整数。末尾に指定します。\n制限: グループでの連投防止のため個人チャット専用です。\n示例: artist Nanahira\nartist sasakure 2",
     ),
     "search_by_designer": _help_text(
-        "命令: designer <关键词> [页码]\n用途: 按谱面设计师名搜索歌曲。\n参数: 关键词；页码可选\n示例: designer Jack",
-        "命令: designer <keyword> [page]\n用途: Search songs by chart designer.\n参数: Keyword; optional page\n示例: designer Jack",
-        "命令: designer <キーワード> [ページ]\n用途: 譜面制作者名で楽曲を検索します。\n参数: キーワード、ページ任意\n示例: designer Jack",
+        "命令: designer <关键词> [页码]\n用途: 按谱面设计师名搜索歌曲。\n参数: 必填: <关键词>，designer 后面的文本会匹配各难度谱面的 noteDesigner 字段。\n可选: [页码]，正整数，从 1 开始；写在关键词最后。\n限制: 仅限私聊使用，避免群聊刷屏。\n示例: designer Jack\ndesigner 譜面 2",
+        "命令: designer <keyword> [page]\n用途: Search songs by chart designer.\n参数: Required: <keyword>; text after designer is matched against each chart's noteDesigner field.\nOptional: [page], positive integer starting from 1; put it at the end.\nRestriction: private chat only to prevent group spam.\n示例: designer Jack\ndesigner chart 2",
+        "命令: designer <キーワード> [ページ]\n用途: 譜面制作者名で楽曲を検索します。\n参数: 必須: <キーワード>。designer 後の文字列を各譜面の noteDesigner に対して検索します。\n任意: [ページ]。1 から始まる正整数。末尾に指定します。\n制限: グループでの連投防止のため個人チャット専用です。\n示例: designer Jack\ndesigner 譜面 2",
     ),
     "search_by_bpm": _help_text(
-        "命令: bpm <BPM或范围> [页码]\n用途: 按 BPM 精确值或范围搜索歌曲。\n参数: BPM 值或范围；页码可选\n示例: bpm 180 / bpm 0-120 / bpm 120 180",
-        "命令: bpm <BPM or range> [page]\n用途: Search songs by exact BPM or BPM range.\n参数: BPM value or range; optional page\n示例: bpm 180 / bpm 0-120 / bpm 120 180",
-        "命令: bpm <BPMまたは範囲> [ページ]\n用途: BPM の完全一致または範囲で楽曲を検索します。\n参数: BPM 値または範囲、ページ任意\n示例: bpm 180 / bpm 0-120 / bpm 120 180",
+        "命令: bpm <BPM或范围> [页码]\n用途: 按 BPM 精确值或范围搜索歌曲。\n参数: 必填: <BPM或范围>，支持单值、连字符范围、空格范围。\n单值: bpm 180 表示精确匹配 BPM 180。\n范围: bpm 0-120 或 bpm 120 180 表示闭区间，端点可为 0。\n可选: [页码]，正整数，从 1 开始；写在最后。\n限制: 仅限私聊使用。\n示例: bpm 180\nbpm 0-120\nbpm 120 180 2",
+        "命令: bpm <BPM or range> [page]\n用途: Search songs by exact BPM or BPM range.\n参数: Required: <BPM or range>; supports a single value, hyphen range, or space-separated range.\nSingle value: bpm 180 matches BPM 180 exactly.\nRange: bpm 0-120 or bpm 120 180 searches an inclusive range; 0 is allowed as an endpoint.\nOptional: [page], positive integer starting from 1; put it at the end.\nRestriction: private chat only.\n示例: bpm 180\nbpm 0-120\nbpm 120 180 2",
+        "命令: bpm <BPMまたは範囲> [ページ]\n用途: BPM の完全一致または範囲で楽曲を検索します。\n参数: 必須: <BPMまたは範囲>。単一値、ハイフン範囲、空白区切り範囲に対応します。\n単一値: bpm 180 は BPM 180 の完全一致です。\n範囲: bpm 0-120 または bpm 120 180 は両端を含む範囲検索です。端点 0 も使用できます。\n任意: [ページ]。1 から始まる正整数。末尾に指定します。\n制限: 個人チャット専用です。\n示例: bpm 180\nbpm 0-120\nbpm 120 180 2",
     ),
     "rc": _help_text(
-        "命令: rc <参数>\n用途: 查询 Rating Composition / レート内訳相关信息。\n参数: 查询参数\n示例: rc 14",
-        "命令: rc <argument>\n用途: Query Rating Composition / rating breakdown information.\n参数: Query argument\n示例: rc 14",
-        "命令: rc <引数>\n用途: Rating Composition / レート内訳の情報を検索します。\n参数: 検索引数\n示例: rc 14",
+        "命令: rc <定数>\n用途: 查询 Rating Composition / レート内訳相关信息。\n参数: 必填: <定数>，支持 1.0 到 15.0 之间的数字。\n格式: 可写整数或小数，例如 13、13.6、14.9。\n限制: 超出 1.0-15.0 或无法转成数字会返回输入错误。\n示例: rc 14\nrc 13.6",
+        "命令: rc <constant>\n用途: Query Rating Composition / rating breakdown information.\n参数: Required: <constant>, a number between 1.0 and 15.0.\nFormat: integers and decimals are accepted, such as 13, 13.6, and 14.9.\nRestriction: values outside 1.0-15.0 or non-numeric input return an input error.\n示例: rc 14\nrc 13.6",
+        "命令: rc <定数>\n用途: Rating Composition / レート内訳の情報を検索します。\n参数: 必須: <定数>。1.0 から 15.0 までの数値です。\n形式: 13、13.6、14.9 のような整数または小数に対応します。\n制限: 1.0-15.0 の範囲外、または数値化できない入力はエラーです。\n示例: rc 14\nrc 13.6",
     ),
     "export": _help_text(
-        "命令: export <json|xml> / 成绩导出 <json|xml>\n用途: 导出自己的成绩数据。\n参数: 导出格式，json 或 xml\n示例: export json",
-        "命令: export <json|xml>\n用途: Export your score data.\n参数: Export format, json or xml\n示例: export json",
-        "命令: export <json|xml> / 成績エクスポート <json|xml>\n用途: 自分の成績データを書き出します。\n参数: 出力形式、json または xml\n示例: export json",
+        "命令: export <json|xml> / 成绩导出 <json|xml>\n用途: 导出自己的成绩数据。\n参数: 必填: <格式>，只能填写 json 或 xml。\n输出: 成功后返回临时下载链接和复制链接按钮。\n要求: 需要已有成绩数据；如果没有数据会返回空数据提示。\n示例: export json\n成绩导出 xml",
+        "命令: export <json|xml>\n用途: Export your score data.\n参数: Required: <format>, must be json or xml.\nOutput: returns a temporary download URL and a copy-link button on success.\nRequirement: score data must exist; empty data returns an empty-data message.\n示例: export json\nexport xml",
+        "命令: export <json|xml> / 成績エクスポート <json|xml>\n用途: 自分の成績データを書き出します。\n参数: 必須: <形式>。json または xml のみ指定できます。\n出力: 成功時は一時ダウンロード URL とコピー用ボタンを返します。\n条件: 成績データが必要です。空の場合は空データの案内を返します。\n示例: export json\n成績エクスポート xml",
     ),
     "calc_notes": _help_text(
-        "命令: calc <tap> <hold> <slide> [touch] <break>\n用途: 根据谱面物量计算单个 Note 分值。\n参数: TAP、HOLD、SLIDE、可选 TOUCH、BREAK 数量\n示例: calc 500 50 80 20 30",
-        "命令: calc <tap> <hold> <slide> [touch] <break>\n用途: Calculate per-note score values from note counts.\n参数: TAP, HOLD, SLIDE, optional TOUCH, BREAK counts\n示例: calc 500 50 80 20 30",
-        "命令: calc <tap> <hold> <slide> [touch] <break>\n用途: ノーツ数から 1 ノーツあたりの点数を計算します。\n参数: TAP、HOLD、SLIDE、任意 TOUCH、BREAK 数\n示例: calc 500 50 80 20 30",
+        "命令: calc <tap> <hold> <slide> [touch] <break>\n用途: 根据谱面物量计算单个 Note 分值。\n参数: 必填: <tap> <hold> <slide> <break>，当只给 4 个数字时按 TAP/HOLD/SLIDE/BREAK 解析。\n可选: [touch]，当给 5 个数字时第 4 个为 TOUCH，第 5 个为 BREAK。\n格式: 所有参数必须是非负整数，用空格分隔。\n示例: calc 500 50 80 30\ncalc 500 50 80 20 30",
+        "命令: calc <tap> <hold> <slide> [touch] <break>\n用途: Calculate per-note score values from note counts.\n参数: Required: <tap> <hold> <slide> <break>; with 4 numbers, they are parsed as TAP/HOLD/SLIDE/BREAK.\nOptional: [touch]; with 5 numbers, the 4th is TOUCH and the 5th is BREAK.\nFormat: all values must be non-negative integers separated by spaces.\n示例: calc 500 50 80 30\ncalc 500 50 80 20 30",
+        "命令: calc <tap> <hold> <slide> [touch] <break>\n用途: ノーツ数から 1 ノーツあたりの点数を計算します。\n参数: 必須: <tap> <hold> <slide> <break>。4 数値の場合は TAP/HOLD/SLIDE/BREAK として解析します。\n任意: [touch]。5 数値の場合は 4 番目が TOUCH、5 番目が BREAK です。\n形式: すべて非負整数で、空白区切りです。\n示例: calc 500 50 80 30\ncalc 500 50 80 20 30",
     ),
 }
 
@@ -4392,16 +4392,30 @@ FIRST_WORD_HELP_ALIASES = {
     "calc": "calc_notes",
 }
 
+SUFFIX_HELP_ALIASES = {
+    "record": "song_record",
+    "song-record": "song_record",
+    "のレコード": "song_record",
+    "info": "song_info",
+    "song-info": "song_info",
+    "ってどんな曲": "song_info",
+    "version-list": "version_songs",
+    "のバージョンリスト": "version_songs",
+    "level-list": "level_rank_list",
+    "の定数リスト": "level_rank_list",
+    "のレベルリスト": "level_rank_list",
+    "records": "level_records",
+    "record-list": "level_records",
+    "のレコードリスト": "level_records",
+    "achievement": "plate",
+    "の達成状況": "plate",
+    "progress": "level_rank_progress",
+    "進捗": "level_rank_progress",
+    "进度": "level_rank_progress",
+}
+
 REQUIRED_PARAM_HELP_WORDS = set(FIRST_WORD_HELP_ALIASES) | {
-    "record",
-    "song-record",
-    "info",
-    "song-info",
-    "achievement",
-    "version-list",
-    "level-list",
-    "records",
-    "record-list",
+    *SUFFIX_HELP_ALIASES,
 }
 
 
@@ -4427,6 +4441,8 @@ def _detect_command_help_key(text):
         return EXACT_HELP_ALIASES[lowered]
     if lowered in HELP_INDEX_WORDS:
         return "help_index"
+    if lowered in SUFFIX_HELP_ALIASES:
+        return SUFFIX_HELP_ALIASES[lowered]
 
     first_word = re.split(r"[ \n]", lowered, 1)[0]
     if first_word in ("rank", "ranking"):
@@ -4468,18 +4484,8 @@ def _detect_missing_param_help_key(text):
     if not lowered:
         return None
     if lowered in REQUIRED_PARAM_HELP_WORDS:
-        if lowered in ("record", "song-record"):
-            return "song_record"
-        if lowered in ("info", "song-info"):
-            return "song_info"
-        if lowered == "achievement":
-            return "plate"
-        if lowered == "version-list":
-            return "version_songs"
-        if lowered == "level-list":
-            return "level_rank_list"
-        if lowered in ("records", "record-list"):
-            return "level_records"
+        if lowered in SUFFIX_HELP_ALIASES:
+            return SUFFIX_HELP_ALIASES[lowered]
         return FIRST_WORD_HELP_ALIASES.get(lowered)
     return None
 

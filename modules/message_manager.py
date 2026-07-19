@@ -480,6 +480,28 @@ def _parse_plain_help(text):
     return fields
 
 
+def _split_help_lines(text):
+    return [line.strip() for line in str(text or "").splitlines() if line.strip()]
+
+
+def _help_detail_rows(text, fallback_label, none_text):
+    lines = _split_help_lines(text)
+    if not lines:
+        return [_help_filter_row(fallback_label, none_text)]
+
+    rows = []
+    for line in lines:
+        label = fallback_label
+        desc = line
+        if ":" in line:
+            head, tail = line.split(":", 1)
+            if head.strip() and tail.strip():
+                label = head.strip()
+                desc = tail.strip()
+        rows.append(_help_filter_row(label, desc))
+    return rows
+
+
 def generate_standard_help_flex(help_data, user_id=None):
     fields = get_multilingual_text(help_data, user_id) if isinstance(help_data, dict) else help_data
     if not isinstance(fields, dict):
@@ -494,8 +516,8 @@ def generate_standard_help_flex(help_data, user_id=None):
         (_help_ui("function", user_id), [
             _help_note_row(_help_ui("purpose", user_id), purpose or _help_ui("default_purpose", user_id))
         ]),
-        (_help_ui("params", user_id), [_help_filter_row(_help_ui("params", user_id), params or none_text)]),
-        (_help_ui("examples", user_id), [_help_filter_row(_help_ui("examples", user_id), examples or none_text)]),
+        (_help_ui("params", user_id), _help_detail_rows(params, _help_ui("params", user_id), none_text)),
+        (_help_ui("examples", user_id), _help_detail_rows(examples, _help_ui("examples", user_id), none_text)),
     ]
     if notes:
         sections.append((_help_ui("notes", user_id), [_help_note_row(_help_ui("notes", user_id), notes)]))
