@@ -52,6 +52,203 @@ COLOR_TIP = "#5856D6"
 COLOR_TIP_BG = "#F0EFFF"
 COLOR_AD_BG = "#FFF4E6"
 
+HELP_UI_TEXT = {
+    "help_title": {"zh": "命令帮助", "en": "Command Help", "ja": "コマンドヘルプ"},
+    "usage": {"zh": "用法", "en": "Usage", "ja": "使い方"},
+    "function": {"zh": "功能", "en": "Function", "ja": "機能"},
+    "params": {"zh": "参数", "en": "Parameters", "ja": "引数"},
+    "examples": {"zh": "示例", "en": "Examples", "ja": "例"},
+    "notes": {"zh": "注意", "en": "Notes", "ja": "注意"},
+    "command": {"zh": "命令", "en": "Command", "ja": "コマンド"},
+    "purpose": {"zh": "用途", "en": "Purpose", "ja": "用途"},
+    "none": {"zh": "无", "en": "None", "ja": "なし"},
+    "default_purpose": {
+        "zh": "查看该命令的说明。",
+        "en": "Show help for this command.",
+        "ja": "このコマンドの説明を表示します。",
+    },
+    "b_title": {"zh": "B 系列成绩图", "en": "B-Series Score Images", "ja": "B 系スコア画像"},
+    "b_subtitle": {
+        "zh": "Best / All Best / 特殊成绩图与筛选参数",
+        "en": "Best / All Best / special score images and filters",
+        "ja": "Best / All Best / 特殊成績画像とフィルター",
+    },
+    "modes": {"zh": "可用模式", "en": "Modes", "ja": "モード"},
+    "catalog_title": {"zh": "命令目录", "en": "Command Directory", "ja": "コマンド一覧"},
+    "catalog_subtitle": {
+        "zh": "发送 命令-help 查看单项说明",
+        "en": "Send command-help for detailed usage",
+        "ja": "command-help で詳細を表示",
+    },
+    "categories": {"zh": "分类", "en": "Categories", "ja": "カテゴリ"},
+    "detail_hint": {"zh": "详细说明", "en": "Detailed Help", "ja": "詳細ヘルプ"},
+}
+
+
+def _help_ui(key, user_id=None):
+    return get_multilingual_text(HELP_UI_TEXT[key], user_id)
+
+
+def _help_i18n(user_id, zh, en, ja):
+    return get_multilingual_text({"zh": zh, "en": en, "ja": ja}, user_id)
+
+
+def _help_flex_text(text, size="sm", color="#222222", weight=None, wrap=True, margin=None, align=None):
+    node = {
+        "type": "text",
+        "text": text,
+        "size": size,
+        "color": color,
+        "wrap": wrap,
+    }
+    if weight:
+        node["weight"] = weight
+    if margin:
+        node["margin"] = margin
+    if align:
+        node["align"] = align
+    return node
+
+
+def _help_pill(text, color="#315B7D", bg_color="#EAF4FF"):
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "backgroundColor": bg_color,
+        "cornerRadius": "12px",
+        "paddingTop": "3px",
+        "paddingBottom": "3px",
+        "paddingStart": "8px",
+        "paddingEnd": "8px",
+        "contents": [
+            _help_flex_text(text, size="xxs", color=color, weight="bold", align="center", wrap=False)
+        ],
+    }
+
+
+def _help_section_title(title, accent="#FF7A45"):
+    return {
+        "type": "box",
+        "layout": "horizontal",
+        "spacing": "sm",
+        "alignItems": "center",
+        "margin": "lg",
+        "contents": [
+            {
+                "type": "box",
+                "layout": "vertical",
+                "width": "4px",
+                "height": "18px",
+                "cornerRadius": "2px",
+                "backgroundColor": accent,
+                "contents": [{"type": "filler"}],
+            },
+            _help_flex_text(title, size="sm", color="#111111", weight="bold"),
+        ],
+    }
+
+
+def _help_mode_card(title, body, accent):
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "xs",
+        "paddingAll": "10px",
+        "cornerRadius": "8px",
+        "borderWidth": "1px",
+        "borderColor": "#E6E8EC",
+        "contents": [
+            _help_flex_text(title, size="xs", color=accent, weight="bold"),
+            _help_flex_text(body, size="xxs", color="#555555"),
+        ],
+    }
+
+
+def _help_filter_row(label, desc, example=None):
+    contents = [
+        {
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+                _help_pill(label, color="#C93D47", bg_color="#FFF0F1"),
+            ],
+        },
+        _help_flex_text(desc, size="xxs", color="#555555", margin="xs"),
+    ]
+    if example:
+        contents.append({
+            "type": "box",
+            "layout": "vertical",
+            "margin": "xs",
+            "paddingAll": "7px",
+            "cornerRadius": "6px",
+            "backgroundColor": "#F7F8FA",
+            "contents": [
+                _help_flex_text(example, size="xxs", color="#222222"),
+            ],
+        })
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "paddingBottom": "8px",
+        "contents": contents,
+    }
+
+
+def _help_note_row(label, desc):
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "xs",
+        "paddingAll": "9px",
+        "cornerRadius": "8px",
+        "backgroundColor": "#F8FAFC",
+        "contents": [
+            _help_flex_text(label, size="xs", color="#315B7D", weight="bold"),
+            _help_flex_text(desc, size="xxs", color="#555555"),
+        ],
+    }
+
+
+def _standard_help_bubble(title, subtitle, sections, alt_text):
+    body_contents = [
+        {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "xs",
+            "paddingAll": "14px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#111827",
+            "contents": [
+                _help_flex_text(title, size="lg", color="#FFFFFF", weight="bold"),
+                _help_flex_text(subtitle, size="xs", color="#D1D5DB", margin="xs"),
+            ],
+        },
+    ]
+    for title, rows in sections:
+        body_contents.append(_help_section_title(title))
+        body_contents.append({
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": rows,
+        })
+    bubble = {
+        "type": "bubble",
+        "size": "mega",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "md",
+            "paddingAll": "16px",
+            "contents": body_contents,
+        },
+    }
+    return FlexMessage(
+        alt_text=alt_text,
+        contents=FlexContainer.from_dict(bubble),
+    )
+
 def get_quick_reply_label(key, user_id=None):
     """获取 QuickReply 按钮的多语言标签"""
     if key not in quick_reply_labels:
@@ -72,6 +269,227 @@ def create_text_message(msg_text_dict, user_id=None, quick_reply=None):
     """
     text = get_multilingual_text(msg_text_dict, user_id)
     return TextMessage(text=text, quick_reply=quick_reply)
+
+
+def _clean_help_text(text):
+    return str(text or "").replace("`", "").strip()
+
+
+def _parse_plain_help(text):
+    fields = {"命令": "", "用途": "", "参数": "", "示例": "", "注意": ""}
+    current_key = None
+    for raw_line in _clean_help_text(text).splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        matched = False
+        for key in fields:
+            prefix = f"{key}:"
+            if line.startswith(prefix):
+                fields[key] = line[len(prefix):].strip() or fields[key]
+                current_key = key
+                matched = True
+                break
+        if not matched and current_key:
+            fields[current_key] = f"{fields[current_key]}\n{line}".strip()
+    return fields
+
+
+def generate_standard_help_flex(help_data, user_id=None):
+    fields = get_multilingual_text(help_data, user_id) if isinstance(help_data, dict) else help_data
+    if not isinstance(fields, dict):
+        fields = _parse_plain_help(fields)
+    command = fields.get("command") or fields.get("命令") or _help_ui("help_title", user_id)
+    purpose = fields.get("purpose") or fields.get("用途")
+    params = fields.get("params") or fields.get("参数")
+    examples = fields.get("examples") or fields.get("示例")
+    notes = fields.get("notes") or fields.get("注意")
+    none_text = _help_ui("none", user_id)
+    sections = [
+        (_help_ui("usage", user_id), [_help_filter_row(_help_ui("command", user_id), command)]),
+        (_help_ui("function", user_id), [
+            _help_note_row(_help_ui("purpose", user_id), purpose or _help_ui("default_purpose", user_id))
+        ]),
+        (_help_ui("params", user_id), [_help_filter_row(_help_ui("params", user_id), params or none_text)]),
+        (_help_ui("examples", user_id), [_help_filter_row(_help_ui("examples", user_id), examples or none_text)]),
+    ]
+    if notes:
+        sections.append((_help_ui("notes", user_id), [_help_note_row(_help_ui("notes", user_id), notes)]))
+    return _standard_help_bubble(
+        title=_help_ui("help_title", user_id),
+        subtitle=command,
+        sections=sections,
+        alt_text=f"{command} {_help_ui('help_title', user_id)}",
+    )
+
+
+def generate_b_records_help_flex(user_id=None):
+    modes = [
+        ("Best", _help_i18n(
+            user_id,
+            "b50 / best50, b40 / best40, b35 / best35, b15 / best15",
+            "b50 / best50, b40 / best40, b35 / best35, b15 / best15",
+            "b50 / best50, b40 / best40, b35 / best35, b15 / best15",
+        ), "#E85D75"),
+        ("All Best", _help_i18n(
+            user_id,
+            "ab50 / allb50, ab35 / allb35",
+            "ab50 / allb50, ab35 / allb35",
+            "ab50 / allb50, ab35 / allb35",
+        ), "#8A63D2"),
+        ("Special", _help_i18n(
+            user_id,
+            "ap50, fdx50, r50 / rct50, idlb50, s50 / sun50",
+            "ap50, fdx50, r50 / rct50, idlb50, s50 / sun50",
+            "ap50, fdx50, r50 / rct50, idlb50, s50 / sun50",
+        ), "#267D8B"),
+    ]
+    filters = [
+        ("-lv / -level", _help_i18n(user_id, "等级或定数。1 个值精确匹配，2 个值范围。", "Level or constant. One value is exact; two values are a range.", "レベルまたは定数。1 つは完全一致、2 つは範囲です。"), "-lv 13.6   /   -lv 14 14.9"),
+        ("-diff / -difficulty", _help_i18n(user_id, "难度。支持 bas、adv、exp、mas、rem 或完整名，可多个。", "Difficulty. Supports bas, adv, exp, mas, rem, or full names; multiple values are allowed.", "難易度。bas、adv、exp、mas、rem または正式名を複数指定できます。"), "-diff mas rem"),
+        ("-ra / -rating", _help_i18n(user_id, "单谱 Rating。1 个值精确匹配，2 个值范围。", "Chart rating. One value is exact; two values are a range.", "単曲 Rating。1 つは完全一致、2 つは範囲です。"), "-ra 320 360"),
+        ("-scr / -score", _help_i18n(user_id, "达成率。1 个值为下限，2 个值为范围。", "Achievement. One value is a lower bound; two values are a range.", "達成率。1 つは下限、2 つは範囲です。"), "-scr 100.5   /   -scr 100 100.5"),
+        ("-dx / -dxscore", _help_i18n(user_id, "无参数时按 DX 分排序；带值时筛 DX Score 百分比。", "Without values, sort by DX score; with values, filter DX score percentage.", "値なしでは DX スコア順、値ありでは DX スコア割合で絞り込みます。"), "-dx   /   -dx 95 100"),
+        ("-star / -dxstar", _help_i18n(user_id, "DX 星数。1 个值精确匹配，2 个值范围。", "DX stars. One value is exact; two values are a range.", "DX 星数。1 つは完全一致、2 つは範囲です。"), "-star 5"),
+        ("-ver / -version", _help_i18n(user_id, "版本名，可多个。+ 会识别为 PLUS，dx / deluxe 会归一。", "Version names. Multiple values are allowed; + is treated as PLUS, and dx/deluxe are normalized.", "バージョン名。複数指定可。+ は PLUS、dx / deluxe は正規化されます。"), "-ver buddies prism+"),
+        ("-type / -tp", _help_i18n(user_id, "谱面类型。支持 dx、std，可多个。", "Chart type. Supports dx and std; multiple values are allowed.", "譜面種別。dx、std を複数指定できます。"), "-type dx"),
+        ("-next / -nxt", _help_i18n(user_id, "下版本预览。按下一版本 Rating 结构预览成绩图。", "Next-version preview using the next rating structure.", "次バージョンプレビュー。次の Rating 構成で成績画像を表示します。"), "-nxt"),
+        ("-page / -pg", _help_i18n(user_id, "页码，从 1 开始。", "Page number, starting from 1.", "ページ番号。1 から始まります。"), "-page 2"),
+        ("-times / -tm", _help_i18n(user_id, "扩大输出数量倍率，最大 2.5。", "Display multiplier, capped at 2.5.", "表示件数の倍率。最大 2.5 です。"), "-times 2"),
+    ]
+    sections = [
+        (_help_ui("usage", user_id), [
+            _help_filter_row(_help_ui("command", user_id), "b50 / b40 / b35 / b15 / ab50 / ap50 / fdx50 / r50 / idlb50 / s50"),
+        ]),
+        (_help_ui("function", user_id), [
+            _help_note_row(_help_ui("purpose", user_id), _help_i18n(
+                user_id,
+                "生成 Best / All Best / 特殊成绩图，可追加筛选参数。",
+                "Generate Best / All Best / special score images with optional filters.",
+                "Best / All Best / 特殊成績画像を生成し、フィルターを追加できます。",
+            )),
+        ]),
+        (_help_ui("modes", user_id), [
+            _help_mode_card(title, body, color)
+            for title, body, color in modes
+        ]),
+        (_help_ui("params", user_id), [
+            _help_filter_row(label, desc, example)
+            for label, desc, example in filters
+        ]),
+        (_help_ui("examples", user_id), [
+            {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "xs",
+                "paddingAll": "10px",
+                "cornerRadius": "8px",
+                "backgroundColor": "#F7F8FA",
+                "contents": [
+                    _help_flex_text("b50 -lv 14 14.9 -diff mas rem -scr 100.5", size="xxs", color="#111111"),
+                    _help_flex_text("ab50 -ver buddies -type dx", size="xxs", color="#111111"),
+                    _help_flex_text("r50 -page 2", size="xxs", color="#111111"),
+                ],
+            },
+        ]),
+        (_help_ui("notes", user_id), [
+            _help_note_row(_help_i18n(user_id, "数据要求", "Data required", "データ要件"), _help_i18n(
+                user_id,
+                "需要已绑定账号并完成 maimai update，或已有 Import Token / 开发者 API 导入的数据。",
+                "Requires a linked account with maimai update completed, or data imported through Import Token / Developer API.",
+                "maimai update 済みの連携アカウント、または Import Token / Developer API で取り込んだデータが必要です。",
+            )),
+            _help_note_row(_help_i18n(user_id, "查询他人", "Querying others", "他ユーザー検索"), _help_i18n(
+                user_id,
+                "支持 LINE mention 查询已注册用户；仅限本人命令不会接受 mention。",
+                "LINE mentions can query registered users; self-only commands do not accept mentions.",
+                "LINE メンションで登録済みユーザーを検索できます。本人専用コマンドはメンション不可です。",
+            )),
+        ]),
+    ]
+    return _standard_help_bubble(
+        title=_help_ui("b_title", user_id),
+        subtitle=_help_ui("b_subtitle", user_id),
+        sections=sections,
+        alt_text=f"{_help_ui('b_title', user_id)} {_help_ui('help_title', user_id)}",
+    )
+
+
+def generate_help_index_flex(user_id=None):
+    groups = [
+        (
+            _help_i18n(user_id, "账号与系统", "Account and System", "アカウントとシステム"),
+            "bind / rebind / settings / profile / update / export / status",
+            _help_i18n(user_id, "绑定、设置、资料、同步、导出与状态。", "Binding, settings, profile, sync, export, and status.", "連携、設定、プロフィール、同期、エクスポート、状態確認。"),
+            "#E85D75",
+        ),
+        (
+            _help_i18n(user_id, "成绩图", "Score Images", "成績画像"),
+            "b50 / b40 / ab50 / ap50 / fdx50 / r50 / idlb50 / s50",
+            _help_i18n(user_id, "Best、All Best、Recent 与特殊成绩图。", "Best, All Best, Recent, and special score images.", "Best、All Best、Recent、特殊成績画像。"),
+            "#8A63D2",
+        ),
+        (
+            _help_i18n(user_id, "歌曲与成绩", "Songs and Records", "楽曲と成績"),
+            "info / record / search / search-record / calc-song",
+            _help_i18n(user_id, "查歌曲信息、单曲成绩和歌曲 ID。", "Song details, single-song records, and song IDs.", "楽曲情報、単曲成績、楽曲 ID 検索。"),
+            "#267D8B",
+        ),
+        (
+            _help_i18n(user_id, "搜索", "Search", "検索"),
+            "artist / designer / bpm / random",
+            _help_i18n(user_id, "按艺术家、谱师、BPM 或条件随机选曲。", "Search by artist, designer, BPM, or random conditions.", "アーティスト、譜面制作者、BPM、ランダム条件で検索。"),
+            "#2F7D51",
+        ),
+        (
+            _help_i18n(user_id, "列表与进度", "Lists and Progress", "リストと進捗"),
+            "records / record-list / level-list / achievement / progress",
+            _help_i18n(user_id, "等级列表、定数列表、牌子完成度和目标进度。", "Level lists, constant lists, plate completion, and target progress.", "レベルリスト、定数リスト、プレート達成状況、目標進捗。"),
+            "#B86E19",
+        ),
+        (
+            _help_i18n(user_id, "社交与权限", "Social and Permissions", "フレンドと権限"),
+            "friends / friend-rcd / accept-perm-request / reject-perm-request",
+            _help_i18n(user_id, "好友成绩和第三方访问权限管理。", "Friend records and third-party access permission management.", "フレンド成績と外部アクセス権限管理。"),
+            "#315B7D",
+        ),
+        (
+            _help_i18n(user_id, "工具", "Tools", "ツール"),
+            "rank / rc / calc / donate / refreshmenu",
+            _help_i18n(user_id, "排行榜、Rating 内訳、分值计算和辅助功能。", "Ranking, rating breakdown, note scoring, and utility commands.", "ランキング、レート内訳、ノーツ点数計算、補助機能。"),
+            "#6B7280",
+        ),
+    ]
+    sections = [
+        (_help_ui("categories", user_id), [
+            _help_mode_card(title, commands, color)
+            for title, commands, _desc, color in groups
+        ]),
+        (_help_ui("function", user_id), [
+            _help_note_row(title, desc)
+            for title, _commands, desc, _color in groups
+        ]),
+        (_help_ui("detail_hint", user_id), [
+            _help_filter_row(_help_i18n(user_id, "单项说明", "Single command", "単体説明"), _help_i18n(
+                user_id,
+                "发送 b50-help、artist-help、bpm-help 这类格式查看完整用法。",
+                "Send b50-help, artist-help, bpm-help, and similar forms for full usage.",
+                "b50-help、artist-help、bpm-help のように送信すると詳しい使い方を表示します。",
+            )),
+            _help_filter_row(_help_i18n(user_id, "参数缺失", "Missing arguments", "引数不足"), _help_i18n(
+                user_id,
+                "需要参数的命令只发送命令名时，也会显示对应说明。",
+                "Commands that need arguments also show help when sent without arguments.",
+                "引数が必要なコマンドを引数なしで送ると説明を表示します。",
+            )),
+        ]),
+    ]
+    return _standard_help_bubble(
+        title=_help_ui("catalog_title", user_id),
+        subtitle=_help_ui("catalog_subtitle", user_id),
+        sections=sections,
+        alt_text=f"{_help_ui('catalog_title', user_id)}",
+    )
 
 
 def _update_status_label(func_name, lang):
