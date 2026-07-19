@@ -987,7 +987,7 @@ def generate_level_rank_progress_image(
 
     title_y = margin + 5
     card_y = title_y + title_height + 42
-    card_height = 138
+    card_height = 170
     card_gap_x = 26
     content_gap = 54
     top_area_height = card_y + card_height + content_gap
@@ -999,8 +999,8 @@ def generate_level_rank_progress_image(
     card_start_x = margin * 2
     card_area_width = img_width - card_start_x * 2
     card_width = (card_area_width - card_gap_x * 3) // 4
-    border_width = 12
-    card_radius = 18
+    border_width = 14
+    card_radius = 22
 
     card_data = [
         ("完了", stats["achieved"], (76, 175, 80)),       # 绿色
