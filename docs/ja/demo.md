@@ -8,6 +8,7 @@ import { ref, computed, onMounted } from 'vue'
 const segaid = ref('')
 const password = ref('')
 const ver = ref('jp')
+const aime = ref('0')
 const loading = ref(false)
 const error = ref('')
 const imageUrl = ref('')
@@ -110,6 +111,7 @@ async function generate() {
     fd.append('segaid', segaid.value)
     fd.append('password', password.value)
     fd.append('ver', ver.value)
+    fd.append('aime', aime.value)
     fd.append('timezone', timezone)
     fd.append('cmd_type', cmdType.value)
     fd.append('params', paramsString.value)
@@ -145,6 +147,7 @@ onMounted(() => {
       if (d.segaid) segaid.value = d.segaid
       if (d.password) password.value = d.password
       if (d.ver) ver.value = d.ver
+      if (d.aime !== undefined) aime.value = String(d.aime)
       saveCreds.value = true
     } catch {}
   }
@@ -160,7 +163,7 @@ function onSaveCredsChange() {
 
 function writeCookie() {
   if (!saveCreds.value) return
-  const d = JSON.stringify({ segaid: segaid.value, password: password.value, ver: ver.value })
+  const d = JSON.stringify({ segaid: segaid.value, password: password.value, ver: ver.value, aime: aime.value })
   document.cookie = 'demo_creds=' + encodeURIComponent(d) + '; max-age=7776000; path=/; SameSite=Strict'
 }
 </script>
@@ -186,6 +189,14 @@ function writeCookie() {
         <select id="ver" v-model="ver" :disabled="loading">
           <option value="jp">日本版 - maimaidx.jp</option>
           <option value="intl">海外版 - maimaidx-eng.com</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="aime">Aime カード</label>
+        <select id="aime" v-model="aime" :disabled="loading">
+          <option value="0">No.1</option>
+          <option value="1">No.2</option>
+          <option value="2">No.3</option>
         </select>
       </div>
       <div class="field">

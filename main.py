@@ -1529,7 +1529,17 @@ def linebot_perms_revoke():
     return jsonify({"success": True})
 
 
-DEMO_CORS_ORIGIN = "https://jietng.matsuk1.com"
+DEMO_CORS_DEFAULT_ORIGINS = {
+    "https://jietng.matsuk1.com",
+    "https://my-aime-webpage.pages.dev",
+    "https://maiscore.matsuk1.com",
+}
+DEMO_CORS_ORIGIN = ",".join(sorted(DEMO_CORS_DEFAULT_ORIGINS))
+DEMO_CORS_ORIGINS = {
+    origin.strip()
+    for origin in os.getenv("DEMO_CORS_ORIGINS", DEMO_CORS_ORIGIN).split(",")
+    if origin.strip()
+}
 MAIMAI_SESSION_CORS_ORIGINS = {
     "https://maimaidx.jp",
     "https://maimaidx-eng.com",
@@ -1539,7 +1549,12 @@ MAIMAI_SESSION_CORS_ORIGINS = {
 }
 
 def _demo_cors(response):
-    response.headers["Access-Control-Allow-Origin"] = DEMO_CORS_ORIGIN
+    origin = request.headers.get("Origin")
+    if "*" in DEMO_CORS_ORIGINS:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+    elif origin in DEMO_CORS_ORIGINS:
+        response.headers["Access-Control-Allow-Origin"] = origin
+    response.headers["Vary"] = "Origin"
     response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return response
@@ -1684,6 +1699,11 @@ def demo_page():
         tz = max(-12, min(14, tz))
     except (ValueError, TypeError):
         tz = 9
+    try:
+        aime = int(request.form.get("aime", "0"))
+        aime = max(0, min(2, aime))
+    except (ValueError, TypeError):
+        aime = 0
 
     if not segaid or not password:
         return _demo_cors(jsonify({"error": "Please fill in SEGA ID and password."})), 400
@@ -1696,17 +1716,23 @@ def demo_page():
     title = cmd_type.upper()
 
     async def _pipeline():
-        cookies = await login_to_maimai(segaid, password, ver=ver)
+        cookies = await login_to_maimai(segaid, password, ver=ver, aime=aime)
         if not cookies or cookies == "MAINTENANCE":
             return cookies
         user_info, raw_records = await asyncio.gather(
             get_maimai_info(cookies, ver=ver),
             get_maimai_records(cookies, ver=ver)
         )
+        if not raw_records:
+            raise ValueError("No records found for this Aime card.")
         song_record = get_detailed_info(raw_records, ver=ver)
         up_songs, down_songs, details = select_records(song_record, type=cmd_type, command=params, ver=ver)
+        if not up_songs and not down_songs:
+            raise ValueError("No records matched the selected filters.")
         profile_img = generate_profile(user_info)
         records_img = generate_records_picture(up_songs, down_songs, title=title, ver=ver, details=details)
+        if not records_img:
+            raise ValueError("No records matched the selected filters.")
         return compose_images([profile_img, records_img], timezone_offset=tz)
 
     try:
@@ -1719,6 +1745,8 @@ def demo_page():
         result.save(buf, "PNG")
         buf.seek(0)
         return _demo_cors(send_file(buf, mimetype="image/png"))
+    except ValueError as e:
+        return _demo_cors(jsonify({"error": str(e)})), 400
     except Exception as e:
         logger.error(f"[Demo] Pipeline error: {e}", exc_info=True)
         return _demo_cors(jsonify({"error": "An error occurred while generating your score card."})), 500
