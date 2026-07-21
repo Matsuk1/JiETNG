@@ -49,26 +49,43 @@
       margin-top: 0;
     }
 
-    input[type="submit"] {
-      width: 100%;
-      padding: 13px;
+    .settings-header {
+      position: relative;
+      min-height: 40px;
+      margin-bottom: 32px;
+    }
+
+    .settings-header h2 {
+      margin-bottom: 0;
+    }
+
+    #submit-btn {
+      position: absolute;
+      top: -4px;
+      right: 0;
+      display: none;
+      padding: 10px 16px;
       background: var(--info-color);
       color: #ffffff;
       border: none;
       border-radius: var(--radius-md);
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       transition: all var(--transition-base);
-      margin-top: 24px;
+      box-shadow: var(--shadow-sm);
     }
 
-    input[type="submit"]:hover {
+    #submit-btn.visible {
+      display: block;
+    }
+
+    #submit-btn:hover {
       opacity: 0.85;
       box-shadow: var(--shadow-md);
     }
 
-    input[type="submit"]:active {
+    #submit-btn:active {
       transform: scale(0.98);
     }
 
@@ -423,7 +440,16 @@
 
       h2 {
         font-size: 20px;
+      }
+
+      .settings-header {
         margin-bottom: 24px;
+      }
+
+      #submit-btn {
+        top: -6px;
+        padding: 9px 13px;
+        font-size: 13px;
       }
 
       .token-panel .list-panel-header {
@@ -441,8 +467,11 @@
 <body>
   <div id="loading-overlay"><div class="spinner"></div></div>
   <div class="container">
-    <h2 id="page-heading">設定</h2>
-    <form method="POST">
+    <div class="settings-header">
+      <h2 id="page-heading">設定</h2>
+      <input type="submit" id="submit-btn" value="保存" form="settings-form" />
+    </div>
+    <form method="POST" id="settings-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
       <div class="list-panel" style="margin-bottom: 20px;">
@@ -560,7 +589,6 @@
       <input type="hidden" id="bg_files_input" name="bg_files" value="{{ user_bg_files | join(',') }}" />
       <input type="hidden" id="bg_enabled_hidden" name="bg_enabled_hidden" value="{% if bg_enabled %}1{% else %}0{% endif %}" />
 
-      <input type="submit" id="submit-btn" value="保存" />
     </form>
 
     {% if perm_list is defined and perm_list %}
@@ -843,6 +871,34 @@
     // 当前已选背景列表
     let selectedBgFiles = {{ user_bg_files | tojson }};
     let totalBgCount = {{ bg_files | length }};
+    let initialSettingsSnapshot = null;
+
+    function getSettingsSnapshot() {
+      const form = document.getElementById('settings-form');
+      const data = {};
+      if (!form) return data;
+      form.querySelectorAll('input, select, textarea').forEach(el => {
+        if (!el.name || el.type === 'file' || el.name === 'csrf_token') return;
+        if (el.type === 'checkbox') {
+          data[el.name || el.id] = el.checked ? '1' : '0';
+        } else {
+          data[el.name] = el.value;
+        }
+      });
+      return data;
+    }
+
+    function updateSaveButtonVisibility() {
+      const btn = document.getElementById('submit-btn');
+      if (!btn || !initialSettingsSnapshot) return;
+      const current = JSON.stringify(getSettingsSnapshot());
+      btn.classList.toggle('visible', current !== initialSettingsSnapshot);
+    }
+
+    function captureInitialSettingsSnapshot() {
+      initialSettingsSnapshot = JSON.stringify(getSettingsSnapshot());
+      updateSaveButtonVisibility();
+    }
 
     function updateBgCount() {
       document.getElementById('bg-count-text').textContent = selectedBgFiles.length + '/' + totalBgCount;
@@ -859,19 +915,23 @@
       }
       document.getElementById('bg_files_input').value = selectedBgFiles.join(',');
       updateBgCount();
+      updateSaveButtonVisibility();
     }
 
     function toggleBgEnabled(checked) {
       document.getElementById('bg_enabled_hidden').value = checked ? '1' : '0';
       document.getElementById('bg-settings-area').style.display = checked ? '' : 'none';
+      updateSaveButtonVisibility();
     }
 
     function updateBgBlurValue(value) {
       document.getElementById('bg-blur-value').textContent = value;
+      updateSaveButtonVisibility();
     }
 
     function updateBgOverlayValue(value) {
       document.getElementById('bg-overlay-value').textContent = value;
+      updateSaveButtonVisibility();
     }
 
     function updateLanguage(lang) {
@@ -1153,6 +1213,7 @@
         }
         totalBgCount--;
         updateBgCount();
+        updateSaveButtonVisibility();
       } catch (e) {
         if (btn) btn.disabled = false;
       }
@@ -1238,9 +1299,10 @@
     }
 
     // 提交时使用 fetch 避免 WKWebView 冻结
-    document.querySelector('form').addEventListener('submit', async function(event) {
+    document.getElementById('settings-form').addEventListener('submit', async function(event) {
       event.preventDefault();
       document.getElementById('loading-overlay').classList.add('active');
+      document.getElementById('submit-btn').classList.remove('visible');
       try {
         const response = await fetch(window.location.href, {
           method: 'POST',
@@ -1252,6 +1314,7 @@
         document.close();
       } catch (e) {
         document.getElementById('loading-overlay').classList.remove('active');
+        updateSaveButtonVisibility();
       }
     });
 
@@ -1263,10 +1326,16 @@
       languageSelect.value = userLanguage;
       languageSelect.addEventListener('change', function() {
         updateLanguage(this.value);
+        updateSaveButtonVisibility();
       });
 
       const timezoneSelect = document.getElementById('timezone');
       timezoneSelect.value = '{{ timezone }}';
+
+      const form = document.getElementById('settings-form');
+      form.addEventListener('input', updateSaveButtonVisibility);
+      form.addEventListener('change', updateSaveButtonVisibility);
+      captureInitialSettingsSnapshot();
     });
   </script>
 </body>
