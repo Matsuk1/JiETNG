@@ -1270,6 +1270,8 @@ def website_settings():
         bg_files_str = request.form.get("bg_files", "")
         bg_blur_raw = request.form.get("bg_blur", user_data.get("bg_blur", 20))
         bg_overlay_raw = request.form.get("bg_overlay", user_data.get("bg_overlay", 40))
+        participate_global_ranking = request.form.get("participate_global_ranking") == "1"
+        participate_group_ranking = request.form.get("participate_group_ranking") == "1"
 
         # 转换时区为整数
         try:
@@ -1305,6 +1307,8 @@ def website_settings():
         edit_user_value(user_id, "bg_enabled", bg_enabled)
         edit_user_value(user_id, "bg_blur", bg_blur)
         edit_user_value(user_id, "bg_overlay", bg_overlay)
+        edit_user_value(user_id, "participate_global_ranking", participate_global_ranking)
+        edit_user_value(user_id, "participate_group_ranking", participate_group_ranking)
         link_bound_rich_menu(user_id, get_user(user_id))
 
         return render_template("success.html", language=user_language, mode="settings")
@@ -1368,6 +1372,8 @@ def website_settings():
         bg_enabled=bg_enabled,
         bg_blur=bg_blur,
         bg_overlay=bg_overlay,
+        participate_global_ranking=user_data.get("participate_global_ranking", True) is not False,
+        participate_group_ranking=user_data.get("participate_group_ranking", True) is not False,
         has_custom_bg=has_custom_bg,
         custom_bg_filename=custom_bg_filename,
         perm_token=generate_perm_token(user_id),
@@ -2418,7 +2424,11 @@ async def search_song_by_id(user_id, song_id, ver="jp"):
     original_url, preview_url = await smart_upload(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='info')
 
-def get_ranking(user_id, id_use, ver=None):
+def _ranking_enabled(data, field):
+    return data.get(field, True) is not False
+
+
+def get_ranking(user_id, id_use, ver=None, source_type="user", group_key=None):
     """
     生成 Rating 排行榜（按版本 jp/intl 分开）
 
@@ -2431,11 +2441,18 @@ def get_ranking(user_id, id_use, ver=None):
         FlexMessage: 排行榜
     """
     user_ver = ver or (get_user(id_use) or {}).get('version', 'jp')
+    is_group_ranking = source_type in ('group', 'room') and bool(group_key)
+    ranking_field = "participate_group_ranking" if is_group_ranking else "participate_global_ranking"
+    group_member_ids = _get_line_member_ids(source_type, group_key) if is_group_ranking else None
 
     # 收集同版本且有 rating 的用户
     ranked_users = []
     for uid, data in load_all_users().items():
         if data.get('version', 'jp') != user_ver:
+            continue
+        if not _ranking_enabled(data, ranking_field):
+            continue
+        if is_group_ranking and (group_member_ids is None or uid not in group_member_ids):
             continue
         info = data.get('personal_info')
         if info and info.get('rating') and info['rating'] != 'ERROR':
@@ -2470,7 +2487,10 @@ def get_ranking(user_id, id_use, ver=None):
         top15 = []
         for u in ranked_users[:15]:
             top15.append({"rank": u["rank"], "name": u["name"], "rating": u["rating"]})
-        return generate_ranking_flex(user_id, top15, nearby_entries=None, ver=user_ver)
+        return generate_ranking_flex(
+            user_id, top15, nearby_entries=None, ver=user_ver,
+            scope="group" if is_group_ranking else "global",
+        )
 
     # 找到当前用户在排名列表中的索引
     user_idx = None
@@ -2503,7 +2523,10 @@ def get_ranking(user_id, id_use, ver=None):
                 entry["is_user"] = True
             nearby_entries.append(entry)
 
-    return generate_ranking_flex(user_id, top5, nearby_entries=nearby_entries, ver=user_ver)
+    return generate_ranking_flex(
+        user_id, top5, nearby_entries=nearby_entries, ver=user_ver,
+        scope="group" if is_group_ranking else "global",
+    )
 
 
 def search_by_artist(user_id, artist_query, ver="jp", page=1, source_type="user"):
@@ -4253,6 +4276,51 @@ def _build_command_context(event, cleaned_text):
     )
 
 
+_ranking_member_cache = {}
+_RANKING_MEMBER_CACHE_TTL = 300
+
+
+def _ranking_group_key(event):
+    source_type = getattr(event.source, 'type', 'user')
+    if source_type == 'group':
+        return getattr(event.source, 'group_id', None)
+    if source_type == 'room':
+        return getattr(event.source, 'room_id', None)
+    return None
+
+
+def _get_line_member_ids(source_type, group_key):
+    if source_type not in ('group', 'room') or not group_key:
+        return None
+    cache_key = (source_type, group_key)
+    now = time.time()
+    cached = _ranking_member_cache.get(cache_key)
+    if cached and now - cached["time"] < _RANKING_MEMBER_CACHE_TTL:
+        return cached["member_ids"]
+
+    try:
+        member_ids = []
+        start = None
+        with ApiClient(configuration) as api_client:
+            api = MessagingApi(api_client)
+            while True:
+                if source_type == 'group':
+                    response = api.get_group_members_ids(group_key, start=start)
+                else:
+                    response = api.get_room_members_ids(group_key, start=start)
+                member_ids.extend(getattr(response, "member_ids", []) or [])
+                start = getattr(response, "next", None)
+                if not start:
+                    break
+        member_ids = set(member_ids)
+        _ranking_member_cache[cache_key] = {"time": now, "member_ids": member_ids}
+        return member_ids
+    except Exception as e:
+        logger.warning("[Ranking] failed to fetch LINE members: source=%s id=%s error=%s",
+                       source_type, group_key, e)
+        return None
+
+
 def _bump_stats():
     with stats_lock:
         STATS['tasks_processed'] += 1
@@ -4421,9 +4489,9 @@ COMMAND_HELP = {
         "命令: refreshmenu\n说明: 現在の連携状態に応じて送信者本人の LINE リッチメニューを再連携します。\n参数: 引数なし: refreshmenu をそのまま送信します。\n制限: 送信者本人の Rich Menu のみに影響します。\n示例: refreshmenu",
     ),
     "ranking": _help_text(
-        "命令: rank [jp|intl] / ranking [jp|intl]\n说明: 查看 DX Rating 排行榜。\n参数: 可选: [服务器]，支持 jp、intl、cn；省略时使用当前用户绑定的服务器。\n格式: 服务器参数写在 rank / ranking 后面，用空格分隔。\n示例: rank\nranking intl",
-        "命令: rank [jp|intl] / ranking [jp|intl]\n说明: Show the DX Rating ranking.\n参数: Optional: [server], supports jp, intl, and cn; omitted value uses your linked server.\nFormat: put the server after rank / ranking, separated by a space.\n示例: rank\nranking intl",
-        "命令: rank [jp|intl] / ranking [jp|intl]\n说明: DX Rating ランキングを表示します。\n参数: 任意: [サーバー]。jp、intl、cn に対応。省略時はユーザーの連携サーバーを使います。\n形式: rank / ranking の後ろに空白区切りで指定します。\n示例: rank\nranking intl",
+        "命令: rank [jp|intl] / ranking [jp|intl]\n说明: 查看 DX Rating 排行榜。私聊显示总体榜，群聊显示当前 LINE 群内榜。\n参数: 可选: [服务器]，支持 jp、intl；省略时使用当前用户绑定的服务器。\n格式: 服务器参数写在 rank / ranking 后面，用空格分隔。\n示例: rank\nranking intl",
+        "命令: rank [jp|intl] / ranking [jp|intl]\n说明: Show the DX Rating ranking. Private chat shows the global ranking; group chat shows the current LINE group ranking.\n参数: Optional: [server], supports jp and intl; omitted value uses your linked server.\nFormat: put the server after rank / ranking, separated by a space.\n示例: rank\nranking intl",
+        "命令: rank [jp|intl] / ranking [jp|intl]\n说明: DX Rating ランキングを表示します。個人チャットでは総合、グループでは現在の LINE グループ内ランキングを表示します。\n参数: 任意: [サーバー]。jp、intl に対応。省略時はユーザーの連携サーバーを使います。\n形式: rank / ranking の後ろに空白区切りで指定します。\n示例: rank\nranking intl",
     ),
     "search_by_id": _help_text(
         "命令: search <6位歌曲ID>\n说明: 用歌曲 ID 精确查询歌曲信息。\n参数: 必填: <6位歌曲ID>，必须是完整歌曲 ID，不支持曲名。\n格式: search 后空一格再写 ID；ID 长度必须为 6。\n示例: search 114514",
@@ -4709,7 +4777,13 @@ def cmd_unbind_prompt(ctx):
 
 def cmd_ranking(ctx):
     ver_arg = ctx.match.group(3) if ctx.match else None
-    return get_ranking(ctx.user_id, ctx.id_use, ver_arg)
+    return get_ranking(
+        ctx.user_id,
+        ctx.id_use,
+        ver_arg,
+        source_type=ctx.source_type,
+        group_key=_ranking_group_key(ctx.event),
+    )
 
 def cmd_search_by_id(ctx):
     return asyncio.run(search_song_by_id(ctx.user_id, ctx.match.group(1), ctx.mai_ver))

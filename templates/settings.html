@@ -532,6 +532,30 @@
         </div>
       </div>
 
+      <div class="list-panel" style="margin-bottom: 20px;">
+        <div class="list-panel-header" id="ranking-panel-title">ランキング設定</div>
+        <div class="list-item">
+          <div class="list-item-info">
+            <span class="list-item-label" id="label-global-ranking">総合ランキングに参加</span>
+            <span class="list-item-meta" id="meta-global-ranking">個人チャットの rank / ranking に表示されます。</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" name="participate_global_ranking" value="1" {% if participate_global_ranking %}checked{% endif %}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="list-item">
+          <div class="list-item-info">
+            <span class="list-item-label" id="label-group-ranking">グループ内ランキングに参加</span>
+            <span class="list-item-meta" id="meta-group-ranking">同じ LINE グループ内の rank / ranking に表示されます。</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" name="participate_group_ranking" value="1" {% if participate_group_ranking %}checked{% endif %}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
       <div id="bg-settings-area" {% if not bg_enabled %}style="display: none;"{% endif %}>
         <div class="list-panel" style="margin-bottom: 20px;">
           <div class="list-item">
@@ -678,6 +702,11 @@
         languagePlatformHint: '言語設定は LINE 以外の外部プラットフォームには反映されない場合があります。',
         labelTimezone: 'タイムゾーン',
         labelBgEnabled: '背景画像',
+        rankingPanelTitle: 'ランキング設定',
+        labelGlobalRanking: '総合ランキングに参加',
+        metaGlobalRanking: '個人チャットの rank / ranking に表示されます。',
+        labelGroupRanking: 'グループ内ランキングに参加',
+        metaGroupRanking: '同じ LINE グループ内の rank / ranking に表示されます。',
         labelBgBlur: '背景ぼかし',
         labelBgOverlay: '背景フェード',
         bgHint: '選択しない場合、すべての背景からランダムに選ばれます。',
@@ -719,6 +748,11 @@
         languagePlatformHint: 'Language settings may not apply to third-party platforms outside LINE.',
         labelTimezone: 'Timezone',
         labelBgEnabled: 'Background Image',
+        rankingPanelTitle: 'Ranking Settings',
+        labelGlobalRanking: 'Join Global Ranking',
+        metaGlobalRanking: 'Shown in rank / ranking from private chat.',
+        labelGroupRanking: 'Join Group Ranking',
+        metaGroupRanking: 'Shown in rank / ranking inside the same LINE group.',
         labelBgBlur: 'Background Blur',
         labelBgOverlay: 'Background Fade',
         bgHint: 'If none selected, a random background will be used.',
@@ -760,6 +794,11 @@
         languagePlatformHint: '语言设置可能不会作用于 LINE 以外的第三方平台。',
         labelTimezone: '时区',
         labelBgEnabled: '背景图片',
+        rankingPanelTitle: '排行榜设置',
+        labelGlobalRanking: '参与总体排行榜',
+        metaGlobalRanking: '会显示在私聊的 rank / ranking 中。',
+        labelGroupRanking: '参与群内排行榜',
+        metaGroupRanking: '会显示在同一个 LINE 群内的 rank / ranking 中。',
         labelBgBlur: '背景模糊',
         labelBgOverlay: '背景淡化',
         bgHint: '不选择则从所有背景中随机。',
@@ -801,6 +840,11 @@
         languagePlatformHint: '語言設定可能不會套用到 LINE 以外的第三方平台。',
         labelTimezone: '時區',
         labelBgEnabled: '背景圖片',
+        rankingPanelTitle: '排行榜設定',
+        labelGlobalRanking: '參與總體排行榜',
+        metaGlobalRanking: '會顯示在私聊的 rank / ranking 中。',
+        labelGroupRanking: '參與群內排行榜',
+        metaGroupRanking: '會顯示在同一個 LINE 群內的 rank / ranking 中。',
         labelBgBlur: '背景模糊',
         labelBgOverlay: '背景淡化',
         bgHint: '不選擇時，會從所有背景中隨機使用。',
@@ -942,6 +986,11 @@
       document.getElementById('language-platform-hint').textContent = t.languagePlatformHint;
       document.getElementById('label-timezone').textContent = t.labelTimezone;
       document.getElementById('label-bg-enabled').textContent = t.labelBgEnabled;
+      document.getElementById('ranking-panel-title').textContent = t.rankingPanelTitle;
+      document.getElementById('label-global-ranking').textContent = t.labelGlobalRanking;
+      document.getElementById('meta-global-ranking').textContent = t.metaGlobalRanking;
+      document.getElementById('label-group-ranking').textContent = t.labelGroupRanking;
+      document.getElementById('meta-group-ranking').textContent = t.metaGroupRanking;
       document.getElementById('label-bg-blur').textContent = t.labelBgBlur;
       document.getElementById('label-bg-overlay').textContent = t.labelBgOverlay;
       document.getElementById('bg-hint-text').textContent = t.bgHint;

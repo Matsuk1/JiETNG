@@ -2108,7 +2108,7 @@ def generate_search_results_flex(user_id, matching_songs, search_type='song', id
     )
 
 
-def generate_ranking_flex(user_id, top5, nearby_entries=None, ver="jp"):
+def generate_ranking_flex(user_id, top5, nearby_entries=None, ver="jp", scope="global"):
     """
     生成 Rating 排行榜 Flex Message（5+7 布局）
 
@@ -2123,6 +2123,8 @@ def generate_ranking_flex(user_id, top5, nearby_entries=None, ver="jp"):
     """
     title_text = get_multilingual_text(ranking_title_text, user_id)
     ver_label = "JP" if ver == "jp" else "INTL"
+    if scope == "group":
+        ver_label = f"GROUP {ver_label}"
 
     header = _standard_header_box(title_text, ver_label)
 
