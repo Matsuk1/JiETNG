@@ -131,6 +131,7 @@ from modules.message_manager import *
 
 # Image processing
 from modules.image_uploader import smart_upload, _start_periodic_cleanup
+from modules.image_matcher import recognize_songs_from_image, warm_image_recognition_index
 from modules.export_manager import (
     export_records,
     start_periodic_cleanup as start_export_cleanup,
@@ -4359,6 +4360,11 @@ COMMAND_HELP = {
         "命令: <song> info / <song> song-info / <song>ってどんな曲\n说明: Show song details, chart data, and BPM.\n参数: Required: <song>, placed before info / song-info; accepts full title, partial title, or alias.\nMatching: if multiple songs match, the bot returns selectable candidates.\n示例: ヒバナ info\nヒバナってどんな曲",
         "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 楽曲情報、譜面情報、BPM を表示します。\n参数: 必須: <曲名>。info / song-info の前に置き、正式名・部分一致・別名を指定できます。\n検索: 複数候補がある場合は選択候補を返します。\n示例: ヒバナ info\nヒバナってどんな曲",
     ),
+    "image_recognition": _help_text(
+        "命令: recognize / recognise / cover\n说明: 识别被回复图片中的 maimai 曲绘，并返回对应歌曲信息。\n参数: 无需文字参数；必须把命令作为图片消息的回复发送。\n格式: 先回复一张图片，再发送 recognize。图片里曲绘区域越完整越容易命中。\n示例: 回复图片: recognize",
+        "命令: recognize / recognise / cover\n说明: Recognize a maimai cover in the replied image and return the song details.\n参数: No text arguments; the command must be sent as a reply to an image message.\nFormat: reply to an image with recognize. A larger and clearer cover area improves matching.\n示例: reply to an image: recognize",
+        "命令: recognize / recognise / cover\n说明: 返信元画像内の maimai ジャケット画像を認識し、楽曲情報を返します。\n参数: 文字引数は不要です。画像メッセージへの返信として送信してください。\n形式: 画像に返信して recognize を送信します。ジャケット部分が大きく鮮明なほど認識しやすくなります。\n示例: 画像に返信: recognize",
+    ),
     "plate": _help_text(
         "命令: <牌子名> achievement [-uc|-up|-c] / <牌子名>の達成状況\n说明: 查看版本牌子或称号类目标的完成情况。\n参数: 必填: <牌子名>，写在 achievement 前面，例如 真極、檄将 等。\n可选: -uc 仅看未完成项目，-up 仅看未游玩项目，-c 仅看已完成项目。\n格式: 过滤项写在命令最后；不写过滤项时显示完整完成度。\n示例: 真極 achievement\n真極 achievement -uc",
         "命令: <plate title> achievement [-uc|-up|-c] / <plate title>の達成状況\n说明: Show completion status for plate/title goals.\n参数: Required: <plate title>, placed before achievement, such as 真極 or 檄将.\nOptional: -uc shows unfinished items, -up shows unplayed items, -c shows completed items.\nFormat: put the filter at the end; omit it to show full completion.\n示例: 真極 achievement\n真極 achievement -uc",
@@ -4477,6 +4483,9 @@ EXACT_HELP_ALIASES = {
     "rank": "ranking",
     "ranking": "ranking",
     "random": "random_song",
+    "recognize": "image_recognition",
+    "recognise": "image_recognition",
+    "cover": "image_recognition",
 }
 
 FIRST_WORD_HELP_ALIASES = {
@@ -4761,6 +4770,57 @@ def cmd_song_info(ctx):
     keyword = re.sub(r"\s*(ってどんな曲|info|song-info)$", "", ctx.text).strip()
     return asyncio.run(search_song(ctx.user_id, keyword, ctx.mai_ver))
 
+def _get_quoted_message_id(ctx):
+    return getattr(ctx.event.message, "quoted_message_id", None)
+
+def _fetch_line_message_content(message_id):
+    with ApiClient(configuration) as api_client:
+        return bytes(MessagingApiBlob(api_client).get_message_content(message_id))
+
+def cmd_image_recognition(ctx):
+    quoted_message_id = _get_quoted_message_id(ctx)
+    if not quoted_message_id:
+        return generate_status_flex(
+            {"ja": "画像に返信してください", "en": "Reply To An Image", "zh": "请回复图片"},
+            image_recognition_need_reply_text,
+            ctx.user_id,
+            tone="warning",
+        )
+
+    try:
+        image_bytes = _fetch_line_message_content(quoted_message_id)
+        with Image.open(BytesIO(image_bytes)) as img:
+            input_image = img.convert("RGB")
+    except Exception as e:
+        logger.warning("[ImageRecognition] failed to fetch quoted image: message_id=%s error=%s",
+                       quoted_message_id, e)
+        return generate_status_flex(
+            {"ja": "画像を取得できません", "en": "Image Unavailable", "zh": "图片不可用"},
+            image_recognition_fetch_failed_text,
+            ctx.user_id,
+            tone="warning",
+        )
+
+    try:
+        songs, _ = read_dxdata(ctx.mai_ver)
+        results = recognize_songs_from_image(input_image, songs, COVERS_DIR, max_results=3)
+    except Exception as e:
+        logger.exception("[ImageRecognition] recognition failed: %s", e)
+        return system_error(ctx.user_id)
+
+    if not results:
+        return generate_status_flex(
+            {"ja": "識別できませんでした", "en": "No Match", "zh": "未识别到曲绘"},
+            image_recognition_no_match_text,
+            ctx.user_id,
+            tone="warning",
+        )
+
+    best = results[0]
+    logger.info("[ImageRecognition] user_id=%s song_id=%s cover=%s score=%.4f method=%s",
+                ctx.user_id, best.song.get("id"), best.cover_name, best.score, best.method)
+    return asyncio.run(search_song_by_id(ctx.user_id, best.song.get("id"), ctx.mai_ver))
+
 def cmd_random_song(ctx):
     keyword = re.sub(r"^random", "", ctx.text).strip()
     return asyncio.run(random_song(ctx.user_id, keyword, ctx.mai_ver))
@@ -4852,6 +4912,18 @@ def cmd_calc_notes(ctx):
         return generate_calc_result_flex(notes, get_note_score(notes), user_id=ctx.user_id)
     except Exception:
         return input_error(ctx.user_id)
+
+
+def _start_image_recognition_warmup():
+    def _warmup():
+        try:
+            songs, _ = read_dxdata("jp")
+            count = warm_image_recognition_index(songs, COVERS_DIR)
+            logger.info("[ImageRecognition] warmup completed: covers=%s", count)
+        except Exception as e:
+            logger.warning("[ImageRecognition] warmup skipped: %s", e)
+
+    threading.Thread(target=_warmup, daemon=True, name="ImageRecognitionWarmup").start()
 
 
 # ---- bind / rebind / settings 共用小工具 ----
@@ -4967,6 +5039,10 @@ COMMANDS = [
     Command(Suffix("ってどんな曲", "info", "song-info"),
             cmd_song_info, queue=QUEUE_IMAGE,
             name="song_info"),
+    Command(Exact("recognize", "recognise", "cover"),
+            cmd_image_recognition, queue=QUEUE_IMAGE,
+            rate_limit_key="image:recognition",
+            name="image_recognition"),
     Command(Regex(r"^.+(の達成状況|achievement)(\s*-(uc|up|c))?\s*$"),
             cmd_plate, queue=QUEUE_IMAGE, mention_queryable=True,
             name="plate"),
@@ -8312,6 +8388,9 @@ def start_runtime():
 
     # 启动 dxdata 每周日 22:00 自动更新（服务器本地时间）
     start_dxdata_weekly_update(DXDATA_URL, DXDATA_FILE)
+
+    # 预热曲绘识别索引，避免首次识别占用 LINE reply token 时间
+    _start_image_recognition_warmup()
 
     # 启动内存管理器
     memory_manager.start()
