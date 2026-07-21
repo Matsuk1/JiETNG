@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-from PIL import Image, ImageChops, ImageStat
+from PIL import Image, ImageChops, ImageFilter, ImageOps, ImageStat
 
 try:
     import cv2
@@ -470,11 +470,13 @@ def _thumbnail_similarity_score(variants: list[Image.Image], cover_img: Image.Im
 
 
 def _make_input_variants(image: Image.Image) -> list[Image.Image]:
-    original = image.convert("RGB")
+    original = ImageOps.exif_transpose(image).convert("RGB")
     base = _trim_border(original)
     variants = [original]
     if base.size != original.size:
         variants.append(base)
+    variants.extend(_maimai_result_cover_crops(base))
+    variants.extend(_rank_small_square_crops(base))
     w, h = base.size
     side = min(w, h)
     if side > 0 and abs(w - h) > max(12, side * 0.04):
@@ -488,11 +490,119 @@ def _make_input_variants(image: Image.Image) -> list[Image.Image]:
     unique = []
     seen = set()
     for variant in variants:
-        key = variant.size + variant.getbbox()
+        key = _image_variant_key(variant)
         if key not in seen:
             seen.add(key)
             unique.append(variant)
-    return unique[:10]
+    return unique[:64]
+
+
+def _image_variant_key(image: Image.Image) -> tuple[Any, ...]:
+    thumb = image.convert("L").resize((12, 12), Image.Resampling.BILINEAR)
+    return image.size + tuple(thumb.getdata())
+
+
+def _maimai_result_cover_crops(image: Image.Image) -> list[Image.Image]:
+    """针对 maimai 结算画面的小曲绘位置生成强先验候选。"""
+    w, h = image.size
+    short = min(w, h)
+    candidates = []
+
+    if h >= w:
+        anchor_boxes = [
+            (0.245, 0.430, 0.060),
+            (0.265, 0.450, 0.070),
+            (0.285, 0.465, 0.080),
+            (0.225, 0.410, 0.090),
+            (0.305, 0.485, 0.100),
+        ]
+    else:
+        anchor_boxes = [
+            (0.430, 0.245, 0.060),
+            (0.450, 0.265, 0.070),
+            (0.465, 0.285, 0.080),
+            (0.410, 0.225, 0.090),
+            (0.485, 0.305, 0.100),
+        ]
+
+    for cx_ratio, cy_ratio, side_ratio in anchor_boxes:
+        side = int(short * side_ratio)
+        cx = int(w * cx_ratio)
+        cy = int(h * cy_ratio)
+        candidates.extend(_nearby_square_crops(image, cx, cy, side))
+    return candidates
+
+
+def _nearby_square_crops(image: Image.Image, cx: int, cy: int, side: int) -> list[Image.Image]:
+    if side < 40:
+        return []
+    offsets = [-0.35, 0, 0.35]
+    crops = []
+    for oy in offsets:
+        for ox in offsets:
+            x1 = int(cx - side / 2 + side * ox)
+            y1 = int(cy - side / 2 + side * oy)
+            crop = _bounded_square_crop(image, x1, y1, side)
+            if crop is not None:
+                crops.append(crop)
+    return crops
+
+
+def _rank_small_square_crops(image: Image.Image) -> list[Image.Image]:
+    """从整张照片中找最像小曲绘的高信息量正方形区域。"""
+    w, h = image.size
+    short = min(w, h)
+    if short < 300:
+        return []
+
+    scale = min(1.0, 720 / max(w, h))
+    scan = image.resize((int(w * scale), int(h * scale)), Image.Resampling.BILINEAR)
+    sw, sh = scan.size
+    sshort = min(sw, sh)
+
+    scored = []
+    side_ratios = (0.045, 0.055, 0.065, 0.08, 0.10, 0.13, 0.16)
+    for ratio in side_ratios:
+        side = max(32, int(sshort * ratio))
+        step = max(18, int(side * 0.65))
+        for y in range(0, max(1, sh - side + 1), step):
+            for x in range(0, max(1, sw - side + 1), step):
+                crop = scan.crop((x, y, x + side, y + side))
+                score = _small_cover_likelihood(crop, x / sw, y / sh)
+                if score > 0.30:
+                    scored.append((score, x, y, side))
+
+    scored.sort(key=lambda item: item[0], reverse=True)
+    crops = []
+    for _, x, y, side in scored[:36]:
+        ox = int(x / scale)
+        oy = int(y / scale)
+        oside = int(side / scale)
+        crop = _bounded_square_crop(image, ox, oy, oside)
+        if crop is not None:
+            crops.append(crop)
+    return crops
+
+
+def _small_cover_likelihood(crop: Image.Image, x_ratio: float, y_ratio: float) -> float:
+    hsv = crop.convert("HSV")
+    stat = ImageStat.Stat(hsv)
+    saturation = stat.mean[1] / 255
+    value_std = stat.stddev[2] / 128
+    edge = ImageStat.Stat(crop.convert("L").filter(ImageFilter.FIND_EDGES)).mean[0] / 255
+    position = 1.0
+    if 0.10 <= x_ratio <= 0.45 and 0.25 <= y_ratio <= 0.58:
+        position = 1.18
+    return min(1.0, (saturation * 0.46 + value_std * 0.34 + edge * 0.20) * position)
+
+
+def _bounded_square_crop(image: Image.Image, x1: int, y1: int, side: int) -> Image.Image | None:
+    w, h = image.size
+    if side < 32 or side > min(w, h):
+        return None
+    x1 = max(0, min(w - side, x1))
+    y1 = max(0, min(h - side, y1))
+    return image.crop((x1, y1, x1 + side, y1 + side))
 
 
 def _square_crops(image: Image.Image, side: int) -> Iterable[Image.Image]:
