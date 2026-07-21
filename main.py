@@ -2444,6 +2444,8 @@ def get_ranking(user_id, id_use, ver=None, source_type="user", group_key=None):
     is_group_ranking = source_type in ('group', 'room') and bool(group_key)
     ranking_field = "participate_group_ranking" if is_group_ranking else "participate_global_ranking"
     group_member_ids = _get_line_member_ids(source_type, group_key) if is_group_ranking else None
+    if is_group_ranking and group_member_ids is None:
+        group_member_ids = _fallback_group_member_ids(group_key)
 
     # 收集同版本且有 rating 的用户
     ranked_users = []
@@ -4277,7 +4279,9 @@ def _build_command_context(event, cleaned_text):
 
 
 _ranking_member_cache = {}
+_ranking_member_api_blocked_until = {}
 _RANKING_MEMBER_CACHE_TTL = 300
+_RANKING_MEMBER_API_BLOCK_TTL = 600
 
 
 def _ranking_group_key(event):
@@ -4294,6 +4298,9 @@ def _get_line_member_ids(source_type, group_key):
         return None
     cache_key = (source_type, group_key)
     now = time.time()
+    blocked_until = _ranking_member_api_blocked_until.get(source_type, 0)
+    if blocked_until > now:
+        return None
     cached = _ranking_member_cache.get(cache_key)
     if cached and now - cached["time"] < _RANKING_MEMBER_CACHE_TTL:
         return cached["member_ids"]
@@ -4318,7 +4325,37 @@ def _get_line_member_ids(source_type, group_key):
     except Exception as e:
         logger.warning("[Ranking] failed to fetch LINE members: source=%s id=%s error=%s",
                        source_type, group_key, e)
+        if "Access to this API is not available" in str(e) or "Forbidden" in str(e):
+            _ranking_member_api_blocked_until[source_type] = now + _RANKING_MEMBER_API_BLOCK_TTL
         return None
+
+
+def _remember_ranking_group_member(event):
+    group_key = _ranking_group_key(event)
+    user_id = getattr(event.source, 'user_id', None)
+    if not group_key or not user_id:
+        return
+    try:
+        if not user_exists(user_id):
+            add_user(user_id)
+        group_ids = get_user_field(user_id, "ranking_group_ids", [])
+        if not isinstance(group_ids, list):
+            group_ids = []
+        if group_key not in group_ids:
+            group_ids.append(group_key)
+            update_user_field(user_id, "ranking_group_ids", group_ids)
+    except Exception as e:
+        logger.debug("[Ranking] fallback member tracking skipped: user_id=%s group=%s error=%s",
+                     user_id, group_key, e)
+
+
+def _fallback_group_member_ids(group_key):
+    member_ids = set()
+    for uid, data in load_all_users().items():
+        group_ids = data.get("ranking_group_ids", [])
+        if isinstance(group_ids, list) and group_key in group_ids:
+            member_ids.add(uid)
+    return member_ids
 
 
 def _bump_stats():
@@ -5180,6 +5217,7 @@ def handle_text_message(event):
     """
     mark_message_as_read(getattr(event.message, 'mark_as_read_token', None),
                          event.source.user_id)
+    _remember_ranking_group_member(event)
 
     # @ALL / 3+ mention → 忽略
     if check_mention_filter(event):
