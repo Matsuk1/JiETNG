@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="{{ language or 'ja' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+  <title>
+    {% if language == 'en' %}
+    Unlink Account | JiETNG
+    {% elif language == 'zh-tw' %}
+    解除帳號綁定 | JiETNG
+    {% elif language == 'zh' %}
+    解除账号绑定 | JiETNG
+    {% else %}
+    アカウント連携解除 | JiETNG
+    {% endif %}
+  </title>
+  <link rel="icon" type="image/png" href="/static/pics/logo.png">
+  {% include 'common_styles.html' %}
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      background: var(--surface-bg);
+    }
+
+    .panel {
+      width: 100%;
+      max-width: 520px;
+      padding: 40px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      background: var(--card-bg);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .mark {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--danger-bg, #FDECEC);
+      color: var(--danger-color, #D93025);
+      font-size: 42px;
+      font-weight: 800;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      color: var(--text-color);
+      font-size: 24px;
+      text-align: center;
+    }
+
+    .lead {
+      margin: 0 0 24px;
+      color: var(--text-secondary);
+      font-size: 15px;
+      line-height: 1.7;
+      text-align: center;
+    }
+
+    .summary {
+      margin: 0 0 24px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--surface-bg);
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 14px;
+    }
+
+    .row:last-child {
+      border-bottom: 0;
+    }
+
+    .key {
+      color: var(--text-secondary);
+      font-weight: 700;
+    }
+
+    .value {
+      color: var(--text-color);
+      text-align: right;
+      word-break: break-all;
+    }
+
+    .warning {
+      margin: 0 0 24px;
+      padding: 14px 16px;
+      border: 1px solid rgba(217, 48, 37, 0.24);
+      border-radius: var(--radius-md);
+      background: rgba(217, 48, 37, 0.08);
+      color: var(--text-color);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px 16px;
+      border: 0;
+      border-radius: var(--radius-md);
+      background: var(--danger-color, #D93025);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 16px;
+      }
+
+      .panel {
+        padding: 32px 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <div class="mark">!</div>
+    <h1>
+      {% if language == 'en' %}
+      Unlink Account
+      {% elif language == 'zh-tw' %}
+      解除帳號綁定
+      {% elif language == 'zh' %}
+      解除账号绑定
+      {% else %}
+      アカウント連携解除
+      {% endif %}
+    </h1>
+    <p class="lead">
+      {% if language == 'en' %}
+      Confirm in this browser to remove your linked account from JiETNG.
+      {% elif language == 'zh-tw' %}
+      請在此瀏覽器中確認，將已綁定帳號從 JiETNG 移除。
+      {% elif language == 'zh' %}
+      请在此浏览器中确认，将已绑定账号从 JiETNG 移除。
+      {% else %}
+      このブラウザで確認すると、連携済みアカウントを JiETNG から削除します。
+      {% endif %}
+    </p>
+
+    <div class="summary">
+      <div class="row">
+        <span class="key">
+          {% if language == 'en' %}Type{% elif language == 'zh-tw' %}類型{% elif language == 'zh' %}类型{% else %}種類{% endif %}
+        </span>
+        <span class="value">
+          {% if import_only %}
+          Import Token
+          {% elif language == 'en' %}
+          SEGA Account
+          {% elif language == 'zh-tw' %}
+          SEGA 帳號
+          {% elif language == 'zh' %}
+          SEGA 账号
+          {% else %}
+          SEGA アカウント
+          {% endif %}
+        </span>
+      </div>
+      <div class="row">
+        <span class="key">
+          {% if language == 'en' %}Server{% elif language == 'zh-tw' %}伺服器{% elif language == 'zh' %}服务器{% else %}サーバー{% endif %}
+        </span>
+        <span class="value">{{ version }}</span>
+      </div>
+      {% if segaid %}
+      <div class="row">
+        <span class="key">SEGA ID</span>
+        <span class="value">{{ segaid }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="warning">
+      {% if language == 'en' %}
+      This will delete saved account credentials, related settings, records, and recent records. This action cannot be undone.
+      {% elif language == 'zh-tw' %}
+      這會刪除已保存的帳號憑證、相關設定、成績與最近成績。此操作無法復原。
+      {% elif language == 'zh' %}
+      这会删除已保存的账号凭证、相关设置、成绩和最近成绩。此操作无法撤销。
+      {% else %}
+      保存済みのアカウント情報、関連設定、成績、最近の成績を削除します。この操作は取り消せません。
+      {% endif %}
+    </div>
+
+    <form method="POST">
+      <input type="hidden" name="token" value="{{ token }}">
+      <button type="submit">
+        {% if language == 'en' %}
+        Unlink Account
+        {% elif language == 'zh-tw' %}
+        解除綁定
+        {% elif language == 'zh' %}
+        确认解绑
+        {% else %}
+        連携を解除
+        {% endif %}
+      </button>
+    </form>
+  </main>
+</body>
+</html>

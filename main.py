@@ -87,6 +87,7 @@ from modules.bindtoken_manager import (
     generate_bind_token, get_user_id_from_token,
     generate_perm_token, get_user_id_from_perm_token,
     generate_settings_token, get_user_id_from_settings_token,
+    generate_unbind_token, get_user_id_from_unbind_token,
 )
 from modules.notice_manager import *
 from modules.notice_stats import *
@@ -1156,6 +1157,52 @@ def website_segaid_bind():
         return render_template("bind_form.html", user_language=user_language, mode="bind")
 
 
+@app.route("/linebot/unbind", methods=["GET", "POST"])
+@csrf.exempt
+def website_unbind():
+    token = request.args.get("token") or request.form.get("token")
+    if not token:
+        return _error_page({
+            "ja": "トークンが提供されていません。",
+            "en": "Token not provided.",
+            "zh": "未提供令牌。"
+        })
+
+    try:
+        user_id = get_user_id_from_unbind_token(token)
+    except Exception as e:
+        logger.error(f"[Unbind] ✗ Token verification failed: error={e}")
+        return _error_page({
+            "ja": "トークンが無効、または期限切れです。もう一度 unbind を送信してください。",
+            "en": "The token is invalid or expired. Send unbind again.",
+            "zh": "令牌无效或已过期。请重新发送 unbind。"
+        })
+
+    user_data = get_user(user_id) or {}
+    user_language = normalize_language(user_data.get("language"), "ja")
+    if not _can_open_settings(user_data):
+        return _error_page({
+            "ja": "連携済みアカウントがありません。",
+            "en": "No account is linked.",
+            "zh": "当前没有已绑定账号。"
+        }, user_language)
+
+    if request.method == "POST":
+        delete_user(user_id)
+        link_unbound_rich_menu(user_id)
+        track_event('user_unbind', user_id=user_id, metadata={'source': 'web'})
+        return render_template("success.html", language=user_language, mode="unbind")
+
+    return render_template(
+        "unbind_form.html",
+        language=user_language,
+        token=token,
+        version=user_data.get("version", "-"),
+        segaid=user_data.get("sega_id", ""),
+        import_only=bool(user_data.get("import_only") or user_data.get("auth_type") == "import_token"),
+    )
+
+
 @app.route("/linebot/settings", methods=["GET", "POST"])
 def website_settings():
     """
@@ -1784,14 +1831,6 @@ async def process_sega_credentials(user_id, segaid, password, ver="jp", language
 
     return True
 
-
-# ==================== 用户管理函数 ====================
-
-def user_unbind(user_id):
-    msg = unbind_msg(user_id)
-    delete_user(user_id)
-    link_unbound_rich_menu(user_id)
-    return msg
 
 # ==================== 异步任务处理函数 ====================
 
@@ -4341,14 +4380,9 @@ COMMAND_HELP = {
         "命令: random [条件]\n说明: ランダムに 1 曲おすすめします。\n参数: 任意: [条件]。レベル、定数、譜面種別、難易度などのキーワードを指定できます。\n形式: 複数条件は空白で区切ります。省略時は全曲からランダムです。\n示例: random\nrandom 13+ dx\nrandom 14 mas",
     ),
     "unbind_prompt": _help_text(
-        "命令: unbind\n说明: 开始解除 SEGA 账号绑定流程，显示确认说明但不会立刻删除账号。\n参数: 无需参数: 直接发送 unbind。\n示例: unbind\n注意: 确认解绑请发送 unbind confirm。",
-        "命令: unbind\n说明: Start the SEGA account unlink flow and show a confirmation prompt without deleting immediately.\n参数: No arguments: send unbind as-is.\n示例: unbind\n注意: Send unbind confirm to complete unlinking.",
-        "命令: unbind\n说明: SEGA アカウント連携解除を開始し、すぐには削除せず確認案内を表示します。\n参数: 引数なし: unbind をそのまま送信します。\n示例: unbind\n注意: 確認するには unbind confirm を送信してください。",
-    ),
-    "unbind_execute": _help_text(
-        "命令: unbind confirm\n说明: 确认解除当前 SEGA 账号绑定。\n参数: 固定参数: confirm 必须紧跟在 unbind 后面，用于确认删除绑定资料。\n示例: unbind confirm",
-        "命令: unbind confirm\n说明: Confirm unlinking the current SEGA account.\n参数: Fixed argument: confirm must follow unbind and confirms deletion of linked account data.\n示例: unbind confirm",
-        "命令: unbind confirm\n说明: 現在の SEGA アカウント連携解除を確定します。\n参数: 固定引数: confirm を unbind の後に付けると、連携情報の削除を確定します。\n示例: unbind confirm",
+        "命令: unbind\n说明: 返回一次性 SEGA 账号解绑链接，在浏览器内确认后才会删除账号数据。\n参数: 无需参数: 直接发送 unbind。\n要求: 必须已经绑定 SEGA 账号或已启用 Import Token 账号。\n限制: 只能在私聊使用。\n示例: unbind",
+        "命令: unbind\n说明: Return a one-time SEGA account unlink URL. Account data is removed only after browser confirmation.\n参数: No arguments: send unbind as-is.\nRequirement: a SEGA account or Import Token account must already be linked.\nRestriction: private chat only.\n示例: unbind",
+        "命令: unbind\n说明: 一回限りの SEGA アカウント連携解除 URL を返します。ブラウザで確認した後に削除されます。\n参数: 引数なし: unbind をそのまま送信します。\n条件: SEGA アカウント、または Import Token アカウント連携済みである必要があります。\n制限: 個人チャット専用です。\n示例: unbind",
     ),
     "bind": _help_text(
         "命令: bind\n说明: 返回一次性 SEGA 账号绑定链接，用于首次绑定账号。\n参数: 无需参数: 直接发送 bind。\n限制: 只能在私聊使用，群聊会返回安全提示。\n示例: bind",
@@ -4433,7 +4467,6 @@ EXACT_HELP_ALIASES = {
     "friend list": "friend_list",
     "friends": "friend_list",
     "unbind": "unbind_prompt",
-    "unbind confirm": "unbind_execute",
     "bind": "bind",
     "rebind": "rebind",
     "settings": "settings",
@@ -4651,15 +4684,19 @@ def cmd_refresh_menu(ctx):
     return None
 
 def cmd_unbind_prompt(ctx):
-    return generate_status_flex(
-        {"ja": "アカウント連携解除", "en": "Unbind Account", "zh": "解除账号绑定"},
-        unbind_confirm_text,
-        ctx.user_id,
-        tone="danger",
-    )
-
-def cmd_unbind_execute(ctx):
-    return user_unbind(ctx.user_id)
+    warn = _check_private_or_warn(ctx, unbind_group_warning_text)
+    if warn is not None:
+        return warn
+    user_data = get_user(ctx.user_id) or {}
+    if not _can_open_settings(user_data):
+        return generate_status_flex(
+            {"ja": "未連携", "en": "Not Linked", "zh": "未绑定"},
+            rebind_not_bound_text,
+            ctx.user_id,
+            tone="warning",
+        )
+    url = f"https://{DOMAIN}/linebot/unbind?token={generate_unbind_token(ctx.user_id)}"
+    return generate_account_action_flex("unbind", url, ctx.user_id)
 
 def cmd_ranking(ctx):
     ver_arg = ctx.match.group(3) if ctx.match else None
@@ -4950,8 +4987,6 @@ COMMANDS = [
     # ============ Sync commands ============
     Command(Exact("unbind"), cmd_unbind_prompt,
             self_only=True, addition=False, name="unbind_prompt"),
-    Command(Exact("unbind confirm"), cmd_unbind_execute,
-            self_only=True, addition=False, name="unbind_execute"),
     Command(Exact("bind"), cmd_bind,
             self_only=True, addition=False, name="bind"),
     Command(Exact("rebind"), cmd_rebind,

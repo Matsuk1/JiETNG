@@ -14,13 +14,6 @@ rebind_msg_text = {
     "zh": "✅ SEGA 账号信息已更新。"
 }
 
-unbind_msg_text = {
-    "ja": "✅ SEGA アカウント連携を解除しました。",
-    "en": "✅ SEGA account unlinked.",
-    "zh": "✅ SEGA 账号已解绑。"
-}
-
-
 # ============================================================
 # エラーメッセージ / Error Messages
 # ============================================================
@@ -430,11 +423,22 @@ already_bound_text = {
     "zh": "当前已经绑定 SEGA 账号。\n\n修改密码、服务器版本或 Aime 请使用 rebind。\n修改时区、语言、背景图片、隐私等个人设置请使用 settings。\n如需绑定其他账号，请先使用 unbind 解除当前绑定。"
 }
 
-# Unbind 确认消息
-unbind_confirm_text = {
-    "ja": "SEGA アカウント連携を解除します。\n\n連携済みの SEGA ID、パスワード、関連設定が削除されます。この操作は取り消せません。\n\n続行するには unbind confirm を送信してください。",
-    "en": "This will unlink your SEGA account.\n\nYour linked SEGA ID, password, and related settings will be deleted. This action cannot be undone.\n\nTo continue, send unbind confirm.",
-    "zh": "即将解除 SEGA 账号绑定。\n\n已保存的 SEGA ID、密码和相关设置都会被删除，且无法撤销。\n\n若要继续，请发送 unbind confirm。"
+unbind_title_alt_text = {
+    "ja": "アカウント連携解除",
+    "en": "Unlink Account",
+    "zh": "解除账号绑定"
+}
+
+unbind_description_text = {
+    "ja": "連携済み SEGA アカウントと保存済み成績データをブラウザ内で確認して削除します。",
+    "en": "Review and remove your linked SEGA account and saved record data in the browser.",
+    "zh": "在浏览器内确认并删除已绑定 SEGA 账号和已保存成绩数据。"
+}
+
+unbind_button_text = {
+    "ja": "解除ページを開く",
+    "en": "Open Unlink Page",
+    "zh": "打开解绑页面"
 }
 
 # Bind 命令群聊警告
@@ -449,6 +453,12 @@ rebind_group_warning_text = {
     "ja": "rebind は個人チャット専用です。ボットに直接メッセージを送信してください。",
     "en": "rebind is only available in private chat. Message the bot directly.",
     "zh": "rebind 只能在私聊使用。请直接向机器人发送消息。"
+}
+
+unbind_group_warning_text = {
+    "ja": "unbind は個人チャット専用です。ボットに直接メッセージを送信してください。",
+    "en": "unbind is only available in private chat. Message the bot directly.",
+    "zh": "unbind 只能在私聊使用。请直接向机器人发送消息。"
 }
 
 # Settings 命令群聊警告

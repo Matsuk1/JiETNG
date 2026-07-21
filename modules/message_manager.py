@@ -400,6 +400,13 @@ def generate_account_action_flex(action_type, url, user_id=None):
             "alt": rebind_title_alt_text,
             "accent": "#8A63D2",
         },
+        "unbind": {
+            "title": unbind_title_alt_text,
+            "body": unbind_description_text,
+            "button": unbind_button_text,
+            "alt": unbind_title_alt_text,
+            "accent": COLOR_DANGER,
+        },
         "settings": {
             "title": settings_title_alt_text,
             "body": settings_description_text,
@@ -850,10 +857,6 @@ def get_record_error_quick_reply(user_id=None):
 def rebind_msg(user_id=None):
     """生成 SEGA ID 更新成功消息"""
     return create_text_message(rebind_msg_text, user_id, get_update_quick_reply(user_id))
-
-def unbind_msg(user_id=None):
-    """生成 SEGA ID 解绑成功消息"""
-    return create_text_message(unbind_msg_text, user_id)
 
 def segaid_error(user_id=None):
     """生成 SEGA ID 错误消息"""
