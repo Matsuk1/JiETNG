@@ -60,24 +60,6 @@ song_error_text = {
     "zh": "没有找到符合条件的歌曲。"
 }
 
-image_recognition_need_reply_text = {
-    "ja": "ジャケット画像認識は、画像への返信として送信してください。\n例: 画像に返信して recognize",
-    "en": "Send the recognition command as a reply to an image.\nExample: reply to an image with recognize",
-    "zh": "请回复一张图片并发送识别命令。\n示例：回复图片后发送 recognize"
-}
-
-image_recognition_fetch_failed_text = {
-    "ja": "返信元の画像を取得できませんでした。返信対象が画像か、画像の有効期限を確認してください。",
-    "en": "Could not fetch the replied image. Check that the replied message is an image and has not expired.",
-    "zh": "无法获取被回复的图片。请确认回复对象是图片，并且图片还没有过期。"
-}
-
-image_recognition_no_match_text = {
-    "ja": "該当するジャケット画像を認識できませんでした。ジャケット部分が大きく写っている画像でもう一度試してください。",
-    "en": "No matching cover was recognized. Try again with an image where the cover is large and clear.",
-    "zh": "没有识别到匹配的曲绘。请使用曲绘区域更大、更清晰的图片再试。"
-}
-
 level_not_supported_text = {
     "ja": "このレベルの定数表はサポートされていません。\nレベル12以上のみ対応しています。",
     "en": "This level constant table is not supported.\nOnly levels 12 and above are available.",
