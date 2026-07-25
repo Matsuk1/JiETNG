@@ -4531,6 +4531,82 @@ def _apply_unique_calc_judgement_correction(
     }
 
 
+def _apply_calc_row_balance(
+    notes,
+    judgement,
+    achievement,
+    uncertainties,
+):
+    """Balance CP and MISS when Calc isolates OCR errors to one normal row."""
+    if not isinstance(achievement, (int, float)):
+        return None
+    suspected_rows = {
+        item.get("row")
+        for item in uncertainties
+        if item.get("row") in {"tap", "hold", "slide", "touch"}
+        and not item.get("row_missing")
+    }
+    if len(suspected_rows) != 1:
+        return None
+
+    row_name = next(iter(suspected_rows))
+    source_row = judgement.get(row_name)
+    if not isinstance(source_row, dict):
+        return None
+    try:
+        expected = max(0, int(notes.get(row_name, 0)))
+        previous_cp = max(0, int(source_row.get("critical_perfect", 0)))
+        previous_miss = max(0, int(source_row.get("miss", 0)))
+        perfect = max(0, int(source_row.get("perfect", 0)))
+        great = max(0, int(source_row.get("great", 0)))
+        good = max(0, int(source_row.get("good", 0)))
+    except (TypeError, ValueError):
+        return None
+
+    remaining = expected - perfect - great - good
+    if remaining < 0:
+        return None
+
+    candidates = []
+    for candidate_miss in range(remaining + 1):
+        candidate_cp = remaining - candidate_miss
+        if candidate_cp == previous_cp and candidate_miss == previous_miss:
+            continue
+        candidate_row = dict(source_row)
+        candidate_row["critical_perfect"] = candidate_cp
+        candidate_row["miss"] = candidate_miss
+        candidate_judgement = dict(judgement)
+        candidate_judgement[row_name] = candidate_row
+        score_range = calc_judgement_achievement_range(
+            notes,
+            candidate_judgement,
+        )
+        if _calc_achievement_distance(achievement, score_range) != 0:
+            continue
+        candidates.append({
+            "judgement": candidate_judgement,
+            "score_range": score_range,
+            "candidate_cp": candidate_cp,
+            "candidate_miss": candidate_miss,
+        })
+
+    if len(candidates) != 1:
+        return None
+    candidate = candidates[0]
+    return {
+        "judgement": candidate["judgement"],
+        "score_range": candidate["score_range"],
+        "correction": {
+            "row": row_name,
+            "field": "critical_perfect",
+            "ocr": previous_cp,
+            "validated": candidate["candidate_cp"],
+            "miss_ocr": previous_miss,
+            "miss_validated": candidate["candidate_miss"],
+        },
+    }
+
+
 def _infer_missing_break_judgement(notes, judgement, achievement):
     """Infer a completely missing BREAK row from chart notes and achievement."""
     if not isinstance(achievement, (int, float)) or isinstance(judgement.get("break"), dict):
@@ -4962,12 +5038,19 @@ def _validate_recognized_judgement(result, ver="jp"):
             judgement,
             achievement,
         )
-        resolution = _apply_unique_calc_judgement_correction(
+        resolution = _apply_calc_row_balance(
             best["notes"],
             judgement,
             achievement,
             calc_uncertainties,
         )
+        if not resolution:
+            resolution = _apply_unique_calc_judgement_correction(
+                best["notes"],
+                judgement,
+                achievement,
+                calc_uncertainties,
+            )
         if resolution:
             judgement = resolution["judgement"]
             parsed["sub_judgement"] = judgement

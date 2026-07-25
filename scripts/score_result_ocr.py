@@ -717,6 +717,7 @@ def recognize_judgement_by_columns(
     table_image_source: str | Path | Image.Image,
     output_dir: str | Path | None,
     engine: PaddleOcrEngine,
+    layout_hint: str | None = None,
 ) -> dict[str, dict[str, int]] | None:
     image = (
         table_image_source.convert("RGB")
@@ -724,8 +725,20 @@ def recognize_judgement_by_columns(
         else Image.open(table_image_source).convert("RGB")
     )
     width, height = image.size
-    layout = detect_judgement_rows_and_columns(image)
-    if not layout:
+    if layout_hint == "dxnet":
+        row_centers = [
+            height * ratio
+            for ratio in (0.269, 0.431, 0.592, 0.756, 0.919)
+        ]
+        col_bounds = [
+            int(round(width * ratio))
+            for ratio in (0.173, 0.340, 0.504, 0.671, 0.830, 0.997)
+        ]
+        detect_row_labels = False
+    else:
+        layout = detect_judgement_rows_and_columns(image)
+        detect_row_labels = True
+    if layout_hint != "dxnet" and not layout:
         # The cropper normalizes this field to the same table region. Use its
         # stable relative geometry when reflections hide the blue grid lines.
         row_centers = [height * (0.259 + index * 0.1205) for index in range(5)]
@@ -733,7 +746,7 @@ def recognize_judgement_by_columns(
             int(round(width * ratio))
             for ratio in (0.281, 0.410, 0.535, 0.659, 0.783, 0.906)
         ]
-    else:
+    elif layout_hint != "dxnet":
         row_centers, col_bounds = layout
 
     row_names = ("tap", "hold", "slide", "touch", "break")
@@ -741,13 +754,14 @@ def recognize_judgement_by_columns(
     output = Path(output_dir) if output_dir is not None else None
     if output is not None:
         output.mkdir(parents=True, exist_ok=True)
-    row_centers = recognize_judgement_row_centers(
-        image,
-        col_bounds,
-        row_centers,
-        output,
-        engine,
-    )
+    if detect_row_labels:
+        row_centers = recognize_judgement_row_centers(
+            image,
+            col_bounds,
+            row_centers,
+            output,
+            engine,
+        )
     gaps = [b - a for a, b in zip(row_centers, row_centers[1:])]
     row_gap = sum(gaps) / len(gaps) if gaps else max(44, height / 8)
     top = max(0, int(round(row_centers[0] - row_gap * 0.75)))
@@ -970,9 +984,16 @@ def process_image_data(
         field_meta = metadata["fields"].get(field)
         if not field_meta:
             continue
-        prepared = prepare_ocr_image_data(field_meta["image"], field)
         if field == "sub_judgement_table":
-            column_values = recognize_judgement_by_columns(prepared, None, engine)
+            table_image = field_meta["image"]
+            if field_meta.get("layout_hint") != "dxnet":
+                table_image = prepare_ocr_image_data(table_image, field)
+            column_values = recognize_judgement_by_columns(
+                table_image,
+                None,
+                engine,
+                layout_hint=field_meta.get("layout_hint"),
+            )
             ocr_fields[field] = {
                 "items": [],
                 "text": "",
@@ -980,6 +1001,7 @@ def process_image_data(
             }
             continue
 
+        prepared = prepare_ocr_image_data(field_meta["image"], field)
         items = engine.read(prepared)
         ocr_fields[field] = {
             "items": items,
@@ -987,6 +1009,7 @@ def process_image_data(
         }
 
     public_metadata = {
+        "layout": metadata.get("layout", "arcade"),
         "screen": metadata["screen"],
         "fields": {
             name: {key: value for key, value in field.items() if key != "image"}
@@ -1018,10 +1041,16 @@ def process_image(
             continue
         prepared = prepare_ocr_image(field_meta["path"], output_base / f"{field}.png", field)
         if field == "sub_judgement_table":
+            table_source = (
+                field_meta["path"]
+                if field_meta.get("layout_hint") == "dxnet"
+                else prepared
+            )
             column_values = recognize_judgement_by_columns(
-                prepared,
+                table_source,
                 output_base / "sub_judgement_columns",
                 engine,
+                layout_hint=field_meta.get("layout_hint"),
             )
             ocr_fields[field] = {
                 "crop": field_meta["path"],

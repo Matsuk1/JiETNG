@@ -513,9 +513,163 @@ def sharpen_for_ocr(image: Image.Image) -> Image.Image:
     return image
 
 
+def is_dxnet_result_screenshot(image: Image.Image) -> bool:
+    """Detect the vivid cyan mobile play-history page used by maimaidx.jp."""
+    image = ImageOps.exif_transpose(image).convert("RGB")
+    width, height = image.size
+    if width <= 0 or height / width < 1.6:
+        return False
+    sample = image.resize((80, 80), Image.Resampling.BILINEAR)
+    pixels = sample.load()
+    vivid_cyan = sum(
+        1
+        for y in range(sample.height)
+        for x in range(sample.width)
+        if (
+            pixels[x, y][0] < 120
+            and pixels[x, y][1] > 140
+            and pixels[x, y][2] > 180
+        )
+    )
+    return vivid_cyan / (sample.width * sample.height) >= 0.08
+
+
+def _dxnet_grid_line_pixel(pixel: tuple[int, int, int]) -> bool:
+    r, g, b = pixel
+    return (
+        50 <= r <= 130
+        and 115 <= g <= 170
+        and 180 <= b <= 230
+        and b - r >= 70
+        and b - g >= 30
+    )
+
+
+def detect_dxnet_judgement_table(image: Image.Image) -> Box | None:
+    """Find the stable blue outer border of the DX NET judgement table."""
+    image = image.convert("RGB")
+    width, height = image.size
+    pixels = image.load()
+    scan_right = min(width, int(round(width * 0.72)))
+    minimum_score = max(40, int(round(width * 0.30)))
+    candidate_rows: list[tuple[int, int]] = []
+
+    for y in range(height):
+        score = sum(
+            _dxnet_grid_line_pixel(pixels[x, y])
+            for x in range(scan_right)
+        )
+        if score >= minimum_score:
+            candidate_rows.append((y, score))
+
+    clusters: list[list[tuple[int, int]]] = []
+    for y, score in candidate_rows:
+        if not clusters or y > clusters[-1][-1][0] + 1:
+            clusters.append([])
+        clusters[-1].append((y, score))
+
+    # The table is about 31% of the page width high. Pairing both outer
+    # borders avoids depending on the page's vertical scroll position.
+    borders = [
+        max(cluster, key=lambda item: item[1])
+        for cluster in clusters
+    ]
+    expected_height = width * 0.307
+    candidates: list[tuple[float, int, int]] = []
+    for top, top_score in borders:
+        for bottom, bottom_score in borders:
+            table_height = bottom - top
+            if not width * 0.25 <= table_height <= width * 0.38:
+                continue
+            height_error = abs(table_height - expected_height) / width
+            strength = min(top_score, bottom_score) / width
+            candidates.append((height_error - strength * 0.08, top, bottom))
+
+    if not candidates:
+        return None
+    _, top, bottom = min(candidates)
+    return Box(
+        int(round(width * 0.030)),
+        top,
+        int(round(width * 0.662)),
+        bottom + 1,
+    ).clamp(width, height)
+
+
+def dxnet_result_field_boxes(image: Image.Image) -> dict[str, Box]:
+    """Locate mobile DX NET fields relative to the judgement table."""
+    width, height = image.size
+    judgement_table = detect_dxnet_judgement_table(image)
+    if judgement_table is None:
+        raise ValueError("Could not locate the DX NET judgement table")
+
+    def anchored_box(
+        x1: float,
+        top_offset: float,
+        x2: float,
+        bottom_offset: float,
+    ) -> Box:
+        box = Box(
+            int(round(width * x1)),
+            int(round(judgement_table.top + width * top_offset)),
+            int(round(width * x2)),
+            int(round(judgement_table.top + width * bottom_offset)),
+        )
+        if (
+            box.left < 0
+            or box.top < 0
+            or box.right > width
+            or box.bottom > height
+        ):
+            raise ValueError(
+                "DX NET screenshot must include the title, achievement, and judgement table"
+            )
+        return box
+
+    fields = {
+        "main_title": anchored_box(0.035, -0.633, 0.850, -0.562),
+        "main_achievement": anchored_box(0.465, -0.517, 0.800, -0.418),
+        "sub_judgement_table": judgement_table,
+    }
+    if any(box.width <= 0 or box.height <= 0 for box in fields.values()):
+        raise ValueError(
+            "DX NET screenshot must include the title, achievement, and judgement table"
+        )
+    return fields
+
+
+def _dxnet_fields_in_memory(image: Image.Image) -> dict:
+    field_boxes = dxnet_result_field_boxes(image)
+    fields = {}
+    for name, field_box in field_boxes.items():
+        fields[name] = {
+            "image": sharpen_for_ocr(image.crop(field_box.to_tuple())),
+            "left": field_box.left,
+            "top": field_box.top,
+            "right": field_box.right,
+            "bottom": field_box.bottom,
+            "detector": "dxnet_blue_grid_anchor",
+            "layout_hint": "dxnet" if name == "sub_judgement_table" else None,
+        }
+    return {
+        "layout": "dxnet",
+        "screen": {
+            "left": 0,
+            "top": 0,
+            "right": image.width,
+            "bottom": image.height,
+            "width": image.width,
+            "height": image.height,
+        },
+        "fields": fields,
+    }
+
+
 def crop_result_fields_in_memory(source_image: Image.Image) -> dict:
     """Crop only OCR fields without creating debug files."""
     image = ImageOps.exif_transpose(source_image).convert("RGB")
+    if is_dxnet_result_screenshot(image):
+        return _dxnet_fields_in_memory(image)
     screen = detect_result_screen(image)
     sub_screen = detect_sub_screen(image)
     main_title = detect_main_title(image, screen)
@@ -578,6 +732,36 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
 
     image = Image.open(source)
     image = ImageOps.exif_transpose(image).convert("RGB")
+    if is_dxnet_result_screenshot(image):
+        metadata = _dxnet_fields_in_memory(image)
+        sample_dir = output / source.stem
+        if sample_dir.exists():
+            shutil.rmtree(sample_dir)
+        sample_dir.mkdir(parents=True, exist_ok=True)
+        overlay = image.copy()
+        draw = ImageDraw.Draw(overlay)
+        result = {
+            "source": str(source),
+            "layout": "dxnet",
+            "screen": metadata["screen"],
+            "fields": {},
+        }
+        for name, field in metadata["fields"].items():
+            crop_path = sample_dir / f"{name}.png"
+            field["image"].save(crop_path)
+            box = Box(field["left"], field["top"], field["right"], field["bottom"])
+            draw.rectangle(box.to_tuple(), outline=(255, 80, 0), width=2)
+            draw.text((box.left + 4, box.top + 4), name, fill=(255, 255, 255))
+            result["fields"][name] = {
+                key: value
+                for key, value in field.items()
+                if key != "image"
+            }
+            result["fields"][name]["path"] = str(crop_path)
+        overlay.save(sample_dir / "debug_overlay.png")
+        with open(sample_dir / "metadata.json", "w", encoding="utf-8") as fp:
+            json.dump(result, fp, ensure_ascii=False, indent=2)
+        return result
     screen = detect_result_screen(image)
     sub_screen = detect_sub_screen(image)
     stem = source.stem
