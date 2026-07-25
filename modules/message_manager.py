@@ -716,8 +716,8 @@ def generate_help_index_flex(user_id=None):
         ),
         (
             _help_i18n(user_id, "歌曲与成绩", "Songs and Records", "楽曲と成績"),
-            "info / record / search / search-record / calc-song",
-            _help_i18n(user_id, "查歌曲信息、单曲成绩和歌曲 ID。", "Song details, single-song records, and song IDs.", "楽曲情報、単曲成績、楽曲 ID 検索。"),
+            "info / rec / recognize / record / search / search-record / calc-song",
+            _help_i18n(user_id, "查歌曲信息、识别成绩图、单曲成绩和歌曲 ID。", "Song details, score-image recognition, single-song records, and song IDs.", "楽曲情報、リザルト画像認識、単曲成績、楽曲 ID 検索。"),
             "#267D8B",
         ),
         (
@@ -1243,6 +1243,410 @@ def generate_song_info_flex(song_id, image_url, image_width, image_height, user_
     return FlexMessage(
         alt_text=alt_text,
         contents=FlexContainer.from_dict(bubble)
+    )
+
+
+def generate_score_recognition_flex(result, user_id=None):
+    """Generate the judgement details shown after score-image recognition."""
+    lang = get_user_language(user_id)
+    texts = {
+        "title": {"zh": "判定明细", "en": "Judgement Details", "ja": "判定詳細"},
+        "achievement": {"zh": "达成率", "en": "Achievement", "ja": "達成率"},
+        "chart": {"zh": "谱面", "en": "Chart", "ja": "譜面"},
+        "breakdown": {"zh": "判定数据", "en": "Judgements", "ja": "判定データ"},
+        "break_detail": {"zh": "BREAK 详细判定", "en": "BREAK Details", "ja": "BREAK 詳細判定"},
+        "break_detail_source_single": {
+            "zh": "Calc 推算：唯一匹配组合",
+            "en": "Calc inference: unique matching combination",
+            "ja": "Calc 推定：一致する組み合わせは 1 件です",
+        },
+        "break_detail_source_multiple": {
+            "zh": "Calc 推算：从 {count} 个候选中选择最可能组合",
+            "en": "Calc inference: most likely of {count} candidates",
+            "ja": "Calc 推定：{count} 件の候補から最も可能性の高い組み合わせ",
+        },
+        "empty": {
+            "zh": "未能识别判定明细。",
+            "en": "No judgement details were recognized.",
+            "ja": "判定詳細を認識できませんでした。",
+        },
+        "validated": {
+            "zh": "MISS 已根据谱面物量校验",
+            "en": "MISS validated against chart note counts",
+            "ja": "MISS を譜面ノーツ数で検証済み",
+        },
+        "calc_validated": {
+            "zh": "Calc 已确认达成率与判定数据一致",
+            "en": "Calc confirmed the achievement and judgements",
+            "ja": "Calc で達成率と判定データを確認済み",
+        },
+        "calc_uncertain": {
+            "zh": "Calc 检测到不一致，? 表示疑似识别项",
+            "en": "Calc found a mismatch; ? marks suspected OCR cells",
+            "ja": "Calc が不一致を検出しました。? は認識候補です",
+        },
+        "calc_mismatch": {
+            "zh": "Calc 检测到不一致，但无法定位到单个识别项",
+            "en": "Calc found a mismatch that cannot be isolated to one OCR cell",
+            "ja": "Calc が不一致を検出しましたが、1 項目には特定できません",
+        },
+        "calc_incomplete": {
+            "zh": "Calc 达成率一致，但判定明细不完整；-? 表示缺失项",
+            "en": "Calc score matches, but judgement rows are incomplete; -? marks missing data",
+            "ja": "Calc の達成率は一致しますが、判定行が不足しています。-? は欠損項目です",
+        },
+        "calc_corrected": {
+            "zh": "Calc 已自动配平",
+            "en": "Calc automatically resolved the judgements",
+            "ja": "Calc で判定を自動補正しました",
+        },
+        "calc_inferred": {
+            "zh": "BREAK 未识别，已根据物量和 Calc 推算",
+            "en": "BREAK was inferred from chart notes and Calc",
+            "ja": "BREAK をノーツ数と Calc から推定しました",
+        },
+    }
+
+    def tr(key):
+        return select_text(texts[key], language=lang)
+
+    def table_cell(text, flex=1, color=COLOR_TEXT_PRIMARY, weight=None, align="center"):
+        node = {
+            "type": "text",
+            "text": str(text),
+            "size": "xxs",
+            "color": color,
+            "align": align,
+            "flex": flex,
+            "wrap": False,
+        }
+        if weight:
+            node["weight"] = weight
+        return node
+
+    parsed = result.get("parsed") or {}
+    validation = result.get("validation") or {}
+    judgement = parsed.get("sub_judgement") or {}
+    song_title = str(parsed.get("title") or validation.get("title") or "JiETNG")
+    achievement = parsed.get("achievement")
+    achievement_text = f"{achievement:.4f}%" if isinstance(achievement, (int, float)) else "-"
+
+    difficulty = validation.get("difficulty")
+    internal_level = validation.get("internal_level")
+    chart_type = validation.get("type")
+    chart_type_label = {
+        "dx": "DX",
+        "std": "STD",
+    }.get(str(chart_type or "").lower())
+    display_title = (
+        f"{song_title} [{chart_type_label}]"
+        if chart_type_label else song_title
+    )
+    difficulty_label = {
+        "remaster": "Re:MASTER",
+    }.get(str(difficulty or "").lower(), str(difficulty or "").upper())
+    if isinstance(internal_level, (int, float)):
+        internal_level_label = f"{internal_level:.1f}"
+    else:
+        internal_level_label = str(internal_level or "")
+    chart_text = " ".join(
+        value for value in (difficulty_label, internal_level_label) if value
+    ) or "-"
+    uncertain_cells = validation.get("uncertain_cells") or []
+    uncertain_keys = {
+        (item.get("row"), item.get("field"))
+        for item in uncertain_cells
+        if isinstance(item, dict)
+    }
+    uncertain_miss_rows = {
+        item.get("row")
+        for item in uncertain_cells
+        if isinstance(item, dict)
+    }
+    missing_rows = {
+        item.get("row")
+        for item in uncertain_cells
+        if isinstance(item, dict) and item.get("row_missing")
+    }
+
+    def judgement_cell(row_name, field_name, value, weight=None):
+        uncertain = (
+            (row_name, field_name) in uncertain_keys
+            or (field_name == "miss" and row_name in uncertain_miss_rows)
+            or row_name in missing_rows
+        )
+        return table_cell(
+            f"{value}?" if uncertain else value,
+            color="#C0392B" if uncertain else COLOR_TEXT_PRIMARY,
+            weight="bold" if uncertain else weight,
+        )
+
+    table_rows = [{
+        "type": "box",
+        "layout": "horizontal",
+        "spacing": "xs",
+        "paddingAll": "8px",
+        "backgroundColor": "#EEF1F5",
+        "cornerRadius": "6px",
+        "contents": [
+            table_cell("TYPE", flex=2, color=COLOR_TEXT_SECONDARY, weight="bold", align="start"),
+            table_cell("CP", color="#B86E19", weight="bold"),
+            table_cell("PF", color="#B86E19", weight="bold"),
+            table_cell("GR", color="#A33B75", weight="bold"),
+            table_cell("GD", color="#2F7D51", weight="bold"),
+            table_cell("MS", color="#555555", weight="bold"),
+        ],
+    }]
+
+    for index, (key, label) in enumerate((
+        ("tap", "TAP"),
+        ("hold", "HOLD"),
+        ("slide", "SLIDE"),
+        ("touch", "TOUCH"),
+        ("break", "BREAK"),
+    )):
+        row = judgement.get(key)
+        row_missing = not isinstance(row, dict)
+        if row_missing and key not in missing_rows:
+            continue
+        if row_missing:
+            row = {}
+
+        def row_value(field_name):
+            return "-" if row_missing else row.get(field_name, 0)
+
+        table_rows.append({
+            "type": "box",
+            "layout": "horizontal",
+            "spacing": "xs",
+            "paddingAll": "8px",
+            "backgroundColor": "#F8FAFC" if index % 2 == 0 else "#FFFFFF",
+            "contents": [
+                table_cell(label, flex=2, weight="bold", align="start"),
+                judgement_cell(key, "critical_perfect", row_value("critical_perfect")),
+                judgement_cell(key, "perfect", row_value("perfect")),
+                judgement_cell(key, "great", row_value("great")),
+                judgement_cell(key, "good", row_value("good")),
+                judgement_cell(key, "miss", row_value("miss")),
+            ],
+        })
+
+    body_contents = [
+        _standard_header_box(tr("title"), display_title, accent="#111827"),
+        {
+            "type": "box",
+            "layout": "horizontal",
+            "spacing": "sm",
+            "contents": [
+                _metric_card(tr("achievement"), achievement_text, value_color="#B86E19"),
+                _metric_card(tr("chart"), chart_text, value_color="#315B7D"),
+            ],
+        },
+        _help_section_title(tr("breakdown"), accent="#267D8B"),
+    ]
+    if len(table_rows) > 1:
+        body_contents.append({
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "none",
+            "contents": table_rows,
+        })
+    else:
+        body_contents.append(_help_body_row(tr("empty")))
+
+    break_detail = validation.get("break_detail") or {}
+    if break_detail:
+        def break_detail_value(label, value, text_color, background_color):
+            return {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "xs",
+                "paddingAll": "6px",
+                "backgroundColor": background_color,
+                "cornerRadius": "4px",
+                "flex": 1,
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": str(label),
+                        "size": "xxs",
+                        "color": COLOR_TEXT_SECONDARY,
+                        "align": "center",
+                        "wrap": False,
+                    },
+                    {
+                        "type": "text",
+                        "text": str(value),
+                        "size": "sm",
+                        "color": text_color,
+                        "weight": "bold",
+                        "align": "center",
+                        "wrap": False,
+                    },
+                ],
+            }
+
+        def break_detail_row(label, values):
+            return {
+                "type": "box",
+                "layout": "horizontal",
+                "spacing": "sm",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": label,
+                        "size": "xxs",
+                        "color": COLOR_TEXT_PRIMARY,
+                        "weight": "bold",
+                        "flex": 2,
+                        "gravity": "center",
+                        "wrap": False,
+                    },
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "spacing": "sm",
+                        "flex": 5,
+                        "contents": values,
+                    },
+                ],
+            }
+
+        candidate_count = max(1, int(break_detail.get("candidate_count", 1) or 1))
+        source_text = (
+            tr("break_detail_source_single")
+            if candidate_count == 1
+            else tr("break_detail_source_multiple").format(count=candidate_count)
+        )
+
+        body_contents.extend([
+            _help_section_title(tr("break_detail"), accent="#B86E19"),
+            {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "sm",
+                "paddingAll": "8px",
+                "backgroundColor": "#F8FAFC",
+                "cornerRadius": "6px",
+                "contents": [
+                    break_detail_row("CRITICAL", [
+                        break_detail_value(
+                            "2600",
+                            break_detail.get("critical_perfect", 0),
+                            "#9A5B12",
+                            "#FFF0C7",
+                        ),
+                    ]),
+                    break_detail_row("PERFECT", [
+                        break_detail_value("2550", break_detail.get("perfect_high", 0), "#A96517", "#FFF3D9"),
+                        break_detail_value("2500", break_detail.get("perfect_low", 0), "#B97824", "#FFF8E8"),
+                    ]),
+                    break_detail_row("GREAT", [
+                        break_detail_value("2000", break_detail.get("great_high", 0), "#923468", "#FBE5F1"),
+                        break_detail_value("1500", break_detail.get("great_middle", 0), "#A64D7D", "#F9EDF4"),
+                        break_detail_value("1250", break_detail.get("great_low", 0), "#B66A91", "#F8F2F6"),
+                    ]),
+                    break_detail_row("OTHER", [
+                        break_detail_value("GOOD", break_detail.get("good", 0), "#277047", "#E7F5ED"),
+                        break_detail_value("MISS", break_detail.get("miss", 0), "#555555", "#E9EDF2"),
+                    ]),
+                ],
+            },
+            {
+                "type": "text",
+                "text": source_text,
+                "size": "xxs",
+                "color": COLOR_TEXT_MUTED,
+                "wrap": True,
+                "align": "start",
+            },
+        ])
+
+    if validation.get("miss_corrections"):
+        body_contents.append({
+            "type": "text",
+            "text": tr("validated"),
+            "size": "xxs",
+            "color": COLOR_TEXT_MUTED,
+            "wrap": True,
+            "align": "end",
+        })
+
+    achievement_calc = validation.get("achievement_calc") or {}
+    if achievement_calc.get("consistent") is not None:
+        calc_consistent = achievement_calc.get("consistent")
+        calc_corrections = validation.get("calc_corrections") or []
+        if calc_corrections:
+            field_labels = {
+                "critical_perfect": "CP",
+                "perfect": "PF",
+                "great": "GR",
+                "good": "GD",
+            }
+            correction_lines = []
+            has_inferred_row = False
+            for correction in calc_corrections:
+                if correction.get("inferred_row"):
+                    has_inferred_row = True
+                    row = correction.get("validated_row") or {}
+                    correction_lines.append(
+                        "BREAK "
+                        f"CP {row.get('critical_perfect', 0)} / "
+                        f"PF {row.get('perfect', 0)} / "
+                        f"GR {row.get('great', 0)} / "
+                        f"GD {row.get('good', 0)} / "
+                        f"MS {row.get('miss', 0)}"
+                    )
+                    continue
+                row_label = str(correction.get("row") or "").upper()
+                field_label = field_labels.get(
+                    correction.get("field"),
+                    str(correction.get("field") or "").upper(),
+                )
+                correction_lines.append(
+                    f"{row_label} {field_label} "
+                    f"{correction.get('ocr')}→{correction.get('validated')} / "
+                    f"MS {correction.get('miss_ocr')}→{correction.get('miss_validated')}"
+                )
+            calc_text = tr("calc_inferred" if has_inferred_row else "calc_corrected")
+            calc_text += "\n" + "\n".join(correction_lines)
+        elif calc_consistent and uncertain_cells:
+            calc_text = tr("calc_incomplete")
+        elif calc_consistent:
+            calc_text = tr("calc_validated")
+        else:
+            calc_text = tr("calc_uncertain") if uncertain_cells else tr("calc_mismatch")
+            minimum = achievement_calc.get("minimum")
+            maximum = achievement_calc.get("maximum")
+            observed = achievement_calc.get("observed")
+            if all(isinstance(value, (int, float)) for value in (minimum, maximum, observed)):
+                calc_text += (
+                    f"\nCalc {minimum:.4f}%-{maximum:.4f}%"
+                    f" / OCR {observed:.4f}%"
+                )
+        body_contents.append({
+            "type": "text",
+            "text": calc_text,
+            "size": "xxs",
+            "color": COLOR_TEXT_MUTED if calc_consistent else "#C0392B",
+            "wrap": True,
+            "align": "end",
+        })
+
+    bubble = {
+        "type": "bubble",
+        "size": "mega",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "md",
+            "paddingAll": "16px",
+            "contents": body_contents,
+        },
+    }
+    return FlexMessage(
+        alt_text=f"{tr('title')}: {display_title}",
+        contents=FlexContainer.from_dict(bubble),
     )
 
 

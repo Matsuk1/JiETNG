@@ -23,6 +23,8 @@ MANIFEST
 venv/
 env/
 ENV/
+.venv-ocr/
+.paddle-home/
 
 # 敏感数据文件
 data/user.json.enc
@@ -77,3 +79,6 @@ assets/richmenu/_upload/
 
 # 临时产物：导出文件（30 分钟内自动清理）
 data/exports/
+
+# 成绩图裁切原型调试产物
+data/score_cropper_debug/

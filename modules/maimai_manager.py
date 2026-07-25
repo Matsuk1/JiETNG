@@ -212,6 +212,58 @@ def calc_score(notes, judgements):
             total_deduction += scores[k] * v
     return round(101 - total_deduction, 4)
 
+
+def calc_judgement_achievement_range(notes, judgement_rows):
+    """Calculate the achievement range represented by the result-table rows.
+
+    The table does not expose the two BREAK PERFECT grades or the three BREAK
+    GREAT grades, so those values produce a range instead of one exact score.
+    """
+    if not isinstance(judgement_rows, dict):
+        return None
+
+    high_score_judgements = {}
+    low_score_judgements = {}
+    for note_type in ('tap', 'hold', 'slide', 'touch'):
+        row = judgement_rows.get(note_type) or {}
+        for judgement_name in ('great', 'good', 'miss'):
+            try:
+                count = max(0, int(row.get(judgement_name, 0)))
+            except (TypeError, ValueError):
+                return None
+            key = f'{note_type}_{judgement_name}'
+            high_score_judgements[key] = count
+            low_score_judgements[key] = count
+
+    break_row = judgement_rows.get('break') or {}
+    try:
+        break_perfect = max(0, int(break_row.get('perfect', 0)))
+        break_great = max(0, int(break_row.get('great', 0)))
+        break_good = max(0, int(break_row.get('good', 0)))
+        break_miss = max(0, int(break_row.get('miss', 0)))
+    except (TypeError, ValueError):
+        return None
+
+    high_score_judgements.update({
+        'break_high_perfect': break_perfect,
+        'break_high_great': break_great,
+        'break_good': break_good,
+        'break_miss': break_miss,
+    })
+    low_score_judgements.update({
+        'break_low_perfect': break_perfect,
+        'break_low_great': break_great,
+        'break_good': break_good,
+        'break_miss': break_miss,
+    })
+
+    maximum = calc_score(notes, high_score_judgements)
+    minimum = calc_score(notes, low_score_judgements)
+    return {
+        'minimum': min(minimum, maximum),
+        'maximum': max(minimum, maximum),
+    }
+
 # ==================== Maimai 函数 ====================
 
 async def fetch_dom(session: aiohttp.ClientSession, url: str, ver="jp") -> etree._Element:

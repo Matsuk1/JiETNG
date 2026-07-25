@@ -53,6 +53,7 @@ from linebot.v3.messaging import (
     Configuration,
     ApiClient,
     MessagingApi,
+    MessagingApiBlob,
     TextMessage,
     ImageMessage,
 )
@@ -174,6 +175,10 @@ from modules.notification_manager import (
 from modules.song_matcher import find_matching_songs, normalize_text
 from modules.memory_manager import memory_manager, cleanup_user_caches, cleanup_rate_limiter_tracking
 from modules.i18n import normalize_language, select_text
+from modules.score_result_recognizer import (
+    initialize_score_recognizer,
+    recognize_score_image_bytes,
+)
 
 # Module aliases for specific use cases
 import modules.user_manager as user_manager_module
@@ -4347,6 +4352,824 @@ def _remember_ranking_group_member(event):
                      user_id, group_key, e)
 
 
+def _download_line_message_content(message_id: str) -> bytes:
+    with ApiClient(configuration) as api_client:
+        content = MessagingApiBlob(api_client).get_message_content(message_id)
+    return bytes(content)
+
+
+def _match_recognized_song_title(title, songs, max_results=12):
+    """Match noisy OCR text while preferring complete canonical song titles."""
+    normalized_ocr = normalize_text(str(title or ""))
+    if not normalized_ocr:
+        return [], "none"
+
+    exact_matches = [
+        song for song in songs
+        if normalize_text(str(song.get("title") or "")) == normalized_ocr
+    ]
+    if exact_matches:
+        return exact_matches[:max_results], "exact"
+
+    embedded_matches = []
+    for song in songs:
+        normalized_song_title = normalize_text(str(song.get("title") or ""))
+        # Very short titles produce too many accidental matches in OCR noise.
+        if len(normalized_song_title) >= 2 and normalized_song_title in normalized_ocr:
+            embedded_matches.append((len(normalized_song_title), song))
+    if embedded_matches:
+        longest_length = max(length for length, _ in embedded_matches)
+        longest_matches = [
+            song for length, song in embedded_matches
+            if length == longest_length
+        ]
+        return longest_matches[:max_results], "embedded"
+
+    return (
+        find_matching_songs(title, songs, max_results=max_results, threshold=0.82),
+        "fuzzy",
+    )
+
+
+def _calc_achievement_distance(achievement, score_range, tolerance=0.0006):
+    if not isinstance(achievement, (int, float)) or not score_range:
+        return None
+    minimum = float(score_range["minimum"])
+    maximum = float(score_range["maximum"])
+    if minimum - tolerance <= achievement <= maximum + tolerance:
+        return 0.0
+    return min(abs(achievement - minimum), abs(achievement - maximum))
+
+
+def _find_calc_judgement_uncertainties(notes, judgement, achievement):
+    """Find single OCR cells that could explain a Calc score mismatch."""
+    if not isinstance(achievement, (int, float)):
+        return []
+
+    row_names = ("tap", "hold", "slide", "touch", "break")
+    value_names = ("critical_perfect", "perfect", "great", "good")
+    uncertainties = []
+    for row_name in row_names:
+        source_row = judgement.get(row_name)
+        row_missing = not isinstance(source_row, dict)
+        if row_missing:
+            source_row = {
+                "critical_perfect": 0,
+                "perfect": 0,
+                "great": 0,
+                "good": 0,
+                "miss": 0,
+            }
+        try:
+            expected = max(0, int(notes.get(row_name, 0)))
+        except (TypeError, ValueError):
+            continue
+        if expected <= 0:
+            continue
+        if row_missing:
+            uncertainties.append({
+                "row": row_name,
+                "field": "row",
+                "ocr": None,
+                "candidate_min": None,
+                "candidate_max": None,
+                "candidate_count": 0,
+                "miss_min": None,
+                "miss_max": None,
+                "row_missing": True,
+            })
+            continue
+
+        for value_name in value_names:
+            try:
+                ocr_value = max(0, int(source_row.get(value_name, 0)))
+            except (TypeError, ValueError):
+                continue
+            candidates = []
+            for candidate_value in range(expected + 1):
+                if candidate_value == ocr_value:
+                    continue
+                candidate_row = dict(source_row)
+                candidate_row[value_name] = candidate_value
+                known = sum(max(0, int(candidate_row.get(name, 0))) for name in value_names)
+                candidate_miss = expected - known
+                if candidate_miss < 0:
+                    continue
+                candidate_row["miss"] = candidate_miss
+                candidate_judgement = dict(judgement)
+                candidate_judgement[row_name] = candidate_row
+                score_range = calc_judgement_achievement_range(notes, candidate_judgement)
+                if _calc_achievement_distance(achievement, score_range) == 0:
+                    candidates.append((candidate_value, candidate_miss))
+
+            if not candidates:
+                continue
+            values = sorted({value for value, _ in candidates})
+            misses = sorted({miss for _, miss in candidates})
+            uncertainties.append({
+                "row": row_name,
+                "field": value_name,
+                "ocr": ocr_value,
+                "candidate_min": values[0],
+                "candidate_max": values[-1],
+                "candidate_count": len(values),
+                "miss_min": misses[0],
+                "miss_max": misses[-1],
+                "row_missing": row_missing,
+            })
+    return uncertainties
+
+
+def _apply_unique_calc_judgement_correction(
+    notes,
+    judgement,
+    achievement,
+    uncertainties,
+):
+    """Apply a Calc correction only when one cell has one valid solution."""
+    if len(uncertainties) != 1:
+        return None
+    uncertainty = uncertainties[0]
+    if (
+        uncertainty.get("row_missing")
+        or uncertainty.get("candidate_count") != 1
+        or uncertainty.get("candidate_min") != uncertainty.get("candidate_max")
+        or uncertainty.get("miss_min") != uncertainty.get("miss_max")
+    ):
+        return None
+
+    row_name = uncertainty.get("row")
+    field_name = uncertainty.get("field")
+    if field_name not in {"critical_perfect", "perfect", "great", "good"}:
+        return None
+    source_row = judgement.get(row_name)
+    if not isinstance(source_row, dict):
+        return None
+
+    corrected_row = dict(source_row)
+    previous_value = max(0, int(corrected_row.get(field_name, 0)))
+    previous_miss = max(0, int(corrected_row.get("miss", 0)))
+    corrected_row[field_name] = uncertainty["candidate_min"]
+    corrected_row["miss"] = uncertainty["miss_min"]
+    corrected_judgement = dict(judgement)
+    corrected_judgement[row_name] = corrected_row
+    score_range = calc_judgement_achievement_range(notes, corrected_judgement)
+    if _calc_achievement_distance(achievement, score_range) != 0:
+        return None
+
+    return {
+        "judgement": corrected_judgement,
+        "score_range": score_range,
+        "correction": {
+            "row": row_name,
+            "field": field_name,
+            "ocr": previous_value,
+            "validated": uncertainty["candidate_min"],
+            "miss_ocr": previous_miss,
+            "miss_validated": uncertainty["miss_min"],
+        },
+    }
+
+
+def _infer_missing_break_judgement(notes, judgement, achievement):
+    """Infer a completely missing BREAK row from chart notes and achievement."""
+    if not isinstance(achievement, (int, float)) or isinstance(judgement.get("break"), dict):
+        return None
+    try:
+        break_count = max(0, int(notes.get("break", 0)))
+    except (TypeError, ValueError):
+        return None
+    if break_count <= 0:
+        return None
+
+    value_names = ("critical_perfect", "perfect", "great", "good", "miss")
+    for row_name in ("tap", "hold", "slide", "touch"):
+        try:
+            expected = max(0, int(notes.get(row_name, 0)))
+        except (TypeError, ValueError):
+            return None
+        if expected <= 0:
+            continue
+        row = judgement.get(row_name)
+        if not isinstance(row, dict):
+            return None
+        try:
+            observed = sum(max(0, int(row.get(name, 0))) for name in value_names)
+        except (TypeError, ValueError):
+            return None
+        if observed != expected:
+            return None
+
+    all_cp_row = {
+        "critical_perfect": break_count,
+        "perfect": 0,
+        "great": 0,
+        "good": 0,
+        "miss": 0,
+    }
+    baseline_judgement = dict(judgement)
+    baseline_judgement["break"] = all_cp_row
+    baseline_range = calc_judgement_achievement_range(notes, baseline_judgement)
+    if not baseline_range:
+        return None
+    baseline = (
+        float(baseline_range["minimum"]) + float(baseline_range["maximum"])
+    ) / 2
+    target_deduction = baseline - float(achievement)
+    if target_deduction < -0.001:
+        return None
+
+    scores = get_note_score(notes)
+    required_scores = (
+        "break_high_perfect",
+        "break_low_perfect",
+        "break_high_great",
+        "break_low_great",
+        "break_good",
+        "break_miss",
+    )
+    if any(not isinstance(scores.get(name), (int, float)) for name in required_scores):
+        return None
+    perfect_min = float(scores["break_high_perfect"])
+    perfect_max = float(scores["break_low_perfect"])
+    great_min = float(scores["break_high_great"])
+    great_max = float(scores["break_low_great"])
+    good_score = float(scores["break_good"])
+    miss_score = float(scores["break_miss"])
+    if perfect_min <= 0 or perfect_max <= 0:
+        return None
+
+    # This loose bound only prunes impossible counts. Every retained row is
+    # checked with the same rounded Calc function used by final validation.
+    prune_tolerance = 0.003
+    best_candidate = None
+    candidate_count = 0
+    iteration_count = 0
+    for miss in range(break_count + 1):
+        miss_deduction = miss * miss_score
+        if miss_deduction > target_deduction + prune_tolerance:
+            break
+        for good in range(break_count - miss + 1):
+            fixed_deduction = miss_deduction + good * good_score
+            if fixed_deduction > target_deduction + prune_tolerance:
+                break
+            remaining = break_count - miss - good
+            for great in range(remaining + 1):
+                iteration_count += 1
+                if iteration_count > 300_000:
+                    return None
+                minimum_without_perfect = fixed_deduction + great * great_min
+                if minimum_without_perfect > target_deduction + prune_tolerance:
+                    break
+                maximum_without_perfect = fixed_deduction + great * great_max
+                max_perfect_count = remaining - great
+                perfect_low = max(
+                    0,
+                    math.ceil(
+                        (target_deduction - prune_tolerance - maximum_without_perfect)
+                        / perfect_max
+                    ),
+                )
+                perfect_high = min(
+                    max_perfect_count,
+                    math.floor(
+                        (target_deduction + prune_tolerance - minimum_without_perfect)
+                        / perfect_min
+                    ),
+                )
+                for perfect in range(perfect_low, perfect_high + 1):
+                    row = {
+                        "critical_perfect": remaining - great - perfect,
+                        "perfect": perfect,
+                        "great": great,
+                        "good": good,
+                        "miss": miss,
+                    }
+                    candidate_judgement = dict(judgement)
+                    candidate_judgement["break"] = row
+                    score_range = calc_judgement_achievement_range(
+                        notes,
+                        candidate_judgement,
+                    )
+                    if _calc_achievement_distance(achievement, score_range) != 0:
+                        continue
+                    midpoint = (
+                        float(score_range["minimum"]) + float(score_range["maximum"])
+                    ) / 2
+                    candidate = {
+                        "row": row,
+                        "score_range": score_range,
+                        "rank": (
+                            miss,
+                            good,
+                            great,
+                            -perfect,
+                            abs(float(achievement) - midpoint),
+                            float(score_range["maximum"]) - float(score_range["minimum"]),
+                        ),
+                    }
+                    candidate_count += 1
+                    if best_candidate is None or candidate["rank"] < best_candidate["rank"]:
+                        best_candidate = candidate
+
+    if best_candidate is None:
+        return None
+    return {
+        "row": best_candidate["row"],
+        "score_range": best_candidate["score_range"],
+        "candidate_count": candidate_count,
+    }
+
+
+def _infer_break_judgement_detail(notes, judgement, achievement):
+    """Resolve the hidden two PERFECT and three GREAT grades for BREAK."""
+    if not isinstance(achievement, (int, float)):
+        return None
+    break_row = judgement.get("break")
+    if not isinstance(break_row, dict):
+        return None
+    try:
+        break_count = max(0, int(notes.get("break", 0)))
+        critical_perfect = max(0, int(break_row.get("critical_perfect", 0)))
+        perfect = max(0, int(break_row.get("perfect", 0)))
+        great = max(0, int(break_row.get("great", 0)))
+        good = max(0, int(break_row.get("good", 0)))
+        miss = max(0, int(break_row.get("miss", 0)))
+    except (TypeError, ValueError):
+        return None
+    if critical_perfect + perfect + great + good + miss != break_count:
+        return None
+
+    score_judgements = {}
+    for row_name in ("tap", "hold", "slide", "touch"):
+        row = judgement.get(row_name) or {}
+        for field_name in ("great", "good", "miss"):
+            try:
+                score_judgements[f"{row_name}_{field_name}"] = max(
+                    0,
+                    int(row.get(field_name, 0)),
+                )
+            except (TypeError, ValueError):
+                return None
+    score_judgements.update({
+        "break_good": good,
+        "break_miss": miss,
+    })
+
+    best_candidate = None
+    candidate_count = 0
+    iteration_count = 0
+    for low_perfect in range(perfect + 1):
+        high_perfect = perfect - low_perfect
+        for low_great in range(great + 1):
+            for middle_great in range(great - low_great + 1):
+                iteration_count += 1
+                if iteration_count > 100_000:
+                    return None
+                high_great = great - low_great - middle_great
+                candidate_judgements = {
+                    **score_judgements,
+                    "break_high_perfect": high_perfect,
+                    "break_low_perfect": low_perfect,
+                    "break_high_great": high_great,
+                    "break_middle_great": middle_great,
+                    "break_low_great": low_great,
+                }
+                calculated = calc_score(notes, candidate_judgements)
+                distance = abs(float(achievement) - calculated)
+                if distance > 0.0006:
+                    continue
+                candidate = {
+                    "critical_perfect": critical_perfect,
+                    "perfect_high": high_perfect,
+                    "perfect_low": low_perfect,
+                    "great_high": high_great,
+                    "great_middle": middle_great,
+                    "great_low": low_great,
+                    "good": good,
+                    "miss": miss,
+                    "calculated_achievement": calculated,
+                    "rank": (
+                        distance,
+                        low_perfect,
+                        low_great,
+                        middle_great,
+                    ),
+                }
+                candidate_count += 1
+                if best_candidate is None or candidate["rank"] < best_candidate["rank"]:
+                    best_candidate = candidate
+
+    if best_candidate is None:
+        return None
+    best_candidate.pop("rank", None)
+    best_candidate["candidate_count"] = candidate_count
+    best_candidate["inferred"] = True
+    return best_candidate
+
+
+def _validate_recognized_judgement(result, ver="jp"):
+    parsed = result.get("parsed") or {}
+    title = str(parsed.get("title") or "").strip()
+    judgement = parsed.get("sub_judgement") or {}
+    if not title or not judgement:
+        return result
+
+    songs, _ = read_dxdata(ver)
+    matching_songs, title_match_type = _match_recognized_song_title(title, songs)
+    if not matching_songs:
+        return result
+
+    row_names = ("tap", "hold", "slide", "touch", "break")
+    value_names = ("critical_perfect", "perfect", "great", "good")
+    all_value_names = (*value_names, "miss")
+    source_row_count = sum(
+        1 for row in judgement.values()
+        if isinstance(row, dict) and any(int(value or 0) != 0 for value in row.values())
+    )
+    achievement = parsed.get("achievement")
+    candidates = []
+    for song in matching_songs:
+        for sheet in song.get("sheets", []):
+            regions = sheet.get("regions") or {}
+            if regions and regions.get(ver) is False:
+                continue
+            note_counts = sheet.get("noteCounts") or {}
+            for row_offset in range(-2, 3):
+                row_aligned = {}
+                for source_index, source_name in enumerate(row_names):
+                    row = judgement.get(source_name)
+                    if not isinstance(row, dict) or not any(int(value or 0) != 0 for value in row.values()):
+                        continue
+                    target_index = source_index + row_offset
+                    if 0 <= target_index < len(row_names):
+                        row_aligned[row_names[target_index]] = dict(row)
+
+                for column_offset in (-1, 0, 1):
+                    aligned = {}
+                    dropped_cells = 0
+                    valid = True
+                    for row_name, row in row_aligned.items():
+                        shifted_row = {name: 0 for name in all_value_names}
+                        try:
+                            for source_index, source_name in enumerate(all_value_names):
+                                value = max(0, int(row.get(source_name, 0)))
+                                target_index = source_index + column_offset
+                                if 0 <= target_index < len(all_value_names):
+                                    shifted_row[all_value_names[target_index]] = value
+                                elif value:
+                                    dropped_cells += value
+                        except (TypeError, ValueError):
+                            valid = False
+                            break
+                        aligned[row_name] = shifted_row
+                    if not valid:
+                        continue
+
+                    predicted_miss = {}
+                    compared_rows = 0
+                    matching_rows = 0
+                    total_delta = 0
+                    for row_name, row in aligned.items():
+                        expected = note_counts.get(row_name)
+                        if expected is None:
+                            expected = 0
+                        try:
+                            expected = int(expected)
+                            known = sum(max(0, int(row.get(name, 0))) for name in value_names)
+                            observed_miss = max(0, int(row.get("miss", 0)))
+                        except (TypeError, ValueError):
+                            valid = False
+                            break
+                        if known > expected:
+                            valid = False
+                            break
+                        calculated_miss = expected - known
+                        predicted_miss[row_name] = calculated_miss
+                        compared_rows += 1
+                        total_delta += abs(calculated_miss - observed_miss)
+                        if calculated_miss == observed_miss:
+                            matching_rows += 1
+                    if valid and compared_rows >= 3:
+                        calculated_rows = {
+                            row_name: dict(row)
+                            for row_name, row in aligned.items()
+                        }
+                        for row_name, calculated_miss in predicted_miss.items():
+                            calculated_rows[row_name]["miss"] = calculated_miss
+                        notes = {
+                            row_name: int(note_counts.get(row_name, 0) or 0)
+                            for row_name in row_names
+                        }
+                        achievement_range = calc_judgement_achievement_range(
+                            notes,
+                            calculated_rows,
+                        )
+                        achievement_distance = _calc_achievement_distance(
+                            achievement,
+                            achievement_range,
+                        )
+                        candidates.append({
+                            "song": song,
+                            "sheet": sheet,
+                            "aligned": aligned,
+                            "row_offset": row_offset,
+                            "column_offset": column_offset,
+                            "dropped_rows": source_row_count - len(aligned),
+                            "dropped_cells": dropped_cells,
+                            "miss": predicted_miss,
+                            "compared_rows": compared_rows,
+                            "matching_rows": matching_rows,
+                            "delta": total_delta,
+                            "notes": notes,
+                            "achievement_range": achievement_range,
+                            "achievement_distance": achievement_distance,
+                        })
+
+    if not candidates:
+        return result
+    candidates.sort(key=lambda item: (
+        item["dropped_rows"],
+        item["achievement_distance"] if item["achievement_distance"] is not None else 0,
+        -item["matching_rows"],
+        item["compared_rows"] - item["matching_rows"],
+        item["delta"],
+        item["dropped_cells"],
+        abs(item["row_offset"]),
+        abs(item["column_offset"]),
+    ))
+    best = candidates[0]
+    minimum_matching_rows = max(2, best["compared_rows"] - 2)
+    if best["matching_rows"] < minimum_matching_rows:
+        return result
+    if best["row_offset"] != 0 and best["matching_rows"] < 3:
+        return result
+    if len(candidates) > 1:
+        second = candidates[1]
+        if (
+            second["matching_rows"] == best["matching_rows"]
+            and second["delta"] == best["delta"]
+            and second["achievement_distance"] == best["achievement_distance"]
+            and (
+                second["miss"] != best["miss"]
+                or second["row_offset"] != best["row_offset"]
+                or second["column_offset"] != best["column_offset"]
+            )
+        ):
+            return result
+
+    judgement = best["aligned"]
+    parsed["sub_judgement"] = judgement
+    corrections = {}
+    for row_name, calculated_miss in best["miss"].items():
+        row = judgement.get(row_name)
+        if not isinstance(row, dict):
+            continue
+        previous = row.get("miss", 0)
+        row["miss"] = calculated_miss
+        if previous != calculated_miss:
+            corrections[row_name] = {"ocr": previous, "validated": calculated_miss}
+
+    song = best["song"]
+    sheet = best["sheet"]
+    achievement_distance = best["achievement_distance"]
+    achievement_range = best["achievement_range"]
+    calc_uncertainties = []
+    calc_corrections = []
+    break_inference = _infer_missing_break_judgement(
+        best["notes"],
+        judgement,
+        achievement,
+    )
+    if break_inference:
+        judgement["break"] = break_inference["row"]
+        parsed["sub_judgement"] = judgement
+        achievement_range = break_inference["score_range"]
+        achievement_distance = _calc_achievement_distance(
+            achievement,
+            achievement_range,
+        )
+        calc_corrections.append({
+            "row": "break",
+            "field": "row",
+            "inferred_row": True,
+            "validated_row": break_inference["row"],
+            "candidate_count": break_inference["candidate_count"],
+        })
+    if achievement_distance is not None and achievement_distance > 0:
+        calc_uncertainties = _find_calc_judgement_uncertainties(
+            best["notes"],
+            judgement,
+            achievement,
+        )
+        resolution = _apply_unique_calc_judgement_correction(
+            best["notes"],
+            judgement,
+            achievement,
+            calc_uncertainties,
+        )
+        if resolution:
+            judgement = resolution["judgement"]
+            parsed["sub_judgement"] = judgement
+            achievement_range = resolution["score_range"]
+            achievement_distance = 0.0
+            calc_corrections.append(resolution["correction"])
+            calc_uncertainties = []
+
+            row_name = resolution["correction"]["row"]
+            if row_name in corrections:
+                original_miss = corrections[row_name]["ocr"]
+                final_miss = resolution["correction"]["miss_validated"]
+                if original_miss == final_miss:
+                    del corrections[row_name]
+                else:
+                    corrections[row_name]["validated"] = final_miss
+    else:
+        for row_name, expected in best["notes"].items():
+            if expected > 0 and not isinstance(judgement.get(row_name), dict):
+                calc_uncertainties.append({
+                    "row": row_name,
+                    "field": "row",
+                    "ocr": None,
+                    "candidate_min": None,
+                    "candidate_max": None,
+                    "candidate_count": 0,
+                    "miss_min": None,
+                    "miss_max": None,
+                    "row_missing": True,
+                })
+    break_detail = _infer_break_judgement_detail(
+        best["notes"],
+        judgement,
+        achievement,
+    )
+    parsed["title"] = song.get("title") or title
+    result["validation"] = {
+        "song_id": song.get("id"),
+        "title": song.get("title"),
+        "type": song.get("type"),
+        "difficulty": sheet.get("difficulty"),
+        "level": sheet.get("level"),
+        "internal_level": sheet.get("internalLevelValue"),
+        "title_match_type": title_match_type,
+        "exact_title_match": title_match_type == "exact",
+        "compared_rows": best["compared_rows"],
+        "matching_rows": best["matching_rows"],
+        "row_offset": best["row_offset"],
+        "column_offset": best["column_offset"],
+        "miss_corrections": corrections,
+        "achievement_calc": {
+            "observed": achievement,
+            "minimum": (
+                achievement_range.get("minimum")
+                if achievement_range else None
+            ),
+            "maximum": (
+                achievement_range.get("maximum")
+                if achievement_range else None
+            ),
+            "consistent": achievement_distance == 0 if achievement_distance is not None else None,
+            "complete": not any(item.get("row_missing") for item in calc_uncertainties),
+        },
+        "calc_corrections": calc_corrections,
+        "uncertain_cells": calc_uncertainties,
+        "break_detail": break_detail,
+    }
+    return result
+
+
+def _recognized_song_info_message(result, user_id, ver):
+    validation = result.get("validation") or {}
+    song_id = validation.get("song_id")
+    if song_id:
+        return asyncio.run(search_song_by_id(user_id, song_id, ver))
+
+    title = str((result.get("parsed") or {}).get("title") or "").strip()
+    if not title:
+        return song_error(user_id)
+    songs, _ = read_dxdata(ver)
+    matching_songs, match_type = _match_recognized_song_title(title, songs)
+    if len(matching_songs) == 1:
+        song = matching_songs[0]
+        parsed = result.setdefault("parsed", {})
+        parsed["title"] = song.get("title") or title
+        result.setdefault("title_match", {
+            "type": match_type,
+            "song_id": song.get("id"),
+        })
+        return asyncio.run(search_song_by_id(user_id, song.get("id"), ver))
+    if matching_songs:
+        return generate_search_results_flex(user_id, matching_songs, "song")
+    return asyncio.run(search_song(user_id, title, ver))
+
+
+def _handle_recognize_command(event, cleaned_text: str) -> bool:
+    command = cleaned_text.strip().lower()
+    command_match = re.fullmatch(r"(rec|recognize)(?:\s+-(medium|small))?", command)
+    if not command_match:
+        return False
+    base_command = command_match.group(1)
+    model_profile = command_match.group(2) or "small"
+
+    user_id = event.source.user_id
+    source_type = getattr(event.source, 'type', 'user')
+    quoted_message_id = getattr(event.message, 'quoted_message_id', None)
+
+    if not quoted_message_id:
+        smart_reply(
+            user_id,
+            event.reply_token,
+            generate_status_flex(
+                {"zh": "缺少成绩图", "en": "Score Image Required", "ja": "リザルト画像が必要です"},
+                {
+                    "zh": f"请回复一张成绩图并发送 {command}。",
+                    "en": f"Reply to a score image with {command}.",
+                    "ja": f"リザルト画像に返信して {command} を送信してください。",
+                },
+                user_id,
+                tone="warning",
+            ),
+            configuration,
+            addition=False,
+            source_type=source_type,
+        )
+        return True
+
+    try:
+        logger.info(
+            "[Recognize] → OCR started: command=%s model=%s user_id=%s quoted_message_id=%s",
+            command,
+            model_profile,
+            user_id,
+            quoted_message_id,
+        )
+        image_bytes = _download_line_message_content(quoted_message_id)
+        fields = ("main_title",) if base_command == "rec" else None
+        result = recognize_score_image_bytes(
+            image_bytes,
+            fields=fields,
+            model_profile=model_profile,
+        )
+        ver = get_user_field(user_id, "version", "jp") or "jp"
+        if base_command == "recognize":
+            result = _validate_recognized_judgement(result, ver=ver)
+            reply_messages = [
+                generate_score_recognition_flex(
+                    result,
+                    user_id,
+                )
+            ]
+        else:
+            reply_messages = [
+                _recognized_song_info_message(result, user_id, ver)
+            ]
+        logger.info(
+            "[Recognize] ✓ OCR completed: command=%s model=%s user_id=%s title=%s validation=%s",
+            command,
+            model_profile,
+            user_id,
+            (result.get("parsed") or {}).get("title"),
+            result.get("validation"),
+        )
+    except Exception as e:
+        logger.error("[Recognize] ✗ OCR failed: user_id=%s error=%s", user_id, e, exc_info=True)
+        notify_admins_error(
+            error_title="Score Recognition Failed",
+            error_details=f"{type(e).__name__}: {str(e)}\n\n{traceback.format_exc()}",
+            context={"Task": "recognize", "QuotedMessageId": quoted_message_id},
+            user_id=user_id,
+        )
+        reply_messages = [generate_status_flex(
+            {"zh": "识别失败", "en": "Recognition Failed", "ja": "認識に失敗しました"},
+            {
+                "zh": "无法读取这张成绩图，请确认图片完整后重试。",
+                "en": "This score image could not be read. Check that the result screen is fully visible and try again.",
+                "ja": "このリザルト画像を読み取れませんでした。画面全体が写っているか確認して再試行してください。",
+            },
+            user_id,
+            tone="danger",
+        )]
+
+    try:
+        smart_reply(
+            user_id,
+            event.reply_token,
+            reply_messages,
+            configuration,
+            addition=False,
+            source_type=source_type,
+        )
+    except Exception as e:
+        logger.error("[Recognize] ✗ Reply failed: user_id=%s error=%s", user_id, e, exc_info=True)
+        notify_admins_error(
+            error_title="Score Recognition Reply Failed",
+            error_details=f"{type(e).__name__}: {str(e)}\n\n{traceback.format_exc()}",
+            context={"Task": "recognize_reply", "QuotedMessageId": quoted_message_id},
+            user_id=user_id,
+        )
+    return True
+
+
 def _fallback_group_member_ids(group_key):
     member_ids = set()
     for uid, data in load_all_users().items():
@@ -4462,6 +5285,11 @@ COMMAND_HELP = {
         "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 查询歌曲基本信息、谱面信息和 BPM。\n参数: 必填: <曲名>，写在 info / song-info 前面，可以是完整曲名、部分曲名或别名。\n匹配: 如果匹配到多首歌，会返回可选择的候选结果。\n示例: ヒバナ info\nヒバナってどんな曲",
         "命令: <song> info / <song> song-info / <song>ってどんな曲\n说明: Show song details, chart data, and BPM.\n参数: Required: <song>, placed before info / song-info; accepts full title, partial title, or alias.\nMatching: if multiple songs match, the bot returns selectable candidates.\n示例: ヒバナ info\nヒバナってどんな曲",
         "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 楽曲情報、譜面情報、BPM を表示します。\n参数: 必須: <曲名>。info / song-info の前に置き、正式名・部分一致・別名を指定できます。\n検索: 複数候補がある場合は選択候補を返します。\n示例: ヒバナ info\nヒバナってどんな曲",
+    ),
+    "score_recognition": _help_text(
+        "命令: rec [-medium|-small]\nrecognize [-medium|-small]\n说明: 识别通过 LINE 回复功能选中的 maimai DX 成绩图。\n参数: 必填: 回复一张成绩图后发送命令。\n模型: -small 使用较快模型；-medium 使用高精度模型，速度较慢。省略后缀时使用 -small。\nrec: 只识别曲名，并返回与 info 命令相同的乐曲信息。\nrecognize: 在一个 Flex 中显示曲名、谱面、达成率和五类判定明细。\n匹配: 曲名匹配到多个乐曲时会返回候选结果；判定数据只有在谱面匹配可靠时才按物量和 Calc 校验。\n示例: 回复成绩图后发送 recognize\n回复成绩图后发送 recognize -medium",
+        "命令: rec [-medium|-small]\nrecognize [-medium|-small]\n说明: Recognize a maimai DX score image selected with LINE's reply feature.\n参数: Required: reply to a score image, then send the command.\nModel: -small uses the faster model; -medium uses the higher-accuracy model and is slower. Omitting the suffix uses -small.\nrec: Reads only the title and returns the same song information as the info command.\nrecognize: Shows the title, chart, achievement, and five judgement rows in one Flex message.\nMatching: multiple title matches return song candidates; judgement data is checked against chart note counts and Calc only when the chart match is reliable.\n示例: Reply to a score image with recognize\nReply to a score image with recognize -medium",
+        "命令: rec [-medium|-small]\nrecognize [-medium|-small]\n说明: LINE の返信機能で選択した maimai DX リザルト画像を認識します。\n参数: 必須: リザルト画像に返信してコマンドを送信します。\nモデル: -small は高速です。-medium は高精度ですが低速です。省略時は -small を使用します。\nrec: 曲名だけを認識し、info コマンドと同じ楽曲情報を返します。\nrecognize: 曲名、譜面、達成率、5 種類の判定詳細を 1 つの Flex に表示します。\n検索: 譜面を確実に特定できた場合のみ、判定をノーツ数と Calc で検証します。\n示例: リザルト画像に返信して recognize\nリザルト画像に返信して recognize -medium",
     ),
     "plate": _help_text(
         "命令: <牌子名> achievement [-uc|-up|-c] / <牌子名>の達成状況\n说明: 查看版本牌子或称号类目标的完成情况。\n参数: 必填: <牌子名>，写在 achievement 前面，例如 真極、檄将 等。\n可选: -uc 仅看未完成项目，-up 仅看未游玩项目，-c 仅看已完成项目。\n格式: 过滤项写在命令最后；不写过滤项时显示完整完成度。\n示例: 真極 achievement\n真極 achievement -uc",
@@ -4581,6 +5409,8 @@ EXACT_HELP_ALIASES = {
     "rank": "ranking",
     "ranking": "ranking",
     "random": "random_song",
+    "rec": "score_recognition",
+    "recognize": "score_recognition",
 }
 
 FIRST_WORD_HELP_ALIASES = {
@@ -5160,6 +5990,9 @@ def handle_text_message(event):
 
     if original_text != cleaned_text:
         logger.debug(f"[TextCleaning] Cleaned mention: original='{original_text}', cleaned='{cleaned_text}'")
+
+    if _handle_recognize_command(event, cleaned_text):
+        return
 
     dispatch_command(_build_command_context(event, cleaned_text))
 
@@ -8407,6 +9240,19 @@ def start_runtime():
     except Exception as e:
         logger.info(f"[System] ⚠ System check failed: error={e}")
         logger.info("[System] → Continuing startup anyway...")
+
+    try:
+        logger.info("[Recognize] → Initializing OCR engine...")
+        initialize_score_recognizer()
+        logger.info("[Recognize] ✓ OCR engine initialized")
+    except Exception as e:
+        logger.error("[Recognize] ✗ OCR engine initialization failed: error=%s", e, exc_info=True)
+        notify_admins_error(
+            error_title="Score OCR Initialization Failed",
+            error_details=f"{type(e).__name__}: {str(e)}\n\n{traceback.format_exc()}",
+            context={"Task": "recognize_startup"},
+        )
+        logger.info("[Recognize] → Continuing startup; recognize command will fail until OCR is fixed")
 
     # 启动 worker 线程
     for i in range(MAX_CONCURRENT_IMAGE_TASKS):
