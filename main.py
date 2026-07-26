@@ -26,6 +26,7 @@ import subprocess
 import gc
 import math
 import base64 as b64mod
+import unicodedata
 
 from functools import wraps
 from datetime import datetime
@@ -4371,6 +4372,29 @@ def _match_recognized_song_title(title, songs, max_results=12):
     if exact_matches:
         return exact_matches[:max_results], "exact"
 
+    def normalize_ocr_kana(value):
+        normalized = normalize_text(str(value or ""))
+        return "".join(
+            character
+            for character in unicodedata.normalize("NFD", normalized)
+            if character not in {"\u3099", "\u309a"}
+        )
+
+    # Japanese OCR often confuses voiced and semi-voiced kana, for example
+    # ぱ/ば. Ignore dakuten only when that produces one canonical song title.
+    normalized_kana_ocr = normalize_ocr_kana(title)
+    if len(normalized_kana_ocr) >= 4:
+        kana_matches = [
+            song for song in songs
+            if normalize_ocr_kana(song.get("title")) == normalized_kana_ocr
+        ]
+        canonical_titles = {
+            normalize_text(str(song.get("title") or ""))
+            for song in kana_matches
+        }
+        if kana_matches and len(canonical_titles) == 1:
+            return kana_matches[:max_results], "ocr_kana"
+
     embedded_matches = []
     for song in songs:
         normalized_song_title = normalize_text(str(song.get("title") or ""))
@@ -4383,7 +4407,9 @@ def _match_recognized_song_title(title, songs, max_results=12):
             song for length, song in embedded_matches
             if length == longest_length
         ]
-        return longest_matches[:max_results], "embedded"
+        extra_length = len(normalized_ocr) - longest_length
+        match_type = "ocr_embedded" if extra_length <= 2 else "embedded"
+        return longest_matches[:max_results], match_type
 
     return (
         find_matching_songs(title, songs, max_results=max_results, threshold=0.82),
@@ -4487,16 +4513,24 @@ def _apply_unique_calc_judgement_correction(
     uncertainties,
 ):
     """Apply a Calc correction only when one cell has one valid solution."""
-    if len(uncertainties) != 1:
-        return None
-    uncertainty = uncertainties[0]
-    if (
-        uncertainty.get("row_missing")
-        or uncertainty.get("candidate_count") != 1
-        or uncertainty.get("candidate_min") != uncertainty.get("candidate_max")
-        or uncertainty.get("miss_min") != uncertainty.get("miss_max")
-    ):
-        return None
+    resolvable = [
+        item for item in uncertainties
+        if not item.get("row_missing")
+        and item.get("candidate_count") == 1
+        and item.get("candidate_min") == item.get("candidate_max")
+        and item.get("miss_min") == item.get("miss_max")
+    ]
+    if len(resolvable) == 1:
+        uncertainty = resolvable[0]
+    else:
+        break_non_cp = [
+            item for item in resolvable
+            if item.get("row") == "break"
+            and item.get("field") in {"perfect", "great", "good"}
+        ]
+        if len(break_non_cp) != 1:
+            return None
+        uncertainty = break_non_cp[0]
 
     row_name = uncertainty.get("row")
     field_name = uncertainty.get("field")
@@ -4844,15 +4878,27 @@ def _infer_break_judgement_detail(notes, judgement, achievement):
     return best_candidate
 
 
-def _validate_recognized_judgement(result, ver="jp"):
+def _validate_recognized_judgement(
+    result,
+    ver="jp",
+    allow_ocr_alignment=True,
+    preserve_input=False,
+):
     parsed = result.get("parsed") or {}
     title = str(parsed.get("title") or "").strip()
     judgement = parsed.get("sub_judgement") or {}
-    if not title or not judgement:
+    if not judgement:
         return result
 
     songs, _ = read_dxdata(ver)
-    matching_songs, title_match_type = _match_recognized_song_title(title, songs)
+    if title:
+        matching_songs, title_match_type = _match_recognized_song_title(title, songs)
+    else:
+        matching_songs = [
+            song for song in songs
+            if not str(song.get("title") or "").strip()
+        ]
+        title_match_type = "blank"
     if not matching_songs:
         return result
 
@@ -4861,7 +4907,10 @@ def _validate_recognized_judgement(result, ver="jp"):
     all_value_names = (*value_names, "miss")
     source_row_count = sum(
         1 for row in judgement.values()
-        if isinstance(row, dict) and any(int(value or 0) != 0 for value in row.values())
+        if isinstance(row, dict) and (
+            preserve_input
+            or any(int(value or 0) != 0 for value in row.values())
+        )
     )
     achievement = parsed.get("achievement")
     candidates = []
@@ -4871,17 +4920,22 @@ def _validate_recognized_judgement(result, ver="jp"):
             if regions and regions.get(ver) is False:
                 continue
             note_counts = sheet.get("noteCounts") or {}
-            for row_offset in range(-2, 3):
+            row_offsets = range(-2, 3) if allow_ocr_alignment else (0,)
+            column_offsets = (-1, 0, 1) if allow_ocr_alignment else (0,)
+            for row_offset in row_offsets:
                 row_aligned = {}
                 for source_index, source_name in enumerate(row_names):
                     row = judgement.get(source_name)
-                    if not isinstance(row, dict) or not any(int(value or 0) != 0 for value in row.values()):
+                    if not isinstance(row, dict) or (
+                        not preserve_input
+                        and not any(int(value or 0) != 0 for value in row.values())
+                    ):
                         continue
                     target_index = source_index + row_offset
                     if 0 <= target_index < len(row_names):
                         row_aligned[row_names[target_index]] = dict(row)
 
-                for column_offset in (-1, 0, 1):
+                for column_offset in column_offsets:
                     aligned = {}
                     dropped_cells = 0
                     valid = True
@@ -4931,8 +4985,9 @@ def _validate_recognized_judgement(result, ver="jp"):
                             row_name: dict(row)
                             for row_name, row in aligned.items()
                         }
-                        for row_name, calculated_miss in predicted_miss.items():
-                            calculated_rows[row_name]["miss"] = calculated_miss
+                        if not preserve_input:
+                            for row_name, calculated_miss in predicted_miss.items():
+                                calculated_rows[row_name]["miss"] = calculated_miss
                         notes = {
                             row_name: int(note_counts.get(row_name, 0) or 0)
                             for row_name in row_names
@@ -4976,7 +5031,17 @@ def _validate_recognized_judgement(result, ver="jp"):
     ))
     best = candidates[0]
     minimum_matching_rows = max(2, best["compared_rows"] - 2)
-    if best["matching_rows"] < minimum_matching_rows:
+    exact_unshifted_match = (
+        title_match_type in {"exact", "blank", "ocr_embedded"}
+        and best["row_offset"] == 0
+        and best["column_offset"] == 0
+        and best["compared_rows"] >= 4
+        and best["matching_rows"] >= 2
+    )
+    if (
+        best["matching_rows"] < minimum_matching_rows
+        and not exact_unshifted_match
+    ):
         return result
     if best["row_offset"] != 0 and best["matching_rows"] < 3:
         return result
@@ -4995,16 +5060,23 @@ def _validate_recognized_judgement(result, ver="jp"):
             return result
 
     judgement = best["aligned"]
+    for row_name, expected_notes in best["notes"].items():
+        if int(expected_notes or 0) == 0 and not isinstance(judgement.get(row_name), dict):
+            judgement[row_name] = {
+                field_name: 0
+                for field_name in all_value_names
+            }
     parsed["sub_judgement"] = judgement
     corrections = {}
-    for row_name, calculated_miss in best["miss"].items():
-        row = judgement.get(row_name)
-        if not isinstance(row, dict):
-            continue
-        previous = row.get("miss", 0)
-        row["miss"] = calculated_miss
-        if previous != calculated_miss:
-            corrections[row_name] = {"ocr": previous, "validated": calculated_miss}
+    if not preserve_input:
+        for row_name, calculated_miss in best["miss"].items():
+            row = judgement.get(row_name)
+            if not isinstance(row, dict):
+                continue
+            previous = row.get("miss", 0)
+            row["miss"] = calculated_miss
+            if previous != calculated_miss:
+                corrections[row_name] = {"ocr": previous, "validated": calculated_miss}
 
     song = best["song"]
     sheet = best["sheet"]
@@ -5012,11 +5084,13 @@ def _validate_recognized_judgement(result, ver="jp"):
     achievement_range = best["achievement_range"]
     calc_uncertainties = []
     calc_corrections = []
-    break_inference = _infer_missing_break_judgement(
-        best["notes"],
-        judgement,
-        achievement,
-    )
+    break_inference = None
+    if not preserve_input:
+        break_inference = _infer_missing_break_judgement(
+            best["notes"],
+            judgement,
+            achievement,
+        )
     if break_inference:
         judgement["break"] = break_inference["row"]
         parsed["sub_judgement"] = judgement
@@ -5038,19 +5112,21 @@ def _validate_recognized_judgement(result, ver="jp"):
             judgement,
             achievement,
         )
-        resolution = _apply_calc_row_balance(
-            best["notes"],
-            judgement,
-            achievement,
-            calc_uncertainties,
-        )
-        if not resolution:
-            resolution = _apply_unique_calc_judgement_correction(
+        resolution = None
+        if not preserve_input:
+            resolution = _apply_calc_row_balance(
                 best["notes"],
                 judgement,
                 achievement,
                 calc_uncertainties,
             )
+            if not resolution:
+                resolution = _apply_unique_calc_judgement_correction(
+                    best["notes"],
+                    judgement,
+                    achievement,
+                    calc_uncertainties,
+                )
         if resolution:
             judgement = resolution["judgement"]
             parsed["sub_judgement"] = judgement
@@ -5086,7 +5162,8 @@ def _validate_recognized_judgement(result, ver="jp"):
         judgement,
         achievement,
     )
-    parsed["title"] = song.get("title") or title
+    canonical_title = song.get("title")
+    parsed["title"] = canonical_title if canonical_title is not None else title
     result["validation"] = {
         "song_id": song.get("id"),
         "title": song.get("title"),
@@ -5095,7 +5172,7 @@ def _validate_recognized_judgement(result, ver="jp"):
         "level": sheet.get("level"),
         "internal_level": sheet.get("internalLevelValue"),
         "title_match_type": title_match_type,
-        "exact_title_match": title_match_type == "exact",
+        "exact_title_match": title_match_type in {"exact", "blank"},
         "compared_rows": best["compared_rows"],
         "matching_rows": best["matching_rows"],
         "row_offset": best["row_offset"],
@@ -5129,6 +5206,19 @@ def _recognized_song_info_message(result, user_id, ver):
 
     title = str((result.get("parsed") or {}).get("title") or "").strip()
     if not title:
+        songs, _ = read_dxdata(ver)
+        blank_title_songs = [
+            song for song in songs
+            if not str(song.get("title") or "").strip()
+        ]
+        if len(blank_title_songs) == 1:
+            song = blank_title_songs[0]
+            result.setdefault("parsed", {})["title"] = song.get("title")
+            result["title_match"] = {
+                "type": "blank",
+                "song_id": song.get("id"),
+            }
+            return asyncio.run(search_song_by_id(user_id, song.get("id"), ver))
         return song_error(user_id)
     songs, _ = read_dxdata(ver)
     matching_songs, match_type = _match_recognized_song_title(title, songs)
@@ -5146,13 +5236,99 @@ def _recognized_song_info_message(result, user_id, ver):
     return asyncio.run(search_song(user_id, title, ver))
 
 
+def _parse_fix_record_command(command_text):
+    lines = [line.strip() for line in str(command_text or "").splitlines() if line.strip()]
+    if not lines or lines[0].lower() == "fix-rcd-help":
+        return None
+    title_match = re.fullmatch(r"fix-rcd\s+(.+)", lines[0], re.IGNORECASE)
+    if not title_match:
+        return None
+    if len(lines) != 7:
+        raise ValueError("fix-rcd requires a title, achievement, and five judgement rows")
+
+    title = re.sub(r"\s+\[(?:DX|STD)\]\s*$", "", title_match.group(1), flags=re.IGNORECASE).strip()
+    if title in {'""', "''"}:
+        title = ""
+
+    achievement_match = re.fullmatch(r"(\d{1,3}(?:[.,]\d{1,4})?)%?", lines[1])
+    if not achievement_match:
+        raise ValueError("achievement must be a percentage between 0 and 101")
+    achievement = float(achievement_match.group(1).replace(",", "."))
+    if not 0 <= achievement <= 101:
+        raise ValueError("achievement must be a percentage between 0 and 101")
+
+    row_names = ("tap", "hold", "slide", "touch", "break")
+    field_names = ("critical_perfect", "perfect", "great", "good", "miss")
+    judgement = {}
+    for row_name, line in zip(row_names, lines[2:]):
+        row_match = re.fullmatch(r"(\d{1,4})/(\d{1,4})/(\d{1,4})/(\d{1,4})/(\d{1,4})", line)
+        if not row_match:
+            raise ValueError("each judgement row must contain five slash-separated integers")
+        judgement[row_name] = {
+            field_name: int(value)
+            for field_name, value in zip(field_names, row_match.groups())
+        }
+    return title, achievement, judgement
+
+
+def _handle_fix_record_command(event, command_text: str) -> bool:
+    try:
+        parsed_command = _parse_fix_record_command(command_text)
+    except ValueError:
+        parsed_command = False
+    if parsed_command is None:
+        return False
+
+    user_id = event.source.user_id
+    source_type = getattr(event.source, "type", "user")
+    if parsed_command is False:
+        message = generate_status_flex(
+            {"zh": "修正格式错误", "en": "Invalid Correction Format", "ja": "修正形式エラー"},
+            {
+                "zh": "请使用 7 行格式：fix-rcd 曲名、达成率，随后依次填写 TAP、HOLD、SLIDE、TOUCH、BREAK；每行格式为 CP/PF/GR/GD/MS。",
+                "en": "Use 7 lines: fix-rcd TITLE, achievement, then TAP, HOLD, SLIDE, TOUCH, and BREAK. Each row must be CP/PF/GR/GD/MS.",
+                "ja": "7 行で入力してください。fix-rcd 曲名、達成率、TAP、HOLD、SLIDE、TOUCH、BREAK の順で、各判定行を CP/PF/GR/GD/MS 形式にします。",
+            },
+            user_id,
+            tone="warning",
+        )
+    else:
+        title, achievement, judgement = parsed_command
+        result = {
+            "source": "manual",
+            "parsed": {
+                "title": title,
+                "achievement": achievement,
+                "sub_judgement": judgement,
+                "raw": {},
+            },
+        }
+        ver = get_user_field(user_id, "version", "jp") or "jp"
+        result = _validate_recognized_judgement(
+            result,
+            ver=ver,
+            allow_ocr_alignment=False,
+            preserve_input=True,
+        )
+        message = generate_score_recognition_flex(result, user_id)
+
+    smart_reply(
+        user_id,
+        event.reply_token,
+        message,
+        configuration,
+        addition=False,
+        source_type=source_type,
+    )
+    return True
+
+
 def _handle_recognize_command(event, cleaned_text: str) -> bool:
     command = cleaned_text.strip().lower()
-    command_match = re.fullmatch(r"(rec|recognize)(?:\s+-(medium|small))?", command)
+    command_match = re.fullmatch(r"(songrec|rec|recordrec|rcdrec)", command)
     if not command_match:
         return False
     base_command = command_match.group(1)
-    model_profile = command_match.group(2) or "small"
 
     user_id = event.source.user_id
     source_type = getattr(event.source, 'type', 'user')
@@ -5178,39 +5354,48 @@ def _handle_recognize_command(event, cleaned_text: str) -> bool:
         )
         return True
 
+    show_loading(user_id)
+    request_started_at = time.perf_counter()
     try:
         logger.info(
-            "[Recognize] → OCR started: command=%s model=%s user_id=%s quoted_message_id=%s",
+            "[Recognize] → OCR started: command=%s user_id=%s quoted_message_id=%s",
             command,
-            model_profile,
             user_id,
             quoted_message_id,
         )
+        download_started_at = time.perf_counter()
         image_bytes = _download_line_message_content(quoted_message_id)
-        fields = ("main_title",) if base_command == "rec" else None
+        download_seconds = time.perf_counter() - download_started_at
+        fields = ("main_title",) if base_command == "songrec" else None
         result = recognize_score_image_bytes(
             image_bytes,
             fields=fields,
-            model_profile=model_profile,
         )
         ver = get_user_field(user_id, "version", "jp") or "jp"
-        if base_command == "recognize":
+        if base_command in {"rec", "recordrec", "rcdrec"}:
             result = _validate_recognized_judgement(result, ver=ver)
-            reply_messages = [
-                generate_score_recognition_flex(
-                    result,
-                    user_id,
-                )
-            ]
+            if (result.get("validation") or {}).get("song_id"):
+                reply_messages = [
+                    generate_score_recognition_flex(
+                        result,
+                        user_id,
+                    )
+                ]
+            else:
+                reply_messages = [
+                    _recognized_song_info_message(result, user_id, ver)
+                ]
         else:
             reply_messages = [
                 _recognized_song_info_message(result, user_id, ver)
             ]
         logger.info(
-            "[Recognize] ✓ OCR completed: command=%s model=%s user_id=%s title=%s validation=%s",
+            "[Recognize] ✓ OCR completed: command=%s user_id=%s download=%.3fs "
+            "total_before_reply=%.3fs title=%s validation=%s",
             command,
-            model_profile,
             user_id,
+            download_seconds,
+            time.perf_counter() - request_started_at,
             (result.get("parsed") or {}).get("title"),
             result.get("validation"),
         )
@@ -5234,6 +5419,7 @@ def _handle_recognize_command(event, cleaned_text: str) -> bool:
         )]
 
     try:
+        reply_started_at = time.perf_counter()
         smart_reply(
             user_id,
             event.reply_token,
@@ -5241,6 +5427,13 @@ def _handle_recognize_command(event, cleaned_text: str) -> bool:
             configuration,
             addition=False,
             source_type=source_type,
+        )
+        logger.info(
+            "[Recognize] ✓ Reply completed: command=%s user_id=%s reply=%.3fs total=%.3fs",
+            command,
+            user_id,
+            time.perf_counter() - reply_started_at,
+            time.perf_counter() - request_started_at,
         )
     except Exception as e:
         logger.error("[Recognize] ✗ Reply failed: user_id=%s error=%s", user_id, e, exc_info=True)
@@ -5370,9 +5563,9 @@ COMMAND_HELP = {
         "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 楽曲情報、譜面情報、BPM を表示します。\n参数: 必須: <曲名>。info / song-info の前に置き、正式名・部分一致・別名を指定できます。\n検索: 複数候補がある場合は選択候補を返します。\n示例: ヒバナ info\nヒバナってどんな曲",
     ),
     "score_recognition": _help_text(
-        "命令: rec [-medium|-small]\nrecognize [-medium|-small]\n说明: 识别通过 LINE 回复功能选中的 maimai DX 成绩图。\n参数: 必填: 回复一张成绩图后发送命令。\n模型: -small 使用较快模型；-medium 使用高精度模型，速度较慢。省略后缀时使用 -small。\nrec: 只识别曲名，并返回与 info 命令相同的乐曲信息。\nrecognize: 在一个 Flex 中显示曲名、谱面、达成率和五类判定明细。\n匹配: 曲名匹配到多个乐曲时会返回候选结果；判定数据只有在谱面匹配可靠时才按物量和 Calc 校验。\n示例: 回复成绩图后发送 recognize\n回复成绩图后发送 recognize -medium",
-        "命令: rec [-medium|-small]\nrecognize [-medium|-small]\n说明: Recognize a maimai DX score image selected with LINE's reply feature.\n参数: Required: reply to a score image, then send the command.\nModel: -small uses the faster model; -medium uses the higher-accuracy model and is slower. Omitting the suffix uses -small.\nrec: Reads only the title and returns the same song information as the info command.\nrecognize: Shows the title, chart, achievement, and five judgement rows in one Flex message.\nMatching: multiple title matches return song candidates; judgement data is checked against chart note counts and Calc only when the chart match is reliable.\n示例: Reply to a score image with recognize\nReply to a score image with recognize -medium",
-        "命令: rec [-medium|-small]\nrecognize [-medium|-small]\n说明: LINE の返信機能で選択した maimai DX リザルト画像を認識します。\n参数: 必須: リザルト画像に返信してコマンドを送信します。\nモデル: -small は高速です。-medium は高精度ですが低速です。省略時は -small を使用します。\nrec: 曲名だけを認識し、info コマンドと同じ楽曲情報を返します。\nrecognize: 曲名、譜面、達成率、5 種類の判定詳細を 1 つの Flex に表示します。\n検索: 譜面を確実に特定できた場合のみ、判定をノーツ数と Calc で検証します。\n示例: リザルト画像に返信して recognize\nリザルト画像に返信して recognize -medium",
+        "命令: songrec\nrec\nrecordrec\nrcdrec\nfix-rcd <曲名>\n说明: songrec 识别曲名并返回歌曲信息；rec、recordrec、rcdrec 均识别完整成绩；fix-rcd 手动修正判定数据。\n参数: 所有识别命令都必须回复一张成绩图，不接受其他参数。\n回退: 完整识别无法取得或校验副屏判定表时，自动返回与 songrec 相同的歌曲信息。\nfix-rcd: 第一行填写不含 [DX]/[STD] 的曲名，第二行填写达成率，随后依次填写 TAP、HOLD、SLIDE、TOUCH、BREAK。\n格式: 达成率可带 %；判定行必须为 CP/PF/GR/GD/MS 五个非负整数。\n示例: fix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
+        "命令: songrec\nrec\nrecordrec\nrcdrec\nfix-rcd <title>\n说明: songrec reads the title and returns song information; rec, recordrec, and rcdrec all recognize the full score; fix-rcd manually corrects judgements.\n参数: Every recognition command requires replying to a score image and accepts no other arguments.\nFallback: if the judgement table cannot be read or validated, full recognition returns the same song information as songrec.\nfix-rcd: put the title without [DX]/[STD] on line 1, achievement on line 2, then TAP, HOLD, SLIDE, TOUCH, and BREAK.\nFormat: achievement may include %; judgement rows must contain five non-negative integers as CP/PF/GR/GD/MS.\n示例: fix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
+        "命令: songrec\nrec\nrecordrec\nrcdrec\nfix-rcd <曲名>\n说明: songrec は曲名を認識して楽曲情報を返します。rec、recordrec、rcdrec はすべてリザルト全体を認識し、fix-rcd は判定を手動修正します。\n参数: すべての認識コマンドはリザルト画像への返信が必須で、追加引数は使用できません。\nフォールバック: 判定表を取得または検証できない場合、完全認識は songrec と同じ楽曲情報を返します。\nfix-rcd: 1 行目に [DX]/[STD] を含まない曲名、2 行目に達成率、その後に TAP、HOLD、SLIDE、TOUCH、BREAK を記述します。\n形式: 達成率の % は任意です。判定行は CP/PF/GR/GD/MS の非負整数 5 個です。\n示例: fix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
     ),
     "plate": _help_text(
         "命令: <牌子名> achievement [-uc|-up|-c] / <牌子名>の達成状況\n说明: 查看版本牌子或称号类目标的完成情况。\n参数: 必填: <牌子名>，写在 achievement 前面，例如 真極、檄将 等。\n可选: -uc 仅看未完成项目，-up 仅看未游玩项目，-c 仅看已完成项目。\n格式: 过滤项写在命令最后；不写过滤项时显示完整完成度。\n示例: 真極 achievement\n真極 achievement -uc",
@@ -5492,8 +5685,11 @@ EXACT_HELP_ALIASES = {
     "rank": "ranking",
     "ranking": "ranking",
     "random": "random_song",
+    "songrec": "score_recognition",
     "rec": "score_recognition",
-    "recognize": "score_recognition",
+    "recordrec": "score_recognition",
+    "rcdrec": "score_recognition",
+    "fix-rcd": "score_recognition",
 }
 
 FIRST_WORD_HELP_ALIASES = {
@@ -6068,11 +6264,16 @@ def handle_text_message(event):
                 end = start + mentionee.length
                 cleaned_text = cleaned_text[:start] + cleaned_text[end:]
     cleaned_text = re.sub(r'[\ufffd]', '', cleaned_text)
-    cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+    cleaned_multiline_text = re.sub(r'[ \t]+', ' ', cleaned_text)
+    cleaned_multiline_text = re.sub(r' *\r?\n *', '\n', cleaned_multiline_text).strip()
+    cleaned_text = re.sub(r'\s+', ' ', cleaned_multiline_text).strip()
     event.message.text = cleaned_text  # 兼容下游 async_*_task 读 event.message.text
 
     if original_text != cleaned_text:
         logger.debug(f"[TextCleaning] Cleaned mention: original='{original_text}', cleaned='{cleaned_text}'")
+
+    if _handle_fix_record_command(event, cleaned_multiline_text):
+        return
 
     if _handle_recognize_command(event, cleaned_text):
         return

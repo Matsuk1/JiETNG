@@ -6,8 +6,10 @@ recognizer without importing CLI code directly.
 """
 from __future__ import annotations
 
+import logging
 import sys
 import threading
+import time
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -15,13 +17,14 @@ from typing import Any
 from PIL import Image
 
 
+logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 
-_ENGINES: dict[str, Any] = {}
+_ENGINE: Any | None = None
 _ENGINE_LOCK = threading.Lock()
 _OCR_LOCK = threading.Lock()
 _OCR_FIELDS: tuple[str, ...] | None = None
@@ -42,37 +45,36 @@ def _load_ocr_module() -> tuple[tuple[str, ...], Any, Any]:
     return _OCR_FIELDS, PaddleOcrEngine, _PROCESS_IMAGE_DATA
 
 
-def _engine(model_profile: str = "small") -> Any:
-    profile = model_profile.lower()
-    if profile not in {"medium", "small"}:
-        raise ValueError(f"unsupported score OCR model profile: {model_profile}")
+def _engine() -> Any:
+    global _ENGINE
     with _ENGINE_LOCK:
-        if profile not in _ENGINES:
+        if _ENGINE is None:
             _, PaddleOcrEngine, _ = _load_ocr_module()
-            _ENGINES[profile] = PaddleOcrEngine(lang="japan", model_profile=profile)
-        return _ENGINES[profile]
+            _ENGINE = PaddleOcrEngine(lang="japan")
+        return _ENGINE
 
 
 def initialize_score_recognizer() -> None:
-    _engine("small")
+    _engine()
 
 
 def recognize_score_image_bytes(
     image_bytes: bytes,
     fields: tuple[str, ...] | None = None,
-    model_profile: str = "small",
 ) -> dict[str, Any]:
     with Image.open(BytesIO(image_bytes)) as source:
         image = source.copy()
 
     # PaddleOCR inference is heavy and may not be thread-safe across concurrent
     # LINE tasks. Serialize access to the shared model instance.
+    lock_started_at = time.perf_counter()
     with _OCR_LOCK:
+        lock_wait_seconds = time.perf_counter() - lock_started_at
+        if lock_wait_seconds >= 0.01:
+            logger.info("Score OCR lock wait: %.3fs", lock_wait_seconds)
         ocr_fields, _, process_image_data = _load_ocr_module()
-        result = process_image_data(
+        return process_image_data(
             image,
             fields or ocr_fields,
-            _engine(model_profile),
+            _engine(),
         )
-        result["ocr_model_profile"] = model_profile.lower()
-        return result

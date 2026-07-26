@@ -14,22 +14,9 @@ import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageOps
-
-
-FIELD_BOXES = {
-    # Relative to the detected inner result screen box.
-    # Values are x1, y1, x2, y2 in 0..1 coordinates.
-    "main_cover": (0.185, 0.155, 0.390, 0.320),
-}
-
-
-SUB_FIELD_BOXES = {
-    # Relative to the upper LCD content, not the whole acrylic window.
-    "sub_fast_late": (0.675, 0.505, 0.990, 0.955),
-}
 
 
 @dataclass(frozen=True)
@@ -65,9 +52,11 @@ def _sample_mask_points(image: Image.Image, step: int = 4) -> list[tuple[int, in
     pixels = rgb.load()
     points: list[tuple[int, int]] = []
 
-    # The sub-monitor at the top is deliberately ignored. The lower half
-    # contains the circular result UI in all supplied examples.
-    y_start = int(height * 0.34)
+    # Portrait machine photos place the sub-monitor above the circular screen.
+    # Near-square crops contain only the main screen, so scanning from 34%
+    # would discard its title/header and shift the detected circle downward.
+    main_screen_only = height <= width * 1.16
+    y_start = int(height * (0.10 if main_screen_only else 0.34))
     y_end = int(height * 0.96)
     x_margin = int(width * 0.035)
 
@@ -255,18 +244,23 @@ def detect_sub_judgement_table(image: Image.Image, sub_screen: Box) -> Box | Non
     rgb = image.convert("RGB")
     width, height = rgb.size
     pixels = rgb.load()
+    search_bottom = min(
+        height,
+        sub_screen.bottom + max(1, int(sub_screen.height * 0.12)),
+    )
 
     search = Box(
         max(0, sub_screen.left - int(sub_screen.width * 0.08)),
         sub_screen.top,
         min(width, sub_screen.left + int(sub_screen.width * 0.770)),
-        sub_screen.bottom,
+        search_bottom,
     )
     label_left = max(0, sub_screen.left - int(sub_screen.width * 0.100))
     label_right = min(width, sub_screen.left + int(sub_screen.width * 0.360))
     label_rows: list[int] = []
     label_points_by_row: dict[int, list[int]] = {}
-    label_threshold = max(26, int((label_right - label_left) / 18))
+    label_sample_count = max(1, len(range(label_left, label_right, 2)))
+    label_threshold = max(1, int(label_sample_count * 0.10))
 
     for y in range(search.top, search.bottom):
         score = 0
@@ -282,8 +276,15 @@ def detect_sub_judgement_table(image: Image.Image, sub_screen: Box) -> Box | Non
             label_points_by_row[y] = row_points
 
     ranges = [
-        row_range for row_range in _cluster_ranges(label_rows, max_gap=5)
-        if row_range[1] - row_range[0] >= 4
+        row_range
+        for row_range in _cluster_ranges(
+            label_rows,
+            max_gap=max(1, int(sub_screen.height * 0.006)),
+        )
+        if row_range[1] - row_range[0] >= max(
+            1,
+            int(sub_screen.height * 0.018),
+        )
     ]
     if not ranges:
         return None
@@ -291,22 +292,28 @@ def detect_sub_judgement_table(image: Image.Image, sub_screen: Box) -> Box | Non
     label_range = max(ranges, key=lambda row_range: row_range[1] - row_range[0])
     top, bottom = label_range
 
-    row_height = max(36, (bottom - top) / 5)
+    minimum_row_height = max(1.0, sub_screen.height * 0.055)
+    row_height = max(minimum_row_height, (bottom - top) / 5)
     label_index = ranges.index(label_range)
     for row_range in ranges[label_index + 1:]:
         gap = row_range[0] - bottom
         row_range_height = row_range[1] - row_range[0]
-        if 0 < gap <= row_height * 0.85 and row_range_height >= row_height * 0.42:
+        if 0 < gap <= row_height * 0.85 and row_range_height >= row_height * 0.25:
             bottom = row_range[1]
-            row_height = max(36, (bottom - top) / 5)
+            row_height = max(minimum_row_height, (bottom - top) / 5)
             continue
         break
     header_candidates = [
         row_range for row_range in ranges[:label_index]
-        if top - row_range[1] <= max(95, int(row_height * 1.70))
+        if top - row_range[1] <= row_height * 3.20
     ]
     if header_candidates:
-        table_top = header_candidates[0][0]
+        table_top = min(
+            header_candidates,
+            key=lambda row_range: abs(
+                (bottom - row_range[0]) / row_height - 6.8
+            ),
+        )[0]
     else:
         table_top = int(round(top - row_height * 1.15))
     table_bottom = bottom
@@ -314,10 +321,11 @@ def detect_sub_judgement_table(image: Image.Image, sub_screen: Box) -> Box | Non
     label_xs: list[int] = []
     for y in range(top, bottom + 1):
         label_xs.extend(label_points_by_row.get(y, []))
-    if len(label_xs) < 100:
+    if len(label_xs) < max(1, int(sub_screen.width * 0.15)):
         return None
 
-    table_left = _percentile(label_xs, 0.005) - 12
+    edge_padding = max(1, int(width * 0.010))
+    table_left = _percentile(label_xs, 0.005) - edge_padding
 
     points: list[tuple[int, int]] = []
     for y in range(max(search.top, table_top), min(search.bottom, table_bottom), 2):
@@ -326,12 +334,32 @@ def detect_sub_judgement_table(image: Image.Image, sub_screen: Box) -> Box | Non
             if _is_table_blue_pixel(r, g, b):
                 points.append((x, y))
 
-    if len(points) < 200:
+    sampled_area = max(
+        1,
+        len(range(max(search.top, table_top), min(search.bottom, table_bottom), 2))
+        * len(range(search.left, search.right, 2)),
+    )
+    if len(points) < max(1, int(sampled_area * 0.004)):
         return None
 
     xs = [point[0] for point in points]
-    right = _percentile(xs, 0.975) + 8
-    return Box(table_left, table_top - 4, right, table_bottom + 2).clamp(width, height)
+    right = _percentile(xs, 0.975) + edge_padding
+    right += max(edge_padding, int((right - table_left) * 0.08))
+    vertical_padding = max(1, int(height * 0.003))
+    return Box(
+        table_left,
+        table_top - vertical_padding,
+        right,
+        table_bottom + max(1, vertical_padding // 2),
+    ).clamp(width, height)
+
+
+def is_complete_sub_judgement_table(table: Box | None) -> bool:
+    if table is None or table.width <= 0:
+        return False
+    # A complete table contains one header and five judgement rows. Partial
+    # sub-monitor crops are visibly flatter even after perspective correction.
+    return table.height / table.width >= 0.25
 
 
 def refine_sub_screen(sub_screen: Box, sub_judgement_table: Box | None) -> Box:
@@ -339,7 +367,7 @@ def refine_sub_screen(sub_screen: Box, sub_judgement_table: Box | None) -> Box:
         return sub_screen
     bottom = min(
         sub_screen.bottom,
-        sub_judgement_table.bottom + max(8, int(sub_screen.height * 0.010)),
+        sub_judgement_table.bottom + max(1, int(sub_screen.height * 0.010)),
     )
     return Box(sub_screen.left, sub_screen.top, sub_screen.right, bottom)
 
@@ -348,7 +376,31 @@ def main_content_box(screen: Box) -> Box:
     return relative_box(screen, (0.110, 0.110, 0.890, 0.705))
 
 
-def detect_main_achievement(image: Image.Image, screen: Box) -> Box | None:
+def _is_orange_achievement_digit_pixel(r: int, g: int, b: int) -> bool:
+    brightness = (r + g + b) / 3
+    return (
+        r >= 130
+        and g >= 55
+        and b <= 105
+        and r >= g + 12
+        and brightness >= 70
+    )
+
+
+def _is_red_achievement_digit_pixel(r: int, g: int, b: int) -> bool:
+    return (
+        r >= 105
+        and r >= g + 18
+        and r >= b + 8
+        and max(r, g, b) - min(r, g, b) >= 25
+    )
+
+
+def _detect_main_achievement_by_color(
+    image: Image.Image,
+    screen: Box,
+    pixel_matches: Callable[[int, int, int], bool],
+) -> tuple[Box, int] | None:
     rgb = image.convert("RGB")
     width, height = rgb.size
     pixels = rgb.load()
@@ -356,20 +408,24 @@ def detect_main_achievement(image: Image.Image, screen: Box) -> Box | None:
 
     candidate_rows: list[int] = []
     row_scores: dict[int, int] = {}
+    row_threshold = max(8, int((search.width / 4) * 0.08))
     for y in range(search.top, search.bottom):
         score = 0
         for x in range(search.left, search.right, 4):
             r, g, b = pixels[x, y]
-            brightness = (r + g + b) / 3
-            if r >= 130 and g >= 55 and b <= 105 and r >= g + 12 and brightness >= 70:
+            if pixel_matches(r, g, b):
                 score += 1
-        if score >= 40:
+        if score >= row_threshold:
             candidate_rows.append(y)
             row_scores[y] = score
 
     row_ranges = [
-        row_range for row_range in _cluster_ranges(candidate_rows, max_gap=4)
-        if row_range[1] - row_range[0] >= 12
+        row_range
+        for row_range in _cluster_ranges(
+            candidate_rows,
+            max_gap=max(2, int(screen.height * 0.0016)),
+        )
+        if row_range[1] - row_range[0] >= max(4, int(screen.height * 0.0045))
     ]
     if not row_ranges:
         return None
@@ -382,34 +438,73 @@ def detect_main_achievement(image: Image.Image, screen: Box) -> Box | None:
     for y in range(digit_range[0], digit_range[1] + 1, 2):
         for x in range(search.left, search.right, 2):
             r, g, b = pixels[x, y]
-            brightness = (r + g + b) / 3
-            if r >= 130 and g >= 55 and b <= 105 and r >= g + 12 and brightness >= 70:
+            if pixel_matches(r, g, b):
                 points.append((x, y))
 
-    if len(points) < 500:
+    minimum_points = max(80, int(screen.width * screen.height * 0.00006))
+    if len(points) < minimum_points:
         return None
 
     xs = [point[0] for point in points]
     ys = [point[1] for point in points]
-    return Box(
-        _percentile(xs, 0.010) - 20,
-        _percentile(ys, 0.010) - 34,
-        _percentile(xs, 0.990) + 20,
-        _percentile(ys, 0.990) + 20,
-    ).clamp(width, height)
+    horizontal_padding = max(4, int(screen.width * 0.0077))
+    top_padding = max(6, int(screen.height * 0.0131))
+    bottom_padding = max(4, int(screen.height * 0.0077))
+    return (
+        Box(
+            _percentile(xs, 0.010) - horizontal_padding,
+            _percentile(ys, 0.010) - top_padding,
+            _percentile(xs, 0.990) + horizontal_padding,
+            _percentile(ys, 0.990) + bottom_padding,
+        ).clamp(width, height),
+        digit_range[1] - digit_range[0],
+    )
 
 
-def detect_main_title(image: Image.Image, screen: Box) -> Box | None:
+def detect_main_achievement(image: Image.Image, screen: Box) -> Box | None:
+    orange = _detect_main_achievement_by_color(
+        image,
+        screen,
+        _is_orange_achievement_digit_pixel,
+    )
+    minimum_full_digit_height = max(8, int(screen.height * 0.030))
+    if orange is not None and orange[1] >= minimum_full_digit_height:
+        return orange[0]
+
+    red = _detect_main_achievement_by_color(
+        image,
+        screen,
+        _is_red_achievement_digit_pixel,
+    )
+    if red is not None:
+        return red[0]
+    return orange[0] if orange is not None else None
+
+
+def detect_main_title(
+    image: Image.Image,
+    screen: Box,
+    achievement: Box | None = None,
+) -> Box | None:
     rgb = image.convert("RGB")
     width, height = rgb.size
     pixels = rgb.load()
     x_start = screen.left + int(screen.width * 0.180)
     x_end = screen.left + int(screen.width * 0.860)
-    y_start = screen.top + int(screen.height * 0.120)
-    y_end = screen.top + int(screen.height * 0.320)
+    if achievement is not None:
+        y_start = max(
+            screen.top + int(screen.height * 0.120),
+            achievement.top - int(screen.height * 0.180),
+        )
+        y_end = min(
+            screen.top + int(screen.height * 0.400),
+            achievement.top - int(screen.height * 0.015),
+        )
+    else:
+        y_start = screen.top + int(screen.height * 0.120)
+        y_end = screen.top + int(screen.height * 0.360)
 
-    rows: list[int] = []
-    row_scores: dict[int, int] = {}
+    scores: list[tuple[int, int]] = []
     for y in range(y_start, y_end):
         score = 0
         for x in range(x_start, x_end, 4):
@@ -419,14 +514,41 @@ def detect_main_title(image: Image.Image, screen: Box) -> Box | None:
             brightness = (r + g + b) / 3
             if brightness <= 125 and mx - mn >= 22:
                 score += 1
-        if score >= 120:
+        scores.append((y, score))
+    if not scores:
+        return None
+
+    peak_score = max(score for _, score in scores)
+    row_threshold = max(1, int(peak_score * 0.68))
+    rows: list[int] = []
+    row_scores: dict[int, int] = {}
+    for y, score in scores:
+        if score >= row_threshold:
             rows.append(y)
             row_scores[y] = score
 
     row_ranges = [
-        row_range for row_range in _cluster_ranges(rows, max_gap=5)
-        if row_range[1] - row_range[0] >= 12
+        row_range
+        for row_range in _cluster_ranges(
+            rows,
+            max_gap=max(1, int(screen.height * 0.002)),
+        )
+        if row_range[1] - row_range[0] >= max(
+            1,
+            int(screen.height * 0.008),
+        )
     ]
+    merged_ranges: list[tuple[int, int]] = []
+    maximum_title_height = screen.height * 0.040
+    for row_range in row_ranges:
+        if (
+            merged_ranges
+            and row_range[1] - merged_ranges[-1][0] <= maximum_title_height
+        ):
+            merged_ranges[-1] = (merged_ranges[-1][0], row_range[1])
+        else:
+            merged_ranges.append(row_range)
+    row_ranges = merged_ranges
     if not row_ranges:
         return None
 
@@ -434,18 +556,64 @@ def detect_main_title(image: Image.Image, screen: Box) -> Box | None:
         row_ranges,
         key=lambda row_range: sum(row_scores.get(y, 0) for y in range(row_range[0], row_range[1] + 1)),
     )
-    title_height = title_range[1] - title_range[0]
-    top = title_range[0] + 6
-    if title_height >= 120:
-        top = title_range[0] + int(title_height * 0.45)
+    vertical_padding = max(1, int(screen.height * 0.0023))
+    top = title_range[0] + vertical_padding
+    band_bottom = title_range[1] - vertical_padding
 
-    band_bottom = title_range[1] - 6
+    # The title text always sits in a dark bar immediately above the
+    # achievement block, while CLEAR and the difficulty header can use any
+    # theme color. Find the bottom edge of that bar first, then recover its
+    # full height. This is more stable than selecting the strongest colored
+    # row, which can be only a thin border on red/yellow/green headers.
+    if achievement is not None:
+        anchor_top = max(y_start, achievement.top - int(screen.height * 0.145))
+        anchor_bottom = min(y_end, achievement.top - int(screen.height * 0.025))
+        sample_left = screen.left + int(screen.width * 0.380)
+        sample_right = screen.left + int(screen.width * 0.750)
+        dark_rows: list[int] = []
+        for y in range(anchor_top, anchor_bottom):
+            samples = 0
+            dark_samples = 0
+            for x in range(sample_left, sample_right, 4):
+                r, g, b = pixels[x, y]
+                samples += 1
+                if (r + g + b) / 3 <= 125:
+                    dark_samples += 1
+            if samples and dark_samples / samples >= 0.50:
+                dark_rows.append(y)
+
+        dark_ranges = [
+            row_range
+            for row_range in _cluster_ranges(
+                dark_rows,
+                max_gap=max(1, int(screen.height * 0.008)),
+            )
+            if row_range[1] - row_range[0] >= screen.height * 0.005
+        ]
+        if dark_ranges:
+            title_bar = max(dark_ranges, key=lambda row_range: row_range[1])
+            band_bottom = min(
+                anchor_bottom,
+                title_bar[1] + max(1, int(screen.height * 0.002)),
+            )
+            top = max(
+                anchor_top,
+                band_bottom - max(1, int(screen.height * 0.045)),
+            )
+
+    minimum_title_height = max(8, int(screen.height * 0.026))
+    if band_bottom - top < minimum_title_height:
+        top = max(
+            screen.top + int(screen.height * 0.085),
+            band_bottom - minimum_title_height,
+        )
+
     band_height = max(1, band_bottom - top)
     column_scores: dict[int, int] = {}
     candidate_columns: list[int] = []
     bar_search_left = screen.left + int(screen.width * 0.140)
     bar_search_right = screen.left + int(screen.width * 0.900)
-    threshold = max(2, int((band_height / 2) * 0.28))
+    threshold = max(1, int((band_height / 2) * 0.28))
     for x in range(bar_search_left, bar_search_right):
         score = 0
         for y in range(top, band_bottom, 2):
@@ -462,7 +630,7 @@ def detect_main_title(image: Image.Image, screen: Box) -> Box | None:
         column_range
         for column_range in _cluster_ranges(
             candidate_columns,
-            max_gap=max(8, int(screen.width * 0.018)),
+            max_gap=max(1, int(screen.width * 0.018)),
         )
         if column_range[1] - column_range[0] >= screen.width * 0.30
     ]
@@ -475,7 +643,7 @@ def detect_main_title(image: Image.Image, screen: Box) -> Box | None:
                 -sum(column_scores.get(x, 0) for x in range(column_range[0], column_range[1] + 1)),
             ),
         )
-        horizontal_padding = max(8, int(screen.width * 0.010))
+        horizontal_padding = max(1, int(screen.width * 0.010))
         left = max(
             bar_left + horizontal_padding,
             screen.left + int(screen.width * 0.350),
@@ -671,10 +839,15 @@ def crop_result_fields_in_memory(source_image: Image.Image) -> dict:
     if is_dxnet_result_screenshot(image):
         return _dxnet_fields_in_memory(image)
     screen = detect_result_screen(image)
-    sub_screen = detect_sub_screen(image)
-    main_title = detect_main_title(image, screen)
     main_achievement = detect_main_achievement(image, screen)
-    sub_judgement_table = detect_sub_judgement_table(image, sub_screen)
+    main_title = detect_main_title(image, screen, main_achievement)
+    main_screen_only = image.height <= image.width * 1.16
+    sub_judgement_table = None
+    if not main_screen_only:
+        sub_screen = detect_sub_screen(image)
+        candidate = detect_sub_judgement_table(image, sub_screen)
+        if is_complete_sub_judgement_table(candidate):
+            sub_judgement_table = candidate
 
     if main_title is None:
         main_title = relative_box(screen, (0.285, 0.222, 0.790, 0.282)).clamp(
@@ -692,7 +865,7 @@ def crop_result_fields_in_memory(source_image: Image.Image) -> dict:
         )
         achievement_detector = "fallback_relative"
     else:
-        achievement_detector = "orange_digits"
+        achievement_detector = "achievement_digits"
 
     field_boxes = {
         "main_title": (main_title, title_detector),
@@ -771,9 +944,14 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
     sample_dir.mkdir(parents=True, exist_ok=True)
 
     content_screen = main_content_box(screen).clamp(image.width, image.height)
-    main_title = detect_main_title(image, screen)
     main_achievement = detect_main_achievement(image, screen)
+    main_title = detect_main_title(image, screen, main_achievement)
     sub_judgement_table = detect_sub_judgement_table(image, sub_screen)
+    if (
+        image.height <= image.width * 1.16
+        or not is_complete_sub_judgement_table(sub_judgement_table)
+    ):
+        sub_judgement_table = None
     refined_sub_screen = refine_sub_screen(sub_screen, sub_judgement_table).clamp(image.width, image.height)
     image.crop(screen.to_tuple()).save(sample_dir / "screen.png")
     image.crop(content_screen.to_tuple()).save(sample_dir / "main_content.png")
@@ -822,23 +1000,6 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
     }
 
     draw.rectangle(refined_sub_screen.to_tuple(), outline=(0, 180, 255), width=max(4, image.width // 300))
-
-    all_fields = [(screen, FIELD_BOXES), (refined_sub_screen, SUB_FIELD_BOXES)]
-    for base_box, field_defs in all_fields:
-        for name, rel in field_defs.items():
-            field_box = relative_box(base_box, rel).clamp(image.width, image.height)
-            crop = sharpen_for_ocr(image.crop(field_box.to_tuple()))
-            crop_path = sample_dir / f"{name}.png"
-            crop.save(crop_path)
-            draw.rectangle(field_box.to_tuple(), outline=(255, 80, 0), width=max(2, image.width // 500))
-            draw.text((field_box.left + 4, field_box.top + 4), name, fill=(255, 255, 255))
-            result["fields"][name] = {
-                "path": str(crop_path),
-                "left": field_box.left,
-                "top": field_box.top,
-                "right": field_box.right,
-                "bottom": field_box.bottom,
-            }
 
     if main_title is not None:
         crop = sharpen_for_ocr(image.crop(main_title.to_tuple()))

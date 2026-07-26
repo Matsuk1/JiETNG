@@ -1,3 +1,5 @@
+import re
+
 from urllib.parse import quote
 from modules.config_loader import SUPPORT_PAGE, LINE_ACCOUNT_ID
 from modules.i18n import get_user_language, select_text
@@ -716,7 +718,7 @@ def generate_help_index_flex(user_id=None):
         ),
         (
             _help_i18n(user_id, "歌曲与成绩", "Songs and Records", "楽曲と成績"),
-            "info / rec / recognize / record / search / search-record / calc-song",
+            "info / songrec / rec / recordrec / rcdrec / record / search / search-record / calc-song",
             _help_i18n(user_id, "查歌曲信息、识别成绩图、单曲成绩和歌曲 ID。", "Song details, score-image recognition, single-song records, and song IDs.", "楽曲情報、リザルト画像認識、単曲成績、楽曲 ID 検索。"),
             "#267D8B",
         ),
@@ -1305,6 +1307,17 @@ def generate_score_recognition_flex(result, user_id=None):
             "en": "BREAK was inferred from chart notes and Calc",
             "ja": "BREAK をノーツ数と Calc から推定しました",
         },
+        "manual_fix": {"zh": "手动修正", "en": "Manual Correction", "ja": "手動修正"},
+        "manual_fix_hint": {
+            "zh": "复制命令，修改达成率或错误数字后直接发送。五行依次为 TAP、HOLD、SLIDE、TOUCH、BREAK。",
+            "en": "Copy the command, edit the achievement or incorrect values, and send it. Rows are TAP, HOLD, SLIDE, TOUCH, and BREAK.",
+            "ja": "コマンドをコピーし、達成率または誤った数値を修正して送信してください。行順は TAP、HOLD、SLIDE、TOUCH、BREAK です。",
+        },
+        "copy_fix": {
+            "zh": "复制修正命令",
+            "en": "Copy Fix Command",
+            "ja": "修正コマンドをコピー",
+        },
     }
 
     def tr(key):
@@ -1327,7 +1340,16 @@ def generate_score_recognition_flex(result, user_id=None):
     parsed = result.get("parsed") or {}
     validation = result.get("validation") or {}
     judgement = parsed.get("sub_judgement") or {}
-    song_title = str(parsed.get("title") or validation.get("title") or "JiETNG")
+    canonical_title = parsed.get("title")
+    if canonical_title is None:
+        canonical_title = validation.get("title")
+    if (
+        validation.get("song_id")
+        and not str(canonical_title or "").strip()
+    ):
+        song_title = '""'
+    else:
+        song_title = str(canonical_title or "-")
     achievement = parsed.get("achievement")
     achievement_text = f"{achievement:.4f}%" if isinstance(achievement, (int, float)) else "-"
 
@@ -1352,6 +1374,14 @@ def generate_score_recognition_flex(result, user_id=None):
     chart_text = " ".join(
         value for value in (difficulty_label, internal_level_label) if value
     ) or "-"
+    chart_color = {
+        "basic": "#34A853",
+        "advanced": "#E67E22",
+        "expert": "#D93025",
+        "master": "#8E44AD",
+        "remaster": "#B06FD3",
+        "utage": "#111111",
+    }.get(str(difficulty or "").lower(), "#315B7D")
     uncertain_cells = validation.get("uncertain_cells") or []
     uncertain_keys = {
         (item.get("row"), item.get("field"))
@@ -1439,7 +1469,7 @@ def generate_score_recognition_flex(result, user_id=None):
             "spacing": "sm",
             "contents": [
                 _metric_card(tr("achievement"), achievement_text, value_color="#B86E19"),
-                _metric_card(tr("chart"), chart_text, value_color="#315B7D"),
+                _metric_card(tr("chart"), chart_text, value_color=chart_color),
             ],
         },
         _help_section_title(tr("breakdown"), accent="#267D8B"),
@@ -1572,6 +1602,7 @@ def generate_score_recognition_flex(result, user_id=None):
             "align": "end",
         })
 
+    manual_fix_command = None
     achievement_calc = validation.get("achievement_calc") or {}
     if achievement_calc.get("consistent") is not None:
         calc_consistent = achievement_calc.get("consistent")
@@ -1633,6 +1664,55 @@ def generate_score_recognition_flex(result, user_id=None):
             "align": "end",
         })
 
+        if calc_consistent is False:
+            fix_rows = []
+            for row_name in ("tap", "hold", "slide", "touch", "break"):
+                row = judgement.get(row_name)
+                if not isinstance(row, dict):
+                    fix_rows = []
+                    break
+                fix_rows.append("/".join(
+                    str(max(0, int(row.get(field_name, 0) or 0)))
+                    for field_name in (
+                        "critical_perfect",
+                        "perfect",
+                        "great",
+                        "good",
+                        "miss",
+                    )
+                ))
+            if len(fix_rows) == 5 and isinstance(achievement, (int, float)):
+                command_title = re.sub(r"\s+", " ", song_title).strip() or '""'
+                manual_fix_command = "\n".join([
+                    f"fix-rcd {command_title}",
+                    achievement_text,
+                    *fix_rows,
+                ])
+                body_contents.extend([
+                    _help_section_title(tr("manual_fix"), accent="#315B7D"),
+                    {
+                        "type": "text",
+                        "text": tr("manual_fix_hint"),
+                        "size": "xxs",
+                        "color": COLOR_TEXT_MUTED,
+                        "wrap": True,
+                    },
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "paddingAll": "10px",
+                        "backgroundColor": "#F8FAFC",
+                        "cornerRadius": "6px",
+                        "contents": [{
+                            "type": "text",
+                            "text": manual_fix_command,
+                            "size": "xxs",
+                            "color": COLOR_TEXT_PRIMARY,
+                            "wrap": True,
+                        }],
+                    },
+                ])
+
     bubble = {
         "type": "bubble",
         "size": "mega",
@@ -1644,6 +1724,22 @@ def generate_score_recognition_flex(result, user_id=None):
             "contents": body_contents,
         },
     }
+    if manual_fix_command:
+        bubble["footer"] = {
+            "type": "box",
+            "layout": "vertical",
+            "paddingAll": "12px",
+            "contents": [{
+                "type": "button",
+                "height": "sm",
+                "style": "secondary",
+                "action": {
+                    "type": "clipboard",
+                    "label": tr("copy_fix"),
+                    "clipboardText": manual_fix_command,
+                },
+            }],
+        }
     return FlexMessage(
         alt_text=f"{tr('title')}: {display_title}",
         contents=FlexContainer.from_dict(bubble),

@@ -242,37 +242,38 @@ def apply_override(songs, override_file):
     with open(override_file, 'r', encoding='utf-8') as f:
         for row in csv.reader(f):
             if row:
-                csv_map[row[0]] = row[1:]
+                csv_map.setdefault(row[0], []).append(row[1:])
 
     for song in songs:
         if song['title'] not in csv_map:
             continue
-        if song['type'] != csv_map[song['title']][0]:
-            continue
-        row = csv_map[song['title']][1:]
-        *keys, value = row
-        # 自动转换数字类型
-        try:
-            value = int(value) if value.isdigit() else float(value)
-        except (ValueError, AttributeError):
-            pass
-        cur = song
-        for k in keys[:-1]:
-            if k.isdigit():
-                k = int(k)
-                while len(cur) <= k:
-                    cur.append({})
-                cur = cur[k]
+        for override in csv_map[song['title']]:
+            if song['type'] != override[0]:
+                continue
+            row = override[1:]
+            *keys, value = row
+            # 自动转换数字类型
+            try:
+                value = int(value) if value.isdigit() else float(value)
+            except (ValueError, AttributeError):
+                pass
+            cur = song
+            for k in keys[:-1]:
+                if k.isdigit():
+                    k = int(k)
+                    while len(cur) <= k:
+                        cur.append({})
+                    cur = cur[k]
+                else:
+                    cur = cur.setdefault(k, {})
+            last = keys[-1]
+            if last.isdigit():
+                last = int(last)
+                while len(cur) <= last:
+                    cur.append(None)
+                cur[last] = value
             else:
-                cur = cur.setdefault(k, {})
-        last = keys[-1]
-        if last.isdigit():
-            last = int(last)
-            while len(cur) <= last:
-                cur.append(None)
-            cur[last] = value
-        else:
-            cur[last] = value
+                cur[last] = value
 
         for sheet in song.get("sheets", []):
             sheet["internalLevelValue"] = float(sheet["internalLevelValue"])

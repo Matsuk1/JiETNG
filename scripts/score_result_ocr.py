@@ -5,18 +5,26 @@ from __future__ import annotations
 import argparse
 import inspect
 import json
+import logging
 import os
 import re
+import time
 import unicodedata
 from pathlib import Path
 from typing import Any, Iterable
 
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
-from score_result_cropper import crop_result_fields, crop_result_fields_in_memory, iter_images
+from score_result_cropper import (
+    _is_table_blue_pixel,
+    crop_result_fields,
+    crop_result_fields_in_memory,
+    iter_images,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+logger = logging.getLogger(__name__)
 os.environ.setdefault("PADDLE_PDX_CACHE_HOME", str(PROJECT_ROOT / ".paddle-home" / "paddlex"))
 os.environ.setdefault("PADDLE_PDX_MODEL_SOURCE", "huggingface")
 os.environ.setdefault("PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT", "0")
@@ -30,12 +38,7 @@ OCR_FIELDS = (
     "sub_judgement_table",
 )
 
-OCR_MODEL_PROFILES = {
-    "tiny": ("PP-OCRv6_tiny_det", "PP-OCRv6_tiny_rec"),
-    "small": ("PP-OCRv6_small_det", "PP-OCRv6_small_rec"),
-    "balanced": ("PP-OCRv6_small_det", "PP-OCRv6_medium_rec"),
-    "medium": ("PP-OCRv6_medium_det", "PP-OCRv6_medium_rec"),
-}
+OCR_MODEL_NAMES = ("PP-OCRv6_small_det", "PP-OCRv6_small_rec")
 
 
 def normalize_text(value: str) -> str:
@@ -104,7 +107,7 @@ def prepare_ocr_image(source_path: str | Path, output_path: str | Path, field: s
 
 
 class PaddleOcrEngine:
-    def __init__(self, lang: str = "japan", model_profile: str | None = None) -> None:
+    def __init__(self, lang: str = "japan") -> None:
         try:
             from paddleocr import PaddleOCR
         except ImportError as exc:
@@ -113,19 +116,13 @@ class PaddleOcrEngine:
                 "python3 -m pip install paddlepaddle paddleocr"
             ) from exc
 
-        profile = (model_profile or os.getenv("SCORE_OCR_MODEL_PROFILE", "small")).lower()
-        if profile not in OCR_MODEL_PROFILES:
-            supported = ", ".join(OCR_MODEL_PROFILES)
-            raise RuntimeError(
-                f"unsupported SCORE_OCR_MODEL_PROFILE={profile!r}; expected one of: {supported}"
-            )
-        detection_model, recognition_model = OCR_MODEL_PROFILES[profile]
+        detection_model, recognition_model = OCR_MODEL_NAMES
         model_kwargs = {
             "text_detection_model_name": detection_model,
             "text_recognition_model_name": recognition_model,
         }
-        self.model_profile = profile
         self.model_names = (detection_model, recognition_model)
+        self._direct_recognition_error_logged = False
 
         init_attempts = (
             {
@@ -177,6 +174,55 @@ class PaddleOcrEngine:
                 errors.append(f"{name}: {type(exc).__name__}: {exc}")
         source_name = str(image_source) if not isinstance(image_source, Image.Image) else "in-memory image"
         raise RuntimeError(f"OCR failed for {source_name}: {'; '.join(errors)}")
+
+    def read_cropped_lines(
+        self,
+        images: list[Image.Image],
+    ) -> list[dict[str, Any]] | None:
+        """Run recognition directly when text bounds are already known."""
+        try:
+            import numpy as np
+
+            pipeline = getattr(self.ocr, "paddlex_pipeline", None)
+            recognizer = None
+            visited: set[int] = set()
+            while pipeline is not None and id(pipeline) not in visited:
+                visited.add(id(pipeline))
+                recognizer = getattr(pipeline, "text_rec_model", None)
+                if recognizer is not None:
+                    break
+                pipeline = getattr(pipeline, "_pipeline", None)
+            if recognizer is None:
+                raise AttributeError("PaddleOCR text recognition model is unavailable")
+            outputs = list(
+                recognizer.predict(
+                    [np.asarray(image.convert("RGB")) for image in images],
+                    batch_size=len(images),
+                )
+            )
+        except Exception as exc:
+            if not self._direct_recognition_error_logged:
+                logger.warning(
+                    "Direct cropped-text recognition unavailable; using detector fallback: %s",
+                    exc,
+                )
+                self._direct_recognition_error_logged = True
+            return None
+
+        results: list[dict[str, Any]] = []
+        for output in outputs:
+            payload = getattr(output, "json", None)
+            if callable(payload):
+                payload = payload()
+            if isinstance(payload, dict):
+                payload = payload.get("res", payload)
+            if not isinstance(payload, dict):
+                return None
+            results.append({
+                "text": str(payload.get("rec_text", "")),
+                "score": float(payload.get("rec_score", 0.0)),
+            })
+        return results if len(results) == len(images) else None
 
 
 def extract_ocr_items(result: Any) -> list[dict[str, Any]]:
@@ -309,9 +355,8 @@ def extract_song_title(items: list[dict[str, Any]]) -> str:
             max(fragment["height"] for fragment in line) * 4
             + sum(fragment["width"] for fragment in line) * 0.05
             + len(text) * 2
+            + max(fragment["center_y"] for fragment in line) * 2
         )
-        if re.search(r"[\u3040-\u30ff\u3400-\u9fff]", text):
-            score += 80
         if numeric_only or compact.upper() in {"NEWRECORD", "MYBEST", "ACHIEVEMENT"}:
             score -= 500
         candidates.append((score, text))
@@ -329,7 +374,10 @@ def parse_result(fields: dict[str, dict[str, Any]]) -> dict[str, Any]:
     sub_judgement_items = sub_judgement_field.get("items", [])
     parsed: dict[str, Any] = {
         "title": normalize_song_text(raw.get("main_title", "")),
-        "achievement": parse_percent(raw.get("main_achievement", "")),
+        "achievement": parse_percent_items(
+            fields.get("main_achievement", {}).get("items", []),
+            raw.get("main_achievement", ""),
+        ),
         "sub_judgement": (
             sub_judgement_field.get("column_values")
             or parse_sub_judgement_items(sub_judgement_items)
@@ -355,12 +403,78 @@ def parse_level(text: str) -> str | None:
 
 def parse_percent(text: str) -> float | None:
     candidates = re.findall(r"(\d{2,3}[.,]\d{3,4})\s*%?", text)
-    if not candidates:
-        return None
-    try:
-        return max(float(item.replace(",", ".")) for item in candidates)
-    except ValueError:
-        return None
+    # Paddle occasionally repeats the integer's last digit before the decimal:
+    # `100 0.9934%` and `97 7.6199%` mean `100.9934%` and `97.6199%`.
+    split_candidates = re.findall(
+        r"(?<!\d)(\d{2,3})[.,]?\s+(\d)[.,](\d{3,4})\s*%?",
+        text,
+    )
+    values = []
+    for item in candidates:
+        try:
+            values.append(float(item.replace(",", ".")))
+        except ValueError:
+            continue
+    for integer, repeated_digit, decimal in split_candidates:
+        if integer[-1] != repeated_digit:
+            continue
+        try:
+            values.append(float(f"{integer}.{decimal}"))
+        except ValueError:
+            continue
+    plausible = [value for value in values if 0 <= value <= 101]
+    return max(plausible) if plausible else None
+
+
+def parse_percent_items(items: list[dict[str, Any]], fallback_text: str) -> float | None:
+    boxed_items: list[tuple[float, float, float, float, str]] = []
+    for item in items:
+        box = item.get("box")
+        if not isinstance(box, (list, tuple)) or len(box) < 4:
+            continue
+        try:
+            left, top, right, bottom = (float(box[index]) for index in range(4))
+        except (TypeError, ValueError):
+            continue
+        if right <= left or bottom <= top:
+            continue
+        boxed_items.append((left, top, right, bottom, str(item.get("text", ""))))
+
+    if boxed_items:
+        max_height = max(item[3] - item[1] for item in boxed_items)
+        large_items = sorted(
+            (item for item in boxed_items if item[3] - item[1] >= max_height * 0.35),
+            key=lambda item: item[0],
+        )
+        merged = ""
+        for *_, text in large_items:
+            compact = re.sub(r"\s+", "", text)
+            overlap = min(len(merged), len(compact))
+            while overlap and merged[-overlap:] != compact[:overlap]:
+                overlap -= 1
+            merged += compact[overlap:]
+        merged_value = parse_percent(merged)
+        if merged_value is not None:
+            return merged_value
+
+    candidates: list[tuple[float, float]] = []
+    for item in items:
+        value = parse_percent(str(item.get("text", "")))
+        box = item.get("box")
+        if value is None or not isinstance(box, (list, tuple)) or len(box) < 4:
+            continue
+        try:
+            area = max(0.0, float(box[2]) - float(box[0])) * max(
+                0.0,
+                float(box[3]) - float(box[1]),
+            )
+        except (TypeError, ValueError):
+            continue
+        candidates.append((area, value))
+
+    if candidates:
+        return max(candidates, key=lambda candidate: candidate[0])[1]
+    return parse_percent(fallback_text)
 
 
 def parse_int(text: str) -> int | None:
@@ -448,6 +562,8 @@ def parse_item_int(text: str) -> int | None:
 
 def parse_column_int(text: str) -> int | None:
     normalized = normalize_text(text).upper()
+    if re.fullmatch(r"\d{1,3}日", normalized):
+        normalized = normalized[:-1] + "1"
     match = re.search(r"\d{1,4}", normalized)
     if match:
         return int(match.group(0))
@@ -602,7 +718,68 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
         if end - start >= 2
     ]
     h_lines = sorted(h_lines)
-    if not row_centers:
+
+    # Dark grid lines survive JPEG recompression better than the blue color
+    # mask. Resolve them before the color-based path can give up early.
+    row_line_image = image.crop((0, 0, max(1, int(width * 0.85)), height))
+    regular_row_boundaries = detect_regular_dark_lines(
+        row_line_image,
+        "horizontal",
+        6,
+    )
+    if regular_row_boundaries:
+        gaps = [
+            right - left
+            for left, right in zip(regular_row_boundaries, regular_row_boundaries[1:])
+        ]
+        median_gap = sorted(gaps)[len(gaps) // 2]
+        if (
+            min(gaps) < median_gap * 0.72
+            or max(gaps) > median_gap * 1.28
+        ):
+            # JPEG blocks can displace one horizontal line while the bottom
+            # table edge remains clear. Rebuild the six boundaries from that
+            # edge instead of prepending a false line above TAP.
+            last_boundary = regular_row_boundaries[-1]
+            if (
+                height * 0.07 <= median_gap <= height * 0.18
+                and last_boundary >= height * 0.72
+                and last_boundary - median_gap * 5 >= 0
+            ):
+                regular_row_boundaries = [
+                    int(round(last_boundary - median_gap * offset))
+                    for offset in range(5, -1, -1)
+                ]
+            else:
+                regular_row_boundaries = None
+    if not regular_row_boundaries:
+        partial_boundaries = detect_regular_dark_lines(
+            row_line_image,
+            "horizontal",
+            5,
+        )
+        if partial_boundaries:
+            gaps = sorted(
+                right - left
+                for left, right in zip(partial_boundaries, partial_boundaries[1:])
+            )
+            row_step = gaps[len(gaps) // 2]
+            if gaps[0] >= row_step * 0.72 and gaps[-1] <= row_step * 1.28:
+                if partial_boundaries[-1] >= height * 0.75:
+                    inferred = partial_boundaries[0] - row_step
+                    if inferred >= 0:
+                        regular_row_boundaries = [inferred, *partial_boundaries]
+                else:
+                    inferred = partial_boundaries[-1] + row_step
+                    if inferred < height:
+                        regular_row_boundaries = [*partial_boundaries, inferred]
+
+    if regular_row_boundaries:
+        row_centers = [
+            (regular_row_boundaries[index] + regular_row_boundaries[index + 1]) / 2
+            for index in range(5)
+        ]
+    elif not row_centers:
         h_lines = [
             line for line in h_lines
             if height * 0.08 <= line <= height * 0.96
@@ -626,21 +803,96 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
             return None
         row_centers = [(best_lines[index] + best_lines[index + 1]) / 2 for index in range(5)]
 
-    regular_row_lines = detect_regular_dark_lines(image, "horizontal", 5)
-    if regular_row_lines:
-        row_step = sum(
-            right - left for left, right in zip(regular_row_lines, regular_row_lines[1:])
-        ) / 4
-        detected_gaps = [right - left for left, right in zip(row_centers, row_centers[1:])]
-        detected_step = sum(detected_gaps) / len(detected_gaps) if detected_gaps else 0
-        if not row_centers or detected_step < row_step * 0.75 or detected_step > row_step * 1.25:
-            row_boundaries = [*regular_row_lines, regular_row_lines[-1] + row_step]
-            row_centers = [
-                (row_boundaries[index] + row_boundaries[index + 1]) / 2
-                for index in range(5)
-            ]
+    # The full grid has one label column followed by five numeric columns.
+    # Detect all seven boundaries, then discard the label column dynamically.
+    full_column_bounds = detect_regular_dark_lines(image, "vertical", 7)
+    numeric_column_bounds = detect_regular_dark_lines(image, "vertical", 6)
+    numeric_matches_full_grid = False
+    if full_column_bounds and numeric_column_bounds:
+        numeric_gaps = [
+            right - left
+            for left, right in zip(numeric_column_bounds, numeric_column_bounds[1:])
+        ]
+        numeric_step = sorted(numeric_gaps)[len(numeric_gaps) // 2]
+        numeric_matches_full_grid = (
+            min(numeric_gaps) >= numeric_step * 0.75
+            and max(numeric_gaps) <= numeric_step * 1.25
+            and all(
+                abs(numeric - full) <= numeric_step * 0.08
+                for numeric, full in zip(
+                    numeric_column_bounds[:-1],
+                    full_column_bounds[1:-1],
+                )
+            )
+        )
+    expanded_column_bounds = detect_regular_dark_lines(image, "vertical", 8)
+    expanded_is_regular = False
+    if expanded_column_bounds:
+        expanded_gaps = [
+            right - left
+            for left, right in zip(expanded_column_bounds, expanded_column_bounds[1:])
+        ]
+        expanded_median = sorted(expanded_gaps)[len(expanded_gaps) // 2]
+        expanded_is_regular = (
+            min(expanded_gaps) >= expanded_median * 0.85
+            and max(expanded_gaps) <= expanded_median * 1.15
+        )
 
-    detected_columns = detect_regular_dark_lines(image, "vertical", 6)
+    expanded_adds_leading_boundary = False
+    if expanded_is_regular and full_column_bounds:
+        expanded_step = sorted(expanded_gaps)[len(expanded_gaps) // 2]
+        expanded_adds_leading_boundary = all(
+            abs(current - expanded) <= expanded_step * 0.08
+            for current, expanded in zip(
+                full_column_bounds,
+                expanded_column_bounds[1:],
+            )
+        )
+
+    if expanded_adds_leading_boundary:
+        # The eighth line belongs to the rating/FAST-LATE area beside the
+        # table. The first seven cover the label column plus five numeric
+        # columns, so discard both outer non-numeric boundaries.
+        detected_columns = expanded_column_bounds[1:7]
+    elif numeric_matches_full_grid:
+        # JPEG recompression may weaken the right table edge enough to confuse
+        # its color score. Six regular lines aligned with the trailing lines of
+        # the full seven-line grid are the five numeric columns directly.
+        detected_columns = numeric_column_bounds
+    else:
+        detected_columns = None
+    if (
+        not numeric_matches_full_grid
+        and not expanded_adds_leading_boundary
+        and full_column_bounds
+    ):
+        rgb = image.convert("RGB")
+        pixels = rgb.load()
+        blue_scores = []
+        for line_x in full_column_bounds:
+            blue_scores.append(sum(
+                _is_table_blue_pixel(*pixels[x, y])
+                for x in range(max(0, line_x - 5), min(width, line_x + 6))
+                for y in range(height)
+            ))
+        reference_scores = sorted(blue_scores[1:-1])
+        reference_score = reference_scores[len(reference_scores) // 2]
+        if blue_scores[-1] < reference_score * 0.45:
+            detected_columns = full_column_bounds[:-1]
+        else:
+            detected_columns = full_column_bounds[1:]
+    elif not numeric_matches_full_grid and not expanded_adds_leading_boundary:
+        detected_columns = numeric_column_bounds
+        if detected_columns and detected_columns[-1] < width * 0.90:
+            gaps = sorted(
+                right - left
+                for left, right in zip(detected_columns, detected_columns[1:])
+            )
+            column_step = gaps[len(gaps) // 2]
+            available = width - detected_columns[-1]
+            if available >= column_step * 0.45:
+                inferred = min(width, detected_columns[-1] + column_step)
+                detected_columns = [*detected_columns[1:], inferred]
     if detected_columns:
         col_bounds = detected_columns
     else:
@@ -713,6 +965,297 @@ def recognize_judgement_row_centers(
     return fitted
 
 
+def recognize_judgement_cells_direct(
+    image: Image.Image,
+    row_centers: list[float],
+    col_bounds: list[int],
+    row_gap: float,
+    output_dir: str | Path | None,
+    engine: PaddleOcrEngine,
+) -> dict[str, dict[str, int]] | None:
+    row_names = ("tap", "hold", "slide", "touch", "break")
+    column_names = ("critical_perfect", "perfect", "great", "good", "miss")
+    output = Path(output_dir) if output_dir is not None else None
+    if output is not None:
+        output.mkdir(parents=True, exist_ok=True)
+
+    crops: list[Image.Image] = []
+    slots: list[tuple[str, str]] = []
+    for row_name, center_y in zip(row_names, row_centers):
+        cell_top = max(0, int(round(center_y - row_gap * 0.40)))
+        cell_bottom = min(image.height, int(round(center_y + row_gap * 0.40)))
+        for index, column_name in enumerate(column_names):
+            cell_width = col_bounds[index + 1] - col_bounds[index]
+            pad_x = max(8, int(cell_width * 0.16))
+            cell_left = max(0, col_bounds[index] + pad_x)
+            cell_right = min(image.width, col_bounds[index + 1] - pad_x)
+            if cell_right <= cell_left or cell_bottom <= cell_top:
+                return None
+            cell = image.crop((cell_left, cell_top, cell_right, cell_bottom))
+            crops.append(cell)
+            slots.append((row_name, column_name))
+            if output is not None:
+                cell.save(output / f"direct_{row_name}_{column_name}.png")
+
+    items = engine.read_cropped_lines(crops)
+    if items is None:
+        return None
+
+    result: dict[str, dict[str, int]] = {row_name: {} for row_name in row_names}
+    for (row_name, column_name), item in zip(slots, items):
+        value = parse_column_int(str(item.get("text", "")))
+        score = float(item.get("score", 0.0))
+        if value is not None and (
+            score >= 0.90
+            or (
+                column_name in {"critical_perfect", "perfect", "great"}
+                and value >= 10
+                and score >= 0.65
+            )
+            or (
+                column_name in {"critical_perfect", "perfect"}
+                and 2 <= value <= 9
+                and score >= 0.60
+            )
+            or (value == 1 and score >= 0.60)
+            or (value == 0 and score >= 0.80)
+        ):
+            result[row_name][column_name] = value
+
+    secondary_images: list[Image.Image] = []
+    secondary_slots: list[tuple[str, str, str]] = []
+    for index, (row_name, column_name) in enumerate(slots):
+        existing_value = result[row_name].get(column_name)
+        crop = crops[index]
+        if column_name in {"critical_perfect", "perfect"}:
+            if existing_value == 0 or (
+                existing_value is not None and crop.height >= 80
+            ):
+                continue
+            secondary_images.append(
+                ImageOps.autocontrast(crop.getchannel("B"), cutoff=1).convert("RGB")
+            )
+            secondary_slots.append((
+                row_name,
+                column_name,
+                "lowres_blue" if existing_value is not None else "blue",
+            ))
+            if crop.height < 80:
+                for left_ratio in (0.0, 0.15):
+                    red_crop = crop.crop((
+                        int(crop.width * left_ratio),
+                        0,
+                        crop.width,
+                        max(1, int(crop.height * 0.90)),
+                    )).getchannel("R")
+                    secondary_images.append(
+                        ImageOps.autocontrast(red_crop, cutoff=1).convert("RGB")
+                    )
+                    secondary_slots.append((row_name, column_name, "small_red"))
+            continue
+        if column_name == "great":
+            if existing_value is not None:
+                continue
+            secondary_images.append(
+                crop.crop((
+                    int(crop.width * 0.12),
+                    0,
+                    crop.width,
+                    max(1, int(crop.height * 0.80)),
+                ))
+            )
+            secondary_slots.append((row_name, column_name, "tight"))
+            great_height_ratio = 0.84 if crop.height < 80 else 0.80
+            for left_ratio in (0.0, 0.15):
+                blue_crop = crop.crop((
+                    int(crop.width * left_ratio),
+                    0,
+                    crop.width,
+                    max(1, int(crop.height * great_height_ratio)),
+                )).getchannel("B")
+                secondary_images.append(
+                    ImageOps.autocontrast(blue_crop, cutoff=1).convert("RGB")
+                )
+                secondary_slots.append((row_name, column_name, "great_blue"))
+            continue
+        if column_name not in {"good", "miss"}:
+            continue
+        if existing_value not in {None, 0}:
+            continue
+
+        grayscale = ImageOps.grayscale(crop)
+        histogram = grayscale.histogram()
+        pixel_count = sum(histogram)
+        intensity_sum = sum(value * count for value, count in enumerate(histogram))
+        background_count = 0
+        background_sum = 0
+        best_variance = -1.0
+        otsu_threshold = 110
+        for threshold, count in enumerate(histogram):
+            background_count += count
+            background_sum += threshold * count
+            foreground_count = pixel_count - background_count
+            if not background_count or not foreground_count:
+                continue
+            background_mean = background_sum / background_count
+            foreground_mean = (intensity_sum - background_sum) / foreground_count
+            variance = (
+                background_count
+                * foreground_count
+                * (background_mean - foreground_mean) ** 2
+            )
+            if variance > best_variance:
+                best_variance = variance
+                otsu_threshold = threshold
+        threshold_base = max(80, min(140, otsu_threshold))
+        threshold = max(
+            40,
+            threshold_base - 20 if otsu_threshold > 160 else threshold_base,
+        )
+        secondary_images.extend([
+            grayscale.point(
+                lambda pixel, limit=threshold: 255 if pixel > limit else 0
+            ).convert("RGB"),
+            ImageOps.autocontrast(grayscale, cutoff=1).convert("RGB"),
+            ImageOps.autocontrast(crop.getchannel("B"), cutoff=1).convert("RGB"),
+        ])
+        secondary_slots.extend([
+            (row_name, column_name, "threshold"),
+            (row_name, column_name, "digit_gray"),
+            (row_name, column_name, "digit_blue"),
+        ])
+
+    secondary_items = engine.read_cropped_lines(secondary_images) if secondary_images else []
+    candidates: dict[tuple[str, str], list[tuple[int, float, str]]] = {}
+    reliable_zeroes: set[tuple[str, str]] = set()
+    if secondary_items is not None:
+        for (row_name, column_name, mode), item in zip(secondary_slots, secondary_items):
+            value = parse_column_int(str(item.get("text", "")))
+            score = float(item.get("score", 0.0))
+            if (
+                value is None
+                and mode == "great_blue"
+                and normalize_text(str(item.get("text", ""))).upper() == "T"
+            ):
+                value = 1
+            if (
+                value == 0
+                and mode in {"digit_gray", "digit_blue"}
+                and score >= 0.80
+            ):
+                reliable_zeroes.add((row_name, column_name))
+            if value is None or value <= 0:
+                continue
+            candidates.setdefault((row_name, column_name), []).append((
+                value,
+                score,
+                mode,
+            ))
+
+    for (row_name, column_name), values in candidates.items():
+        if (row_name, column_name) in reliable_zeroes:
+            result[row_name][column_name] = 0
+            continue
+        blue_candidates = [
+            (value, score)
+            for value, score, mode in values
+            if mode == "blue" and score >= 0.48
+        ]
+        if blue_candidates:
+            result[row_name][column_name] = max(
+                blue_candidates,
+                key=lambda candidate: candidate[1],
+            )[0]
+            continue
+
+        lowres_blue_candidates = [
+            (value, score)
+            for value, score, mode in values
+            if mode == "lowres_blue" and score >= 0.78
+        ]
+        if lowres_blue_candidates:
+            result[row_name][column_name] = max(
+                lowres_blue_candidates,
+                key=lambda candidate: candidate[1],
+            )[0]
+            continue
+
+        small_red_groups: dict[int, list[float]] = {}
+        for value, score, mode in values:
+            if mode == "small_red" and score >= 0.55:
+                small_red_groups.setdefault(value, []).append(score)
+        agreed_small_red = [
+            (value, scores)
+            for value, scores in small_red_groups.items()
+            if len(scores) >= 2
+        ]
+        if agreed_small_red:
+            result[row_name][column_name] = max(
+                agreed_small_red,
+                key=lambda candidate: (len(candidate[1]), max(candidate[1])),
+            )[0]
+            continue
+
+        tight_candidates = [
+            (value, score)
+            for value, score, mode in values
+            if mode == "tight" and score >= 0.48
+        ]
+        if tight_candidates:
+            result[row_name][column_name] = max(
+                tight_candidates,
+                key=lambda candidate: candidate[1],
+            )[0]
+            continue
+
+        great_blue_groups: dict[int, list[float]] = {}
+        for value, score, mode in values:
+            if mode == "great_blue" and score >= 0.25:
+                great_blue_groups.setdefault(value, []).append(score)
+        agreed_great = [
+            (value, scores)
+            for value, scores in great_blue_groups.items()
+            if len(scores) >= 2
+        ]
+        if agreed_great:
+            result[row_name][column_name] = max(
+                agreed_great,
+                key=lambda candidate: (len(candidate[1]), max(candidate[1])),
+            )[0]
+            continue
+
+        isolated_digit_candidates = [
+            (value, score)
+            for value, score, mode in values
+            if mode in {"digit_gray", "digit_blue"} and score >= 0.60
+        ]
+        if isolated_digit_candidates:
+            result[row_name][column_name] = max(
+                isolated_digit_candidates,
+                key=lambda candidate: candidate[1],
+            )[0]
+            continue
+
+        grouped: dict[int, list[float]] = {}
+        for value, score, mode in values:
+            if mode == "threshold" and score >= 0.50:
+                grouped.setdefault(value, []).append(score)
+        if not grouped:
+            continue
+        value, scores = max(
+            grouped.items(),
+            key=lambda item: (len(item[1]), max(item[1])),
+        )
+        if max(scores) >= 0.52:
+            result[row_name][column_name] = value
+
+    return {
+        row_name: values
+        for row_name, values in result.items()
+        if values
+    } or None
+
+
 def recognize_judgement_by_columns(
     table_image_source: str | Path | Image.Image,
     output_dir: str | Path | None,
@@ -764,6 +1307,23 @@ def recognize_judgement_by_columns(
         )
     gaps = [b - a for a, b in zip(row_centers, row_centers[1:])]
     row_gap = sum(gaps) / len(gaps) if gaps else max(44, height / 8)
+    if layout_hint != "dxnet":
+        direct_values = recognize_judgement_cells_direct(
+            image,
+            row_centers,
+            col_bounds,
+            row_gap,
+            output,
+            engine,
+        )
+        if direct_values is not None:
+            direct_result = {
+                row_name: values
+                for row_name, values in direct_values.items()
+                if values and any(int(value or 0) != 0 for value in values.values())
+            }
+            return direct_result or None
+
     top = max(0, int(round(row_centers[0] - row_gap * 0.75)))
     bottom = min(height, int(round(row_centers[-1] + row_gap * 0.75)))
     row_targets = {
@@ -976,11 +1536,15 @@ def process_image_data(
     engine: PaddleOcrEngine,
 ) -> dict[str, Any]:
     """Run the production OCR pipeline entirely in memory."""
+    started_at = time.perf_counter()
     metadata = crop_result_fields_in_memory(source_image)
+    crop_seconds = time.perf_counter() - started_at
     selected_fields = tuple(fields)
     ocr_fields: dict[str, dict[str, Any]] = {}
+    field_seconds: dict[str, float] = {}
 
     for field in selected_fields:
+        field_started_at = time.perf_counter()
         field_meta = metadata["fields"].get(field)
         if not field_meta:
             continue
@@ -999,6 +1563,7 @@ def process_image_data(
                 "text": "",
                 "column_values": column_values,
             }
+            field_seconds[field] = time.perf_counter() - field_started_at
             continue
 
         prepared = prepare_ocr_image_data(field_meta["image"], field)
@@ -1007,6 +1572,18 @@ def process_image_data(
             "items": items,
             "text": joined_text(items),
         }
+        field_seconds[field] = time.perf_counter() - field_started_at
+
+    logger.info(
+        "Score OCR timing: layout=%s crop=%.3fs fields=%s total=%.3fs",
+        metadata.get("layout", "arcade"),
+        crop_seconds,
+        ", ".join(
+            f"{field}={seconds:.3f}s"
+            for field, seconds in field_seconds.items()
+        ),
+        time.perf_counter() - started_at,
+    )
 
     public_metadata = {
         "layout": metadata.get("layout", "arcade"),
@@ -1083,18 +1660,12 @@ def main() -> int:
     parser.add_argument("images", nargs="+", help="Image files or directories.")
     parser.add_argument("-o", "--output-dir", default="data/score_cropper_debug", help="Crop and OCR debug output directory.")
     parser.add_argument("--lang", default="japan", help="PaddleOCR language, for example japan, en, ch.")
-    parser.add_argument(
-        "--model-profile",
-        choices=tuple(OCR_MODEL_PROFILES),
-        default=os.getenv("SCORE_OCR_MODEL_PROFILE", "small"),
-        help="OCR model size; small is the production default.",
-    )
     parser.add_argument("--fields", default=",".join(OCR_FIELDS), help="Comma-separated field names to OCR.")
     parser.add_argument("--pretty", action="store_true", help="Print a compact human-readable summary.")
     args = parser.parse_args()
 
     fields = tuple(item.strip() for item in args.fields.split(",") if item.strip())
-    engine = PaddleOcrEngine(lang=args.lang, model_profile=args.model_profile)
+    engine = PaddleOcrEngine(lang=args.lang)
     results = [process_image(path, args.output_dir, fields, engine) for path in iter_images(args.images)]
 
     if args.pretty:
