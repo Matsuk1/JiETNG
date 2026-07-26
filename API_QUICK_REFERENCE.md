@@ -122,6 +122,26 @@ Response: 200 OK
 `max_results` must be between 1 and 50.
 If `ver` is omitted and `user_id` is provided, the API uses that user's saved server version. If both are omitted, it defaults to `jp`.
 
+## 成绩图识别 Score Recognition
+
+```http
+POST /api/v2/score-recognition
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+
+image=@result.jpg
+ver=jp
+```
+
+仅在识别到完整成绩并匹配到歌曲、谱面时返回 `200`。响应包含：
+
+- `song.id/title/type`
+- `chart.difficulty/level/internal_level`
+- `score.achievement/judgements/break_detail`
+- `validation` 中的标题匹配、行列修正、MISS 修正和 Calc 校验元数据
+
+图片支持 JPEG、PNG、WebP；默认最大 20 MiB、4000 万像素。无法确认完整成绩返回 `422`。
+
 ## 错误响应 Error Responses
 
 ### 400 Bad Request
@@ -172,6 +192,10 @@ If `ver` is omitted and `user_id` is provided, the API uses that user's saved se
 | 201 | Created | POST 创建权限请求成功 |
 | 202 | Accepted | POST 异步任务（数据同步）已接受 |
 | 400 | Bad Request | 参数缺失或无效 |
+| 413 | Payload Too Large | OCR 图片超过上传上限 |
+| 415 | Unsupported Media Type | OCR 图片格式不受支持 |
+| 422 | Unprocessable Content | 无法识别并校验完整成绩 |
+| 429 | Too Many Requests | 请求频率超过限制 |
 | 404 | Not Found | 资源不存在（用户/任务/权限） |
 | 500 | Internal Server Error | 服务器内部错误 |
 | 503 | Service Unavailable | 队列已满 |

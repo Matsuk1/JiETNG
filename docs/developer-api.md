@@ -114,6 +114,110 @@ GET /api/v2/users/<user_id>/export?fmt=json
 GET /api/v2/dxdata?ver=jp
 ```
 
+### 成绩图 OCR
+
+```http
+POST /api/v2/score-recognition
+Authorization: Bearer <developer_token>
+Content-Type: multipart/form-data
+```
+
+请求字段：
+
+| 字段 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `image` | 文件 | 是 | JPEG、PNG 或 WebP 成绩图。默认最大 20 MiB、4000 万像素 |
+| `ver` | 文本 | 否 | `jp` 或 `intl`，默认 `jp`，用于匹配对应服务器的乐曲和谱面 |
+
+该端点同步执行 OCR。只有图片中的曲名、达成率、完整判定表能够匹配并校验到一张谱面时才返回成功；只有主屏、缺少副屏或无法确认歌曲时返回 `422`。
+
+```bash
+curl -X POST https://jietng-endpoint.matsuk1.com/api/v2/score-recognition \
+  -H "Authorization: Bearer <developer_token>" \
+  -F "ver=jp" \
+  -F "image=@result.jpg"
+```
+
+成功响应：
+
+```json
+{
+  "success": true,
+  "song": {
+    "id": "50d3df",
+    "title": "Little \"Sister\" Bitch",
+    "type": "dx"
+  },
+  "chart": {
+    "difficulty": "master",
+    "level": "13+",
+    "internal_level": 13.8
+  },
+  "score": {
+    "achievement": 100.5658,
+    "judgements": {
+      "tap": {"critical_perfect": 403, "perfect": 225, "great": 15, "good": 0, "miss": 1},
+      "hold": {"critical_perfect": 18, "perfect": 7, "great": 0, "good": 0, "miss": 0},
+      "slide": {"critical_perfect": 98, "perfect": 0, "great": 0, "good": 0, "miss": 0},
+      "touch": {"critical_perfect": 66, "perfect": 0, "great": 0, "good": 0, "miss": 0},
+      "break": {"critical_perfect": 20, "perfect": 13, "great": 0, "good": 0, "miss": 0}
+    },
+    "break_detail": {
+      "critical_perfect": 20,
+      "perfect_high": 12,
+      "perfect_low": 1,
+      "great_high": 0,
+      "great_middle": 0,
+      "great_low": 0,
+      "good": 0,
+      "miss": 0,
+      "candidate_count": 1
+    }
+  },
+  "validation": {
+    "title_match_type": "exact",
+    "exact_title_match": true,
+    "compared_rows": 5,
+    "matching_rows": 5,
+    "row_offset": 0,
+    "column_offset": 0,
+    "miss_corrections": {},
+    "achievement_calc": {
+      "observed": 100.5658,
+      "minimum": 100.4749,
+      "maximum": 100.5733,
+      "consistent": true,
+      "complete": true
+    },
+    "calc_corrections": [],
+    "uncertain_cells": []
+  }
+}
+```
+
+字段说明：
+
+- `song.id` 是 dxdata 乐曲 ID；`song.type` 为 `dx` 或 `std`。
+- `chart.internal_level` 是谱面定数，未知时为 `null`。
+- `judgements` 固定包含 `tap`、`hold`、`slide`、`touch`、`break`，每行固定包含五种判定。
+- `break_detail` 是 Flex 判定明细使用的 BREAK 细分结果；无法由达成率唯一推算时为 `{}`。
+- `row_offset`、`column_offset` 表示 OCR 表格经过的行列对齐修正，`0` 表示未移动。
+- `miss_corrections` 记录根据谱面物量把 OCR MISS 从 `ocr` 修正为 `validated` 的行。
+- `achievement_calc` 记录 Calc 可接受区间及 OCR 达成率是否一致。
+- `calc_corrections` 记录 Calc 自动配平或推算的单元格；无修正时为空数组。
+- `uncertain_cells` 记录无法唯一修正的疑似 OCR 单元格；完全确定时为空数组。
+
+识别失败：
+
+```json
+{
+  "error": "Recognition failed",
+  "message": "The image could not be recognized as a complete score result."
+}
+```
+
+服务端通过 `SCORE_RECOGNITION_API_MAX_IMAGE_BYTES` 调整上传上限，单位为字节。OCR 请求按开发者 Token 限流。
+
 `/songs/search` 的版本选择优先级：显式 `ver` > `user_id` 对应用户的服务器版本 > 默认 `jp`。
 
 `command` 可使用用户可输入的 B 系列命令：
@@ -249,6 +353,10 @@ Content-Type: application/json
 | `403` | 没有访问该用户的权限 |
 | `404` | 用户、Token、请求或任务不存在 |
 | `409` | 用户已绑定或状态冲突 |
+| `413` | OCR 图片超过上传上限 |
+| `415` | OCR 图片格式不受支持 |
+| `422` | 图片有效，但无法识别并校验为完整成绩 |
+| `429` | 请求频率超过限制 |
 | `503` | 官方维护或同步队列满 |
 
 ## 与 LINE 命令的差异

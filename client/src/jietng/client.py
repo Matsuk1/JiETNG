@@ -230,6 +230,31 @@ class ImportsResource(_BaseResource):
         return self._client._request("POST", "/import/records", json=dict(payload))
 
 
+class ScoreRecognitionResource(_BaseResource):
+    """maimai result-photo recognition."""
+
+    def recognize(
+        self,
+        image: bytes,
+        ver: str = "jp",
+        filename: str = "score.jpg",
+        timeout: float = 180.0,
+    ) -> dict:
+        """``POST /score-recognition`` with a JPEG, PNG, or WebP image."""
+        if not isinstance(image, (bytes, bytearray, memoryview)) or not image:
+            raise ValueError("image must be non-empty bytes")
+        files = {
+            "image": (filename, bytes(image), "application/octet-stream"),
+        }
+        return self._client._request(
+            "POST",
+            "/score-recognition",
+            data={"ver": ver},
+            files=files,
+            timeout=timeout,
+        )
+
+
 # ============================================================
 # 主 client
 # ============================================================
@@ -277,6 +302,7 @@ class jietngClient:
         self.images = ImagesResource(self)
         self.exports = ExportsResource(self)
         self.imports = ImportsResource(self)
+        self.score_recognition = ScoreRecognitionResource(self)
 
     # ---- context manager ----
 

@@ -39,6 +39,11 @@ with jietngClient(token="your_token") as client:
     # 导出成绩为 JSON / XML，文件名由服务端推荐（含玩家名 + 时间戳）
     path = client.exports.save("U1234567890", fmt="json")
     print("exported to", path)
+
+    # OCR 成绩图；只有完整成绩成功匹配、校验时才返回
+    with open("result.jpg", "rb") as f:
+        result = client.score_recognition.recognize(f.read(), ver="jp")
+    print(result["song"]["id"], result["score"]["achievement"])
 ```
 
 ### 异步
@@ -57,6 +62,10 @@ async def main():
         with open("plate.png", "wb") as f:
             f.write(png)
 
+        with open("result.jpg", "rb") as f:
+            result = await client.score_recognition.recognize(f.read(), ver="jp")
+        print(result["song"]["title"])
+
 asyncio.run(main())
 ```
 
@@ -72,6 +81,7 @@ asyncio.run(main())
 | `client.images` | `user_song / records / plate / achievement` |
 | `client.exports` | `download / save` |
 | `client.imports` | `records` |
+| `client.score_recognition` | `recognize` |
 
 所有方法的形参 / 返回结构与 [JiETNG API 文档](https://jietng.matsuk1.com/developer-api) 一一对应。
 
@@ -99,7 +109,7 @@ except QueueFullError:
 ```
 jietngError                  # 基类
 └─ APIError                  # 任意 HTTP 非 2xx
-   ├─ ValidationError        # 400
+   ├─ ValidationError        # 400 / 413 / 415 / 422
    ├─ AuthenticationError    # 401
    ├─ PermissionDeniedError  # 403
    ├─ NotFoundError          # 404

@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from PIL import Image
+from PIL import UnidentifiedImageError
 
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,16 @@ _ENGINE_LOCK = threading.Lock()
 _OCR_LOCK = threading.Lock()
 _OCR_FIELDS: tuple[str, ...] | None = None
 _PROCESS_IMAGE_DATA: Any | None = None
+SUPPORTED_SCORE_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP"}
+MAX_SCORE_IMAGE_PIXELS = 40_000_000
+
+
+class InvalidScoreImageError(ValueError):
+    """The uploaded data is not a supported, safely sized score image."""
+
+
+class UnsupportedScoreImageError(InvalidScoreImageError):
+    """The uploaded image format is not supported by the OCR API."""
 
 
 def _load_ocr_module() -> tuple[tuple[str, ...], Any, Any]:
@@ -62,8 +73,23 @@ def recognize_score_image_bytes(
     image_bytes: bytes,
     fields: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
-    with Image.open(BytesIO(image_bytes)) as source:
-        image = source.copy()
+    try:
+        with Image.open(BytesIO(image_bytes)) as source:
+            image_format = str(source.format or "").upper()
+            if image_format not in SUPPORTED_SCORE_IMAGE_FORMATS:
+                raise UnsupportedScoreImageError(
+                    "Supported image formats are JPEG, PNG, and WebP"
+                )
+            width, height = source.size
+            if width <= 0 or height <= 0 or width * height > MAX_SCORE_IMAGE_PIXELS:
+                raise InvalidScoreImageError(
+                    f"Image dimensions exceed the {MAX_SCORE_IMAGE_PIXELS}-pixel limit"
+                )
+            image = source.convert("RGB")
+    except UnsupportedScoreImageError:
+        raise
+    except (UnidentifiedImageError, OSError) as exc:
+        raise InvalidScoreImageError("Uploaded data is not a valid image") from exc
 
     # PaddleOCR inference is heavy and may not be thread-safe across concurrent
     # LINE tasks. Serialize access to the shared model instance.

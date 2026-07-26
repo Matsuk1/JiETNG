@@ -56,7 +56,7 @@ class NotFoundError(APIError):
 
 
 class ValidationError(APIError):
-    """400 - 参数缺失或不合法。"""
+    """400/413/415/422 - 请求、图片或识别结果不合法。"""
 
 
 class RateLimitedError(APIError):
@@ -74,6 +74,9 @@ class QueueFullError(APIError):
 # status_code → 异常类
 _STATUS_MAP = {
     400: ValidationError,
+    413: ValidationError,
+    415: ValidationError,
+    422: ValidationError,
     401: AuthenticationError,
     403: PermissionDeniedError,
     404: NotFoundError,

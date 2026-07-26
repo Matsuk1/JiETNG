@@ -177,8 +177,14 @@ from modules.song_matcher import find_matching_songs, normalize_text
 from modules.memory_manager import memory_manager, cleanup_user_caches, cleanup_rate_limiter_tracking
 from modules.i18n import normalize_language, select_text
 from modules.score_result_recognizer import (
+    InvalidScoreImageError,
+    UnsupportedScoreImageError,
     initialize_score_recognizer,
     recognize_score_image_bytes,
+)
+from modules.score_recognition_api import (
+    ScoreRecognitionResultError,
+    build_score_recognition_response,
 )
 
 # Module aliases for specific use cases
@@ -198,6 +204,9 @@ TASK_TIMEOUT_SECONDS = 120
 # 搜索结果限制
 MAX_SEARCH_RESULTS = 10
 API_MAX_SEARCH_RESULTS = 50
+SCORE_RECOGNITION_API_MAX_IMAGE_BYTES = int(
+    os.getenv("SCORE_RECOGNITION_API_MAX_IMAGE_BYTES", 20 * 1024 * 1024)
+)
 
 # ==================== 日志配置 ====================
 
@@ -8677,6 +8686,113 @@ def api_revoke_user_permission(user_id, token_id):
         return jsonify({
             "error": "Internal server error",
             "message": str(e)
+        }), 500
+
+
+# ==================== Score Recognition API ====================
+
+@app.route("/api/v2/score-recognition", methods=["POST"])
+@csrf.exempt
+@require_dev_token
+def api_v2_score_recognition():
+    """Recognize and validate a complete maimai result photo."""
+    token_info = request.token_info
+    token_id = token_info["token_id"]
+    if check_rate_limit(token_id, "api_score_recognition"):
+        return jsonify({
+            "error": "Rate limited",
+            "message": "Too many score recognition requests. Please retry later.",
+        }), 429
+
+    multipart_overhead = 1024 * 1024
+    if (
+        request.content_length is not None
+        and request.content_length
+        > SCORE_RECOGNITION_API_MAX_IMAGE_BYTES + multipart_overhead
+    ):
+        return jsonify({
+            "error": "Payload too large",
+            "message": (
+                "Image exceeds the configured upload limit of "
+                f"{SCORE_RECOGNITION_API_MAX_IMAGE_BYTES} bytes"
+            ),
+        }), 413
+
+    ver = str(request.form.get("ver") or request.args.get("ver") or "jp").strip().lower()
+    if ver not in {"jp", "intl"}:
+        return jsonify({
+            "error": "Invalid parameter",
+            "message": "Parameter 'ver' must be 'jp' or 'intl'",
+        }), 400
+
+    uploaded = request.files.get("image")
+    if uploaded is None:
+        return jsonify({
+            "error": "Missing parameter",
+            "message": "Multipart image field 'image' is required",
+        }), 400
+
+    image_bytes = uploaded.stream.read(SCORE_RECOGNITION_API_MAX_IMAGE_BYTES + 1)
+    if not image_bytes:
+        return jsonify({
+            "error": "Invalid image",
+            "message": "Uploaded image is empty",
+        }), 400
+    if len(image_bytes) > SCORE_RECOGNITION_API_MAX_IMAGE_BYTES:
+        return jsonify({
+            "error": "Payload too large",
+            "message": (
+                "Image exceeds the configured upload limit of "
+                f"{SCORE_RECOGNITION_API_MAX_IMAGE_BYTES} bytes"
+            ),
+        }), 413
+
+    started_at = time.perf_counter()
+    try:
+        result = recognize_score_image_bytes(image_bytes)
+        result = _validate_recognized_judgement(result, ver=ver)
+        response = build_score_recognition_response(result)
+        logger.info(
+            "[API] Score recognition completed: token_id=%s ver=%s song_id=%s elapsed=%.3fs",
+            token_id,
+            ver,
+            response["song"]["id"],
+            time.perf_counter() - started_at,
+        )
+        return jsonify(response)
+    except UnsupportedScoreImageError as exc:
+        return jsonify({
+            "error": "Unsupported media type",
+            "message": str(exc),
+        }), 415
+    except InvalidScoreImageError as exc:
+        return jsonify({
+            "error": "Invalid image",
+            "message": str(exc),
+        }), 400
+    except (ScoreRecognitionResultError, ValueError) as exc:
+        logger.info(
+            "[API] Score recognition rejected: token_id=%s ver=%s reason=%s elapsed=%.3fs",
+            token_id,
+            ver,
+            exc,
+            time.perf_counter() - started_at,
+        )
+        return jsonify({
+            "error": "Recognition failed",
+            "message": "The image could not be recognized as a complete score result.",
+        }), 422
+    except Exception:
+        logger.error(
+            "[API] Score recognition failed: token_id=%s ver=%s elapsed=%.3fs",
+            token_id,
+            ver,
+            time.perf_counter() - started_at,
+            exc_info=True,
+        )
+        return jsonify({
+            "error": "Internal server error",
+            "message": "Score recognition failed due to an internal error.",
         }), 500
 
 

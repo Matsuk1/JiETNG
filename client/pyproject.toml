@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jietng"
-version = "0.2.0"
+version = "0.3.0"
 description = "Python SDK for the JiETNG maimai DX (舞萌DX) score management API."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 authors = [{ name = "Matsuki", email = "matsuk1@proton.me" }]
 requires-python = ">=3.8"
 dependencies = ["httpx>=0.25"]
@@ -19,7 +19,6 @@ keywords = [
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",

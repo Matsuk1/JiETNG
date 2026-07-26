@@ -89,6 +89,72 @@ GET /api/v2/users/<user_id>/export?fmt=json
 GET /api/v2/dxdata?ver=jp
 ```
 
+### リザルト画像 OCR
+
+```http
+POST /api/v2/score-recognition
+Authorization: Bearer <developer_token>
+Content-Type: multipart/form-data
+```
+
+multipart フィールド：
+
+| フィールド | 型 | 必須 | 説明 |
+|------------|----|------|------|
+| `image` | file | はい | JPEG、PNG、WebP。既定の上限は 20 MiB、4000 万画素 |
+| `ver` | text | いいえ | `jp` または `intl`。既定は `jp` |
+
+OCR は同期実行されます。曲名、達成率、完全な判定表を 1 つの譜面に照合して検証できた場合だけ成功します。メイン画面のみ、副画面が不完全、楽曲を特定できない場合は `422` を返します。
+
+```bash
+curl -X POST https://jietng-endpoint.matsuk1.com/api/v2/score-recognition \
+  -H "Authorization: Bearer <developer_token>" \
+  -F "ver=jp" \
+  -F "image=@result.jpg"
+```
+
+成功 JSON の構造：
+
+- `song`：dxdata の `id`、正式な `title`、`type`（`dx` / `std`）。
+- `chart`：`difficulty`、表示レベル `level`、譜面定数 `internal_level`。
+- `score.achievement`：達成率。
+- `score.judgements`：`tap`、`hold`、`slide`、`touch`、`break`。各行は `critical_perfect`、`perfect`、`great`、`good`、`miss` を必ず含みます。
+- `score.break_detail`：Flex で使う BREAK 詳細判定。一意に推定できない場合は `{}`。
+- `validation`：曲名一致方式、行列補正、MISS 補正、Calc 検証・補正、不確実な OCR セル。
+
+```json
+{
+  "success": true,
+  "song": {"id": "50d3df", "title": "Little \"Sister\" Bitch", "type": "dx"},
+  "chart": {"difficulty": "master", "level": "13+", "internal_level": 13.8},
+  "score": {
+    "achievement": 100.5658,
+    "judgements": {
+      "tap": {"critical_perfect": 403, "perfect": 225, "great": 15, "good": 0, "miss": 1},
+      "hold": {"critical_perfect": 18, "perfect": 7, "great": 0, "good": 0, "miss": 0},
+      "slide": {"critical_perfect": 98, "perfect": 0, "great": 0, "good": 0, "miss": 0},
+      "touch": {"critical_perfect": 66, "perfect": 0, "great": 0, "good": 0, "miss": 0},
+      "break": {"critical_perfect": 20, "perfect": 13, "great": 0, "good": 0, "miss": 0}
+    },
+    "break_detail": {"critical_perfect": 20, "perfect_high": 12, "perfect_low": 1, "great_high": 0, "great_middle": 0, "great_low": 0, "good": 0, "miss": 0, "candidate_count": 1}
+  },
+  "validation": {
+    "title_match_type": "exact",
+    "exact_title_match": true,
+    "compared_rows": 5,
+    "matching_rows": 5,
+    "row_offset": 0,
+    "column_offset": 0,
+    "miss_corrections": {},
+    "achievement_calc": {"observed": 100.5658, "minimum": 100.4749, "maximum": 100.5733, "consistent": true, "complete": true},
+    "calc_corrections": [],
+    "uncertain_cells": []
+  }
+}
+```
+
+アップロード上限は `SCORE_RECOGNITION_API_MAX_IMAGE_BYTES` で変更できます。開発者 Token ごとにレート制限されます。
+
 `/songs/search` のバージョン選択は、明示された `ver`、`user_id` に保存されたサーバー、既定の `jp` の順です。
 
 `command` はユーザーが入力できる B 系コマンドを受け付けます。
@@ -216,6 +282,10 @@ Content-Type: application/json
 | `403` | 権限なし |
 | `404` | ユーザー、Token、リクエスト、タスクがない |
 | `409` | 連携状態の衝突 |
+| `413` | OCR 画像がアップロード上限を超えた |
+| `415` | OCR 画像形式が未対応 |
+| `422` | 完全な成績として認識・検証できない画像 |
+| `429` | レート制限 |
 | `503` | 公式メンテナンスまたは同期キュー満杯 |
 
 ## 安全上の注意

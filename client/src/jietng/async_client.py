@@ -175,6 +175,30 @@ class AsyncImportsResource(_BaseAsyncResource):
         return await self._client._request("POST", "/import/records", json=dict(payload))
 
 
+class AsyncScoreRecognitionResource(_BaseAsyncResource):
+    """maimai result-photo recognition."""
+
+    async def recognize(
+        self,
+        image: bytes,
+        ver: str = "jp",
+        filename: str = "score.jpg",
+        timeout: float = 180.0,
+    ) -> dict:
+        if not isinstance(image, (bytes, bytearray, memoryview)) or not image:
+            raise ValueError("image must be non-empty bytes")
+        files = {
+            "image": (filename, bytes(image), "application/octet-stream"),
+        }
+        return await self._client._request(
+            "POST",
+            "/score-recognition",
+            data={"ver": ver},
+            files=files,
+            timeout=timeout,
+        )
+
+
 # ============================================================
 # 主 async client
 # ============================================================
@@ -223,6 +247,7 @@ class AsyncjietngClient:
         self.images = AsyncImagesResource(self)
         self.exports = AsyncExportsResource(self)
         self.imports = AsyncImportsResource(self)
+        self.score_recognition = AsyncScoreRecognitionResource(self)
 
     async def __aenter__(self) -> "AsyncjietngClient":
         return self
