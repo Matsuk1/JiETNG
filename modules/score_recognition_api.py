@@ -22,6 +22,7 @@ BREAK_DETAIL_FIELDS = (
     "good",
     "miss",
     "candidate_count",
+    "row_candidate_count",
 )
 CALC_CORRECTION_FIELDS = (
     "row",

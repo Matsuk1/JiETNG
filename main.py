@@ -4662,6 +4662,7 @@ def _infer_missing_break_judgement(notes, judgement, achievement):
         return None
 
     value_names = ("critical_perfect", "perfect", "great", "good", "miss")
+    reference_counts = {name: 0 for name in value_names}
     for row_name in ("tap", "hold", "slide", "touch"):
         try:
             expected = max(0, int(notes.get(row_name, 0)))
@@ -4678,6 +4679,27 @@ def _infer_missing_break_judgement(notes, judgement, achievement):
             return None
         if observed != expected:
             return None
+        for name in value_names:
+            reference_counts[name] += max(0, int(row.get(name, 0)))
+
+    reference_total = sum(reference_counts.values())
+    smoothing = 1.0
+    reference_probabilities = {
+        name: (reference_counts[name] + smoothing)
+        / (reference_total + smoothing * len(value_names))
+        for name in value_names
+    }
+
+    def distribution_penalty(row):
+        counts = [max(0, int(row.get(name, 0))) for name in value_names]
+        total = sum(counts)
+        log_probability = math.lgamma(total + 1)
+        log_probability -= sum(math.lgamma(count + 1) for count in counts)
+        log_probability += sum(
+            count * math.log(reference_probabilities[name])
+            for name, count in zip(value_names, counts)
+        )
+        return -log_probability
 
     all_cp_row = {
         "critical_perfect": break_count,
@@ -4721,8 +4743,7 @@ def _infer_missing_break_judgement(notes, judgement, achievement):
     # This loose bound only prunes impossible counts. Every retained row is
     # checked with the same rounded Calc function used by final validation.
     prune_tolerance = 0.003
-    best_candidate = None
-    candidate_count = 0
+    candidates = []
     iteration_count = 0
     for miss in range(break_count + 1):
         miss_deduction = miss * miss_score
@@ -4779,24 +4800,37 @@ def _infer_missing_break_judgement(notes, judgement, achievement):
                         "row": row,
                         "score_range": score_range,
                         "rank": (
-                            miss,
-                            good,
-                            great,
-                            -perfect,
+                            distribution_penalty(row),
                             abs(float(achievement) - midpoint),
                             float(score_range["maximum"]) - float(score_range["minimum"]),
+                            miss,
+                            good,
                         ),
                     }
-                    candidate_count += 1
-                    if best_candidate is None or candidate["rank"] < best_candidate["rank"]:
-                        best_candidate = candidate
+                    candidates.append(candidate)
 
-    if best_candidate is None:
+    if not candidates:
         return None
+    exact_candidates = []
+    for candidate in sorted(candidates, key=lambda item: item["rank"]):
+        candidate_judgement = dict(judgement)
+        candidate_judgement["break"] = candidate["row"]
+        detail = _infer_break_judgement_detail(
+            notes,
+            candidate_judgement,
+            achievement,
+        )
+        if detail:
+            candidate["break_detail"] = detail
+            exact_candidates.append(candidate)
+    if not exact_candidates:
+        return None
+    best_candidate = exact_candidates[0]
     return {
         "row": best_candidate["row"],
         "score_range": best_candidate["score_range"],
-        "candidate_count": candidate_count,
+        "candidate_count": len(exact_candidates),
+        "break_detail": best_candidate["break_detail"],
     }
 
 
@@ -4914,6 +4948,174 @@ def _validate_recognized_judgement(
     row_names = ("tap", "hold", "slide", "touch", "break")
     value_names = ("critical_perfect", "perfect", "great", "good")
     all_value_names = (*value_names, "miss")
+
+    def repair_overfull_normal_row(row_name, source_row, source_rows, note_counts):
+        """Recover a JPEG-damaged normal row using chart totals and Calc."""
+        if row_name == "break":
+            return None
+        try:
+            expected = max(0, int(note_counts.get(row_name, 0) or 0))
+            original = {
+                name: max(0, int(source_row.get(name, 0) or 0))
+                for name in all_value_names
+            }
+        except (TypeError, ValueError):
+            return None
+        if expected <= 0 or sum(original[name] for name in value_names) <= expected:
+            return None
+
+        # JPEG artifacts sometimes prepend grid fragments to a value (16 ->
+        # 1016). Keep plausible numeric suffixes as repair starting points.
+        bases = [original]
+        for field_name in value_names:
+            current = original[field_name]
+            digits = str(current)
+            if current <= expected or len(digits) < 4:
+                continue
+            for length in range(1, min(3, len(digits) - 1) + 1):
+                suffix = int(digits[-length:])
+                if suffix <= expected and suffix != current:
+                    candidate = dict(original)
+                    candidate[field_name] = suffix
+                    bases.append(candidate)
+
+        row_candidates = {}
+        for base in bases:
+            known = sum(base[name] for name in value_names)
+            if known <= expected:
+                candidate = dict(base)
+                candidate["miss"] = expected - known
+                row_candidates[tuple(candidate[name] for name in all_value_names)] = candidate
+            if known < expected:
+                continue
+            for field_name in value_names:
+                other_total = sum(
+                    base[name] for name in value_names if name != field_name
+                )
+                replacement = expected - other_total
+                if 0 <= replacement < base[field_name]:
+                    candidate = dict(base)
+                    candidate[field_name] = replacement
+                    candidate["miss"] = 0
+                    row_candidates[tuple(candidate[name] for name in all_value_names)] = candidate
+
+        if not row_candidates:
+            return None
+
+        reference_counts = {name: 0 for name in all_value_names}
+        for other_name, other_row in source_rows.items():
+            if other_name == row_name or not isinstance(other_row, dict):
+                continue
+            try:
+                other_expected = max(0, int(note_counts.get(other_name, 0) or 0))
+                normalized = {
+                    name: max(0, int(other_row.get(name, 0) or 0))
+                    for name in all_value_names
+                }
+            except (TypeError, ValueError):
+                continue
+            other_known = sum(normalized[name] for name in value_names)
+            if other_expected <= 0 or other_known > other_expected:
+                continue
+            normalized["miss"] = other_expected - other_known
+            for name in all_value_names:
+                reference_counts[name] += normalized[name]
+
+        reference_total = sum(reference_counts.values())
+        probabilities = {
+            name: (reference_counts[name] + 1.0)
+            / (reference_total + len(all_value_names))
+            for name in all_value_names
+        }
+
+        def distribution_penalty(candidate):
+            counts = [candidate[name] for name in all_value_names]
+            total = sum(counts)
+            log_probability = math.lgamma(total + 1)
+            log_probability -= sum(math.lgamma(count + 1) for count in counts)
+            log_probability += sum(
+                count * math.log(probabilities[name])
+                for name, count in zip(all_value_names, counts)
+            )
+            return -log_probability
+
+        def calc_distance(candidate):
+            tentative = {}
+            for other_name, other_row in source_rows.items():
+                if not isinstance(other_row, dict):
+                    continue
+                try:
+                    other_expected = max(0, int(note_counts.get(other_name, 0) or 0))
+                    normalized = {
+                        name: max(0, int(other_row.get(name, 0) or 0))
+                        for name in all_value_names
+                    }
+                except (TypeError, ValueError):
+                    return float("inf")
+                if other_name == row_name:
+                    normalized = dict(candidate)
+                else:
+                    missing_fields = [
+                        name for name in all_value_names if name not in other_row
+                    ]
+                    if len(missing_fields) == 1:
+                        observed = sum(
+                            normalized[name]
+                            for name in all_value_names
+                            if name != missing_fields[0]
+                        )
+                        inferred = other_expected - observed
+                        if inferred >= 0:
+                            normalized[missing_fields[0]] = inferred
+                    other_known = sum(normalized[name] for name in value_names)
+                    if other_known > other_expected:
+                        return float("inf")
+                    normalized["miss"] = other_expected - other_known
+                tentative[other_name] = normalized
+            score_range = calc_judgement_achievement_range(
+                {
+                    name: max(0, int(note_counts.get(name, 0) or 0))
+                    for name in row_names
+                },
+                tentative,
+            )
+            distance = _calc_achievement_distance(achievement, score_range)
+            return float("inf") if distance is None else distance
+
+        ranked = sorted(
+            row_candidates.values(),
+            key=lambda candidate: (
+                calc_distance(candidate),
+                sum(candidate[name] != original[name] for name in all_value_names),
+                sum(
+                    {
+                        "critical_perfect": 4,
+                        "perfect": 3,
+                        "great": 2,
+                        "good": 1,
+                        "miss": 1,
+                    }[name]
+                    for name in all_value_names
+                    if candidate[name] != original[name]
+                ),
+                sum(abs(candidate[name] - original[name]) for name in all_value_names),
+                distribution_penalty(candidate),
+            ),
+        )
+        repaired = ranked[0]
+        corrections = [
+            {
+                "row": row_name,
+                "field": name,
+                "ocr": original[name],
+                "validated": repaired[name],
+                "overfull_repair": True,
+            }
+            for name in value_names
+            if repaired[name] != original[name]
+        ]
+        return repaired, corrections
+
     source_row_count = sum(
         1 for row in judgement.values()
         if isinstance(row, dict) and (
@@ -4947,6 +5149,8 @@ def _validate_recognized_judgement(
                 for column_offset in column_offsets:
                     aligned = {}
                     dropped_cells = 0
+                    ignored_impossible_rows = []
+                    inferred_single_cells = []
                     valid = True
                     for row_name, row in row_aligned.items():
                         shifted_row = {name: 0 for name in all_value_names}
@@ -4961,6 +5165,31 @@ def _validate_recognized_judgement(
                         except (TypeError, ValueError):
                             valid = False
                             break
+                        missing_fields = [
+                            name for name in all_value_names
+                            if name not in row
+                        ]
+                        if (
+                            title_match_type == "exact"
+                            and row_offset == 0
+                            and column_offset == 0
+                            and len(missing_fields) == 1
+                        ):
+                            expected = max(0, int(note_counts.get(row_name, 0) or 0))
+                            observed = sum(
+                                max(0, int(row.get(name, 0) or 0))
+                                for name in all_value_names
+                                if name in row
+                            )
+                            inferred = expected - observed
+                            if inferred >= 0:
+                                field_name = missing_fields[0]
+                                shifted_row[field_name] = inferred
+                                inferred_single_cells.append({
+                                    "row": row_name,
+                                    "field": field_name,
+                                    "validated": inferred,
+                                })
                         aligned[row_name] = shifted_row
                     if not valid:
                         continue
@@ -4969,7 +5198,7 @@ def _validate_recognized_judgement(
                     compared_rows = 0
                     matching_rows = 0
                     total_delta = 0
-                    for row_name, row in aligned.items():
+                    for row_name, row in list(aligned.items()):
                         expected = note_counts.get(row_name)
                         if expected is None:
                             expected = 0
@@ -4981,6 +5210,48 @@ def _validate_recognized_judgement(
                             valid = False
                             break
                         if known > expected:
+                            repaired_field = None
+                            if (
+                                not preserve_input
+                                and title_match_type == "exact"
+                                and row_offset == 0
+                                and column_offset == 0
+                            ):
+                                repair = repair_overfull_normal_row(
+                                    row_name,
+                                    row,
+                                    row_aligned,
+                                    note_counts,
+                                )
+                                if repair:
+                                    repaired_row, row_corrections = repair
+                                    row.update(repaired_row)
+                                    known = sum(
+                                        max(0, int(row.get(name, 0)))
+                                        for name in value_names
+                                    )
+                                    repaired_field = row_name
+                                    inferred_single_cells.extend(row_corrections)
+                            if repaired_field is not None and known <= expected:
+                                calculated_miss = expected - known
+                                predicted_miss[row_name] = calculated_miss
+                                compared_rows += 1
+                                total_delta += abs(calculated_miss - observed_miss)
+                                if calculated_miss == observed_miss:
+                                    matching_rows += 1
+                                continue
+                            if (
+                                allow_ocr_alignment
+                                and not preserve_input
+                                and title_match_type == "exact"
+                                and row_offset == 0
+                                and column_offset == 0
+                                and row_name == "break"
+                                and len(aligned) >= 5
+                            ):
+                                ignored_impossible_rows.append(row_name)
+                                del aligned[row_name]
+                                continue
                             valid = False
                             break
                         calculated_miss = expected - known
@@ -5016,7 +5287,27 @@ def _validate_recognized_judgement(
                             "row_offset": row_offset,
                             "column_offset": column_offset,
                             "dropped_rows": source_row_count - len(aligned),
+                            "unexpected_dropped_rows": max(
+                                0,
+                                source_row_count
+                                - len(aligned)
+                                - len(ignored_impossible_rows),
+                            ),
                             "dropped_cells": dropped_cells,
+                            "ignored_impossible_rows": ignored_impossible_rows,
+                            "inferred_single_cells": inferred_single_cells,
+                            "overfull_repair_count": sum(
+                                bool(item.get("overfull_repair"))
+                                for item in inferred_single_cells
+                            ),
+                            "overfull_repair_delta": sum(
+                                abs(
+                                    int(item.get("validated", 0) or 0)
+                                    - int(item.get("ocr", 0) or 0)
+                                )
+                                for item in inferred_single_cells
+                                if item.get("overfull_repair")
+                            ),
                             "miss": predicted_miss,
                             "compared_rows": compared_rows,
                             "matching_rows": matching_rows,
@@ -5029,17 +5320,41 @@ def _validate_recognized_judgement(
     if not candidates:
         return result
     candidates.sort(key=lambda item: (
-        item["dropped_rows"],
-        item["achievement_distance"] if item["achievement_distance"] is not None else 0,
+        item["unexpected_dropped_rows"],
         -item["matching_rows"],
         item["compared_rows"] - item["matching_rows"],
         item["delta"],
+        0 if (
+            title_match_type == "exact"
+            and item["row_offset"] == 0
+            and item["column_offset"] == 0
+            and item["ignored_impossible_rows"] == ["break"]
+        ) else 1,
+        item["achievement_distance"] if item["achievement_distance"] is not None else 0,
+        item["overfull_repair_count"],
+        item["overfull_repair_delta"],
         item["dropped_cells"],
         abs(item["row_offset"]),
         abs(item["column_offset"]),
     ))
     best = candidates[0]
+    unshifted_chart_keys = {
+        (
+            str(item["song"].get("id") or ""),
+            str(item["song"].get("type") or ""),
+            str(item["sheet"].get("difficulty") or ""),
+        )
+        for item in candidates
+        if item["row_offset"] == 0 and item["column_offset"] == 0
+    }
     minimum_matching_rows = max(2, best["compared_rows"] - 2)
+    exact_unique_unshifted_match = (
+        title_match_type == "exact"
+        and best["row_offset"] == 0
+        and best["column_offset"] == 0
+        and best["compared_rows"] >= 4
+        and len(unshifted_chart_keys) == 1
+    )
     exact_unshifted_match = (
         title_match_type in {"exact", "blank", "ocr_embedded"}
         and best["row_offset"] == 0
@@ -5050,11 +5365,12 @@ def _validate_recognized_judgement(
     if (
         best["matching_rows"] < minimum_matching_rows
         and not exact_unshifted_match
+        and not exact_unique_unshifted_match
     ):
         return result
     if best["row_offset"] != 0 and best["matching_rows"] < 3:
         return result
-    if len(candidates) > 1:
+    if len(candidates) > 1 and not exact_unique_unshifted_match:
         second = candidates[1]
         if (
             second["matching_rows"] == best["matching_rows"]
@@ -5092,7 +5408,10 @@ def _validate_recognized_judgement(
     achievement_distance = best["achievement_distance"]
     achievement_range = best["achievement_range"]
     calc_uncertainties = []
-    calc_corrections = []
+    calc_corrections = [
+        {**item, "ocr": item.get("ocr"), "single_missing_cell": True}
+        for item in best.get("inferred_single_cells", [])
+    ]
     break_inference = None
     if not preserve_input:
         break_inference = _infer_missing_break_judgement(
@@ -5166,11 +5485,17 @@ def _validate_recognized_judgement(
                     "miss_max": None,
                     "row_missing": True,
                 })
-    break_detail = _infer_break_judgement_detail(
-        best["notes"],
-        judgement,
-        achievement,
+    break_detail = (
+        break_inference.get("break_detail")
+        if break_inference
+        else _infer_break_judgement_detail(
+            best["notes"],
+            judgement,
+            achievement,
+        )
     )
+    if break_detail and break_inference:
+        break_detail["row_candidate_count"] = break_inference["candidate_count"]
     canonical_title = song.get("title")
     parsed["title"] = canonical_title if canonical_title is not None else title
     result["validation"] = {
@@ -5383,17 +5708,12 @@ def _handle_recognize_command(event, cleaned_text: str) -> bool:
         ver = get_user_field(user_id, "version", "jp") or "jp"
         if base_command in {"rec", "recordrec", "rcdrec"}:
             result = _validate_recognized_judgement(result, ver=ver)
-            if (result.get("validation") or {}).get("song_id"):
-                reply_messages = [
-                    generate_score_recognition_flex(
-                        result,
-                        user_id,
-                    )
-                ]
-            else:
-                reply_messages = [
-                    _recognized_song_info_message(result, user_id, ver)
-                ]
+            reply_messages = [
+                generate_score_recognition_flex(
+                    result,
+                    user_id,
+                )
+            ]
         else:
             reply_messages = [
                 _recognized_song_info_message(result, user_id, ver)
@@ -5572,9 +5892,9 @@ COMMAND_HELP = {
         "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 楽曲情報、譜面情報、BPM を表示します。\n参数: 必須: <曲名>。info / song-info の前に置き、正式名・部分一致・別名を指定できます。\n検索: 複数候補がある場合は選択候補を返します。\n示例: ヒバナ info\nヒバナってどんな曲",
     ),
     "score_recognition": _help_text(
-        "命令: songrec\nrec\nrecordrec\nrcdrec\nfix-rcd <曲名>\n说明: songrec 识别曲名并返回歌曲信息；rec、recordrec、rcdrec 均识别完整成绩；fix-rcd 手动修正判定数据。\n参数: 所有识别命令都必须回复一张成绩图，不接受其他参数。\n回退: 完整识别无法取得或校验副屏判定表时，自动返回与 songrec 相同的歌曲信息。\nfix-rcd: 第一行填写不含 [DX]/[STD] 的曲名，第二行填写达成率，随后依次填写 TAP、HOLD、SLIDE、TOUCH、BREAK。\n格式: 达成率可带 %；判定行必须为 CP/PF/GR/GD/MS 五个非负整数。\n示例: fix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
-        "命令: songrec\nrec\nrecordrec\nrcdrec\nfix-rcd <title>\n说明: songrec reads the title and returns song information; rec, recordrec, and rcdrec all recognize the full score; fix-rcd manually corrects judgements.\n参数: Every recognition command requires replying to a score image and accepts no other arguments.\nFallback: if the judgement table cannot be read or validated, full recognition returns the same song information as songrec.\nfix-rcd: put the title without [DX]/[STD] on line 1, achievement on line 2, then TAP, HOLD, SLIDE, TOUCH, and BREAK.\nFormat: achievement may include %; judgement rows must contain five non-negative integers as CP/PF/GR/GD/MS.\n示例: fix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
-        "命令: songrec\nrec\nrecordrec\nrcdrec\nfix-rcd <曲名>\n说明: songrec は曲名を認識して楽曲情報を返します。rec、recordrec、rcdrec はすべてリザルト全体を認識し、fix-rcd は判定を手動修正します。\n参数: すべての認識コマンドはリザルト画像への返信が必須で、追加引数は使用できません。\nフォールバック: 判定表を取得または検証できない場合、完全認識は songrec と同じ楽曲情報を返します。\nfix-rcd: 1 行目に [DX]/[STD] を含まない曲名、2 行目に達成率、その後に TAP、HOLD、SLIDE、TOUCH、BREAK を記述します。\n形式: 達成率の % は任意です。判定行は CP/PF/GR/GD/MS の非負整数 5 個です。\n示例: fix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
+        "命令: songrec\nrec\nrecordrec\nrcdrec\nfix-rcd <曲名>\n说明: songrec 识别曲名并返回歌曲信息；rec、recordrec、rcdrec 均识别完整成绩；fix-rcd 手动修正判定数据。\n参数: 所有识别命令都必须回复一张成绩图，不接受其他参数。\nfix-rcd: 第一行填写不含 [DX]/[STD] 的曲名，第二行填写达成率，随后依次填写 TAP、HOLD、SLIDE、TOUCH、BREAK。\n格式: 达成率可带 %；判定行必须为 CP/PF/GR/GD/MS 五个非负整数。\n示例: fix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
+        "命令: songrec\nrec\nrecordrec\nrcdrec\nfix-rcd <title>\n说明: songrec reads the title and returns song information; rec, recordrec, and rcdrec all recognize the full score; fix-rcd manually corrects judgements.\n参数: Every recognition command requires replying to a score image and accepts no other arguments.\nfix-rcd: put the title without [DX]/[STD] on line 1, achievement on line 2, then TAP, HOLD, SLIDE, TOUCH, and BREAK.\nFormat: achievement may include %; judgement rows must contain five non-negative integers as CP/PF/GR/GD/MS.\n示例: fix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
+        "命令: songrec\nrec\nrecordrec\nrcdrec\nfix-rcd <曲名>\n说明: songrec は曲名を認識して楽曲情報を返します。rec、recordrec、rcdrec はすべてリザルト全体を認識し、fix-rcd は判定を手動修正します。\n参数: すべての認識コマンドはリザルト画像への返信が必須で、追加引数は使用できません。\nfix-rcd: 1 行目に [DX]/[STD] を含まない曲名、2 行目に達成率、その後に TAP、HOLD、SLIDE、TOUCH、BREAK を記述します。\n形式: 達成率の % は任意です。判定行は CP/PF/GR/GD/MS の非負整数 5 個です。\n示例: fix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
     ),
     "plate": _help_text(
         "命令: <牌子名> achievement [-uc|-up|-c] / <牌子名>の達成状況\n说明: 查看版本牌子或称号类目标的完成情况。\n参数: 必填: <牌子名>，写在 achievement 前面，例如 真極、檄将 等。\n可选: -uc 仅看未完成项目，-up 仅看未游玩项目，-c 仅看已完成项目。\n格式: 过滤项写在命令最后；不写过滤项时显示完整完成度。\n示例: 真極 achievement\n真極 achievement -uc",

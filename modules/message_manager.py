@@ -1267,6 +1267,11 @@ def generate_score_recognition_flex(result, user_id=None):
             "en": "Calc inference: most likely of {count} candidates",
             "ja": "Calc 推定：{count} 件の候補から最も可能性の高い組み合わせ",
         },
+        "break_row_source_multiple": {
+            "zh": "BREAK 整行有 {count} 个 Calc 候选；下方为当前候选的细分",
+            "en": "The BREAK row has {count} Calc candidates; details below are for the current candidate",
+            "ja": "BREAK 行には Calc 候補が {count} 件あります。以下は現在の候補の内訳です",
+        },
         "empty": {
             "zh": "未能识别判定明细。",
             "en": "No judgement details were recognized.",
@@ -1309,14 +1314,19 @@ def generate_score_recognition_flex(result, user_id=None):
         },
         "manual_fix": {"zh": "手动修正", "en": "Manual Correction", "ja": "手動修正"},
         "manual_fix_hint": {
-            "zh": "复制命令，修改达成率或错误数字后直接发送。五行依次为 TAP、HOLD、SLIDE、TOUCH、BREAK。",
-            "en": "Copy the command, edit the achievement or incorrect values, and send it. Rows are TAP, HOLD, SLIDE, TOUCH, and BREAK.",
-            "ja": "コマンドをコピーし、達成率または誤った数値を修正して送信してください。行順は TAP、HOLD、SLIDE、TOUCH、BREAK です。",
+            "zh": "复制命令，修改达成率或错误数字后发送。五行依次为 TAP、HOLD、SLIDE、TOUCH、BREAK；全 0 行是缺失占位，发送前必须填写。",
+            "en": "Copy the command and correct the achievement or values before sending. Rows are TAP, HOLD, SLIDE, TOUCH, and BREAK; an all-zero row is a missing-data placeholder and must be filled in.",
+            "ja": "コマンドをコピーし、達成率または誤った数値を修正して送信してください。行順は TAP、HOLD、SLIDE、TOUCH、BREAK です。全て 0 の行は欠損データのプレースホルダーなので、送信前に入力してください。",
         },
         "copy_fix": {
             "zh": "复制修正命令",
             "en": "Copy Fix Command",
             "ja": "修正コマンドをコピー",
+        },
+        "compact_fix": {
+            "zh": "修正 BREAK",
+            "en": "Fix BREAK",
+            "ja": "BREAK を修正",
         },
     }
 
@@ -1543,11 +1553,20 @@ def generate_score_recognition_flex(result, user_id=None):
             }
 
         candidate_count = max(1, int(break_detail.get("candidate_count", 1) or 1))
-        source_text = (
-            tr("break_detail_source_single")
-            if candidate_count == 1
-            else tr("break_detail_source_multiple").format(count=candidate_count)
+        row_candidate_count = max(
+            0,
+            int(break_detail.get("row_candidate_count", 0) or 0),
         )
+        if row_candidate_count > 1:
+            source_text = tr("break_row_source_multiple").format(
+                count=row_candidate_count,
+            )
+        elif candidate_count == 1:
+            source_text = tr("break_detail_source_single")
+        else:
+            source_text = tr("break_detail_source_multiple").format(
+                count=candidate_count,
+            )
 
         body_contents.extend([
             _help_section_title(tr("break_detail"), accent="#B86E19"),
@@ -1602,11 +1621,44 @@ def generate_score_recognition_flex(result, user_id=None):
             "align": "end",
         })
 
+    def build_fix_command():
+        fix_rows = []
+        for row_name in ("tap", "hold", "slide", "touch", "break"):
+            row = judgement.get(row_name)
+            if not isinstance(row, dict):
+                row = {}
+            fix_rows.append("/".join(
+                str(max(0, int(row.get(field_name, 0) or 0)))
+                for field_name in (
+                    "critical_perfect",
+                    "perfect",
+                    "great",
+                    "good",
+                    "miss",
+                )
+            ))
+        command_title = re.sub(r"\s+", " ", song_title).strip() or '""'
+        command_achievement = (
+            achievement_text
+            if isinstance(achievement, (int, float))
+            else "0.0000%"
+        )
+        return "\n".join([
+            f"fix-rcd {command_title}",
+            command_achievement,
+            *fix_rows,
+        ])
+
     manual_fix_command = None
+    compact_fix_command = None
     achievement_calc = validation.get("achievement_calc") or {}
+    calc_corrections = validation.get("calc_corrections") or []
+    break_row_inferred = any(
+        isinstance(correction, dict) and correction.get("inferred_row")
+        for correction in calc_corrections
+    )
     if achievement_calc.get("consistent") is not None:
         calc_consistent = achievement_calc.get("consistent")
-        calc_corrections = validation.get("calc_corrections") or []
         if calc_corrections:
             field_labels = {
                 "critical_perfect": "CP",
@@ -1619,15 +1671,6 @@ def generate_score_recognition_flex(result, user_id=None):
             for correction in calc_corrections:
                 if correction.get("inferred_row"):
                     has_inferred_row = True
-                    row = correction.get("validated_row") or {}
-                    correction_lines.append(
-                        "BREAK "
-                        f"CP {row.get('critical_perfect', 0)} / "
-                        f"PF {row.get('perfect', 0)} / "
-                        f"GR {row.get('great', 0)} / "
-                        f"GD {row.get('good', 0)} / "
-                        f"MS {row.get('miss', 0)}"
-                    )
                     continue
                 row_label = str(correction.get("row") or "").upper()
                 field_label = field_labels.get(
@@ -1640,7 +1683,8 @@ def generate_score_recognition_flex(result, user_id=None):
                     f"MS {correction.get('miss_ocr')}→{correction.get('miss_validated')}"
                 )
             calc_text = tr("calc_inferred" if has_inferred_row else "calc_corrected")
-            calc_text += "\n" + "\n".join(correction_lines)
+            if correction_lines:
+                calc_text += "\n" + "\n".join(correction_lines)
         elif calc_consistent and uncertain_cells:
             calc_text = tr("calc_incomplete")
         elif calc_consistent:
@@ -1664,54 +1708,44 @@ def generate_score_recognition_flex(result, user_id=None):
             "align": "end",
         })
 
-        if calc_consistent is False:
-            fix_rows = []
-            for row_name in ("tap", "hold", "slide", "touch", "break"):
-                row = judgement.get(row_name)
-                if not isinstance(row, dict):
-                    fix_rows = []
-                    break
-                fix_rows.append("/".join(
-                    str(max(0, int(row.get(field_name, 0) or 0)))
-                    for field_name in (
-                        "critical_perfect",
-                        "perfect",
-                        "great",
-                        "good",
-                        "miss",
-                    )
-                ))
-            if len(fix_rows) == 5 and isinstance(achievement, (int, float)):
-                command_title = re.sub(r"\s+", " ", song_title).strip() or '""'
-                manual_fix_command = "\n".join([
-                    f"fix-rcd {command_title}",
-                    achievement_text,
-                    *fix_rows,
-                ])
-                body_contents.extend([
-                    _help_section_title(tr("manual_fix"), accent="#315B7D"),
-                    {
-                        "type": "text",
-                        "text": tr("manual_fix_hint"),
-                        "size": "xxs",
-                        "color": COLOR_TEXT_MUTED,
-                        "wrap": True,
-                    },
-                    {
-                        "type": "box",
-                        "layout": "vertical",
-                        "paddingAll": "10px",
-                        "backgroundColor": "#F8FAFC",
-                        "cornerRadius": "6px",
-                        "contents": [{
-                            "type": "text",
-                            "text": manual_fix_command,
-                            "size": "xxs",
-                            "color": COLOR_TEXT_PRIMARY,
-                            "wrap": True,
-                        }],
-                    },
-                ])
+    fully_validated = (
+        bool(validation.get("song_id"))
+        and achievement_calc.get("consistent") is True
+        and achievement_calc.get("complete") is True
+        and not uncertain_cells
+    )
+    has_judgement_data = any(
+        isinstance(judgement.get(row_name), dict)
+        for row_name in ("tap", "hold", "slide", "touch", "break")
+    )
+    if break_row_inferred and fully_validated:
+        compact_fix_command = build_fix_command()
+    elif not fully_validated and has_judgement_data:
+        manual_fix_command = build_fix_command()
+        body_contents.extend([
+            _help_section_title(tr("manual_fix"), accent="#315B7D"),
+            {
+                "type": "text",
+                "text": tr("manual_fix_hint"),
+                "size": "xxs",
+                "color": COLOR_TEXT_MUTED,
+                "wrap": True,
+            },
+            {
+                "type": "box",
+                "layout": "vertical",
+                "paddingAll": "10px",
+                "backgroundColor": "#F8FAFC",
+                "cornerRadius": "6px",
+                "contents": [{
+                    "type": "text",
+                    "text": manual_fix_command,
+                    "size": "xxs",
+                    "color": COLOR_TEXT_PRIMARY,
+                    "wrap": True,
+                }],
+            },
+        ])
 
     bubble = {
         "type": "bubble",
@@ -1739,6 +1773,30 @@ def generate_score_recognition_flex(result, user_id=None):
                     "clipboardText": manual_fix_command,
                 },
             }],
+        }
+    elif compact_fix_command:
+        compact_fix = _help_pill(
+            tr("compact_fix"),
+            color="#315B7D",
+            bg_color="#E8EEF5",
+        )
+        compact_fix["action"] = {
+            "type": "clipboard",
+            "label": "fix-rcd",
+            "clipboardText": compact_fix_command,
+        }
+        bubble["footer"] = {
+            "type": "box",
+            "layout": "horizontal",
+            "paddingTop": "2px",
+            "paddingBottom": "10px",
+            "paddingStart": "16px",
+            "paddingEnd": "16px",
+            "contents": [
+                {"type": "filler"},
+                compact_fix,
+                {"type": "filler"},
+            ],
         }
     return FlexMessage(
         alt_text=f"{tr('title')}: {display_title}",

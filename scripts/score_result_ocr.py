@@ -807,6 +807,38 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
     # Detect all seven boundaries, then discard the label column dynamically.
     full_column_bounds = detect_regular_dark_lines(image, "vertical", 7)
     numeric_column_bounds = detect_regular_dark_lines(image, "vertical", 6)
+    full_grid_is_regular = False
+    if full_column_bounds:
+        full_gaps = [
+            right - left
+            for left, right in zip(full_column_bounds, full_column_bounds[1:])
+        ]
+        full_step = sorted(full_gaps)[len(full_gaps) // 2]
+        full_grid_is_regular = (
+            min(full_gaps) >= full_step * 0.82
+            and max(full_gaps) <= full_step * 1.18
+        )
+    numeric_prefix_with_label = None
+    if numeric_column_bounds:
+        trailing_gaps = [
+            right - left
+            for left, right in zip(
+                numeric_column_bounds[1:],
+                numeric_column_bounds[2:],
+            )
+        ]
+        if trailing_gaps:
+            trailing_step = sorted(trailing_gaps)[len(trailing_gaps) // 2]
+            if (
+                numeric_column_bounds[0] < width * 0.22
+                and width * 0.25 <= numeric_column_bounds[1] <= width * 0.36
+                and min(trailing_gaps) >= trailing_step * 0.82
+                and max(trailing_gaps) <= trailing_step * 1.18
+            ):
+                numeric_prefix_with_label = [
+                    *numeric_column_bounds[1:],
+                    min(width, numeric_column_bounds[-1] + trailing_step),
+                ]
     numeric_matches_full_grid = False
     if full_column_bounds and numeric_column_bounds:
         numeric_gaps = [
@@ -850,10 +882,17 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
         )
 
     if expanded_adds_leading_boundary:
-        # The eighth line belongs to the rating/FAST-LATE area beside the
-        # table. The first seven cover the label column plus five numeric
-        # columns, so discard both outer non-numeric boundaries.
+        # The eight-line sequence includes the left table edge, the label
+        # separator, five numeric columns, and one unrelated line beside the
+        # table. Keep the separator through the numeric right edge.
         detected_columns = expanded_column_bounds[1:7]
+    elif full_grid_is_regular:
+        detected_columns = full_column_bounds[1:]
+    elif numeric_prefix_with_label:
+        # JPEG artifacts often hide the far-right edge while preserving the
+        # label edge, label separator, and first four numeric separators.
+        # Drop the label edge and infer only the missing outer boundary.
+        detected_columns = numeric_prefix_with_label
     elif numeric_matches_full_grid:
         # JPEG recompression may weaken the right table edge enough to confuse
         # its color score. Six regular lines aligned with the trailing lines of
@@ -862,7 +901,9 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
     else:
         detected_columns = None
     if (
-        not numeric_matches_full_grid
+        not numeric_prefix_with_label
+        and not full_grid_is_regular
+        and not numeric_matches_full_grid
         and not expanded_adds_leading_boundary
         and full_column_bounds
     ):
@@ -881,7 +922,12 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
             detected_columns = full_column_bounds[:-1]
         else:
             detected_columns = full_column_bounds[1:]
-    elif not numeric_matches_full_grid and not expanded_adds_leading_boundary:
+    elif (
+        not numeric_prefix_with_label
+        and not full_grid_is_regular
+        and not numeric_matches_full_grid
+        and not expanded_adds_leading_boundary
+    ):
         detected_columns = numeric_column_bounds
         if detected_columns and detected_columns[-1] < width * 0.90:
             gaps = sorted(
@@ -965,6 +1011,221 @@ def recognize_judgement_row_centers(
     return fitted
 
 
+def detect_local_judgement_row_boundaries(
+    image: Image.Image,
+    left: int,
+    right: int,
+) -> list[float] | None:
+    """Find the six numeric-row boundaries inside one perspective column."""
+    rgb = image.convert("RGB")
+    pixels = rgb.load()
+    sample_left = max(0, left + max(6, int((right - left) * 0.05)))
+    sample_right = min(image.width, right - max(6, int((right - left) * 0.05)))
+    sample_x = range(sample_left, sample_right, 3)
+    sample_count = len(sample_x)
+    if sample_count < 8:
+        return None
+
+    row_scores = [
+        sum(is_judgement_grid_pixel(*pixels[x, y]) for x in sample_x)
+        for y in range(image.height)
+    ]
+    minimum_score = max(4, int(sample_count * 0.10))
+    ranges = cluster_indexes(
+        [y for y, score in enumerate(row_scores) if score >= minimum_score],
+        max_gap=5,
+    )
+    candidates: list[tuple[float, float]] = []
+    for start, end in ranges:
+        if end - start < 4:
+            continue
+        weights = row_scores[start:end + 1]
+        total_weight = sum(weights)
+        center = (
+            sum((start + offset) * weight for offset, weight in enumerate(weights))
+            / total_weight
+            if total_weight
+            else (start + end) / 2
+        )
+        candidates.append((center, max(weights) / sample_count))
+
+    if len(candidates) < 6:
+        return None
+
+    best: tuple[float, list[float]] | None = None
+    height = image.height
+    for first_index, (first, _) in enumerate(candidates):
+        for last, _ in candidates[first_index + 5:]:
+            step = (last - first) / 5
+            if not height * 0.08 <= step <= height * 0.18:
+                continue
+            selected: list[float] = []
+            error = 0.0
+            strength = 0.0
+            for offset in range(6):
+                target = first + step * offset
+                center, score = min(candidates, key=lambda item: abs(item[0] - target))
+                distance = abs(center - target)
+                if distance > step * 0.24 or center in selected:
+                    break
+                selected.append(center)
+                error += distance / step
+                strength += min(score, 1.0)
+            if len(selected) != 6:
+                continue
+            objective = error - strength * 0.025
+            if best is None or objective < best[0]:
+                best = (objective, selected)
+    if best is None:
+        return None
+    selected = best[1]
+    gaps = sorted(right - left for left, right in zip(selected, selected[1:]))
+    fitted_step = gaps[len(gaps) // 2]
+    intercepts = sorted(
+        center - index * fitted_step
+        for index, center in enumerate(selected)
+    )
+    intercept = intercepts[len(intercepts) // 2]
+    fitted = [intercept + index * fitted_step for index in range(6)]
+    if fitted[0] < 0 or fitted[-1] > image.height + fitted_step * 0.10:
+        return None
+    return fitted
+
+
+def rectify_judgement_numeric_grid(
+    image: Image.Image,
+    col_bounds: list[int],
+) -> Image.Image | None:
+    """Rectify the perspective numeric grid before slicing its 25 cells."""
+    detected = []
+    detected_indexes = []
+    for index in range(5):
+        boundaries = detect_local_judgement_row_boundaries(
+            image,
+            col_bounds[index],
+            col_bounds[index + 1],
+        )
+        if boundaries:
+            detected_indexes.append(index)
+            detected.append((
+                (col_bounds[index] + col_bounds[index + 1]) / 2,
+                boundaries,
+            ))
+    if (
+        len(detected) < 4
+        or detected_indexes[-1] - detected_indexes[0] + 1 != len(detected_indexes)
+        or not local_judgement_boundaries_are_consistent(detected)
+    ):
+        return None
+
+    def fitted_y(boundary_index: int, target_x: float) -> float:
+        points = [(x, bounds[boundary_index]) for x, bounds in detected]
+        mean_x = sum(x for x, _ in points) / len(points)
+        mean_y = sum(y for _, y in points) / len(points)
+        denominator = sum((x - mean_x) ** 2 for x, _ in points)
+        slope = (
+            sum((x - mean_x) * (y - mean_y) for x, y in points) / denominator
+            if denominator
+            else 0.0
+        )
+        return mean_y + slope * (target_x - mean_x)
+
+    left = float(col_bounds[0])
+    right = float(col_bounds[-1])
+    top_left = fitted_y(0, left)
+    top_right = fitted_y(0, right)
+    bottom_left = fitted_y(5, left)
+    bottom_right = fitted_y(5, right)
+    left_height = bottom_left - top_left
+    right_height = bottom_right - top_right
+    if (
+        right <= left
+        or min(left_height, right_height) < image.height * 0.40
+        or max(left_height, right_height) > image.height * 0.90
+    ):
+        return None
+
+    output_width = max(500, int(round(right - left)))
+    output_height = max(240, int(round((left_height + right_height) / 2)))
+    mesh = []
+    for column_index in range(5):
+        source_left = float(col_bounds[column_index])
+        source_right = float(col_bounds[column_index + 1])
+        destination_left = int(round(output_width * column_index / 5))
+        destination_right = int(round(output_width * (column_index + 1) / 5))
+        for row_index in range(5):
+            destination_top = int(round(output_height * row_index / 5))
+            destination_bottom = int(round(output_height * (row_index + 1) / 5))
+            source_top_left = fitted_y(row_index, source_left)
+            source_top_right = fitted_y(row_index, source_right)
+            source_bottom_left = fitted_y(row_index + 1, source_left)
+            source_bottom_right = fitted_y(row_index + 1, source_right)
+            mesh.append((
+                (
+                    destination_left,
+                    destination_top,
+                    destination_right,
+                    destination_bottom,
+                ),
+                (
+                    source_left,
+                    source_top_left,
+                    source_left,
+                    source_bottom_left,
+                    source_right,
+                    source_bottom_right,
+                    source_right,
+                    source_top_right,
+                ),
+            ))
+    return image.transform(
+        (output_width, output_height),
+        Image.Transform.MESH,
+        mesh,
+        resample=Image.Resampling.BICUBIC,
+    )
+
+
+def local_judgement_boundaries_are_consistent(
+    detected: list[tuple[float, list[float]]],
+) -> bool:
+    """Reject columns that describe different row grids after JPEG damage."""
+    if len(detected) < 4:
+        return False
+
+    column_steps = []
+    for _, boundaries in detected:
+        if len(boundaries) != 6:
+            return False
+        gaps = sorted(
+            right - left for left, right in zip(boundaries, boundaries[1:])
+        )
+        column_steps.append(gaps[len(gaps) // 2])
+    median_step = sorted(column_steps)[len(column_steps) // 2]
+    if median_step <= 0 or any(
+        step < median_step * 0.76 or step > median_step * 1.24
+        for step in column_steps
+    ):
+        return False
+
+    for boundary_index in range(6):
+        points = [(x, boundaries[boundary_index]) for x, boundaries in detected]
+        mean_x = sum(x for x, _ in points) / len(points)
+        mean_y = sum(y for _, y in points) / len(points)
+        denominator = sum((x - mean_x) ** 2 for x, _ in points)
+        slope = (
+            sum((x - mean_x) * (y - mean_y) for x, y in points) / denominator
+            if denominator
+            else 0.0
+        )
+        if any(
+            abs(y - (mean_y + slope * (x - mean_x))) > median_step * 0.34
+            for x, y in points
+        ):
+            return False
+    return True
+
+
 def recognize_judgement_cells_direct(
     image: Image.Image,
     row_centers: list[float],
@@ -981,10 +1242,45 @@ def recognize_judgement_cells_direct(
 
     crops: list[Image.Image] = []
     slots: list[tuple[str, str]] = []
-    for row_name, center_y in zip(row_names, row_centers):
-        cell_top = max(0, int(round(center_y - row_gap * 0.40)))
-        cell_bottom = min(image.height, int(round(center_y + row_gap * 0.40)))
+    local_row_boundaries = [
+        detect_local_judgement_row_boundaries(
+            image,
+            col_bounds[index],
+            col_bounds[index + 1],
+        )
+        for index in range(len(column_names))
+    ]
+    detected_local_boundaries = [
+        (
+            (col_bounds[index] + col_bounds[index + 1]) / 2,
+            boundaries,
+        )
+        for index, boundaries in enumerate(local_row_boundaries)
+        if boundaries is not None
+    ]
+    if (
+        any(boundaries is None for boundaries in local_row_boundaries)
+        or not local_judgement_boundaries_are_consistent(detected_local_boundaries)
+    ):
+        # Mixing locally detected rows with global rows shifts individual
+        # columns when glare hides only part of the grid. Perspective
+        # correction is useful only when all five columns describe one table.
+        local_row_boundaries = [None] * len(column_names)
+    for row_index, (row_name, center_y) in enumerate(zip(row_names, row_centers)):
         for index, column_name in enumerate(column_names):
+            boundaries = local_row_boundaries[index]
+            if boundaries:
+                local_top = boundaries[row_index]
+                local_bottom = boundaries[row_index + 1]
+                local_height = local_bottom - local_top
+                cell_top = max(0, int(round(local_top + local_height * 0.12)))
+                cell_bottom = min(
+                    image.height,
+                    int(round(local_bottom - local_height * 0.12)),
+                )
+            else:
+                cell_top = max(0, int(round(center_y - row_gap * 0.40)))
+                cell_bottom = min(image.height, int(round(center_y + row_gap * 0.40)))
             cell_width = col_bounds[index + 1] - col_bounds[index]
             pad_x = max(8, int(cell_width * 0.16))
             cell_left = max(0, col_bounds[index] + pad_x)
@@ -1297,6 +1593,16 @@ def recognize_judgement_by_columns(
     output = Path(output_dir) if output_dir is not None else None
     if output is not None:
         output.mkdir(parents=True, exist_ok=True)
+    if layout_hint != "dxnet":
+        rectified = rectify_judgement_numeric_grid(image, col_bounds)
+        if rectified is not None:
+            image = rectified
+            width, height = image.size
+            row_centers = [height * (index + 0.5) / 5 for index in range(5)]
+            col_bounds = [int(round(width * index / 5)) for index in range(6)]
+            detect_row_labels = False
+            if output is not None:
+                image.save(output / "rectified_numeric_grid.png")
     if detect_row_labels:
         row_centers = recognize_judgement_row_centers(
             image,

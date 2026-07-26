@@ -160,6 +160,121 @@ def _song_search_summary(payload: dict, lang: str) -> str:
     return "\n".join(lines)
 
 
+def _score_recognition_embed(payload: dict, lang: str) -> discord.Embed:
+    song = payload.get("song") or {}
+    chart = payload.get("chart") or {}
+    score = payload.get("score") or {}
+    validation = payload.get("validation") or {}
+
+    title = song.get("title")
+    display_title = '""' if title == "" else str(title or "-")
+    chart_type = str(song.get("type") or "-").upper()
+    difficulty = str(chart.get("difficulty") or "-").upper()
+    internal_level = chart.get("internal_level")
+    level = internal_level if internal_level is not None else chart.get("level")
+    chart_text = f"{difficulty} {level}" if level is not None else difficulty
+    achievement = score.get("achievement")
+    achievement_text = (
+        f"{achievement:.4f}%" if isinstance(achievement, (int, float)) else "-"
+    )
+
+    difficulty_colors = {
+        "basic": 0x34A853,
+        "advanced": 0xE67E22,
+        "expert": 0xD93025,
+        "master": 0x8E44AD,
+        "remaster": 0xB06FD3,
+        "utage": 0x111111,
+    }
+    embed = discord.Embed(
+        title=tr(lang, "recognition_title"),
+        description=(
+            f"**{display_title}** [{chart_type}]\n"
+            f"{tr(lang, 'recognition_song_id')}: `{song.get('id', '-')}`"
+        ),
+        color=difficulty_colors.get(str(chart.get("difficulty") or "").lower(), 0x267D8B),
+    )
+    embed.add_field(
+        name=tr(lang, "recognition_achievement"),
+        value=f"**{achievement_text}**",
+        inline=True,
+    )
+    embed.add_field(
+        name=tr(lang, "recognition_chart"),
+        value=f"**{chart_text}**",
+        inline=True,
+    )
+
+    judgements = score.get("judgements") or {}
+    lines = ["TYPE    CP   PF   GR   GD   MS"]
+    for row_name in ("tap", "hold", "slide", "touch", "break"):
+        row = judgements.get(row_name) or {}
+        values = [
+            row.get("critical_perfect", 0),
+            row.get("perfect", 0),
+            row.get("great", 0),
+            row.get("good", 0),
+            row.get("miss", 0),
+        ]
+        lines.append(
+            f"{row_name.upper():<5} " + " ".join(f"{int(value or 0):>4}" for value in values)
+        )
+    embed.add_field(
+        name=tr(lang, "recognition_judgements"),
+        value="```\n" + "\n".join(lines) + "\n```",
+        inline=False,
+    )
+
+    break_detail = score.get("break_detail") or {}
+    if break_detail:
+        break_lines = [
+            f"CP 2600: {break_detail.get('critical_perfect', 0)}",
+            (
+                f"PF 2550/2500: {break_detail.get('perfect_high', 0)}"
+                f" / {break_detail.get('perfect_low', 0)}"
+            ),
+            (
+                f"GR 2000/1500/1250: {break_detail.get('great_high', 0)}"
+                f" / {break_detail.get('great_middle', 0)}"
+                f" / {break_detail.get('great_low', 0)}"
+            ),
+            f"GD/MS: {break_detail.get('good', 0)} / {break_detail.get('miss', 0)}",
+        ]
+        embed.add_field(
+            name=tr(lang, "recognition_break_detail"),
+            value="```\n" + "\n".join(break_lines) + "\n```",
+            inline=False,
+        )
+
+    achievement_calc = validation.get("achievement_calc") or {}
+    validation_lines = [
+        f"{tr(lang, 'recognition_title_match')}: {validation.get('title_match_type') or '-'}",
+        (
+            f"{tr(lang, 'recognition_rows')}: "
+            f"{validation.get('matching_rows', '-')}/{validation.get('compared_rows', '-')}"
+        ),
+        (
+            f"{tr(lang, 'recognition_offsets')}: "
+            f"row {validation.get('row_offset', 0)}, column {validation.get('column_offset', 0)}"
+        ),
+        (
+            f"{tr(lang, 'recognition_calc')}: "
+            f"{'OK' if achievement_calc.get('consistent') is True else 'CHECK'}"
+        ),
+        (
+            f"{tr(lang, 'recognition_corrections')}: "
+            f"{len(validation.get('calc_corrections') or [])} / "
+            f"{len(validation.get('uncertain_cells') or [])}"
+        ),
+    ]
+    embed.add_field(
+        name=tr(lang, "recognition_validation"),
+        value="\n".join(validation_lines),
+        inline=False,
+    )
+    return embed
+
+
 def _button_label(text: str, fallback: str = "Select") -> str:
     text = (text or fallback).strip()
     return text if len(text) <= 80 else text[:77] + "..."
@@ -678,6 +793,32 @@ def register_commands(bot: JiETNGDiscordBot) -> None:
                 f"jietng-{_safe_filename_part(resolved)}-song-{_safe_filename_part(song_id)}.png",
             ),
         )
+
+    @bot.tree.command(name="rec", description=_ls("cmd.rec.desc"))
+    @app_commands.describe(image=_ls("param.image"), ver=_ls("param.ver"))
+    async def recognize(
+        interaction: discord.Interaction,
+        image: discord.Attachment,
+        ver: ServerVersion = "jp",
+    ) -> None:
+        lang = interaction_lang(interaction)
+        await interaction.response.defer(thinking=True)
+        image_bytes = await image.read(use_cached=True)
+        try:
+            payload = await bot.jietng.score_recognition.recognize(
+                image_bytes,
+                ver=ver,
+                filename=image.filename,
+            )
+        except ValidationError as exc:
+            if exc.status_code == 422:
+                await interaction.followup.send(
+                    tr(lang, "recognition_failed"),
+                    ephemeral=True,
+                )
+                return
+            raise
+        await interaction.followup.send(embed=_score_recognition_embed(payload, lang))
 
     @bot.tree.command(name="export", description=_ls("cmd.export.desc"))
     @app_commands.describe(format=_ls("param.format"))

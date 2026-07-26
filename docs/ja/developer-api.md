@@ -119,7 +119,7 @@ curl -X POST https://jietng-endpoint.matsuk1.com/api/v2/score-recognition \
 - `chart`：`difficulty`、表示レベル `level`、譜面定数 `internal_level`。
 - `score.achievement`：達成率。
 - `score.judgements`：`tap`、`hold`、`slide`、`touch`、`break`。各行は `critical_perfect`、`perfect`、`great`、`good`、`miss` を必ず含みます。
-- `score.break_detail`：Flex で使う BREAK 詳細判定。一意に推定できない場合は `{}`。
+- `score.break_detail`：Flex で表示する現在最も可能性の高い BREAK 詳細判定です。`candidate_count` は選択した BREAK 行内の詳細候補数、Calc が行全体を推定した場合の任意フィールド `row_candidate_count` は行候補数です。離散的に一致する候補がない場合は `{}` です。
 - `validation`：曲名一致方式、行列補正、MISS 補正、Calc 検証・補正、不確実な OCR セル。
 
 ```json

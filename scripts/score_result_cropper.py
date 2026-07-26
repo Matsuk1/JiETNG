@@ -46,7 +46,11 @@ class Box:
         return self.left, self.top, self.right, self.bottom
 
 
-def _sample_mask_points(image: Image.Image, step: int = 4) -> list[tuple[int, int]]:
+def _sample_mask_points(
+    image: Image.Image,
+    step: int = 4,
+    main_screen_only: bool | None = None,
+) -> list[tuple[int, int]]:
     rgb = image.convert("RGB")
     width, height = rgb.size
     pixels = rgb.load()
@@ -55,7 +59,8 @@ def _sample_mask_points(image: Image.Image, step: int = 4) -> list[tuple[int, in
     # Portrait machine photos place the sub-monitor above the circular screen.
     # Near-square crops contain only the main screen, so scanning from 34%
     # would discard its title/header and shift the detected circle downward.
-    main_screen_only = height <= width * 1.16
+    if main_screen_only is None:
+        main_screen_only = height <= width * 1.16
     y_start = int(height * (0.10 if main_screen_only else 0.34))
     y_end = int(height * 0.96)
     x_margin = int(width * 0.035)
@@ -84,10 +89,13 @@ def _percentile(values: list[int], ratio: float) -> int:
     return values[index]
 
 
-def detect_result_screen(image: Image.Image) -> Box:
+def detect_result_screen(
+    image: Image.Image,
+    main_screen_only: bool | None = None,
+) -> Box:
     image = ImageOps.exif_transpose(image)
     width, height = image.size
-    points = _sample_mask_points(image)
+    points = _sample_mask_points(image, main_screen_only=main_screen_only)
     if len(points) < 200:
         raise ValueError("could not find enough colorful result-screen pixels")
 
@@ -305,7 +313,7 @@ def detect_sub_judgement_table(image: Image.Image, sub_screen: Box) -> Box | Non
         break
     header_candidates = [
         row_range for row_range in ranges[:label_index]
-        if top - row_range[1] <= row_height * 3.20
+        if top - row_range[1] <= row_height * 1.80
     ]
     if header_candidates:
         table_top = min(
@@ -404,7 +412,10 @@ def _detect_main_achievement_by_color(
     rgb = image.convert("RGB")
     width, height = rgb.size
     pixels = rgb.load()
-    search = relative_box(screen, (0.030, 0.255, 0.720, 0.455)).clamp(width, height)
+    # Strong perspective can push the achievement block well below the usual
+    # 45% screen position. Keep the upper bound broad and let the large digit
+    # color/area score distinguish it from CLEAR and the difficulty header.
+    search = relative_box(screen, (0.030, 0.255, 0.720, 0.620)).clamp(width, height)
 
     candidate_rows: list[int] = []
     row_scores: dict[int, int] = {}
@@ -848,6 +859,13 @@ def crop_result_fields_in_memory(source_image: Image.Image) -> dict:
         candidate = detect_sub_judgement_table(image, sub_screen)
         if is_complete_sub_judgement_table(candidate):
             sub_judgement_table = candidate
+        else:
+            # A portrait photo can still contain only the round main screen.
+            # Rescan from near the top instead of treating its upper half as a
+            # cabinet sub-monitor and shifting every main-screen field down.
+            screen = detect_result_screen(image, main_screen_only=True)
+            main_achievement = detect_main_achievement(image, screen)
+            main_title = detect_main_title(image, screen, main_achievement)
 
     if main_title is None:
         main_title = relative_box(screen, (0.285, 0.222, 0.790, 0.282)).clamp(
@@ -943,15 +961,16 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
         shutil.rmtree(sample_dir)
     sample_dir.mkdir(parents=True, exist_ok=True)
 
+    sub_judgement_table = detect_sub_judgement_table(image, sub_screen)
+    main_screen_only = image.height <= image.width * 1.16
+    if main_screen_only:
+        sub_judgement_table = None
+    elif not is_complete_sub_judgement_table(sub_judgement_table):
+        sub_judgement_table = None
+        screen = detect_result_screen(image, main_screen_only=True)
     content_screen = main_content_box(screen).clamp(image.width, image.height)
     main_achievement = detect_main_achievement(image, screen)
     main_title = detect_main_title(image, screen, main_achievement)
-    sub_judgement_table = detect_sub_judgement_table(image, sub_screen)
-    if (
-        image.height <= image.width * 1.16
-        or not is_complete_sub_judgement_table(sub_judgement_table)
-    ):
-        sub_judgement_table = None
     refined_sub_screen = refine_sub_screen(sub_screen, sub_judgement_table).clamp(image.width, image.height)
     image.crop(screen.to_tuple()).save(sample_dir / "screen.png")
     image.crop(content_screen.to_tuple()).save(sample_dir / "main_content.png")

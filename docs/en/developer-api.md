@@ -119,7 +119,7 @@ The successful JSON contains:
 - `chart`: `difficulty`, displayed `level`, and numeric `internal_level`.
 - `score.achievement`: recognized achievement percentage.
 - `score.judgements`: fixed `tap`, `hold`, `slide`, `touch`, and `break` rows; each contains `critical_perfect`, `perfect`, `great`, `good`, and `miss`.
-- `score.break_detail`: the BREAK sub-grades shown by the Flex result; `{}` when they cannot be inferred uniquely.
+- `score.break_detail`: the current most likely BREAK sub-grades shown by the Flex result. `candidate_count` counts sub-grade candidates within the selected BREAK row; optional `row_candidate_count` counts feasible aggregate rows when Calc inferred the entire row. It is `{}` when no discrete match is available.
 - `validation`: title match type, row/column alignment, MISS corrections, Calc range/corrections, and uncertain OCR cells.
 
 Example response:

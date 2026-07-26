@@ -200,7 +200,7 @@ curl -X POST https://jietng-endpoint.matsuk1.com/api/v2/score-recognition \
 - `song.id` 是 dxdata 乐曲 ID；`song.type` 为 `dx` 或 `std`。
 - `chart.internal_level` 是谱面定数，未知时为 `null`。
 - `judgements` 固定包含 `tap`、`hold`、`slide`、`touch`、`break`，每行固定包含五种判定。
-- `break_detail` 是 Flex 判定明细使用的 BREAK 细分结果；无法由达成率唯一推算时为 `{}`。
+- `break_detail` 是 Flex 判定明细使用的当前最可能 BREAK 细分结果；`candidate_count` 是当前 BREAK 行内部的细分候选数，整行由 Calc 推定时可选字段 `row_candidate_count` 表示可行的整行候选数。无法得到离散匹配时为 `{}`。
 - `row_offset`、`column_offset` 表示 OCR 表格经过的行列对齐修正，`0` 表示未移动。
 - `miss_corrections` 记录根据谱面物量把 OCR MISS 从 `ocr` 修正为 `validated` 的行。
 - `achievement_calc` 记录 Calc 可接受区间及 OCR 达成率是否一致。
