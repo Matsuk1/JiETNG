@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import inspect
+import itertools
 import json
 import logging
 import os
@@ -807,6 +808,36 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
     # Detect all seven boundaries, then discard the label column dynamically.
     full_column_bounds = detect_regular_dark_lines(image, "vertical", 7)
     numeric_column_bounds = detect_regular_dark_lines(image, "vertical", 6)
+
+    def label_column_fill_ratio(left: int, right: int) -> float:
+        sample_left = max(0, left + 6)
+        sample_right = min(width, right - 6)
+        sample_top = int(height * 0.20)
+        sample_bottom = int(height * 0.92)
+        sampled = 0
+        label_pixels = 0
+        for x in range(sample_left, sample_right, 4):
+            for y in range(sample_top, sample_bottom, 4):
+                sampled += 1
+                r, g, b = pixels[x, y]
+                brightness = (r + g + b) / 3
+                if (
+                    b >= 60
+                    and r <= 95
+                    and g <= 130
+                    and b >= r + 16
+                    and brightness <= 165
+                ):
+                    label_pixels += 1
+        return label_pixels / sampled if sampled else 0.0
+
+    full_grid_has_label_column = bool(
+        full_column_bounds
+        and label_column_fill_ratio(
+            full_column_bounds[0],
+            full_column_bounds[1],
+        ) >= 0.35
+    )
     full_grid_is_regular = False
     if full_column_bounds:
         full_gaps = [
@@ -819,7 +850,20 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
             and max(full_gaps) <= full_step * 1.18
         )
     numeric_prefix_with_label = None
+    numeric_grid_is_regular = False
     if numeric_column_bounds:
+        numeric_gaps = [
+            right - left
+            for left, right in zip(
+                numeric_column_bounds,
+                numeric_column_bounds[1:],
+            )
+        ]
+        numeric_step = sorted(numeric_gaps)[len(numeric_gaps) // 2]
+        numeric_grid_is_regular = (
+            min(numeric_gaps) >= numeric_step * 0.75
+            and max(numeric_gaps) <= numeric_step * 1.25
+        )
         trailing_gaps = [
             right - left
             for left, right in zip(
@@ -832,6 +876,10 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
             if (
                 numeric_column_bounds[0] < width * 0.22
                 and width * 0.25 <= numeric_column_bounds[1] <= width * 0.36
+                and label_column_fill_ratio(
+                    numeric_column_bounds[0],
+                    numeric_column_bounds[1],
+                ) >= 0.35
                 and min(trailing_gaps) >= trailing_step * 0.82
                 and max(trailing_gaps) <= trailing_step * 1.18
             ):
@@ -886,7 +934,7 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
         # separator, five numeric columns, and one unrelated line beside the
         # table. Keep the separator through the numeric right edge.
         detected_columns = expanded_column_bounds[1:7]
-    elif full_grid_is_regular:
+    elif full_grid_is_regular and full_grid_has_label_column:
         detected_columns = full_column_bounds[1:]
     elif numeric_prefix_with_label:
         # JPEG artifacts often hide the far-right edge while preserving the
@@ -898,14 +946,18 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
         # its color score. Six regular lines aligned with the trailing lines of
         # the full seven-line grid are the five numeric columns directly.
         detected_columns = numeric_column_bounds
+    elif numeric_grid_is_regular and not full_grid_has_label_column:
+        detected_columns = numeric_column_bounds
     else:
         detected_columns = None
     if (
-        not numeric_prefix_with_label
+        detected_columns is None
+        and not numeric_prefix_with_label
         and not full_grid_is_regular
         and not numeric_matches_full_grid
         and not expanded_adds_leading_boundary
         and full_column_bounds
+        and full_grid_has_label_column
     ):
         rgb = image.convert("RGB")
         pixels = rgb.load()
@@ -923,7 +975,8 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
         else:
             detected_columns = full_column_bounds[1:]
     elif (
-        not numeric_prefix_with_label
+        detected_columns is None
+        and not numeric_prefix_with_label
         and not full_grid_is_regular
         and not numeric_matches_full_grid
         and not expanded_adds_leading_boundary
@@ -1098,7 +1151,6 @@ def rectify_judgement_numeric_grid(
 ) -> Image.Image | None:
     """Rectify the perspective numeric grid before slicing its 25 cells."""
     detected = []
-    detected_indexes = []
     for index in range(5):
         boundaries = detect_local_judgement_row_boundaries(
             image,
@@ -1106,29 +1158,167 @@ def rectify_judgement_numeric_grid(
             col_bounds[index + 1],
         )
         if boundaries:
-            detected_indexes.append(index)
             detected.append((
                 (col_bounds[index] + col_bounds[index + 1]) / 2,
                 boundaries,
             ))
-    if (
-        len(detected) < 4
-        or detected_indexes[-1] - detected_indexes[0] + 1 != len(detected_indexes)
-        or not local_judgement_boundaries_are_consistent(detected)
-    ):
-        return None
-
-    def fitted_y(boundary_index: int, target_x: float) -> float:
-        points = [(x, bounds[boundary_index]) for x, bounds in detected]
-        mean_x = sum(x for x, _ in points) / len(points)
-        mean_y = sum(y for _, y in points) / len(points)
-        denominator = sum((x - mean_x) ** 2 for x, _ in points)
+    def regression_y(
+        points: list[tuple[float, list[float]]],
+        boundary_index: int,
+        target_x: float,
+    ) -> float:
+        values = [(x, bounds[boundary_index]) for x, bounds in points]
+        mean_x = sum(x for x, _ in values) / len(values)
+        mean_y = sum(y for _, y in values) / len(values)
+        denominator = sum((x - mean_x) ** 2 for x, _ in values)
         slope = (
-            sum((x - mean_x) * (y - mean_y) for x, y in points) / denominator
+            sum((x - mean_x) * (y - mean_y) for x, y in values)
+            / denominator
             if denominator
             else 0.0
         )
         return mean_y + slope * (target_x - mean_x)
+
+    # A damaged JPEG can make one column detect the previous or next row while
+    # preserving the row spacing. Repair only that explicit whole-row offset;
+    # leave the normal perspective tolerances unchanged for every other image.
+    if len(detected) >= 4:
+        baseline_candidates = []
+        for candidate in itertools.combinations(detected, 3):
+            candidate = list(candidate)
+            if not local_judgement_boundaries_are_consistent(candidate):
+                continue
+            residual = sum(
+                abs(
+                    value
+                    - regression_y(candidate, boundary_index, x)
+                )
+                for x, boundaries in candidate
+                for boundary_index, value in enumerate(boundaries)
+            ) / 18
+            baseline_candidates.append((residual, candidate))
+        if baseline_candidates:
+            _, baseline = min(baseline_candidates, key=lambda item: item[0])
+            baseline_x = {x for x, _ in baseline}
+            baseline_steps = [
+                sorted(
+                    right - left
+                    for left, right in zip(bounds, bounds[1:])
+                )[2]
+                for _, bounds in baseline
+            ]
+            baseline_step = sorted(baseline_steps)[len(baseline_steps) // 2]
+            normalized = []
+            for x, bounds in detected:
+                if x in baseline_x:
+                    normalized.append((x, bounds))
+                    continue
+                gaps = sorted(
+                    right - left
+                    for left, right in zip(bounds, bounds[1:])
+                )
+                local_step = gaps[len(gaps) // 2]
+                shifted_candidates = []
+                for row_shift in range(-2, 3):
+                    shifted = [
+                        value + row_shift * local_step for value in bounds
+                    ]
+                    residual = sum(
+                        abs(
+                            shifted[index]
+                            - regression_y(baseline, index, x)
+                        )
+                        for index in range(6)
+                    ) / 6
+                    shifted_candidates.append(
+                        (residual, abs(row_shift), row_shift, shifted)
+                    )
+                unshifted_residual = next(
+                    residual
+                    for residual, _, row_shift, _ in shifted_candidates
+                    if row_shift == 0
+                )
+                residual, _, row_shift, shifted = min(shifted_candidates)
+                if (
+                    row_shift
+                    and unshifted_residual >= baseline_step * 0.55
+                    and residual <= baseline_step * 0.18
+                    and unshifted_residual - residual >= baseline_step * 0.45
+                ):
+                    normalized.append((x, shifted))
+                else:
+                    normalized.append((x, bounds))
+            detected = normalized
+
+    all_detected = detected
+    consistent_detected = None
+    for count in range(len(detected), 2, -1):
+        for candidate in itertools.combinations(detected, count):
+            if local_judgement_boundaries_are_consistent(list(candidate)):
+                consistent_detected = list(candidate)
+                break
+        if consistent_detected is not None:
+            break
+    if consistent_detected is None:
+        return None
+    detected = consistent_detected
+
+    selected_x = {x for x, _ in detected}
+    baseline_steps = [
+        sorted(
+            right - left
+            for left, right in zip(bounds, bounds[1:])
+        )[2]
+        for _, bounds in detected
+    ]
+    baseline_step = sorted(baseline_steps)[len(baseline_steps) // 2]
+    for x, bounds in all_detected:
+        if x in selected_x:
+            continue
+        gaps = sorted(
+            right - left for left, right in zip(bounds, bounds[1:])
+        )
+        local_step = gaps[len(gaps) // 2]
+        shifted_candidates = []
+        for row_shift in range(-2, 3):
+            shifted = [value + row_shift * local_step for value in bounds]
+            residual = sum(
+                abs(
+                    shifted[index]
+                    - regression_y(detected, index, x)
+                )
+                for index in range(6)
+            ) / 6
+            shifted_candidates.append((residual, abs(row_shift), shifted))
+        residual, _, shifted = min(shifted_candidates)
+        candidate = [*detected, (x, shifted)]
+        if (
+            residual <= baseline_step * 0.18
+            and local_judgement_boundaries_are_consistent(candidate)
+        ):
+            detected = candidate
+            selected_x.add(x)
+    detected.sort(key=lambda item: item[0])
+
+    def fitted_y(boundary_index: int, target_x: float) -> float:
+        if target_x <= detected[0][0]:
+            left, right = detected[0], detected[1]
+        elif target_x >= detected[-1][0]:
+            left, right = detected[-2], detected[-1]
+        else:
+            left, right = next(
+                (left, right)
+                for left, right in zip(detected, detected[1:])
+                if left[0] <= target_x <= right[0]
+            )
+        left_x, left_bounds = left
+        right_x, right_bounds = right
+        ratio = (target_x - left_x) / (right_x - left_x)
+        return (
+            left_bounds[boundary_index]
+            + (right_bounds[boundary_index] - left_bounds[boundary_index])
+            * ratio
+        )
 
     left = float(col_bounds[0])
     right = float(col_bounds[-1])
@@ -1190,7 +1380,7 @@ def local_judgement_boundaries_are_consistent(
     detected: list[tuple[float, list[float]]],
 ) -> bool:
     """Reject columns that describe different row grids after JPEG damage."""
-    if len(detected) < 4:
+    if len(detected) < 3:
         return False
 
     column_steps = []
@@ -1298,6 +1488,7 @@ def recognize_judgement_cells_direct(
         return None
 
     result: dict[str, dict[str, int]] = {row_name: {} for row_name in row_names}
+    direct_scores: dict[tuple[str, str], float] = {}
     for (row_name, column_name), item in zip(slots, items):
         value = parse_column_int(str(item.get("text", "")))
         score = float(item.get("score", 0.0))
@@ -1317,6 +1508,7 @@ def recognize_judgement_cells_direct(
             or (value == 0 and score >= 0.80)
         ):
             result[row_name][column_name] = value
+            direct_scores[(row_name, column_name)] = score
 
     secondary_images: list[Image.Image] = []
     secondary_slots: list[tuple[str, str, str]] = []
@@ -1325,7 +1517,11 @@ def recognize_judgement_cells_direct(
         crop = crops[index]
         if column_name in {"critical_perfect", "perfect"}:
             if existing_value == 0 or (
-                existing_value is not None and crop.height >= 80
+                existing_value is not None
+                and (
+                    crop.height >= 80
+                    or direct_scores.get((row_name, column_name), 0.0) >= 0.90
+                )
             ):
                 continue
             secondary_images.append(

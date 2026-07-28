@@ -5131,6 +5131,24 @@ def _validate_recognized_judgement(
             if regions and regions.get(ver) is False:
                 continue
             note_counts = sheet.get("noteCounts") or {}
+            raw_overfull_rows = 0
+            raw_matching_rows = 0
+            for row_name in row_names:
+                row = judgement.get(row_name)
+                if not isinstance(row, dict):
+                    continue
+                try:
+                    expected = max(0, int(note_counts.get(row_name, 0) or 0))
+                    observed = sum(
+                        max(0, int(row.get(name, 0) or 0))
+                        for name in all_value_names
+                    )
+                except (TypeError, ValueError):
+                    continue
+                if observed > expected:
+                    raw_overfull_rows += 1
+                elif observed == expected:
+                    raw_matching_rows += 1
             row_offsets = range(-2, 3) if allow_ocr_alignment else (0,)
             column_offsets = (-1, 0, 1) if allow_ocr_alignment else (0,)
             for row_offset in row_offsets:
@@ -5315,28 +5333,47 @@ def _validate_recognized_judgement(
                             "notes": notes,
                             "achievement_range": achievement_range,
                             "achievement_distance": achievement_distance,
+                            "raw_overfull_rows": raw_overfull_rows,
+                            "raw_matching_rows": raw_matching_rows,
                         })
 
     if not candidates:
         return result
-    candidates.sort(key=lambda item: (
-        item["unexpected_dropped_rows"],
-        -item["matching_rows"],
-        item["compared_rows"] - item["matching_rows"],
-        item["delta"],
-        0 if (
-            title_match_type == "exact"
-            and item["row_offset"] == 0
-            and item["column_offset"] == 0
-            and item["ignored_impossible_rows"] == ["break"]
-        ) else 1,
-        item["achievement_distance"] if item["achievement_distance"] is not None else 0,
-        item["overfull_repair_count"],
-        item["overfull_repair_delta"],
-        item["dropped_cells"],
-        abs(item["row_offset"]),
-        abs(item["column_offset"]),
-    ))
+    prefer_achievement_alignment = (
+        title_match_type == "exact"
+        and achievement is not None
+    )
+
+    def candidate_sort_key(item):
+        achievement_distance = item["achievement_distance"]
+        alignment_score = (
+            achievement_distance
+            if prefer_achievement_alignment and achievement_distance is not None
+            else (float("inf") if prefer_achievement_alignment else 0)
+        )
+        return (
+            item["unexpected_dropped_rows"],
+            item["raw_overfull_rows"],
+            -item["raw_matching_rows"],
+            alignment_score,
+            -item["matching_rows"],
+            item["compared_rows"] - item["matching_rows"],
+            item["delta"],
+            0 if (
+                title_match_type == "exact"
+                and item["row_offset"] == 0
+                and item["column_offset"] == 0
+                and item["ignored_impossible_rows"] == ["break"]
+            ) else 1,
+            achievement_distance if achievement_distance is not None else 0,
+            item["overfull_repair_count"],
+            item["overfull_repair_delta"],
+            item["dropped_cells"],
+            abs(item["row_offset"]),
+            abs(item["column_offset"]),
+        )
+
+    candidates.sort(key=candidate_sort_key)
     best = candidates[0]
     unshifted_chart_keys = {
         (

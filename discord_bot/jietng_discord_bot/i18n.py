@@ -99,6 +99,7 @@ MESSAGES: dict[str, dict[str, str]] = {
     "recognition_offsets": {"zh": "表格偏移", "ja": "表のオフセット", "en": "Table offsets"},
     "recognition_calc": {"zh": "Calc 校验", "ja": "Calc 検証", "en": "Calc validation"},
     "recognition_corrections": {"zh": "修正 / 待确认", "ja": "補正 / 要確認", "en": "Corrections / uncertain"},
+    "recognition_auto_corrections": {"zh": "自动校正", "ja": "自動補正", "en": "Auto Corrections"},
     "linked_ready": {
         "zh": "`{user_id}` 已经绑定到当前 Discord 账号，并且权限已可用。",
         "ja": "`{user_id}` はこの Discord アカウントに紐づいており、権限も利用可能です。",

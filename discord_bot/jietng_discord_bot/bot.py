@@ -160,39 +160,99 @@ def _song_search_summary(payload: dict, lang: str) -> str:
     return "\n".join(lines)
 
 
+DIFFICULTY_COLORS = {
+    "basic": 0x34A853,
+    "advanced": 0xF4B400,
+    "expert": 0xEA4335,
+    "master": 0x8E44AD,
+    "remaster": 0xB06FD3,
+    "utage": 0x111111,
+}
+
+
+def _score_achievement_text(value: object) -> str:
+    return f"{value:.4f}%" if isinstance(value, (int, float)) else "-"
+
+
+def _score_chart_text(chart: dict) -> str:
+    difficulty = str(chart.get("difficulty") or "-").upper()
+    internal_level = chart.get("internal_level")
+    level = internal_level if internal_level is not None else chart.get("level")
+    return f"{difficulty} {level}" if level is not None else difficulty
+
+
+def _score_validation_summary(payload: dict, lang: str) -> str:
+    validation = payload.get("validation") or {}
+    achievement_calc = validation.get("achievement_calc") or {}
+    calc_ok = achievement_calc.get("consistent") is True
+    correction_count = len(validation.get("calc_corrections") or [])
+    uncertain_count = len(validation.get("uncertain_cells") or [])
+    parts = [
+        f"{tr(lang, 'recognition_title_match')}: {validation.get('title_match_type') or '-'}",
+        (
+            f"{tr(lang, 'recognition_rows')}: "
+            f"{validation.get('matching_rows', '-')}/{validation.get('compared_rows', '-')}"
+        ),
+        (
+            f"{tr(lang, 'recognition_offsets')}: "
+            f"{validation.get('row_offset', 0)}, {validation.get('column_offset', 0)}"
+        ),
+        f"{tr(lang, 'recognition_calc')}: {'OK' if calc_ok else 'CHECK'}",
+    ]
+    if correction_count or uncertain_count:
+        parts.append(
+            f"{tr(lang, 'recognition_corrections')}: "
+            f"{correction_count} / {uncertain_count}"
+        )
+    return "\n".join(parts)
+
+
+def _score_correction_summary(payload: dict) -> str:
+    validation = payload.get("validation") or {}
+    lines = []
+    field_labels = {
+        "critical_perfect": "CP",
+        "perfect": "PF",
+        "great": "GR",
+        "good": "GD",
+        "miss": "MS",
+    }
+    for correction in validation.get("calc_corrections") or []:
+        if not isinstance(correction, dict):
+            continue
+        row = str(correction.get("row") or "").upper()
+        field = field_labels.get(
+            correction.get("field"),
+            str(correction.get("field") or "").upper(),
+        )
+        lines.append(
+            f"{row} {field}: {correction.get('ocr')} -> {correction.get('validated')} "
+            f"(MS {correction.get('miss_ocr')} -> {correction.get('miss_validated')})"
+        )
+    for row, correction in (validation.get("miss_corrections") or {}).items():
+        if not isinstance(correction, dict):
+            continue
+        lines.append(
+            f"{str(row).upper()} MS: {correction.get('ocr')} -> {correction.get('validated')}"
+        )
+    return "\n".join(lines[:8])
+
+
 def _score_recognition_embed(payload: dict, lang: str) -> discord.Embed:
     song = payload.get("song") or {}
     chart = payload.get("chart") or {}
     score = payload.get("score") or {}
-    validation = payload.get("validation") or {}
 
     title = song.get("title")
     display_title = '""' if title == "" else str(title or "-")
     chart_type = str(song.get("type") or "-").upper()
-    difficulty = str(chart.get("difficulty") or "-").upper()
-    internal_level = chart.get("internal_level")
-    level = internal_level if internal_level is not None else chart.get("level")
-    chart_text = f"{difficulty} {level}" if level is not None else difficulty
-    achievement = score.get("achievement")
-    achievement_text = (
-        f"{achievement:.4f}%" if isinstance(achievement, (int, float)) else "-"
-    )
+    chart_text = _score_chart_text(chart)
+    achievement_text = _score_achievement_text(score.get("achievement"))
 
-    difficulty_colors = {
-        "basic": 0x34A853,
-        "advanced": 0xE67E22,
-        "expert": 0xD93025,
-        "master": 0x8E44AD,
-        "remaster": 0xB06FD3,
-        "utage": 0x111111,
-    }
     embed = discord.Embed(
         title=tr(lang, "recognition_title"),
-        description=(
-            f"**{display_title}** [{chart_type}]\n"
-            f"{tr(lang, 'recognition_song_id')}: `{song.get('id', '-')}`"
-        ),
-        color=difficulty_colors.get(str(chart.get("difficulty") or "").lower(), 0x267D8B),
+        description=f"### {display_title} [{chart_type}]\n`{song.get('id', '-')}`",
+        color=DIFFICULTY_COLORS.get(str(chart.get("difficulty") or "").lower(), 0x267D8B),
     )
     embed.add_field(
         name=tr(lang, "recognition_achievement"),
@@ -204,9 +264,10 @@ def _score_recognition_embed(payload: dict, lang: str) -> discord.Embed:
         value=f"**{chart_text}**",
         inline=True,
     )
+    embed.add_field(name="\u200b", value="\u200b", inline=True)
 
     judgements = score.get("judgements") or {}
-    lines = ["TYPE    CP   PF   GR   GD   MS"]
+    lines = [f"`{'TYPE':<5} {'CP':>4} {'PF':>4} {'GR':>4} {'GD':>4} {'MS':>4}`"]
     for row_name in ("tap", "hold", "slide", "touch", "break"):
         row = judgements.get(row_name) or {}
         values = [
@@ -217,61 +278,46 @@ def _score_recognition_embed(payload: dict, lang: str) -> discord.Embed:
             row.get("miss", 0),
         ]
         lines.append(
-            f"{row_name.upper():<5} " + " ".join(f"{int(value or 0):>4}" for value in values)
+            f"`{row_name.upper():<5} "
+            + " ".join(f"{int(value or 0):>4}" for value in values)
+            + "`"
         )
     embed.add_field(
         name=tr(lang, "recognition_judgements"),
-        value="```\n" + "\n".join(lines) + "\n```",
+        value="\n".join(lines),
         inline=False,
     )
 
     break_detail = score.get("break_detail") or {}
     if break_detail:
         break_lines = [
-            f"CP 2600: {break_detail.get('critical_perfect', 0)}",
+            f"**CP 2600** `{break_detail.get('critical_perfect', 0)}`",
             (
-                f"PF 2550/2500: {break_detail.get('perfect_high', 0)}"
-                f" / {break_detail.get('perfect_low', 0)}"
+                f"**PF 2550 / 2500** `{break_detail.get('perfect_high', 0)}`"
+                f" / `{break_detail.get('perfect_low', 0)}`"
             ),
             (
-                f"GR 2000/1500/1250: {break_detail.get('great_high', 0)}"
-                f" / {break_detail.get('great_middle', 0)}"
-                f" / {break_detail.get('great_low', 0)}"
+                f"**GR 2000 / 1500 / 1250** `{break_detail.get('great_high', 0)}`"
+                f" / `{break_detail.get('great_middle', 0)}`"
+                f" / `{break_detail.get('great_low', 0)}`"
             ),
-            f"GD/MS: {break_detail.get('good', 0)} / {break_detail.get('miss', 0)}",
+            f"**GD / MS** `{break_detail.get('good', 0)}` / `{break_detail.get('miss', 0)}`",
         ]
         embed.add_field(
             name=tr(lang, "recognition_break_detail"),
-            value="```\n" + "\n".join(break_lines) + "\n```",
+            value="\n".join(break_lines),
             inline=False,
         )
 
-    achievement_calc = validation.get("achievement_calc") or {}
-    validation_lines = [
-        f"{tr(lang, 'recognition_title_match')}: {validation.get('title_match_type') or '-'}",
-        (
-            f"{tr(lang, 'recognition_rows')}: "
-            f"{validation.get('matching_rows', '-')}/{validation.get('compared_rows', '-')}"
-        ),
-        (
-            f"{tr(lang, 'recognition_offsets')}: "
-            f"row {validation.get('row_offset', 0)}, column {validation.get('column_offset', 0)}"
-        ),
-        (
-            f"{tr(lang, 'recognition_calc')}: "
-            f"{'OK' if achievement_calc.get('consistent') is True else 'CHECK'}"
-        ),
-        (
-            f"{tr(lang, 'recognition_corrections')}: "
-            f"{len(validation.get('calc_corrections') or [])} / "
-            f"{len(validation.get('uncertain_cells') or [])}"
-        ),
-    ]
-    embed.add_field(
-        name=tr(lang, "recognition_validation"),
-        value="\n".join(validation_lines),
-        inline=False,
-    )
+    correction_text = _score_correction_summary(payload)
+    if correction_text:
+        embed.add_field(
+            name=tr(lang, "recognition_auto_corrections"),
+            value=correction_text,
+            inline=False,
+        )
+
+    embed.set_footer(text=_score_validation_summary(payload, lang).replace("\n", "  |  "))
     return embed
 
 
