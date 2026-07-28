@@ -23,17 +23,18 @@
       justify-content: center;
       min-height: 100vh;
       padding: 24px;
-      background: var(--surface-bg);
     }
 
     .panel {
       width: 100%;
       max-width: 520px;
-      padding: 40px;
+      padding: 46px 40px 36px;
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
+      border-radius: var(--radius-xl);
       background: var(--card-bg);
       box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
     }
 
     .mark {
@@ -47,13 +48,14 @@
       background: var(--danger-bg, #FDECEC);
       color: var(--danger-color, #D93025);
       font-size: 42px;
-      font-weight: 800;
+      font-weight: 750;
     }
 
     h1 {
       margin: 0 0 12px;
       color: var(--text-color);
       font-size: 24px;
+      font-weight: 750;
       text-align: center;
     }
 
@@ -68,7 +70,7 @@
     .summary {
       margin: 0 0 24px;
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-lg);
       overflow: hidden;
       background: var(--surface-bg);
     }
@@ -101,7 +103,7 @@
       margin: 0 0 24px;
       padding: 14px 16px;
       border: 1px solid rgba(217, 48, 37, 0.24);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-lg);
       background: rgba(217, 48, 37, 0.08);
       color: var(--text-color);
       font-size: 14px;
@@ -112,12 +114,21 @@
       width: 100%;
       padding: 14px 16px;
       border: 0;
-      border-radius: var(--radius-md);
+      border-radius: 999px;
       background: var(--danger-color, #D93025);
       color: #fff;
       font-size: 16px;
       font-weight: 800;
       cursor: pointer;
+      transition: background var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
+    }
+
+    button:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    button:active {
+      transform: scale(0.98);
     }
 
     @media (max-width: 600px) {
@@ -126,7 +137,7 @@
       }
 
       .panel {
-        padding: 32px 22px;
+        padding: 36px 22px 24px;
       }
     }
   </style>

@@ -70,7 +70,6 @@ def create_backup(
                 zf.write(sql_file, arcname="maimai_records.sql")
                 zf.write(user_json_file, arcname="user.json")
                 zf.write(config_json_file, arcname="config.json")
-            password_note = "🔒 Password: config.admin_password (AES encrypted)"
             logger.info(f"[Backup] ✓ Encrypted backup created: {backup_path}")
 
             # 获取文件大小
@@ -79,11 +78,10 @@ def create_backup(
 
             return (
                 True,
-                f"✅ Backup created successfully\n"
-                f"📦 File: {backup_filename}\n"
-                f"📊 Size: {size_mb:.2f} MB\n"
-                f"{password_note}\n"
-                f"📁 Location: {BACKUP_DIR}/",
+                f"File: {backup_filename}\n"
+                f"Size: {size_mb:.2f} MB\n"
+                f"Password: config.admin_password\n"
+                f"Location: {BACKUP_DIR}/",
                 backup_path
             )
 

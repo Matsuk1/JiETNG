@@ -149,8 +149,8 @@ def get_cover_image(cover_url, cover_name=None):
                     with open(local_path, "wb") as f:
                         f.write(response.content)
 
-                img = Image.open(BytesIO(response.content))
-                return img.convert("RGBA")
+                with Image.open(BytesIO(response.content)) as img:
+                    return img.convert("RGBA")
 
             except requests.exceptions.Timeout:
                 if attempt < max_retries - 1:

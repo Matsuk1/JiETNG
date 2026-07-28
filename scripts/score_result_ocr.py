@@ -100,7 +100,8 @@ def prepare_ocr_image_data(source_image: Image.Image, field: str) -> Image.Image
 
 
 def prepare_ocr_image(source_path: str | Path, output_path: str | Path, field: str) -> Path:
-    image = prepare_ocr_image_data(Image.open(source_path), field)
+    with Image.open(source_path) as source:
+        image = prepare_ocr_image_data(source, field)
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     image.save(output)
@@ -389,19 +390,6 @@ def parse_result(fields: dict[str, dict[str, Any]]) -> dict[str, Any]:
     return parsed
 
 
-def parse_difficulty(text: str) -> str | None:
-    match = re.search(r"(RE[:\s-]*MASTER|MASTER|EXPERT|ADVANCED|BASIC)", text, re.IGNORECASE)
-    if not match:
-        return None
-    value = match.group(1).upper().replace(" ", "").replace("-", "")
-    return "Re:MASTER" if value.startswith("RE") else value
-
-
-def parse_level(text: str) -> str | None:
-    match = re.search(r"(?:LV)?\s*(\d{1,2}\+?)", text, re.IGNORECASE)
-    return match.group(1) if match else None
-
-
 def parse_percent(text: str) -> float | None:
     candidates = re.findall(r"(\d{2,3}[.,]\d{3,4})\s*%?", text)
     # Paddle occasionally repeats the integer's last digit before the decimal:
@@ -476,59 +464,6 @@ def parse_percent_items(items: list[dict[str, Any]], fallback_text: str) -> floa
     if candidates:
         return max(candidates, key=lambda candidate: candidate[0])[1]
     return parse_percent(fallback_text)
-
-
-def parse_int(text: str) -> int | None:
-    candidates = re.findall(r"\d{3,6}", text.replace(" ", ""))
-    if not candidates:
-        return None
-    return max(int(item) for item in candidates)
-
-
-def parse_rank(text: str) -> str | None:
-    normalized = text.upper().replace(" ", "")
-    for rank in ("SSS+", "SSS", "SS+", "SS", "S+", "S", "AAA", "AA", "A"):
-        if rank in normalized:
-            return rank
-    return None
-
-
-def parse_pair(text: str) -> dict[str, int] | None:
-    compact = text.replace(" ", "")
-    match = re.search(r"(\d{2,5})/(\d{2,5})", compact)
-    if not match:
-        nums = re.findall(r"\d{2,5}", compact)
-        if len(nums) < 2:
-            return None
-        return {"current": int(nums[0]), "total": int(nums[1])}
-    return {"current": int(match.group(1)), "total": int(match.group(2))}
-
-
-def parse_judgement(text: str) -> dict[str, int] | None:
-    compact = text.replace(" ", "")
-    numbers = [int(item) for item in re.findall(r"\d{1,4}", compact)]
-    if len(numbers) < 5:
-        return None
-    # The crop is ordered top-to-bottom in the game UI.
-    return {
-        "critical_perfect": numbers[0],
-        "perfect": numbers[1],
-        "great": numbers[2],
-        "good": numbers[3],
-        "miss": numbers[4],
-    }
-
-
-def parse_fast_late(text: str) -> dict[str, int] | None:
-    normalized = normalize_text(text).upper()
-    fast = re.search(r"FAST\D{0,12}(\d{1,4})", normalized)
-    late = re.search(r"LATE\D{0,12}(\d{1,4})", normalized)
-    result = {}
-    if fast:
-        result["fast"] = int(fast.group(1))
-    if late:
-        result["late"] = int(late.group(1))
-    return result or None
 
 
 def item_center(item: dict[str, Any]) -> tuple[float, float] | None:
@@ -1754,11 +1689,11 @@ def recognize_judgement_by_columns(
     engine: PaddleOcrEngine,
     layout_hint: str | None = None,
 ) -> dict[str, dict[str, int]] | None:
-    image = (
-        table_image_source.convert("RGB")
-        if isinstance(table_image_source, Image.Image)
-        else Image.open(table_image_source).convert("RGB")
-    )
+    if isinstance(table_image_source, Image.Image):
+        image = table_image_source.convert("RGB")
+    else:
+        with Image.open(table_image_source) as source:
+            image = source.convert("RGB")
     width, height = image.size
     if layout_hint == "dxnet":
         row_centers = [

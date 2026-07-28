@@ -170,46 +170,6 @@ def _cluster_ranges(values: list[int], max_gap: int = 3) -> list[tuple[int, int]
     return ranges
 
 
-def _detect_sub_rail_top(image: Image.Image) -> int | None:
-    rgb = image.convert("RGB")
-    width, height = rgb.size
-    pixels = rgb.load()
-    rows: list[int] = []
-    scores: dict[int, int] = {}
-
-    x_start = int(width * 0.020)
-    x_end = int(width * 0.980)
-    y_start = int(height * 0.100)
-    y_end = int(height * 0.300)
-    sample_count = max(1, (x_end - x_start) // 4)
-    threshold = max(260, int(sample_count * 0.38))
-
-    for y in range(y_start, y_end):
-        score = 0
-        for x in range(x_start, x_end, 4):
-            r, g, b = pixels[x, y]
-            # The acrylic rail below the sub screen is a long pink/purple band.
-            if r >= 85 and b >= 75 and g <= 105 and abs(r - b) <= 85:
-                score += 1
-        if score >= threshold:
-            rows.append(y)
-            scores[y] = score
-
-    candidates = _cluster_ranges(rows, max_gap=3)
-    candidates = [
-        candidate for candidate in candidates
-        if candidate[1] - candidate[0] >= 5
-    ]
-    if not candidates:
-        return None
-
-    def cluster_score(candidate: tuple[int, int]) -> int:
-        start, end = candidate
-        return sum(scores.get(y, 0) for y in range(start, end + 1))
-
-    return max(candidates, key=cluster_score)[0]
-
-
 def detect_sub_screen(image: Image.Image) -> Box:
     image = ImageOps.exif_transpose(image)
     width, height = image.size
@@ -921,8 +881,8 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
 
-    image = Image.open(source)
-    image = ImageOps.exif_transpose(image).convert("RGB")
+    with Image.open(source) as raw_image:
+        image = ImageOps.exif_transpose(raw_image).convert("RGB")
     if is_dxnet_result_screenshot(image):
         metadata = _dxnet_fields_in_memory(image)
         sample_dir = output / source.stem

@@ -18,30 +18,22 @@
     /* 页面特定 CSS 变量 - Page-specific CSS Variables */
     :root {
       --hover-bg: rgba(0, 0, 0, 0.04);
-      --bg-color: #F8F9FA;
-      --shadow-sm: none;
-      --shadow-md: none;
-      --shadow-lg: none;
-      --shadow-xl: none;
+      --bg-color: rgba(255, 255, 255, 0.56);
     }
 
     @media (prefers-color-scheme: dark) {
       :root {
         --hover-bg: rgba(255, 255, 255, 0.08);
-        --bg-color: #1E1E1E;
-        --shadow-sm: none;
-        --shadow-md: none;
-        --shadow-lg: none;
-        --shadow-xl: none;
+        --bg-color: rgba(44, 44, 46, 0.58);
       }
     }
 
     /* 页面特定样式 - Page-specific Styles */
     body {
-      padding: 20px;
-      padding-top: calc(20px + env(safe-area-inset-top));
-      background: var(--surface-bg);
+      padding: 28px;
+      padding-top: calc(28px + env(safe-area-inset-top));
       min-height: 100vh;
+      --mobile-nav-offset: 0px;
     }
 
     .container {
@@ -54,18 +46,20 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 24px;
-      padding: 24px 32px;
+      padding: 22px 28px;
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-sm);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
     }
 
     .header h1 {
-      font-size: 24px;
-      font-weight: 700;
+      font-size: 28px;
+      font-weight: 750;
       color: var(--text-color);
-      letter-spacing: -0.5px;
+      letter-spacing: 0;
     }
 
     .logout-btn {
@@ -73,7 +67,7 @@
       background: transparent;
       color: var(--danger-color);
       border: 1px solid var(--danger-color);
-      border-radius: 20px;
+      border-radius: 999px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
@@ -95,9 +89,12 @@
       padding: 4px;
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
+      border-radius: 999px;
       overflow-x: auto;
       scrollbar-width: none;
+      box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
     }
 
     .tabs::-webkit-scrollbar {
@@ -108,7 +105,7 @@
       padding: 10px 20px;
       background: transparent;
       border: none;
-      border-radius: var(--radius-sm);
+      border-radius: 999px;
       color: var(--text-secondary);
       font-size: 14px;
       font-weight: 600;
@@ -125,6 +122,7 @@
     .tab.active {
       color: white;
       background: var(--accent-color);
+      box-shadow: 0 6px 18px rgba(0, 113, 227, 0.24);
     }
 
     .tab-content {
@@ -138,14 +136,16 @@
     .section {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      padding: 24px;
-      margin-bottom: 16px;
-      box-shadow: var(--shadow-sm);
+      border-radius: var(--radius-xl);
+      padding: 26px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
     }
 
     .section-title {
-      font-size: 16px;
+      font-size: 17px;
       font-weight: 700;
       color: var(--text-color);
       margin-bottom: 16px;
@@ -161,7 +161,7 @@
     .user-item {
       background-color: var(--surface-bg);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-lg);
       transition: all var(--transition-base);
       overflow: hidden;
       min-width: 0;
@@ -170,6 +170,7 @@
     .user-item:hover {
       border-color: var(--border-hover);
       box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
     }
 
     .user-header {
@@ -240,13 +241,15 @@
     .modal-content {
       background-color: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
+      border-radius: var(--radius-xl);
       padding: 28px;
       max-width: 600px;
       width: 90%;
       max-height: 80vh;
       overflow-y: auto;
       box-shadow: var(--shadow-xl);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
     }
 
     .modal-header {
@@ -261,7 +264,7 @@
     .modal-title {
       font-size: 20px;
       font-weight: 600;
-      color: var(--accent-color);
+      color: var(--text-color);
     }
 
     .close-btn {
@@ -277,7 +280,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
+      border-radius: 50%;
       transition: all 0.3s;
     }
 
@@ -304,7 +307,7 @@
       padding: 10px 14px;
       background-color: var(--surface-bg);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-lg);
       font-size: 16px;
       color: var(--text-color);
       font-family: 'Courier New', monospace;
@@ -380,7 +383,7 @@
     .btn {
       padding: 8px 16px;
       border: 1px solid transparent;
-      border-radius: var(--radius-md);
+      border-radius: 999px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
@@ -388,32 +391,33 @@
     }
 
     .btn-primary {
-      background: transparent;
+      background: var(--accent-light);
       color: var(--info-color);
-      border: 1px solid var(--info-color);
+      border: 1px solid transparent;
     }
 
     .btn-success {
-      background: transparent;
+      background: var(--success-light);
       color: var(--success-color);
-      border: 1px solid var(--success-color);
+      border: 1px solid transparent;
     }
 
     .btn-danger {
-      background: transparent;
+      background: var(--danger-light);
       color: var(--danger-color);
-      border: 1px solid var(--danger-color);
+      border: 1px solid transparent;
     }
 
     .btn-warning {
-      background: transparent;
+      background: var(--warning-light);
       color: var(--warning-color);
-      border: 1px solid var(--warning-color);
+      border: 1px solid transparent;
     }
 
     .btn:hover {
       opacity: 1;
-      filter: brightness(1.1);
+      filter: none;
+      transform: translateY(-1px);
     }
 
     .btn-primary:hover { background: var(--info-color); color: white; }
@@ -434,7 +438,7 @@
     .json-viewer {
       background-color: var(--bg-color);
       border: 1px solid var(--border-color);
-      border-radius: 6px;
+      border-radius: var(--radius-lg);
       padding: 12px;
       font-family: 'Courier New', monospace;
       font-size: 12px;
@@ -473,7 +477,7 @@
     .stat-card {
       background: var(--surface-bg);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
+      border-radius: var(--radius-xl);
       padding: 20px;
       text-align: center;
       transition: all var(--transition-base);
@@ -482,11 +486,12 @@
     .stat-card:hover {
       box-shadow: var(--shadow-md);
       border-color: var(--border-hover);
+      transform: translateY(-2px);
     }
 
     .stat-value {
       font-size: 32px;
-      font-weight: 700;
+      font-weight: 760;
       color: var(--accent-color);
       margin-bottom: 8px;
     }
@@ -495,7 +500,7 @@
       font-size: 12px;
       color: var(--text-secondary);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0;
       font-weight: 600;
     }
 
@@ -504,7 +509,7 @@
       padding: 10px 14px;
       background-color: var(--surface-bg);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
+      border-radius: 999px;
       font-size: 16px;
       color: var(--text-color);
       margin-bottom: 16px;
@@ -525,7 +530,7 @@
     .log-viewer {
       background-color: var(--surface-bg);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-lg);
       padding: 16px;
       font-family: 'Courier New', Monaco, monospace;
       font-size: 12px;
@@ -546,7 +551,7 @@
     .badge {
       display: inline-block;
       padding: 4px 10px;
-      border-radius: 4px;
+      border-radius: 999px;
       font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
@@ -574,14 +579,967 @@
       opacity: 0.5;
     }
 
+    .admin-shell {
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: calc(28px + env(safe-area-inset-top));
+      min-height: calc(100vh - 56px - env(safe-area-inset-top));
+      padding: 20px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      background: var(--card-bg);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+    }
+
+    .brand-block {
+      padding: 4px 4px 18px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 16px;
+    }
+
+    .brand-title {
+      font-size: 24px;
+      font-weight: 780;
+      line-height: 1.08;
+      color: var(--text-color);
+    }
+
+    .brand-subtitle {
+      margin-top: 7px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .mobile-nav-toggle {
+      display: none;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      background: var(--input-bg);
+      color: var(--text-color);
+      font-size: 16px;
+      font-weight: 760;
+      line-height: 1;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mobile-nav-toggle::before {
+      content: "-";
+    }
+
+    body.admin-mobile-nav-collapsed .mobile-nav-toggle::before {
+      content: "+";
+    }
+
+    .mobile-nav-content {
+      display: contents;
+    }
+
+    .side-section-label {
+      margin: 18px 6px 8px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .nav-stack {
+      display: grid;
+      gap: 6px;
+    }
+
+    .tabs {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      overflow: visible;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .tab {
+      width: 100%;
+      justify-content: flex-start;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      text-align: left;
+    }
+
+    .tab-icon {
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      color: var(--text-secondary);
+      background: rgba(118, 118, 128, 0.1);
+      font-size: 12px;
+      font-weight: 800;
+      flex: 0 0 auto;
+    }
+
+    .tab.active {
+      color: var(--text-color);
+      background: var(--accent-light);
+      box-shadow: none;
+    }
+
+    .tab.active .tab-icon {
+      color: #fff;
+      background: var(--accent-color);
+    }
+
+    .admin-main {
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+      padding: 18px 22px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      background: var(--card-bg);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+    }
+
+    .topbar-title {
+      min-width: 0;
+    }
+
+    .topbar-title h1 {
+      margin: 0;
+      color: var(--text-color);
+      font-size: 26px;
+      font-weight: 780;
+      line-height: 1.12;
+    }
+
+    .topbar-meta {
+      margin-top: 4px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .icon-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 34px;
+      padding: 7px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      background: var(--input-bg);
+      color: var(--text-color);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .logout-btn {
+      min-height: 34px;
+      padding: 7px 13px;
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: minmax(260px, 1.2fr) repeat(3, minmax(150px, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .hero-card,
+    .metric-card {
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      background: var(--card-bg);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+    }
+
+    .hero-card {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 172px;
+    }
+
+    .hero-eyebrow,
+    .metric-label {
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .hero-value {
+      margin-top: 12px;
+      color: var(--text-color);
+      font-size: 48px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .hero-note {
+      margin-top: 12px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .metric-card {
+      padding: 18px;
+      min-height: 126px;
+    }
+
+    .metric-value {
+      margin-top: 14px;
+      color: var(--text-color);
+      font-size: 32px;
+      font-weight: 780;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric-note {
+      margin-top: 10px;
+      color: var(--text-tertiary);
+      font-size: 12px;
+    }
+
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .status-pill {
+      padding: 12px 14px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      background: rgba(118, 118, 128, 0.08);
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .status-pill strong {
+      display: block;
+      margin-top: 2px;
+      color: var(--text-color);
+      font-size: 16px;
+      font-weight: 740;
+    }
+
+    .operations-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.9fr);
+      gap: 18px;
+    }
+
+    .notification-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .notification-card {
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      background: rgba(118, 118, 128, 0.08);
+      overflow: hidden;
+    }
+
+    .notification-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 13px 14px;
+      cursor: pointer;
+    }
+
+    .notification-title {
+      color: var(--text-color);
+      font-size: 13px;
+      font-weight: 720;
+      line-height: 1.35;
+    }
+
+    .notification-meta {
+      margin-top: 4px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
+    .notification-detail {
+      display: none;
+      padding: 12px 14px;
+      border-top: 1px solid var(--border-color);
+      background: var(--input-bg);
+    }
+
+    .notification-detail pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .monitor-board {
+      display: grid;
+      gap: 18px;
+    }
+
+    .monitor-hero {
+      display: grid;
+      grid-template-columns: minmax(280px, 1.15fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .monitor-card {
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      background: var(--card-bg);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+    }
+
+    .monitor-primary {
+      min-height: 260px;
+      padding: 28px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 18px;
+      overflow: hidden;
+    }
+
+    .monitor-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .monitor-title {
+      color: var(--text-color);
+      font-size: 28px;
+      font-weight: 780;
+      line-height: 1.12;
+    }
+
+    .monitor-subtitle {
+      margin-top: 6px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background: rgba(52, 199, 89, 0.11);
+      color: var(--success-color);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .live-badge::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s infinite;
+    }
+
+    .monitor-total {
+      align-self: center;
+      display: grid;
+      gap: 20px;
+      padding: 18px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      background: rgba(118, 118, 128, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+    }
+
+    .monitor-total-main {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .monitor-total-label {
+      color: var(--text-tertiary);
+      font-size: 12px;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .monitor-number {
+      color: var(--text-color);
+      margin-top: 5px;
+      font-size: clamp(42px, 4.6vw, 64px);
+      font-weight: 820;
+      line-height: 0.95;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    .monitor-total-delta {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--success-light);
+      color: var(--success-color);
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .monitor-segments {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .monitor-segment {
+      min-width: 0;
+      padding: 10px 11px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: var(--input-bg);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .monitor-segment strong {
+      display: block;
+      color: var(--text-color);
+      font-size: 17px;
+      font-weight: 780;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    .monitor-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .mini-stat {
+      padding: 12px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      background: rgba(118, 118, 128, 0.08);
+    }
+
+    .mini-label {
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .mini-value {
+      margin-top: 5px;
+      color: var(--text-color);
+      font-size: 21px;
+      font-weight: 760;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .health-panel {
+      padding: 20px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .health-row {
+      display: grid;
+      grid-template-columns: 84px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .health-row:last-child {
+      border-bottom: 0;
+    }
+
+    .health-label {
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .health-track {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(118, 118, 128, 0.16);
+      overflow: hidden;
+    }
+
+    .health-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: var(--accent-color);
+    }
+
+    .health-value {
+      color: var(--text-color);
+      font-size: 13px;
+      font-weight: 720;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .monitor-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
+      gap: 18px;
+    }
+
+    .panel-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 20px 22px 0;
+    }
+
+    .panel-heading h2 {
+      margin: 0;
+      color: var(--text-color);
+      font-size: 18px;
+      font-weight: 760;
+    }
+
+    .panel-heading span {
+      color: var(--text-tertiary);
+      font-size: 12px;
+    }
+
+    .chart-panel {
+      padding: 0 18px 18px;
+    }
+
+    .command-list {
+      display: grid;
+      gap: 12px;
+      padding: 18px 22px 22px;
+    }
+
+    .command-row {
+      display: grid;
+      grid-template-columns: minmax(120px, 0.42fr) 1fr 52px;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .command-name,
+    .command-count {
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .command-count {
+      color: var(--text-color);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .command-bar {
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(118, 118, 128, 0.14);
+      overflow: hidden;
+    }
+
+    .command-bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--accent-color);
+    }
+
+    .system-summary {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .summary-tile {
+      padding: 16px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      background: rgba(118, 118, 128, 0.08);
+    }
+
+    .summary-label {
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .summary-value {
+      margin-top: 7px;
+      color: var(--text-color);
+      font-size: 15px;
+      font-weight: 720;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1024px) {
+      body {
+        padding: 18px;
+        padding-top: calc(18px + env(safe-area-inset-top));
+      }
+
+      .admin-shell {
+        grid-template-columns: 208px minmax(0, 1fr);
+        gap: 16px;
+      }
+
+      .sidebar {
+        padding: 16px;
+      }
+
+      .monitor-hero,
+      .monitor-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .system-summary {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
     @media (max-width: 768px) {
       body {
-        /* 移动端：safe-area padding 已在 :root 上，这里只加额外的 10px */
-        padding: 10px;
+        padding: 12px;
+        padding-top: calc(12px + env(safe-area-inset-top));
       }
 
       .container {
         max-width: 100%;
+      }
+
+      .admin-shell {
+        display: block;
+      }
+
+      .sidebar {
+        position: sticky;
+        top: calc(8px + env(safe-area-inset-top));
+        z-index: 70;
+        min-height: 0;
+        margin-bottom: 12px;
+        padding: 14px;
+        border-radius: var(--radius-lg);
+      }
+
+      .brand-block {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding-bottom: 12px;
+      }
+
+      .brand-title {
+        font-size: 20px;
+      }
+
+      .brand-subtitle {
+        margin-top: 0;
+        font-size: 12px;
+        text-align: right;
+      }
+
+      .mobile-nav-toggle {
+        display: inline-flex;
+        flex: 0 0 auto;
+      }
+
+      .mobile-nav-content {
+        display: block;
+        overflow: hidden;
+        max-height: 360px;
+        opacity: 1;
+        margin-top: 0;
+        transition: max-height var(--transition-slow), opacity var(--transition-base), margin-top var(--transition-base);
+      }
+
+      body.admin-mobile-nav-collapsed .brand-block {
+        border-bottom: 0;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      body.admin-mobile-nav-collapsed .mobile-nav-content {
+        max-height: 0;
+        opacity: 0;
+        margin-top: 0;
+        pointer-events: none;
+      }
+
+      .side-section-label {
+        margin: 12px 4px 8px;
+      }
+
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        overflow: visible;
+      }
+
+      .tab {
+        width: 100%;
+        min-width: 0;
+        justify-content: flex-start;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .topbar {
+        position: sticky;
+        top: calc(var(--mobile-nav-offset, 76px) + env(safe-area-inset-top));
+        z-index: 50;
+        align-items: center;
+        flex-direction: row;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 12px;
+        padding: 12px 12px 12px 14px;
+        border-radius: var(--radius-lg);
+      }
+
+      .topbar-title {
+        flex: 1;
+      }
+
+      .topbar-title h1 {
+        font-size: 21px;
+        line-height: 1.1;
+        white-space: nowrap;
+      }
+
+      .topbar-meta {
+        display: none;
+      }
+
+      .topbar-actions {
+        width: auto;
+        flex: 0 0 auto;
+        gap: 8px;
+        flex-wrap: nowrap;
+      }
+
+      #notif-toggle-btn {
+        width: 36px;
+        min-height: 36px;
+        padding: 0;
+        justify-content: center;
+      }
+
+      #notif-toggle-label {
+        display: none;
+      }
+
+      .logout-btn {
+        min-height: 36px;
+        padding: 7px 12px;
+      }
+
+      .overview-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .hero-card {
+        grid-column: 1 / -1;
+      }
+
+      .status-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .operations-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .monitor-hero,
+      .monitor-grid,
+      .system-summary {
+        grid-template-columns: 1fr;
+      }
+
+      .monitor-board {
+        gap: 12px;
+      }
+
+      .monitor-card {
+        border-radius: var(--radius-lg);
+      }
+
+      .monitor-primary {
+        min-height: auto;
+        padding: 18px;
+        gap: 16px;
+      }
+
+      .monitor-head {
+        align-items: center;
+      }
+
+      .monitor-title {
+        font-size: 22px;
+      }
+
+      .monitor-subtitle {
+        font-size: 12px;
+      }
+
+      .monitor-total {
+        padding: 14px;
+        gap: 14px;
+      }
+
+      .monitor-total-main {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: flex-start;
+      }
+
+      .monitor-number {
+        font-size: clamp(38px, 13vw, 54px);
+        line-height: 1;
+      }
+
+      .monitor-total-delta {
+        font-size: 12px;
+      }
+
+      .monitor-segments {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 7px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border-color);
+      }
+
+      .monitor-segment {
+        padding: 8px;
+        font-size: 11px;
+      }
+
+      .monitor-segment strong {
+        font-size: 15px;
+      }
+
+      .monitor-mini-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .mini-stat {
+        padding: 10px;
+      }
+
+      .mini-label {
+        font-size: 10px;
+      }
+
+      .mini-value {
+        font-size: 18px;
+      }
+
+      .health-panel {
+        padding: 16px;
+      }
+
+      .health-row {
+        grid-template-columns: 64px 1fr auto;
+        gap: 9px;
+      }
+
+      .panel-heading {
+        padding: 16px 16px 0;
+      }
+
+      .chart-panel {
+        padding: 0 10px 12px;
+      }
+
+      .command-list {
+        padding: 14px 16px 16px;
+      }
+
+      .command-row {
+        grid-template-columns: minmax(92px, 0.45fr) 1fr 44px;
+        gap: 8px;
+      }
+
+      .summary-tile {
+        padding: 13px;
       }
 
       .header {
@@ -596,10 +1554,8 @@
       }
 
       .tabs {
-        overflow-x: auto;
+        overflow: visible;
         gap: 8px;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
         padding-bottom: 4px;
       }
 
@@ -609,14 +1565,15 @@
 
       .tab {
         font-size: 13px;
-        padding: 10px 16px;
+        padding: 9px 10px;
         white-space: nowrap;
-        min-width: fit-content;
+        min-width: 0;
       }
 
       .section {
-        padding: 20px 16px;
-        margin-bottom: 16px;
+        padding: 18px 14px;
+        margin-bottom: 12px;
+        border-radius: var(--radius-lg);
       }
 
       .section-title {
@@ -740,6 +1697,69 @@
       }
     }
 
+    @media (max-width: 520px) {
+      body {
+        padding: 8px;
+        padding-top: calc(8px + env(safe-area-inset-top));
+      }
+
+      .topbar-actions {
+        gap: 8px;
+      }
+
+      .tabs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .icon-button,
+      .logout-btn {
+        padding: 7px 10px;
+        font-size: 12px;
+      }
+
+      .monitor-mini-grid,
+      .system-summary {
+        grid-template-columns: 1fr;
+      }
+
+      .monitor-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .monitor-total-main {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: end;
+      }
+
+      .monitor-segments {
+        grid-template-columns: 1fr;
+      }
+
+      .live-badge {
+        align-self: flex-start;
+      }
+
+      .health-row {
+        grid-template-columns: 1fr auto;
+      }
+
+      .health-track {
+        grid-column: 1 / -1;
+        order: 3;
+      }
+
+      .command-row {
+        grid-template-columns: 1fr 44px;
+      }
+
+      .command-bar {
+        grid-column: 1 / -1;
+        order: 3;
+      }
+    }
+
     /* 防止横向溢出 */
     table {
       display: block;
@@ -765,7 +1785,7 @@
     }
   </style>
 </head>
-<body>
+<body class="admin-mobile-nav-collapsed">
   <script>
     // iOS standalone PWA 安全区域修复
     // env(safe-area-inset-top) 在某些情况下返回 0，用 JS 探测并补救
@@ -781,32 +1801,52 @@
       document.body.style.paddingTop = (20 + sat) + 'px';
     }();
   </script>
-  <div class="container">
-    <div class="header">
-      <h1>JiETNG Panel</h1>
-      <div style="display:flex; align-items:center; gap:10px;">
-        <button id="notif-toggle-btn" onclick="toggleBrowserNotifications()"
-                title="Enable/Disable browser notifications"
-                style="background:none; border:1px solid var(--border-color); border-radius:20px; padding:4px 12px; cursor:pointer; font-size:13px; color:var(--text-color); display:flex; align-items:center; gap:5px;">
-          <span id="notif-toggle-icon">✕</span>
-          <span id="notif-toggle-label" style="font-size:13px;">Notifications</span>
-        </button>
-        <a href="/admin/logout" class="logout-btn">Logout</a>
+  <div class="container admin-shell">
+    <aside class="sidebar">
+      <div class="brand-block">
+        <div class="brand-title">JiETNG</div>
+        <div class="brand-subtitle">Admin Console</div>
+        <button class="mobile-nav-toggle" type="button" id="mobile-nav-toggle" aria-label="Toggle navigation" aria-expanded="false" onclick="toggleMobileNav()"></button>
       </div>
-    </div>
 
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('stats')">Statistics</button>
-      <button class="tab" onclick="switchTab('users')">Users</button>
-      <button class="tab" onclick="switchTab('dxdata')">DxData</button>
-      <button class="tab" onclick="switchTab('notices')">Notices</button>
-      <button class="tab" onclick="switchTab('tipad')">Tip/Ad</button>
-      <button class="tab" onclick="switchTab('backups')">Backups</button>
-      <button class="tab" onclick="switchTab('logs')">Logs</button>
-      <button class="tab" onclick="switchTab('devtoken')">DevToken</button>
-      <button class="tab" onclick="switchTab('backgrounds')">Backgrounds</button>
-      <button class="tab" id="notifications-tab-btn" onclick="switchTab('notifications')">Notifications <span id="notification-badge" style="display:none; background:#e74c3c; color:#fff; border-radius:10px; padding:1px 6px; font-size:11px; margin-left:4px;"></span></button>
-    </div>
+      <div class="mobile-nav-content" id="mobile-nav-content">
+        <div class="side-section-label">Monitor</div>
+        <div class="tabs nav-stack">
+          <button class="tab active" data-tab="stats" onclick="switchTab('stats', this)"><span class="tab-icon">S</span>Overview</button>
+          <button class="tab" data-tab="operations" onclick="switchTab('operations', this)"><span class="tab-icon">O</span>Operations <span id="notification-badge" style="display:none; background:#ff3b30; color:#fff; border-radius:999px; padding:1px 6px; font-size:11px; margin-left:auto;"></span></button>
+        </div>
+
+        <div class="side-section-label">Manage</div>
+        <div class="tabs nav-stack">
+          <button class="tab" data-tab="users" onclick="switchTab('users', this)"><span class="tab-icon">U</span>Users</button>
+          <button class="tab" data-tab="notices" onclick="switchTab('notices', this)"><span class="tab-icon">N</span>Notices</button>
+          <button class="tab" data-tab="tipad" onclick="switchTab('tipad', this)"><span class="tab-icon">T</span>Tip / Ad</button>
+        </div>
+
+        <div class="side-section-label">Maintain</div>
+        <div class="tabs nav-stack">
+          <button class="tab" data-tab="dxdata" onclick="switchTab('dxdata', this)"><span class="tab-icon">D</span>DxData</button>
+          <button class="tab" data-tab="backups" onclick="switchTab('backups', this)"><span class="tab-icon">B</span>Backups</button>
+          <button class="tab" data-tab="backgrounds" onclick="switchTab('backgrounds', this)"><span class="tab-icon">R</span>Backgrounds</button>
+          <button class="tab" data-tab="devtoken" onclick="switchTab('devtoken', this)"><span class="tab-icon">K</span>Dev Tokens</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <div class="topbar">
+        <div class="topbar-title">
+          <h1 id="admin-page-title">Overview</h1>
+          <div class="topbar-meta">Rendered {{ stats.timestamp }} · {{ stats.hostname }}:{{ stats.port }}</div>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" id="notif-toggle-btn" onclick="toggleBrowserNotifications()" title="Enable/Disable browser notifications">
+            <span id="notif-toggle-icon">✕</span>
+            <span id="notif-toggle-label">Notifications</span>
+          </button>
+          <a href="/admin/logout" class="logout-btn">Logout</a>
+        </div>
+      </div>
 
     <!-- Users Tab -->
     <div id="users-tab" class="tab-content">
@@ -862,242 +1902,168 @@
 
     <!-- Stats Tab -->
     <div id="stats-tab" class="tab-content active">
-      <!-- Business KPIs -->
-      <div class="section">
-        <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
-          <span>Active Users</span>
-          <button class="btn btn-primary" onclick="refreshStats(this)">Refresh</button>
-        </div>
-        <div class="stats-grid" style="margin-bottom: 20px;">
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">DAU</div>
-            <div class="stat-value" style="font-size: 32px;">{{ stats.dau }}</div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">Today active</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">WAU</div>
-            <div class="stat-value" style="font-size: 32px;">{{ stats.wau }}</div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">7-day active</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">MAU</div>
-            <div class="stat-value" style="font-size: 32px;">{{ stats.mau }}</div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">30-day active</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Stickiness</div>
-            <div class="stat-value" style="font-size: 32px;">{{ stats.stickiness }}<span style="font-size: 18px; margin-left: 4px;">%</span></div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">DAU / MAU</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Total Users</div>
-            <div class="stat-value" style="font-size: 32px;">{{ stats.total_users }}</div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">{{ stats.jp_users }} JP · {{ stats.intl_users }} INTL</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">New Today</div>
-            <div class="stat-value" style="font-size: 32px;">{{ stats.today_new_users }}</div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">Signups</div>
-          </div>
-        </div>
-      </div>
+      <div class="monitor-board">
+        <div class="monitor-hero">
+          <section class="monitor-card monitor-primary">
+            <div class="monitor-head">
+              <div>
+                <div class="monitor-title">Service Health</div>
+                <div class="monitor-subtitle">Live operating view for JiETNG</div>
+              </div>
+              <span class="live-badge">Online</span>
+            </div>
+            <div class="monitor-total">
+              <div class="monitor-total-main">
+                <div>
+                  <div class="monitor-total-label">Total Users</div>
+                  <div class="monitor-number" id="overview-total-users">{{ stats.total_users }}</div>
+                </div>
+                <div class="monitor-total-delta" id="overview-user-delta">+{{ stats.today_new_users }} today</div>
+              </div>
+              <div class="monitor-segments" id="overview-user-segments">
+                <div class="monitor-segment"><strong>{{ stats.jp_users }}</strong>JP users</div>
+                <div class="monitor-segment"><strong>{{ stats.intl_users }}</strong>INTL users</div>
+                <div class="monitor-segment"><strong>{{ stats.mau }}</strong>MAU</div>
+              </div>
+            </div>
+            <div class="monitor-mini-grid">
+              <div class="mini-stat">
+                <div class="mini-label">DAU</div>
+                <div class="mini-value" id="overview-dau">{{ stats.dau }}</div>
+              </div>
+              <div class="mini-stat">
+                <div class="mini-label">WAU</div>
+                <div class="mini-value" id="overview-wau">{{ stats.wau }}</div>
+              </div>
+              <div class="mini-stat">
+                <div class="mini-label">Stickiness</div>
+                <div class="mini-value" id="overview-stickiness">{{ stats.stickiness }}%</div>
+              </div>
+            </div>
+          </section>
 
-      <!-- Daily Activity -->
-      <div class="section">
-        <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
-          <span id="activity-title">Today's Activity</span>
-          <input type="date" id="hourly-date" style="font-size: 12px; padding: 2px 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);" />
-        </div>
-        <div class="stats-grid" style="margin-bottom: 20px;">
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Image Calls</div>
-            <div class="stat-value" style="font-size: 28px;" id="stat-image-calls">{{ stats.today_image_calls }}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Webhook Msgs</div>
-            <div class="stat-value" style="font-size: 28px;" id="stat-webhook-msgs">{{ stats.today_webhook_msgs }}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Bindings</div>
-            <div class="stat-value" style="font-size: 28px;" id="stat-bindings">{{ stats.today_bindings }}</div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;" id="stat-unbinds">{{ stats.today_unbinds }} unbinds</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label" style="font-size: 11px; opacity: 0.6; margin-bottom: 8px;">Sync Tasks</div>
-            <div class="stat-value" style="font-size: 28px;" id="stat-sync">{{ stats.today_sync_success }} / {{ stats.today_sync_total }}</div>
-            <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;" id="stat-sync-rate">{{ stats.sync_success_rate }}% success</div>
-          </div>
+          <section class="monitor-card health-panel">
+            <div class="panel-heading" style="padding:0;">
+              <h2>Runtime Pressure</h2>
+              <button class="btn btn-primary" onclick="refreshStats(this)">Refresh</button>
+            </div>
+            <div class="health-row">
+              <div class="health-label">CPU</div>
+              <div class="health-track"><div class="health-fill" id="overview-cpu-fill" style="width: {{ stats.cpu_percent }}%;"></div></div>
+              <div class="health-value" id="overview-cpu">{{ stats.cpu_percent }}%</div>
+            </div>
+            <div class="health-row">
+              <div class="health-label">Memory</div>
+              <div class="health-track"><div class="health-fill" id="overview-memory-fill" style="width: {{ stats.memory_percent }}%;"></div></div>
+              <div class="health-value" id="overview-memory">{{ stats.memory_used_gb }}/{{ stats.total_memory }} GB</div>
+            </div>
+            <div class="health-row">
+              <div class="health-label">Images</div>
+              <div class="health-track"><div class="health-fill" id="overview-image-queue-fill" style="width: {{ (stats.image_queue_size / stats.max_queue_size * 100) if stats.max_queue_size else 0 }}%;"></div></div>
+              <div class="health-value" id="overview-image-queue">{{ stats.image_queue_size }}/{{ stats.max_queue_size }}</div>
+            </div>
+            <div class="health-row">
+              <div class="health-label">Web</div>
+              <div class="health-track"><div class="health-fill" id="overview-web-queue-fill" style="width: {{ (stats.web_queue_size / stats.max_queue_size * 100) if stats.max_queue_size else 0 }}%;"></div></div>
+              <div class="health-value" id="overview-web-queue">{{ stats.web_queue_size }}/{{ stats.max_queue_size }}</div>
+            </div>
+          </section>
         </div>
 
-        <!-- Hourly distribution -->
-        <div style="margin-top: 8px;">
-          <div style="font-size: 12px; opacity: 0.6; margin-bottom: 10px;">Hourly event volume (DB server time)</div>
-          <div id="hourly-chart" style="display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; height: 80px;">
-            {% set max_hour = stats.hourly_today|max if stats.hourly_today and (stats.hourly_today|max) > 0 else 1 %}
-            {% for v in stats.hourly_today %}
-              <div title="{{ loop.index0 }}:00 — {{ v }}" style="background: var(--accent-color); opacity: {{ 0.25 + 0.75 * v / max_hour }}; height: {{ 10 + 90 * v / max_hour }}%; border-radius: 3px 3px 0 0;"></div>
-            {% endfor %}
-          </div>
-          <div style="display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; margin-top: 4px; font-size: 9px; opacity: 0.5; text-align: center;">
-            {% for i in range(24) %}<div>{% if i % 3 == 0 %}{{ i }}{% endif %}</div>{% endfor %}
-          </div>
-        </div>
-      </div>
+        <div class="monitor-grid">
+          <section class="monitor-card">
+            <div class="panel-heading">
+              <h2>Activity Trend</h2>
+              <span>Last 30 days</span>
+            </div>
+            {% set ns = namespace(m=1) %}
+            {% for p in stats.dau_30d %}{% if p.dau > ns.m %}{% set ns.m = p.dau %}{% endif %}{% endfor %}
+            {% set chart_l = 34 %}{% set chart_t = 18 %}{% set chart_w = 552 %}{% set chart_h = 170 %}
+            <div class="chart-panel" style="position:relative;">
+              <div id="dau-tooltip" style="display:none; position:absolute; pointer-events:none; background:var(--card-bg); border:1px solid var(--border-color); border-radius:999px; padding:5px 10px; font-size:12px; font-weight:700; box-shadow:var(--shadow-md); z-index:10; white-space:nowrap;"></div>
+              <svg id="dau-svg" viewBox="0 0 620 228" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto;">
+                {% for i in range(5) %}
+                  {% set yv = (ns.m * (4 - i) / 4)|round|int %}
+                  {% set yy = chart_t + chart_h * i / 4 %}
+                  <line x1="{{ chart_l }}" y1="{{ yy }}" x2="{{ chart_l + chart_w }}" y2="{{ yy }}" stroke="var(--border-color)" stroke-width="1" opacity="0.52" />
+                  <text x="{{ chart_l - 8 }}" y="{{ yy + 4 }}" text-anchor="end" fill="var(--text-tertiary)" font-size="10">{{ yv }}</text>
+                {% endfor %}
+                <polyline fill="none" stroke="var(--accent-color)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"
+                  points="{% for p in stats.dau_30d %}{{ chart_l + loop.index0 * (chart_w / 29) }},{{ chart_t + chart_h - (p.dau / ns.m * chart_h) }} {% endfor %}" />
+                {% for p in stats.dau_30d %}
+                  <circle class="dau-dot" cx="{{ chart_l + loop.index0 * (chart_w / 29) }}" cy="{{ chart_t + chart_h - (p.dau / ns.m * chart_h) }}" r="4" fill="var(--card-bg)" stroke="var(--accent-color)" stroke-width="3" data-date="{{ p.date }}" data-full-date="{{ p.full_date }}" data-dau="{{ p.dau }}" />
+                {% endfor %}
+                {% for p in stats.dau_30d %}
+                  {% if loop.index0 % 6 == 0 or loop.last %}
+                    <text x="{{ chart_l + loop.index0 * (chart_w / 29) }}" y="{{ chart_t + chart_h + 24 }}" text-anchor="middle" fill="var(--text-tertiary)" font-size="10">{{ p.date }}</text>
+                  {% endif %}
+                {% endfor %}
+              </svg>
+            </div>
+          </section>
 
-      <!-- DAU 30d trend -->
-      <div class="section">
-        <div class="section-title">DAU · Last 30 days</div>
-        {% set ns = namespace(m=1) %}
-        {% for p in stats.dau_30d %}{% if p.dau > ns.m %}{% set ns.m = p.dau %}{% endif %}{% endfor %}
-        {% set chart_l = 40 %}{% set chart_t = 10 %}{% set chart_w = 550 %}{% set chart_h = 150 %}
-        <div style="position: relative;">
-          <div id="dau-tooltip" style="display:none; position:absolute; pointer-events:none; background:var(--card-bg); border:1px solid var(--border-color); border-radius:6px; padding:4px 10px; font-size:12px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,0.15); z-index:10; white-space:nowrap;"></div>
-          <svg id="dau-svg" viewBox="0 0 620 210" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: auto;">
-            <!-- Y 轴刻度线 + 标签 -->
-            {% for i in range(5) %}
-              {% set yv = (ns.m * (4 - i) / 4)|round|int %}
-              {% set yy = chart_t + chart_h * i / 4 %}
-              <line x1="{{ chart_l }}" y1="{{ yy }}" x2="{{ chart_l + chart_w }}" y2="{{ yy }}" stroke="var(--border-color)" stroke-width="0.5" opacity="0.4" />
-              <text x="{{ chart_l - 6 }}" y="{{ yy + 4 }}" text-anchor="end" fill="var(--text-color)" font-size="9" opacity="0.5">{{ yv }}</text>
-            {% endfor %}
-            <!-- 折线 -->
-            <polyline fill="none" stroke="var(--accent-color)" stroke-width="2"
-              points="{% for p in stats.dau_30d %}{{ chart_l + loop.index0 * (chart_w / 29) }},{{ chart_t + chart_h - (p.dau / ns.m * chart_h) }} {% endfor %}" />
-            <!-- 数据点 -->
-            {% for p in stats.dau_30d %}
-              <circle class="dau-dot" cx="{{ chart_l + loop.index0 * (chart_w / 29) }}" cy="{{ chart_t + chart_h - (p.dau / ns.m * chart_h) }}" r="3.5" fill="var(--accent-color)" style="cursor:pointer; transition: r 0.15s;" data-date="{{ p.date }}" data-full-date="{{ p.full_date }}" data-dau="{{ p.dau }}" />
-            {% endfor %}
-            <!-- X 轴日期标签（每 5 天显示一次） -->
-            {% for p in stats.dau_30d %}
-              {% if loop.index0 % 5 == 0 or loop.last %}
-                <text x="{{ chart_l + loop.index0 * (chart_w / 29) }}" y="{{ chart_t + chart_h + 16 }}" text-anchor="middle" fill="var(--text-color)" font-size="9" opacity="0.5">{{ p.date }}</text>
-              {% endif %}
-            {% endfor %}
-          </svg>
+          <section class="monitor-card">
+            <div class="panel-heading">
+              <h2>Today</h2>
+              <span>Command mix</span>
+            </div>
+            <div class="command-list">
+              <div class="mini-stat">
+                <div class="mini-label">Image Calls</div>
+                <div class="mini-value" id="stat-image-calls">{{ stats.today_image_calls }}</div>
+              </div>
+              <div class="mini-stat">
+                <div class="mini-label">Webhook Messages</div>
+                <div class="mini-value" id="stat-webhook-msgs">{{ stats.today_webhook_msgs }}</div>
+              </div>
+              <div class="mini-stat">
+                <div class="mini-label">Sync Success</div>
+                <div class="mini-value" id="stat-sync">{{ stats.today_sync_success }} / {{ stats.today_sync_total }}</div>
+              </div>
+            </div>
+          </section>
         </div>
-      </div>
 
-      <!-- Image command breakdown -->
-      {% if stats.image_command_breakdown %}
-      {% set cmd_labels = {
-        'b_records':           'B-Records',
-        'song_info':           'Song Info',
-        'plate':               'Plate',
-        'version_songs':       'Version Songs',
-        'level_rank_list':     'Level / Constant List',
-        'level_rank_progress': 'Level + Rank Progress',
-        'level_records':       'Level Records',
-        'random_song':         'Random Song',
-        'song-record':         'Song Record',
-        'song-record-id':      'Song Record (ID)',
-        'friend-rcd':          'Friend Record',
-        'song-info':           'Song Info (API)',
-        'progress':            'Progress (API)',
-        'level-list':          'Level List (API)',
-        'b50':         'Best 50 (legacy)',
-        'b40':         'Best 40 (legacy)',
-        'b35':         'Best 35 (legacy)',
-        'b15':         'Best 15 (legacy)',
-        'ab35':        'All Best 35 (legacy)',
-        'ab50':        'All Best 50 (legacy)',
-        'apb50':       'AP Best 50 (legacy)',
-        'fdxb50':      'FDX Best 50 (legacy)',
-        'rct50':       'Recent 50 (legacy)',
-        'idealb50':    'Ideal Best 50 (legacy)',
-        'unknown':     'Unknown (legacy)',
-        'random':      'Random Song (legacy)',
-        'version-list': 'Version List (legacy)',
-        'record-list':  'Record List (legacy)'
-      } %}
-      <div class="section">
-        <div class="section-title" id="breakdown-title">Image calls breakdown (today)</div>
+        {% if stats.image_command_breakdown %}
         {% set cmd_max = stats.image_command_breakdown[0].count if stats.image_command_breakdown else 1 %}
-        <div id="breakdown-chart" style="display: flex; flex-direction: column; gap: 6px;">
-          {% for row in stats.image_command_breakdown %}
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <div style="min-width: 130px; font-size: 13px;">{{ cmd_labels.get(row.command, row.command) }}</div>
-            <div style="flex: 1; height: 14px; background: var(--border-color); opacity: 0.3; border-radius: 4px; overflow: hidden;">
-              <div style="height: 100%; background: var(--accent-color); width: {{ (row.count / cmd_max * 100) if cmd_max > 0 else 0 }}%; border-radius: 4px;"></div>
-            </div>
-            <div style="min-width: 50px; text-align: right; font-weight: 600; font-size: 13px;">{{ row.count }}</div>
+        <section class="monitor-card">
+          <div class="panel-heading">
+            <h2>Image Command Breakdown</h2>
+            <span>Today</span>
           </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
+          <div class="command-list">
+            {% for row in stats.image_command_breakdown %}
+            <div class="command-row">
+              <div class="command-name">{{ row.command }}</div>
+              <div class="command-bar"><span style="width: {{ (row.count / cmd_max * 100) if cmd_max > 0 else 0 }}%;"></span></div>
+              <div class="command-count">{{ row.count }}</div>
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
 
-      <!-- System Health (collapsible) -->
-      <div class="section">
-        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="var e=document.getElementById('sys-health-body'); e.style.display = e.style.display==='none' ? 'block' : 'none';">
-          <span>System Health</span>
-          <span style="font-size: 12px; opacity: 0.5;">click to toggle</span>
-        </div>
-        <div id="sys-health-body" style="display: none;">
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px;">
-            <div style="padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
-              <div style="font-size: 11px; opacity: 0.6;">CPU</div>
-              <div style="font-size: 20px; font-weight: 600;">{{ stats.cpu_percent }}%</div>
-            </div>
-            <div style="padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
-              <div style="font-size: 11px; opacity: 0.6;">Memory</div>
-              <div style="font-size: 20px; font-weight: 600;">{{ stats.memory_used_gb }}/{{ stats.total_memory }} GB</div>
-            </div>
-            <div style="padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
-              <div style="font-size: 11px; opacity: 0.6;">Uptime</div>
-              <div style="font-size: 16px; font-weight: 600;">{{ stats.uptime }}</div>
-            </div>
-            <div style="padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
-              <div style="font-size: 11px; opacity: 0.6;">Threads</div>
-              <div style="font-size: 20px; font-weight: 600;">{{ stats.thread_count }}</div>
-            </div>
-            <div style="padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
-              <div style="font-size: 11px; opacity: 0.6;">Image Queue</div>
-              <div style="font-size: 20px; font-weight: 600;">{{ stats.image_queue_size }}/{{ stats.max_queue_size }}</div>
-            </div>
-            <div style="padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
-              <div style="font-size: 11px; opacity: 0.6;">Web Queue</div>
-              <div style="font-size: 20px; font-weight: 600;">{{ stats.web_queue_size }}/{{ stats.max_queue_size }}</div>
-            </div>
+        <div class="system-summary">
+          <div class="summary-tile">
+            <div class="summary-label">Uptime</div>
+            <div class="summary-value">{{ stats.uptime }}</div>
           </div>
-        </div>
-      </div>
-
-      <!-- System Information -->
-      <div class="section">
-        <div class="section-title">System Information</div>
-
-        <div style="margin-bottom: 20px;">
-          <span style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 20px; font-size: 13px; font-weight: 600;">
-            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--success-color); animation: pulse 2s infinite;"></span>
-            Service Online
-          </span>
-        </div>
-
-        <div class="list-panel">
-          <div class="list-item">
-            <span style="color: var(--text-secondary);">Python</span>
-            <span style="font-weight: 600; font-family: monospace;">{{ stats.python_version }}</span>
+          <div class="summary-tile">
+            <div class="summary-label">Threads</div>
+            <div class="summary-value">{{ stats.thread_count }}</div>
           </div>
-          <div class="list-item">
-            <span style="color: var(--text-secondary);">Platform</span>
-            <span style="font-weight: 600; font-family: monospace;">{{ stats.platform_short }}</span>
+          <div class="summary-tile">
+            <div class="summary-label">Python</div>
+            <div class="summary-value">{{ stats.python_version }}</div>
           </div>
-          <div class="list-item">
-            <span style="color: var(--text-secondary);">Hostname</span>
-            <span style="font-weight: 600; font-family: monospace; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ stats.hostname }}">{{ stats.hostname }}</span>
+          <div class="summary-tile">
+            <div class="summary-label">Platform</div>
+            <div class="summary-value">{{ stats.platform_short }}</div>
           </div>
-          <div class="list-item">
-            <span style="color: var(--text-secondary);">Port</span>
-            <span style="font-weight: 600; font-family: monospace;">{{ stats.port }}</span>
+          <div class="summary-tile">
+            <div class="summary-label">Tasks</div>
+            <div class="summary-value">{{ stats.total_tasks_processed }}</div>
           </div>
-          <div class="list-item">
-            <span style="color: var(--text-secondary);">Total Tasks</span>
-            <span style="font-weight: 600; font-family: monospace;">{{ stats.total_tasks_processed }}</span>
-          </div>
-        </div>
-
-        <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color); opacity: 0.5; font-size: 13px;">
-          <p>Page rendered: {{ stats.timestamp }}</p>
         </div>
       </div>
     </div>
@@ -1129,7 +2095,7 @@
           <span>DXData Status</span>
           <div style="display: flex; gap: 8px;">
             <button class="btn btn-primary" onclick="loadDXDataStatus()" style="font-size: 12px;">Refresh</button>
-            <button class="btn btn-success" id="update-dxdata-btn" onclick="updateDXData()" style="font-size: 12px;">Update DXData</button>
+            <button class="btn btn-success" id="update-dxdata-btn" onclick="updateDXData()" style="font-size: 12px;">Update</button>
           </div>
         </div>
 
@@ -1260,7 +2226,7 @@
           <span>Backup Management</span>
           <div style="display:flex; gap:8px;">
             <button class="btn btn-primary" onclick="loadBackups()">Refresh</button>
-            <button class="btn btn-success" id="create-backup-btn" onclick="createBackup()">Create Backup</button>
+            <button class="btn btn-success" id="create-backup-btn" onclick="createBackup()">Create</button>
           </div>
         </div>
 
@@ -1272,13 +2238,28 @@
       </div>
     </div>
 
-    <!-- Logs Tab -->
-    <div id="logs-tab" class="tab-content">
-      <div class="section">
-        <div class="section-title">Recent Logs (Last 100 lines)</div>
-        <div class="log-viewer" id="log-viewer">{{ logs }}</div>
-        <div style="margin-top: 12px; text-align: center;">
-          <button class="btn btn-primary" onclick="refreshLogs()">Refresh Logs</button>
+    <!-- Operations Tab -->
+    <div id="operations-tab" class="tab-content">
+      <div class="operations-grid">
+        <div class="section" style="margin-bottom:0;">
+          <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Runtime Logs</span>
+            <button class="btn btn-primary" onclick="refreshLogs()">Refresh</button>
+          </div>
+          <div class="log-viewer" id="log-viewer">{{ logs }}</div>
+        </div>
+
+        <div class="section" style="margin-bottom:0;">
+          <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Notifications</span>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary" onclick="refreshNotifications()">Refresh</button>
+              <button class="btn btn-danger" onclick="clearNotifications()">Clear</button>
+            </div>
+          </div>
+          <div id="notifications-list">
+            <div style="text-align:center; opacity:0.5; padding:20px;">Loading...</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1290,7 +2271,7 @@
           <span>Developer Token Management</span>
           <div style="display:flex; gap:8px;">
             <button class="btn btn-primary" onclick="loadDevTokens()">Refresh</button>
-            <button class="btn btn-success" onclick="showCreateTokenModal()">Create Token</button>
+            <button class="btn btn-success" onclick="showCreateTokenModal()">Create</button>
           </div>
         </div>
 
@@ -1497,21 +2478,7 @@
       </div>
     </div>
 
-    <div id="notifications-tab" class="tab-content">
-      <div class="section">
-        <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
-          <span>System Notifications</span>
-          <div style="display:flex; gap:8px;">
-            <button class="btn btn-primary" onclick="refreshNotifications()">Refresh</button>
-            <button class="btn btn-danger" onclick="clearNotifications()">Clear</button>
-          </div>
-        </div>
-        <div id="notifications-list">
-          <div style="text-align:center; opacity:0.5; padding:20px;">Loading...</div>
-        </div>
-      </div>
-    </div>
-
+    </main>
   </div>
 
   <!-- Edit User Modal -->
@@ -1688,7 +2655,58 @@
   </div>
 
   <script>
-    function switchTab(tabName) {
+    const adminPageTitles = {
+      stats: 'Overview',
+      operations: 'Operations',
+      users: 'Users',
+      notices: 'Notices',
+      tipad: 'Tip / Ad',
+      dxdata: 'DxData',
+      backups: 'Backups',
+      backgrounds: 'Backgrounds',
+      devtoken: 'Developer Tokens'
+    };
+
+    function normalizeAdminTab(tabName) {
+      if (tabName === 'logs' || tabName === 'notifications') return 'operations';
+      return tabName || 'stats';
+    }
+
+    function isMobileAdminLayout() {
+      return window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    function updateMobileTopbarOffset() {
+      if (!isMobileAdminLayout()) {
+        document.body.style.removeProperty('--mobile-nav-offset');
+        return;
+      }
+
+      const sidebar = document.querySelector('.sidebar');
+      const brand = document.querySelector('.brand-block');
+      const collapsed = document.body.classList.contains('admin-mobile-nav-collapsed');
+      const height = collapsed
+        ? (brand ? Math.ceil(brand.getBoundingClientRect().height) + 28 : 62)
+        : (sidebar ? Math.ceil(sidebar.getBoundingClientRect().height) : 64);
+      document.body.style.setProperty('--mobile-nav-offset', (height + 16) + 'px');
+    }
+
+    function setMobileNavCollapsed(collapsed) {
+      const nextCollapsed = isMobileAdminLayout() ? collapsed : false;
+      document.body.classList.toggle('admin-mobile-nav-collapsed', nextCollapsed);
+      const btn = document.getElementById('mobile-nav-toggle');
+      if (btn) {
+        btn.setAttribute('aria-expanded', nextCollapsed ? 'false' : 'true');
+      }
+      window.requestAnimationFrame(updateMobileTopbarOffset);
+    }
+
+    function toggleMobileNav() {
+      setMobileNavCollapsed(!document.body.classList.contains('admin-mobile-nav-collapsed'));
+    }
+
+    function switchTab(tabName, tabButton) {
+      tabName = normalizeAdminTab(tabName);
       // Hide all tabs
       document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
@@ -1699,13 +2717,20 @@
 
       // Show selected tab
       document.getElementById(tabName + '-tab').classList.add('active');
-      event.target.classList.add('active');
+      const activeButton = tabButton || document.querySelector('.tab[data-tab="' + tabName + '"]');
+      if (activeButton) activeButton.classList.add('active');
+      const pageTitle = document.getElementById('admin-page-title');
+      if (pageTitle) pageTitle.textContent = adminPageTitles[tabName] || 'Admin Console';
 
       // Save to localStorage
       localStorage.setItem('admin_active_tab', tabName);
+      if (isMobileAdminLayout()) {
+        setMobileNavCollapsed(true);
+      }
 
-      // 如果切换到logs标签，滚动到底部
-      if (tabName === 'logs') {
+      // Operations 整合日志和通知
+      if (tabName === 'operations') {
+        refreshNotifications();
         setTimeout(scrollLogsToBottom, 100);
       }
 
@@ -1722,11 +2747,6 @@
       // 如果切换到backups标签，加载备份列表
       if (tabName === 'backups') {
         loadBackups();
-      }
-
-      // 如果切换到notifications标签，加载通知
-      if (tabName === 'notifications') {
-        refreshNotifications();
       }
 
       // 如果切换到dxdata标签，加载DXData状态
@@ -1747,13 +2767,16 @@
 
     // Restore tab on page load
     window.addEventListener('DOMContentLoaded', function() {
-      // 从通知点击进入时，hash 为 #notifications，优先跳转并刷新
+      setMobileNavCollapsed(isMobileAdminLayout());
+      updateMobileTopbarOffset();
+
+      // 从通知点击进入时，hash 为 #notifications，跳转到 Operations
       if (window.location.hash === '#notifications') {
-        const tabBtn = document.querySelector('.tab[onclick*="notifications"]');
-        if (tabBtn) { tabBtn.click(); return; }
+        switchTab('operations');
+        return;
       }
 
-      const savedTab = localStorage.getItem('admin_active_tab');
+      const savedTab = normalizeAdminTab(localStorage.getItem('admin_active_tab'));
       if (savedTab && document.getElementById(savedTab + '-tab')) {
         // Hide all tabs first
         document.querySelectorAll('.tab-content').forEach(tab => {
@@ -1765,10 +2788,14 @@
 
         // Show saved tab
         document.getElementById(savedTab + '-tab').classList.add('active');
-        document.querySelector('.tab[onclick*="' + savedTab + '"]').classList.add('active');
+        const savedButton = document.querySelector('.tab[data-tab="' + savedTab + '"]');
+        if (savedButton) savedButton.classList.add('active');
+        const pageTitle = document.getElementById('admin-page-title');
+        if (pageTitle) pageTitle.textContent = adminPageTitles[savedTab] || 'Admin Console';
 
         // 恢复标签时触发对应的数据加载
-        if (savedTab === 'logs') {
+        if (savedTab === 'operations') {
+          refreshNotifications();
           setTimeout(scrollLogsToBottom, 100);
         } else if (savedTab === 'notices') {
           loadNotices();
@@ -1776,8 +2803,6 @@
           loadTipAds();
         } else if (savedTab === 'backups') {
           loadBackups();
-        } else if (savedTab === 'notifications') {
-          refreshNotifications();
         } else if (savedTab === 'backgrounds') {
           loadBackgrounds();
         }
@@ -1790,10 +2815,15 @@
         logViewer.innerHTML = ansiToHtml(logText);
       }
 
-      // 如果当前显示的是logs标签（默认或恢复的），滚动到底部
-      if (document.getElementById('logs-tab').classList.contains('active')) {
+      // 如果当前显示的是 Operations，滚动日志到底部
+      if (document.getElementById('operations-tab')?.classList.contains('active')) {
         setTimeout(scrollLogsToBottom, 100);
       }
+    });
+
+    window.addEventListener('resize', function() {
+      setMobileNavCollapsed(isMobileAdminLayout());
+      updateMobileTopbarOffset();
     });
 
     function toggleUserData(userId) {
@@ -2122,8 +3152,12 @@
       return html;
     }
 
-    function refreshNotifications() {
-      fetch('/admin/notifications')
+    let _notificationsLoading = false;
+
+    function refreshNotifications({force = false} = {}) {
+      if (_notificationsLoading && !force) return Promise.resolve(null);
+      _notificationsLoading = true;
+      return fetch('/admin/notifications')
         .then(res => res.json())
         .then(data => {
           const list = document.getElementById('notifications-list');
@@ -2142,30 +3176,41 @@
             return;
           }
 
-          list.innerHTML = data.map((n, i) => `
-            <div style="border:1px solid var(--border-color); border-radius:8px; margin-bottom:12px; overflow:hidden;">
-              <div style="background:var(--card-bg); padding:12px 16px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;"
-                   onclick="toggleNotification(${i})">
-                <div>
-                  <span style="color:var(--danger-color); font-weight:600;">⚠ ${escapeHtml(n.title)}</span>
-                  <span style="margin-left:12px; opacity:0.5; font-size:12px;">${n.timestamp}</span>
-                  ${n.user_id !== 'Unknown' ? `<br /><span style="margin-left:8px; font-size:12px; color:var(--accent-color);">User: ${escapeHtml(n.user_id)}</span>` : ''}
+          list.className = 'notification-stack';
+          list.innerHTML = data.map((n, i) => {
+            const context = n.context || {};
+            const timestamp = n.timestamp || n.time || '';
+            const details = n.details || n.body || '';
+            const userId = n.user_id || 'Unknown';
+            return `
+              <div class="notification-card">
+                <div class="notification-card-head" onclick="toggleNotification(${i})">
+                  <div>
+                    <div class="notification-title">${escapeHtml(n.title || 'Notification')}</div>
+                    <div class="notification-meta">
+                      ${timestamp ? escapeHtml(timestamp) : 'Just now'}
+                      ${userId !== 'Unknown' ? ` · User ${escapeHtml(userId)}` : ''}
+                    </div>
+                  </div>
+                  <span id="notif-arrow-${i}" style="color:var(--text-tertiary);">+</span>
                 </div>
-                <span id="notif-arrow-${i}" style="opacity:0.5;">▶</span>
+                <div id="notif-detail-${i}" class="notification-detail">
+                  ${Object.keys(context).length > 0 ? `
+                    <div style="margin-bottom:10px; color:var(--text-tertiary); font-size:12px;">
+                      ${Object.entries(context).map(([k,v]) => `<span style="margin-right:12px;"><b>${escapeHtml(k)}:</b> ${escapeHtml(String(v))}</span>`).join('')}
+                    </div>` : ''}
+                  <pre>${escapeHtml(details || 'No details')}</pre>
+                </div>
               </div>
-              <div id="notif-detail-${i}" style="display:none; padding:12px 16px; background:var(--bg-color); border-top:1px solid var(--border-color);">
-                ${Object.keys(n.context).length > 0 ? `
-                  <div style="margin-bottom:10px; font-size:12px; opacity:0.7;">
-                    ${Object.entries(n.context).map(([k,v]) => `<span style="margin-right:12px;"><b>${escapeHtml(k)}:</b> ${escapeHtml(String(v))}</span>`).join('')}
-                  </div>` : ''}
-                <pre style="white-space:pre-wrap; word-break:break-all; font-size:12px; margin:0; opacity:0.85;">${escapeHtml(n.details)}</pre>
-              </div>
-            </div>
-          `).join('');
+            `;
+          }).join('');
         })
         .catch(() => {
           document.getElementById('notifications-list').innerHTML =
             '<div style="text-align:center; color:var(--danger-color); padding:20px;">Failed to load notifications</div>';
+        })
+        .finally(() => {
+          _notificationsLoading = false;
         });
     }
 
@@ -2174,7 +3219,7 @@
       const arrow = document.getElementById(`notif-arrow-${i}`);
       const visible = detail.style.display !== 'none';
       detail.style.display = visible ? 'none' : 'block';
-      arrow.textContent = visible ? '▶' : '▼';
+      arrow.textContent = visible ? '+' : '-';
     }
 
     function clearNotifications() {
@@ -2341,8 +3386,7 @@
       // 收到 SW 消息（点击通知时跳转 tab 并刷新）
       navigator.serviceWorker.addEventListener('message', e => {
         if (e.data?.type === 'OPEN_TAB') {
-          const tabBtn = document.querySelector(`.tab[onclick*="${e.data.tab}"]`);
-          if (tabBtn) tabBtn.click();
+          switchTab(e.data.tab || 'operations');
         }
       });
     }
@@ -2444,38 +3488,57 @@
 
     // 定期轮询：更新 badge，无 Push 订阅时作为 fallback 弹通知
     let _lastNotifCount = -1;  // -1 = 尚未初始化，首次不弹通知
-    setInterval(() => {
-      fetch('/admin/notifications')
-        .then(res => res.json())
-        .then(async data => {
-          const badge = document.getElementById('notification-badge');
-          if (data.length > 0) {
-            badge.textContent = data.length;
-            badge.style.display = 'inline';
-          } else {
-            badge.style.display = 'none';
-          }
+    let _notificationPollLoading = false;
 
-          if (_lastNotifCount === -1) {
-            // 首次：仅初始化基线，不弹通知
-            _lastNotifCount = data.length;
-            return;
-          }
+    async function pollNotificationBadge() {
+      if (document.hidden || _notificationPollLoading) return;
+      _notificationPollLoading = true;
+      try {
+        const res = await fetch('/admin/notifications');
+        const data = await res.json();
+        const badge = document.getElementById('notification-badge');
+        if (data.length > 0) {
+          badge.textContent = data.length;
+          badge.style.display = 'inline';
+        } else {
+          badge.style.display = 'none';
+        }
 
-          // 有新通知、有权限、且没有 Push 订阅时才用 fallback 弹
-          if (data.length > _lastNotifCount && Notification.permission === 'granted') {
-            const sub = await _getSubscription().catch(() => null);
-            if (!sub) {
-              const latest = data[0];
-              new Notification(`JiETNG: ${latest.title}`, {
-                body: `${latest.timestamp}${latest.user_id !== 'Unknown' ? '  User: ' + latest.user_id : ''}`,
-                tag: 'jietng-fallback'
-              });
-            }
-          }
+        if (_lastNotifCount === -1) {
+          // 首次：仅初始化基线，不弹通知
           _lastNotifCount = data.length;
-        }).catch(() => {});
+          return;
+        }
+
+        // 有新通知、有权限、且没有 Push 订阅时才用 fallback 弹
+        if (data.length > _lastNotifCount && Notification.permission === 'granted') {
+          const sub = await _getSubscription().catch(() => null);
+          if (!sub) {
+            const latest = data[0];
+            new Notification(`JiETNG: ${latest.title}`, {
+              body: `${latest.timestamp}${latest.user_id !== 'Unknown' ? '  User: ' + latest.user_id : ''}`,
+              tag: 'jietng-fallback'
+            });
+          }
+        }
+        _lastNotifCount = data.length;
+      } catch (_) {
+      } finally {
+        _notificationPollLoading = false;
+      }
+    }
+
+    const _notificationPollTimer = setInterval(() => {
+      pollNotificationBadge();
     }, 30000);
+
+    document.addEventListener('visibilitychange', function() {
+      if (!document.hidden) pollNotificationBadge();
+    });
+
+    window.addEventListener('pagehide', function() {
+      clearInterval(_notificationPollTimer);
+    });
 
     function refreshLogs() {
       fetch('/admin/get_logs')
@@ -2494,37 +3557,47 @@
       const originalText = btn.textContent;
       btn.disabled = true;
       btn.textContent = 'Loading...';
-      // 保留 System Health 折叠状态（refresh 前后都希望维持用户视角）
-      const sysHealth = document.getElementById('sys-health-body');
-      const sysHealthOpen = sysHealth && sysHealth.style.display !== 'none';
 
-      // 拉取整页 HTML，仅替换 #stats-tab 内容（避免在 JS 里复制服务器端渲染逻辑）
-      fetch('/admin/panel?refresh=' + Date.now(), {redirect: 'manual'})
+      fetch('/admin/api/overview?refresh=' + Date.now(), {redirect: 'manual'})
         .then(res => {
           if (res.type === 'opaqueredirect' || res.status === 401 || res.status === 302) {
             throw new Error('Session expired, please re-login');
           }
           if (!res.ok) throw new Error('HTTP ' + res.status);
-          return res.text();
+          return res.json();
         })
-        .then(html => {
-          const doc = new DOMParser().parseFromString(html, 'text/html');
-          const next = doc.getElementById('stats-tab');
-          const curr = document.getElementById('stats-tab');
-          if (!next || !curr) throw new Error('stats-tab not found (session may have expired)');
-          curr.innerHTML = next.innerHTML;
-          // 恢复 System Health 折叠状态
-          if (sysHealthOpen) {
-            const newBody = document.getElementById('sys-health-body');
-            if (newBody) newBody.style.display = 'block';
-          }
-          // 重新绑定 DAU 图表和日期选择器事件
-          initStatsInteractions();
+        .then(data => {
+          if (!data.success) throw new Error(data.message || 'Refresh failed');
+          const s = data.stats;
+          document.getElementById('overview-total-users').textContent = s.total_users;
+          document.getElementById('overview-user-delta').textContent = `+${s.today_new_users} today`;
+          document.getElementById('overview-user-segments').innerHTML = `
+            <div class="monitor-segment"><strong>${s.jp_users}</strong>JP users</div>
+            <div class="monitor-segment"><strong>${s.intl_users}</strong>INTL users</div>
+            <div class="monitor-segment"><strong>${s.mau}</strong>MAU</div>
+          `;
+          document.getElementById('overview-dau').textContent = s.dau;
+          document.getElementById('overview-wau').textContent = s.wau;
+          document.getElementById('overview-stickiness').textContent = s.stickiness + '%';
+          document.getElementById('overview-cpu').textContent = s.cpu_percent + '%';
+          document.getElementById('overview-memory').textContent = `${s.memory_used_gb}/${s.total_memory} GB`;
+          document.getElementById('overview-image-queue').textContent = `${s.image_queue_size}/${s.max_queue_size}`;
+          document.getElementById('overview-web-queue').textContent = `${s.web_queue_size}/${s.max_queue_size}`;
+          document.getElementById('overview-cpu-fill').style.width = Math.max(0, Math.min(100, s.cpu_percent)) + '%';
+          document.getElementById('overview-memory-fill').style.width = Math.max(0, Math.min(100, s.memory_percent)) + '%';
+          const imageQueuePct = s.max_queue_size ? (s.image_queue_size / s.max_queue_size * 100) : 0;
+          const webQueuePct = s.max_queue_size ? (s.web_queue_size / s.max_queue_size * 100) : 0;
+          document.getElementById('overview-image-queue-fill').style.width = Math.max(0, Math.min(100, imageQueuePct)) + '%';
+          document.getElementById('overview-web-queue-fill').style.width = Math.max(0, Math.min(100, webQueuePct)) + '%';
+          document.getElementById('stat-image-calls').textContent = s.today_image_calls;
+          document.getElementById('stat-webhook-msgs').textContent = s.today_webhook_msgs;
+          document.getElementById('stat-sync').textContent = `${s.today_sync_success} / ${s.today_sync_total}`;
           showToast('✅ Stats refreshed', 'success');
+          btn.disabled = false;
+          btn.textContent = originalText;
         })
         .catch(err => {
           showToast('❌ ' + err.message, 'error');
-          // 仅在失败路径恢复按钮（成功路径下旧按钮已被 innerHTML 替换为新实例）
           btn.disabled = false;
           btn.textContent = originalText;
         });
@@ -3129,7 +4202,7 @@
         .then(res => res.json())
         .then(data => {
           btn.disabled = false;
-          btn.textContent = 'Create Backup';
+          btn.textContent = 'Create';
           if (data.success) {
             alert(data.message || 'Backup created successfully');
             loadBackups();
@@ -3139,7 +4212,7 @@
         })
         .catch(err => {
           btn.disabled = false;
-          btn.textContent = 'Create Backup';
+          btn.textContent = 'Create';
           alert('Network error: ' + err);
         });
     }

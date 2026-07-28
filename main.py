@@ -15,14 +15,12 @@ import psutil
 import platform
 import socket
 import secrets
-import copy
 import asyncio
 import aiohttp
 import urllib3
 import atexit
 from urllib.parse import quote as _url_quote
 import time
-import subprocess
 import gc
 import math
 import base64 as b64mod
@@ -31,7 +29,7 @@ import unicodedata
 from functools import wraps
 from datetime import datetime
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 from io import BytesIO
 
 from flask import (
@@ -80,9 +78,8 @@ from modules.record_generator import *
 # User and data managers
 from modules.user_manager import *
 from modules.user_db import (
-    save_user, delete_user_from_db, get_user, user_exists,
+    save_user, get_user, user_exists,
     get_user_field, update_user_field, load_all_users, get_all_user_ids,
-    get_user_count
 )
 from modules.bindtoken_manager import (
     generate_bind_token, get_user_id_from_token,
@@ -110,7 +107,6 @@ from modules.devtoken_manager import (
     save_dev_tokens,
     list_dev_tokens,
     revoke_dev_token,
-    get_token_info,
     flush_dev_tokens
 )
 
@@ -1509,9 +1505,9 @@ def manage_custom_bg():
             register_heif_opener()
         except ImportError:
             pass
-        img = PILImage.open(BIO(file_data))
-        img.load()
-        img = img.convert("RGB")
+        with PILImage.open(BIO(file_data)) as source_img:
+            source_img.load()
+            img = source_img.convert("RGB")
         img.save(custom_bg_path, "WEBP", quality=85)
         logger.info(f"[Settings] ✓ Uploaded custom bg: user_id={user_id}, ext={original_ext}, size={len(file_data)}")
     except Exception as e:
@@ -3441,7 +3437,8 @@ def generate_profile(user_info, scale=1, user_id=None):
 
                 with requests.get(url, headers=headers, verify=False) as response:
                     response.raise_for_status()
-                    img = Image.open(BytesIO(response.content))
+                    with Image.open(BytesIO(response.content)) as source_img:
+                        img = source_img.copy()
                 if use_alpha and img.mode != "RGBA":
                     img = img.convert("RGBA")
                 elif not use_alpha and img.mode != "RGB":
@@ -4292,6 +4289,7 @@ def _build_command_context(event, cleaned_text):
 
 
 _ranking_member_cache = {}
+_ranking_member_cache_lock = threading.Lock()
 _ranking_member_api_blocked_until = {}
 _RANKING_MEMBER_CACHE_TTL = 300
 _RANKING_MEMBER_API_BLOCK_TTL = 600
@@ -4314,9 +4312,13 @@ def _get_line_member_ids(source_type, group_key):
     blocked_until = _ranking_member_api_blocked_until.get(source_type, 0)
     if blocked_until > now:
         return None
-    cached = _ranking_member_cache.get(cache_key)
-    if cached and now - cached["time"] < _RANKING_MEMBER_CACHE_TTL:
-        return cached["member_ids"]
+    with _ranking_member_cache_lock:
+        for key, cached_item in list(_ranking_member_cache.items()):
+            if now - cached_item.get("time", 0) >= _RANKING_MEMBER_CACHE_TTL:
+                _ranking_member_cache.pop(key, None)
+        cached = _ranking_member_cache.get(cache_key)
+        if cached:
+            return cached["member_ids"]
 
     try:
         member_ids = []
@@ -4333,7 +4335,8 @@ def _get_line_member_ids(source_type, group_key):
                 if not start:
                     break
         member_ids = set(member_ids)
-        _ranking_member_cache[cache_key] = {"time": now, "member_ids": member_ids}
+        with _ranking_member_cache_lock:
+            _ranking_member_cache[cache_key] = {"time": now, "member_ids": member_ids}
         return member_ids
     except Exception as e:
         logger.warning("[Ranking] failed to fetch LINE members: source=%s id=%s error=%s",
@@ -6891,6 +6894,56 @@ def get_user_nickname_wrapper(user_id, use_cache=True):
 
     return nickname if nickname else _fallback_user_nickname(user_id)
 
+
+def _build_admin_overview_stats(force_refresh=False):
+    """Build compact metrics for the admin console overview."""
+    all_users = load_all_users()
+    total_users = len(all_users)
+    jp_users = sum(1 for user in all_users.values() if user.get("version") == "jp")
+    intl_users = sum(1 for user in all_users.values() if user.get("version") == "intl")
+
+    uptime = datetime.now() - SERVICE_START_TIME
+    days = uptime.days
+    hours, remainder = divmod(uptime.seconds, 3600)
+    minutes, _seconds = divmod(remainder, 60)
+    uptime_str = f"{days}d {hours}h {minutes}m"
+
+    cpu_percent = round(psutil.cpu_percent(interval=0.1), 1)
+    cpu_count = psutil.cpu_count()
+    memory = psutil.virtual_memory()
+
+    with stats_lock:
+        total_tasks = STATS['tasks_processed']
+
+    stats = {
+        'total_users': total_users,
+        'jp_users': jp_users,
+        'intl_users': intl_users,
+        'jp_percent': round((jp_users / total_users * 100) if total_users > 0 else 0, 1),
+        'intl_percent': round((intl_users / total_users * 100) if total_users > 0 else 0, 1),
+        'cpu_percent': cpu_percent,
+        'cpu_count_total': cpu_count,
+        'cpu_count_used': round(cpu_percent / 100 * cpu_count, 1),
+        'memory_percent': round(memory.percent, 1),
+        'memory_used_gb': round(memory.used / (1024**3), 1),
+        'total_memory': round(memory.total / (1024**3), 1),
+        'uptime': uptime_str,
+        'python_version': platform.python_version(),
+        'platform': f"{platform.system()} {platform.release()}",
+        'platform_short': platform.system(),
+        'hostname': socket.gethostname(),
+        'port': PORT,
+        'image_queue_size': image_queue.qsize(),
+        'web_queue_size': webtask_queue.qsize(),
+        'max_queue_size': MAX_QUEUE_SIZE,
+        'thread_count': threading.active_count(),
+        'total_tasks_processed': total_tasks,
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }
+    stats.update(get_business_stats(force_refresh=force_refresh))
+    return stats
+
+
 @app.route("/admin/panel", methods=["GET", "POST"])
 def admin_panel():
     """管理后台主页面"""
@@ -6920,67 +6973,9 @@ def admin_panel():
             'json_str': json.dumps(user_info, indent=2, ensure_ascii=False)
         }
 
-    # 获取统计信息
-    total_users = len(all_users)
-    jp_users = sum(1 for user in all_users.values() if user.get("version") == "jp")
-    intl_users = sum(1 for user in all_users.values() if user.get("version") == "intl")
-
-    # 计算运行时长
-    uptime = datetime.now() - SERVICE_START_TIME
-    days = uptime.days
-    hours, remainder = divmod(uptime.seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    uptime_str = f"{days}d {hours}h {minutes}m"
-
-    # 计算百分比
-    jp_percent = round((jp_users / total_users * 100) if total_users > 0 else 0, 1)
-    intl_percent = round((intl_users / total_users * 100) if total_users > 0 else 0, 1)
-
-    # 获取系统信息
-    cpu_percent = round(psutil.cpu_percent(interval=0.1), 1)
-    cpu_count = psutil.cpu_count()
-    cpu_count_used = round(cpu_percent / 100 * cpu_count, 1)
-
-    memory = psutil.virtual_memory()
-    memory_percent = round(memory.percent, 1)
-    total_memory = round(memory.total / (1024**3), 1)  # GB
-    memory_used_gb = round(memory.used / (1024**3), 1)  # GB
-
-    # 获取线程信息
-    thread_count = threading.active_count()
-
-    with stats_lock:
-        total_tasks = STATS['tasks_processed']
-
-    stats = {
-        'total_users': total_users,
-        'jp_users': jp_users,
-        'intl_users': intl_users,
-        'jp_percent': jp_percent,
-        'intl_percent': intl_percent,
-        'cpu_percent': cpu_percent,
-        'cpu_count_total': cpu_count,
-        'cpu_count_used': cpu_count_used,
-        'memory_percent': memory_percent,
-        'memory_used_gb': memory_used_gb,
-        'total_memory': total_memory,
-        'uptime': uptime_str,
-        'python_version': platform.python_version(),
-        'platform': f"{platform.system()} {platform.release()}",
-        'platform_short': platform.system(),
-        'hostname': socket.gethostname(),
-        'port': PORT,
-        'image_queue_size': image_queue.qsize(),
-        'web_queue_size': webtask_queue.qsize(),
-        'max_queue_size': MAX_QUEUE_SIZE,
-        'thread_count': thread_count,
-        'total_tasks_processed': total_tasks,
-        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    }
-
     # 合并业务指标（?refresh=<任何值> 跳过 30s 缓存）
     force_refresh = bool(request.args.get('refresh'))
-    stats.update(get_business_stats(force_refresh=force_refresh))
+    stats = _build_admin_overview_stats(force_refresh=force_refresh)
 
     # 读取日志
     logs = ""
@@ -6993,10 +6988,19 @@ def admin_panel():
     return render_template(
         "admin_panel.html",
         users_data=users_data,
-        total_users=total_users,
+        total_users=stats['total_users'],
         stats=stats,
         logs=logs
     )
+
+
+@app.route("/admin/api/overview", methods=["GET"])
+def admin_api_overview():
+    """获取后台首页核心指标"""
+    if not check_admin_auth():
+        return jsonify({"error": "Unauthorized"}), 401
+    force_refresh = bool(request.args.get("refresh"))
+    return jsonify({"success": True, "stats": _build_admin_overview_stats(force_refresh=force_refresh)})
 
 @app.route("/admin/logout", methods=["GET"])
 def admin_logout():
@@ -7585,8 +7589,9 @@ def admin_backgrounds():
             register_heif_opener()
         except ImportError:
             pass
-        img = PILImage.open(BytesIO(file_data))
-        img.load()
+        with PILImage.open(BytesIO(file_data)) as source_img:
+            source_img.load()
+            img = source_img.copy()
     except Exception:
         return jsonify({'success': False, 'message': 'Invalid or corrupted image file'}), 400
 
