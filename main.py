@@ -4924,6 +4924,31 @@ def _infer_break_judgement_detail(notes, judgement, achievement):
     return best_candidate
 
 
+def _attach_break_loss_percentages(notes, break_detail):
+    """Attach Calc note-score loss percentages used by result messages."""
+    if not isinstance(break_detail, dict):
+        return break_detail
+    scores = get_note_score(notes)
+    if not isinstance(scores, dict):
+        return break_detail
+    loss_percentages = {"critical_perfect": 0.0}
+    score_keys = {
+        "perfect_high": "break_high_perfect",
+        "perfect_low": "break_low_perfect",
+        "great_high": "break_high_great",
+        "great_middle": "break_middle_great",
+        "great_low": "break_low_great",
+        "good": "break_good",
+        "miss": "break_miss",
+    }
+    for detail_key, score_key in score_keys.items():
+        value = scores.get(score_key)
+        if isinstance(value, (int, float)):
+            loss_percentages[detail_key] = float(value)
+    break_detail["loss_percentages"] = loss_percentages
+    return break_detail
+
+
 def _validate_recognized_judgement(
     result,
     ver="jp",
@@ -5536,6 +5561,8 @@ def _validate_recognized_judgement(
     )
     if break_detail and break_inference:
         break_detail["row_candidate_count"] = break_inference["candidate_count"]
+    break_detail = _attach_break_loss_percentages(best["notes"], break_detail)
+    loss_percentages = get_note_score(best["notes"])
     canonical_title = song.get("title")
     parsed["title"] = canonical_title if canonical_title is not None else title
     result["validation"] = {
@@ -5568,6 +5595,7 @@ def _validate_recognized_judgement(
         "calc_corrections": calc_corrections,
         "uncertain_cells": calc_uncertainties,
         "break_detail": break_detail,
+        "loss_percentages": loss_percentages,
     }
     return result
 

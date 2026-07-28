@@ -314,11 +314,12 @@ def detect_sub_judgement_table(image: Image.Image, sub_screen: Box) -> Box | Non
     right = _percentile(xs, 0.975) + edge_padding
     right += max(edge_padding, int((right - table_left) * 0.08))
     vertical_padding = max(1, int(height * 0.003))
+    bottom_padding = max(vertical_padding, int(round(row_height * 0.22)))
     return Box(
         table_left,
         table_top - vertical_padding,
         right,
-        table_bottom + max(1, vertical_padding // 2),
+        table_bottom + bottom_padding,
     ).clamp(width, height)
 
 
