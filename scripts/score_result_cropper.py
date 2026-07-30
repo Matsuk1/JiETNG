@@ -315,6 +315,18 @@ def detect_sub_judgement_table(image: Image.Image, sub_screen: Box) -> Box | Non
     right += max(edge_padding, int((right - table_left) * 0.08))
     vertical_padding = max(1, int(height * 0.003))
     bottom_padding = max(vertical_padding, int(round(row_height * 0.22)))
+    table_width = max(1, right - table_left)
+    detected_height = max(1, table_bottom - table_top)
+    if detected_height / table_width < 0.24:
+        # Bright cabinets and localized reflections can make the row-label scan
+        # stop after only the upper half of the judgement table. Once the table
+        # is found horizontally, keep the standard 6-row table height instead
+        # of discarding the sub-monitor entirely.
+        expected_height = int(round(table_width * 0.31))
+        table_bottom = max(
+            table_bottom,
+            min(search_bottom, table_top + expected_height),
+        )
     return Box(
         table_left,
         table_top - vertical_padding,
