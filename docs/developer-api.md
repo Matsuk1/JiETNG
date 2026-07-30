@@ -155,12 +155,33 @@ curl -X POST https://jietng-endpoint.matsuk1.com/api/v2/score-recognition \
   },
   "score": {
     "achievement": 100.5658,
+    "rank": "sss+",
+    "combo": null,
+    "status": {
+      "rank": "sss+",
+      "rank_icon_url": "https://maimaidx.jp/maimai-mobile/img/playlog/sssplus.png",
+      "combo": null,
+      "combo_icon_url": null
+    },
     "judgements": {
       "tap": {"critical_perfect": 403, "perfect": 225, "great": 15, "good": 0, "miss": 1},
       "hold": {"critical_perfect": 18, "perfect": 7, "great": 0, "good": 0, "miss": 0},
       "slide": {"critical_perfect": 98, "perfect": 0, "great": 0, "good": 0, "miss": 0},
       "touch": {"critical_perfect": 66, "perfect": 0, "great": 0, "good": 0, "miss": 0},
       "break": {"critical_perfect": 20, "perfect": 13, "great": 0, "good": 0, "miss": 0}
+    },
+    "loss_detail": {
+      "rows": {
+        "tap": {
+          "cells": {
+            "great": {"count": 15, "loss_per_note": 0.0131, "total_loss": 0.1965},
+            "good": {"count": 0, "loss_per_note": 0.0262, "total_loss": 0.0},
+            "miss": {"count": 1, "loss_per_note": 0.0524, "total_loss": 0.0524}
+          },
+          "total_loss": 0.2489
+        }
+      },
+      "total_loss": 0.2489
     },
     "break_detail": {
       "critical_perfect": 20,
@@ -171,7 +192,29 @@ curl -X POST https://jietng-endpoint.matsuk1.com/api/v2/score-recognition \
       "great_low": 0,
       "good": 0,
       "miss": 0,
-      "candidate_count": 1
+      "candidate_count": 1,
+      "loss_percentages": {
+        "perfect_high": 0.0066,
+        "perfect_low": 0.0131,
+        "great_high": 0.1442,
+        "great_middle": 0.2752,
+        "great_low": 0.3408,
+        "good": 0.4063,
+        "miss": 0.4063
+      },
+      "total_loss": 0.0917
+    }
+  },
+  "metadata": {
+    "display_title": "Little \"Sister\" Bitch [DX]",
+    "subtitle_template": "Judgement Details {difficulty} {type_icon}",
+    "type_label": "DX",
+    "type_icon_url": "https://maimaidx.jp/maimai-mobile/img/music_dx.png",
+    "difficulty_label": "MASTER",
+    "difficulty_style": {
+      "background": "#9F51DC",
+      "text": "#FFFFFF",
+      "metric": "#8E44AD"
     }
   },
   "validation": {
@@ -200,7 +243,10 @@ curl -X POST https://jietng-endpoint.matsuk1.com/api/v2/score-recognition \
 - `song.id` 是 dxdata 乐曲 ID；`song.type` 为 `dx` 或 `std`。
 - `chart.internal_level` 是谱面定数，未知时为 `null`。
 - `judgements` 固定包含 `tap`、`hold`、`slide`、`touch`、`break`，每行固定包含五种判定。
-- `break_detail` 是 Flex 判定明细使用的当前最可能 BREAK 细分结果；`candidate_count` 是当前 BREAK 行内部的细分候选数，整行由 Calc 推定时可选字段 `row_candidate_count` 表示可行的整行候选数。无法得到离散匹配时为 `{}`。
+- `score.status` 是 Flex 顶部状态栏使用的评级和 Combo 图标元数据；`combo` 可能为 `fc`、`fc+`、`ap`、`ap+` 或 `null`。
+- `score.loss_detail` 是 Flex “详细判定”使用的普通 Note 失分数据，只列出 TAP、HOLD、SLIDE、TOUCH 中产生失分的行；百分比保留四位小数。
+- `break_detail` 是 Flex “BREAK 详细判定”使用的当前最可能 BREAK 细分结果；`loss_percentages` 和 `total_loss` 是各细分格及整行损失的达成率百分比。`candidate_count` 是当前 BREAK 行内部的细分候选数，整行由 Calc 推定时可选字段 `row_candidate_count` 表示可行的整行候选数。无法得到离散匹配时为 `{}`。
+- `metadata` 包含 Flex 标题、谱面类型图标、难度标签和难度配色，可直接用于客户端复刻当前 OCR FlexMsg。
 - `row_offset`、`column_offset` 表示 OCR 表格经过的行列对齐修正，`0` 表示未移动。
 - `miss_corrections` 记录根据谱面物量把 OCR MISS 从 `ocr` 修正为 `validated` 的行。
 - `achievement_calc` 记录 Calc 可接受区间及 OCR 达成率是否一致。

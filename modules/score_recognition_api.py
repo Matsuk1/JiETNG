@@ -24,6 +24,7 @@ BREAK_DETAIL_FIELDS = (
     "candidate_count",
     "row_candidate_count",
 )
+NORMAL_LOSS_FIELDS = ("great", "good", "miss")
 CALC_CORRECTION_FIELDS = (
     "row",
     "field",
@@ -34,6 +35,29 @@ CALC_CORRECTION_FIELDS = (
     "inferred_row",
     "candidate_count",
 )
+
+PLAYLOG_ICON_BASE_URL = "https://maimaidx.jp/maimai-mobile/img/playlog"
+SONG_TYPE_ICON_URLS = {
+    "std": "https://maimaidx.jp/maimai-mobile/img/music_standard.png",
+    "dx": "https://maimaidx.jp/maimai-mobile/img/music_dx.png",
+    "utage": "https://maimaidx.jp/maimai-mobile/img/diff_utage.png",
+}
+DIFFICULTY_LABELS = {
+    "basic": "BASIC",
+    "advanced": "ADVANCED",
+    "expert": "EXPERT",
+    "master": "MASTER",
+    "remaster": "Re:MASTER",
+    "utage": "U·TA·GE",
+}
+DIFFICULTY_STYLES = {
+    "basic": {"background": "#75B520", "text": "#FFFFFF", "metric": "#75B520"},
+    "advanced": {"background": "#EFA508", "text": "#111111", "metric": "#B36F00"},
+    "expert": {"background": "#CC4D59", "text": "#FFFFFF", "metric": "#CC4D59"},
+    "master": {"background": "#9F51DC", "text": "#FFFFFF", "metric": "#8E44AD"},
+    "remaster": {"background": "#E9D4F3", "text": "#72148D", "metric": "#B06FD3"},
+    "utage": {"background": "#F52EDD", "text": "#FFFFFF", "metric": "#D10FBA"},
+}
 UNCERTAIN_CELL_FIELDS = (
     "row",
     "field",
@@ -83,6 +107,177 @@ def _miss_corrections(value: Any) -> dict[str, dict[str, Any]]:
     }
 
 
+def _loss_count(value: Any) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _loss_value(value: Any) -> float:
+    return float(value) if isinstance(value, (int, float)) else 0.0
+
+
+def _format_loss(value: float) -> float:
+    return round(float(value), 4)
+
+
+def _score_rank(achievement: Any) -> str | None:
+    if not isinstance(achievement, (int, float)):
+        return None
+    thresholds = (
+        (100.5, "sss+"),
+        (100.0, "sss"),
+        (99.5, "ss+"),
+        (99.0, "ss"),
+        (98.0, "s+"),
+        (97.0, "s"),
+        (94.0, "aaa"),
+        (90.0, "aa"),
+        (80.0, "a"),
+        (75.0, "bbb"),
+        (70.0, "bb"),
+        (60.0, "b"),
+        (50.0, "c"),
+        (0.0, "d"),
+    )
+    for threshold, rank in thresholds:
+        if achievement >= threshold:
+            return rank
+    return "d"
+
+
+def _rank_icon_url(rank: str | None) -> str | None:
+    if not rank:
+        return None
+    filename = rank.lower().replace("+", "plus")
+    return f"{PLAYLOG_ICON_BASE_URL}/{filename}.png"
+
+
+def _combo_status(achievement: Any, judgements: dict[str, dict[str, int]]) -> str | None:
+    if any(row_name not in judgements for row_name in JUDGEMENT_ROWS):
+        return None
+    totals = {"great": 0, "good": 0, "miss": 0}
+    for row in judgements.values():
+        for field_name in totals:
+            totals[field_name] += _loss_count(row.get(field_name))
+    if isinstance(achievement, (int, float)) and achievement >= 100.99995:
+        return "ap+"
+    if totals["great"] == 0 and totals["good"] == 0 and totals["miss"] == 0:
+        return "ap"
+    if totals["good"] == 0 and totals["miss"] == 0:
+        return "fc+"
+    if totals["miss"] == 0:
+        return "fc"
+    return None
+
+
+def _combo_icon_url(combo: str | None) -> str | None:
+    filenames = {
+        "fc": "fc.png",
+        "fc+": "fcplus.png",
+        "ap": "ap.png",
+        "ap+": "applus.png",
+    }
+    filename = filenames.get(str(combo or "").lower())
+    return f"{PLAYLOG_ICON_BASE_URL}/{filename}" if filename else None
+
+
+def _build_loss_detail(
+    judgements: dict[str, dict[str, int]],
+    loss_percentages: Any,
+) -> dict[str, Any]:
+    if not isinstance(loss_percentages, dict):
+        loss_percentages = {}
+    rows: dict[str, Any] = {}
+    total_loss = 0.0
+    for row_name in ("tap", "hold", "slide", "touch"):
+        row = judgements.get(row_name)
+        if not isinstance(row, dict):
+            continue
+        cells = {}
+        row_total = 0.0
+        for field_name in NORMAL_LOSS_FIELDS:
+            count = _loss_count(row.get(field_name))
+            loss_per_note = _loss_value(loss_percentages.get(f"{row_name}_{field_name}"))
+            loss = loss_per_note * count
+            cells[field_name] = {
+                "count": count,
+                "loss_per_note": _format_loss(loss_per_note),
+                "total_loss": _format_loss(loss),
+            }
+            row_total += loss
+        if row_total > 0:
+            rows[row_name] = {
+                "cells": cells,
+                "total_loss": _format_loss(row_total),
+            }
+            total_loss += row_total
+    return {
+        "rows": rows,
+        "total_loss": _format_loss(total_loss),
+    }
+
+
+def _build_break_detail(value: Any) -> dict[str, Any]:
+    detail = _selected_mapping(value, BREAK_DETAIL_FIELDS)
+    if not detail:
+        return {}
+    loss_percentages = value.get("loss_percentages") if isinstance(value, dict) else {}
+    if isinstance(loss_percentages, dict):
+        selected_loss_percentages = {
+            key: _format_loss(_loss_value(loss_percentages.get(key)))
+            for key in (
+                "critical_perfect",
+                "perfect_high",
+                "perfect_low",
+                "great_high",
+                "great_middle",
+                "great_low",
+                "good",
+                "miss",
+            )
+            if key in loss_percentages
+        }
+        detail["loss_percentages"] = selected_loss_percentages
+        total_loss = sum(
+            _loss_value(loss_percentages.get(key)) * _loss_count(detail.get(key))
+            for key in (
+                "perfect_high",
+                "perfect_low",
+                "great_high",
+                "great_middle",
+                "great_low",
+                "good",
+                "miss",
+            )
+        )
+        detail["total_loss"] = _format_loss(total_loss)
+    return detail
+
+
+def _build_display_metadata(validation: dict[str, Any]) -> dict[str, Any]:
+    chart_type = str(validation.get("type") or "").lower()
+    difficulty = str(validation.get("difficulty") or "").lower()
+    type_label = {"dx": "DX", "std": "STD", "utage": "UTAGE"}.get(chart_type)
+    title = validation.get("title")
+    display_title = '""' if title == "" else str(title or "")
+    if type_label:
+        display_title = f"{display_title} [{type_label}]"
+    difficulty_style = DIFFICULTY_STYLES.get(
+        difficulty,
+        {"background": "#315B7D", "text": "#FFFFFF", "metric": "#315B7D"},
+    )
+    return {
+        "display_title": display_title,
+        "subtitle_template": "Judgement Details {difficulty} {type_icon}",
+        "type_label": type_label,
+        "type_icon_url": SONG_TYPE_ICON_URLS.get(chart_type),
+        "difficulty_label": DIFFICULTY_LABELS.get(difficulty, difficulty.upper() if difficulty else None),
+        "difficulty_style": difficulty_style,
+    }
+
+
 def _complete_judgements(value: Any) -> dict[str, dict[str, int]]:
     if not isinstance(value, dict):
         raise ScoreRecognitionResultError("No complete judgement data was recognized")
@@ -127,10 +322,10 @@ def build_score_recognition_response(result: Any) -> dict[str, Any]:
         raise ScoreRecognitionResultError("Achievement was not recognized")
 
     judgements = _complete_judgements(parsed.get("sub_judgement"))
-    break_detail = _selected_mapping(
-        validation.get("break_detail"),
-        BREAK_DETAIL_FIELDS,
-    )
+    rank = _score_rank(achievement)
+    combo = _combo_status(achievement, judgements)
+    break_detail = _build_break_detail(validation.get("break_detail"))
+    loss_detail = _build_loss_detail(judgements, validation.get("loss_percentages"))
     return {
         "success": True,
         "song": {
@@ -145,9 +340,19 @@ def build_score_recognition_response(result: Any) -> dict[str, Any]:
         },
         "score": {
             "achievement": float(achievement),
+            "rank": rank,
+            "combo": combo,
+            "status": {
+                "rank": rank,
+                "rank_icon_url": _rank_icon_url(rank),
+                "combo": combo,
+                "combo_icon_url": _combo_icon_url(combo),
+            },
             "judgements": judgements,
+            "loss_detail": loss_detail,
             "break_detail": break_detail,
         },
+        "metadata": _build_display_metadata(validation),
         "validation": {
             "title_match_type": validation.get("title_match_type"),
             "exact_title_match": bool(validation.get("exact_title_match")),

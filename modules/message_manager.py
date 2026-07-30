@@ -793,7 +793,7 @@ def generate_help_index_flex(user_id=None):
         ),
         (
             _help_i18n(user_id, "歌曲与成绩", "Songs and Records", "楽曲と成績"),
-            "info / songrec / rec / recordrec / rcdrec / record / search / search-record / calc-song",
+            "info / rec / record / search / search-record / calc-song",
             _help_i18n(user_id, "查歌曲信息、识别成绩图、单曲成绩和歌曲 ID。", "Song details, score-image recognition, single-song records, and song IDs.", "楽曲情報、リザルト画像認識、単曲成績、楽曲 ID 検索。"),
             "#267D8B",
         ),
@@ -1328,8 +1328,7 @@ def generate_score_recognition_flex(result, user_id=None):
     lang = get_user_language(user_id)
     texts = {
         "title": {"zh": "判定明细", "en": "Judgement Details", "ja": "判定詳細"},
-        "achievement": {"zh": "达成率", "en": "Achievement", "ja": "達成率"},
-        "combo": {"zh": "Combo", "en": "Combo", "ja": "Combo"},
+        "status": {"zh": "状态", "en": "Status", "ja": "ステータス"},
         "constant": {"zh": "定数", "en": "Level", "ja": "定数"},
         "breakdown": {"zh": "判定数据", "en": "Judgements", "ja": "判定データ"},
         "loss_detail": {"zh": "详细判定", "en": "Detailed Judgements", "ja": "詳細判定"},
@@ -1345,9 +1344,9 @@ def generate_score_recognition_flex(result, user_id=None):
             "ja": "Calc 推定：{count} 件の候補から最も可能性の高い組み合わせ",
         },
         "break_row_source_multiple": {
-            "zh": "BREAK 整行有 {count} 个 Calc 候选；下方为当前候选的细分",
-            "en": "The BREAK row has {count} Calc candidates; details below are for the current candidate",
-            "ja": "BREAK 行には Calc 候補が {count} 件あります。以下は現在の候補の内訳です",
+            "zh": "BREAK 整行有 {count} 个 Calc 候选；上方为当前候选的细分",
+            "en": "The BREAK row has {count} Calc candidates; details above are for the current candidate",
+            "ja": "BREAK 行には Calc 候補が {count} 件あります。以上は現在の候補の内訳です",
         },
         "empty": {
             "zh": "未能识别判定明细。",
@@ -1543,7 +1542,7 @@ def generate_score_recognition_flex(result, user_id=None):
                 "spacing": "xs",
                 "flex": 1,
                 "contents": [
-                    _help_flex_text(tr("achievement"), size="xxs", color=COLOR_TEXT_MUTED),
+                    _help_flex_text(tr("status"), size="xxs", color=COLOR_TEXT_MUTED),
                     _help_flex_text(achievement_text, size="sm", color="#B86E19", weight="bold"),
                 ],
             }
@@ -1585,6 +1584,7 @@ def generate_score_recognition_flex(result, user_id=None):
     chart_type_label = {
         "dx": "DX",
         "std": "STD",
+        "utage": "UTAGE",
     }.get(str(chart_type or "").lower())
     display_title = (
         f"{song_title} [{chart_type_label}]"
@@ -1750,6 +1750,9 @@ def generate_score_recognition_flex(result, user_id=None):
                 judgement_cell(key, "miss", row_value("miss")),
             ],
         })
+
+    if len(table_rows) > 1:
+        table_rows[-1]["cornerRadius"] = "6px"
 
     loss_percentages = validation.get("loss_percentages") or {}
 
@@ -1945,6 +1948,8 @@ def generate_score_recognition_flex(result, user_id=None):
             "type": "box",
             "layout": "vertical",
             "spacing": "none",
+            "cornerRadius": "8px",
+            "backgroundColor": "#FFFFFF",
             "contents": table_rows,
         })
     else:
@@ -1970,36 +1975,6 @@ def generate_score_recognition_flex(result, user_id=None):
 
         def break_loss_label(key):
             return format_loss_percentage(break_loss_percentages.get(key), 1)
-
-        def break_detail_value(label, value, text_color, background_color):
-            return {
-                "type": "box",
-                "layout": "vertical",
-                "spacing": "xs",
-                "paddingAll": "6px",
-                "backgroundColor": background_color,
-                "cornerRadius": "4px",
-                "flex": 1,
-                "contents": [
-                    {
-                        "type": "text",
-                        "text": str(label),
-                        "size": "xxs",
-                        "color": COLOR_TEXT_SECONDARY,
-                        "align": "center",
-                        "wrap": False,
-                    },
-                    {
-                        "type": "text",
-                        "text": str(value),
-                        "size": "sm",
-                        "color": text_color,
-                        "weight": "bold",
-                        "align": "center",
-                        "wrap": False,
-                    },
-                ],
-            }
 
         def break_detail_row(label, values):
             return {
@@ -2068,7 +2043,7 @@ def generate_score_recognition_flex(result, user_id=None):
                 "cornerRadius": "6px",
                 "contents": [
                     break_detail_row("CRITICAL", [
-                        break_detail_value(
+                        detail_value_box(
                             break_loss_label("critical_perfect"),
                             break_detail.get("critical_perfect", 0),
                             "#9A5B12",
@@ -2076,17 +2051,17 @@ def generate_score_recognition_flex(result, user_id=None):
                         ),
                     ]),
                     break_detail_row("PERFECT", [
-                        break_detail_value(break_loss_label("perfect_high"), break_detail.get("perfect_high", 0), "#A96517", "#FFF3D9"),
-                        break_detail_value(break_loss_label("perfect_low"), break_detail.get("perfect_low", 0), "#B97824", "#FFF8E8"),
+                        detail_value_box(break_loss_label("perfect_high"), break_detail.get("perfect_high", 0), "#A96517", "#FFF3D9"),
+                        detail_value_box(break_loss_label("perfect_low"), break_detail.get("perfect_low", 0), "#B97824", "#FFF8E8"),
                     ]),
                     break_detail_row("GREAT", [
-                        break_detail_value(break_loss_label("great_high"), break_detail.get("great_high", 0), "#923468", "#FBE5F1"),
-                        break_detail_value(break_loss_label("great_middle"), break_detail.get("great_middle", 0), "#A64D7D", "#F9EDF4"),
-                        break_detail_value(break_loss_label("great_low"), break_detail.get("great_low", 0), "#B66A91", "#F8F2F6"),
+                        detail_value_box(break_loss_label("great_high"), break_detail.get("great_high", 0), "#923468", "#FBE5F1"),
+                        detail_value_box(break_loss_label("great_middle"), break_detail.get("great_middle", 0), "#A64D7D", "#F9EDF4"),
+                        detail_value_box(break_loss_label("great_low"), break_detail.get("great_low", 0), "#B66A91", "#F8F2F6"),
                     ]),
                     break_detail_row("OTHER", [
-                        break_detail_value(break_loss_label("good"), break_detail.get("good", 0), "#277047", "#E7F5ED"),
-                        break_detail_value(break_loss_label("miss"), break_detail.get("miss", 0), "#555555", "#E9EDF2"),
+                        detail_value_box(break_loss_label("good"), break_detail.get("good", 0), "#277047", "#E7F5ED"),
+                        detail_value_box(break_loss_label("miss"), break_detail.get("miss", 0), "#555555", "#E9EDF2"),
                     ]),
                     {
                         "type": "box",

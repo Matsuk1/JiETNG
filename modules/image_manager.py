@@ -1,6 +1,5 @@
 import os
 import random
-import qrcode
 import logging
 from datetime import datetime, timezone, timedelta, date
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -329,18 +328,6 @@ def compose_images(images, timezone_offset=9, bg_filter=None):
         final_img = final_img.convert("RGB")
 
     return final_img
-
-def _generate_qrcode(data: str, box_size: int = 10, border: int = 4) -> Image.Image:
-    qr = qrcode.QRCode(
-        version=None,
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=box_size,
-        border=border,
-    )
-    qr.add_data(data)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-    return img
 
 
 def round_corner(img, radius=20):
