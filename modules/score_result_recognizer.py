@@ -623,7 +623,7 @@ def _attach_break_loss_percentages(notes, break_detail):
     return break_detail
 
 
-def _validate_recognized_judgement(
+def validate_recognized_judgement(
     result,
     ver="jp",
     allow_ocr_alignment=True,
@@ -1264,6 +1264,8 @@ def _validate_recognized_judgement(
         "song_id": song.get("id"),
         "title": song.get("title"),
         "type": song.get("type"),
+        "cover_url": song.get("cover_url"),
+        "cover_name": song.get("cover_name"),
         "difficulty": sheet.get("difficulty"),
         "level": sheet.get("level"),
         "internal_level": sheet.get("internalLevelValue"),
@@ -1330,25 +1332,8 @@ def _parse_fix_record_command(command_text):
     return title, achievement, judgement
 
 
-
-
-
 def parse_fix_record_command(command_text):
     return _parse_fix_record_command(command_text)
-
-
-def validate_recognized_judgement(
-    result,
-    ver='jp',
-    allow_ocr_alignment=True,
-    preserve_input=False,
-):
-    return _validate_recognized_judgement(
-        result,
-        ver=ver,
-        allow_ocr_alignment=allow_ocr_alignment,
-        preserve_input=preserve_input,
-    )
 
 
 def score_recognition_needs_manual_fix(result) -> bool:

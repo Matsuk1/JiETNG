@@ -4396,6 +4396,7 @@ def _handle_fix_record_command(event, command_text: str) -> bool:
             tone="warning",
         )
     else:
+        show_loading(user_id)
         title, achievement, judgement = parsed_command
         result = {
             "source": "manual",
@@ -4413,7 +4414,26 @@ def _handle_fix_record_command(event, command_text: str) -> bool:
             allow_ocr_alignment=False,
             preserve_input=True,
         )
-        message = generate_score_recognition_flex(result, user_id)
+        if score_recognition_needs_manual_fix(result):
+            message = generate_score_recognition_flex(result, user_id)
+        else:
+            result_img = generate_score_recognition_picture(
+                result,
+                ver=ver,
+                timezone_offset=get_user_timezone(user_id),
+                bg_filter=_get_user_bg_filter(user_id),
+            )
+            try:
+                original_url, preview_url = asyncio.run(smart_upload(result_img, user_id))
+            finally:
+                result_img.close()
+                gc.collect(0)
+            if not original_url or not preview_url:
+                raise RuntimeError("Score recognition image upload failed")
+            message = ImageMessage(
+                            original_content_url=original_url,
+                            preview_image_url=preview_url,
+                      )
 
     smart_reply(
         user_id,

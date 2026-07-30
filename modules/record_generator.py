@@ -20,6 +20,7 @@ from modules.config_loader import (
 from modules.image_cache import *
 from modules.image_manager import *
 from modules.maimai_manager import get_rating_image_path
+from modules.record_manager import get_single_ra
 
 logger = logging.getLogger(__name__)
 
@@ -557,38 +558,30 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
     payload = _score_recognition_payload(result)
     difficulty = str(payload.get("difficulty") or "").lower()
     diff_color = _get_difficulty_color(difficulty)
-    metric_color = diff_color
+    metric_color = (114, 20, 141) if difficulty == "remaster" else diff_color
     header_text_color = (114, 20, 141) if difficulty == "remaster" else (255, 255, 255)
 
-    version_key = "jp" if str(ver or "").lower() == "jp" else "intl"
-    language_key = "ja" if version_key == "jp" else "en"
     texts = {
-        "ja": {
+        "jp": {
             "subtitle": "判定詳細",
-            "achievement": "達成率",
-            "status": "ステータス",
-            "constant": "定数",
             "judgement": "判定データ",
             "loss": "詳細判定",
             "break": "BREAK 詳細判定",
             "empty": "判定詳細を認識できませんでした。",
         },
-        "en": {
+        "intl": {
             "subtitle": "Judgement Details",
-            "achievement": "Achievement",
-            "status": "Status",
-            "constant": "Constant",
             "judgement": "Judgements",
             "loss": "Detailed Judgements",
             "break": "BREAK Details",
             "empty": "No judgement details were recognized.",
         },
-    }[language_key]
+    }[ver]
 
     font_header = ImageFont.truetype(FONT_FILE, 48)
     font_subtitle = ImageFont.truetype(FONT_FILE, 26)
     font_label = ImageFont.truetype(FONT_FILE, 24)
-    font_value = ImageFont.truetype(FONT_FILE, 38)
+    font_value = ImageFont.truetype(FONT_FILE, 42)
     font_table = ImageFont.truetype(FONT_FILE, 26)
     font_table_bold = ImageFont.truetype(FONT_FILE, 28)
     font_small_detail = ImageFont.truetype(FONT_FILE, 22)
@@ -618,7 +611,7 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
     break_rows = _score_break_rows_from_internal(judgement, break_detail)
 
     header_h = 150
-    metric_h = 126
+    metric_h = 100
     table_h = 64 + max(1, len(visible_rows)) * 58
     loss_h = 0
     if loss_rows:
@@ -633,8 +626,8 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
 
     y = margin + 24
     _draw_score_card(draw, (margin + 22, y, img_width - margin - 22, y + header_h), radius=18, fill=diff_color)
-    draw.text((margin + 48, y + 26), title_text, font=font_header, fill=header_text_color)
-    draw.text((margin + 50, y + 94), subtitle, font=font_subtitle, fill=header_text_color)
+    draw.text((margin + 48, y + 20), title_text, font=font_header, fill=header_text_color)
+    draw.text((margin + 50, y + 90), subtitle, font=font_subtitle, fill=header_text_color)
     chart_type = str(payload.get("type") or "").lower()
     cover_x = img_width - margin - 48 - header_cover_size
     cover_y = y + (header_h - header_cover_size) // 2
@@ -665,17 +658,16 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
     metric_total_w = content_w - 44
     unit = (metric_total_w - gap * 2) / 8
     metric_boxes = [
-        ("achievement", margin + 22, y, margin + 22 + unit * 3, y + metric_h),
-        ("status", margin + 22 + unit * 3 + gap, y, margin + 22 + unit * 6 + gap, y + metric_h),
-        ("constant", margin + 22 + unit * 6 + gap * 2, y, margin + 22 + unit * 8 + gap * 2, y + metric_h),
+        ("achievement", margin + 22, y, margin + 22 + unit * 2.7, y + metric_h),
+        ("status", margin + 22 + unit * 2.7 + gap, y, margin + 22 + unit * 5.4 + gap, y + metric_h),
+        ("constant", margin + 22 + unit * 5.4 + gap * 2, y, margin + 22 + unit * 8.0 + gap * 2, y + metric_h),
     ]
     for _, x1, y1, x2, y2 in metric_boxes:
         _draw_score_card(draw, (x1, y1, x2, y2), radius=14, fill=(248, 250, 252))
 
     achievement = payload.get("achievement")
     achievement_text = f"{achievement:.4f}%" if isinstance(achievement, (int, float)) else "-"
-    draw.text((metric_boxes[0][1] + 24, y + 18), texts["achievement"], font=font_label, fill=(140, 145, 155))
-    draw.text((metric_boxes[0][1] + 24, y + 58), achievement_text, font=font_value, fill=(184, 110, 25))
+    draw.text((metric_boxes[0][1] + 34, y + 18), achievement_text, font=font_value, fill=(184, 110, 25))
 
     rank_icon = payload.get("rank_icon")
     combo_icon = payload.get("combo_icon")
@@ -702,6 +694,7 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
     icon_bottom = y + 58 + 40
     icon_y = int(icon_bottom - status_icon_h)
     icon_y = max(int(status_y1 + 18), min(icon_y, int(status_y2 - status_icon_h - 12)))
+    icon_y = status_y1 + 22
     if rank_icon:
         rank_file = {
             "sssplus": "sssp",
@@ -726,9 +719,9 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
         )
 
     constant = payload.get("internal_level")
-    constant_text = f"{constant:.1f}" if isinstance(constant, (int, float)) else "-"
-    draw.text((metric_boxes[2][1] + 24, y + 18), texts["constant"], font=font_label, fill=(140, 145, 155))
-    draw.text((metric_boxes[2][1] + 24, y + 58), constant_text, font=font_value, fill=metric_color)
+    rcd_rating = get_single_ra(constant, achievement,("ap" in combo_icon))
+    constant_text = f"{constant:.1f} → {rcd_rating}" if isinstance(constant, (int, float)) else "-"
+    draw.text((metric_boxes[2][1] + 28, y + 18), constant_text, font=font_value, fill=metric_color)
     y += metric_h + 42
 
     _draw_score_section_title(draw, margin + 22, y, texts["judgement"], (38, 125, 139), font_section)

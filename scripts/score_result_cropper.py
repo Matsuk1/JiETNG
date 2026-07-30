@@ -414,10 +414,20 @@ def _detect_main_achievement_by_color(
     if not row_ranges:
         return None
 
-    digit_range = max(
-        row_ranges,
-        key=lambda row_range: sum(row_scores.get(y, 0) for y in range(row_range[0], row_range[1] + 1)),
-    )
+    def row_range_score(row_range: tuple[int, int]) -> int:
+        return sum(row_scores.get(y, 0) for y in range(row_range[0], row_range[1] + 1))
+
+    expected_band_ranges = []
+    for row_range in row_ranges:
+        center_ratio = (((row_range[0] + row_range[1]) / 2) - screen.top) / screen.height
+        bottom_ratio = (row_range[1] - screen.top) / screen.height
+        if 0.315 <= center_ratio <= 0.435 and bottom_ratio <= 0.470:
+            expected_band_ranges.append(row_range)
+
+    # Rank text such as SS/SSS uses the same warm colors as the achievement
+    # digits and is often larger. Prefer the normal achievement band before
+    # falling back to the largest color block.
+    digit_range = max(expected_band_ranges or row_ranges, key=row_range_score)
     points: list[tuple[int, int]] = []
     for y in range(digit_range[0], digit_range[1] + 1, 2):
         for x in range(search.left, search.right, 2):
