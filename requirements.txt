@@ -20,3 +20,4 @@ pyzipper==0.3.6
 aioboto3==15.5.0
 pywebpush==2.3.0
 pykakasi==2.3.0
+ultralytics==8.4.112

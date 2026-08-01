@@ -14,6 +14,7 @@ import unicodedata
 from pathlib import Path
 from typing import Any, Iterable
 
+import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 from score_result_cropper import (
@@ -79,12 +80,51 @@ def normalize_song_text(value: str) -> str:
     return value.strip(" -|")
 
 
+def enhance_judgement_color_contrast(image: Image.Image) -> Image.Image:
+    """Boost low-contrast colored judgement digits after table cropping."""
+    arr = np.asarray(image.convert("RGB")).astype(np.int16)
+    r = arr[:, :, 0]
+    g = arr[:, :, 1]
+    b = arr[:, :, 2]
+    maximum = arr.max(axis=2)
+    minimum = arr.min(axis=2)
+    brightness = (r + g + b) / 3
+    blue_line = (b >= 90) & (g >= 45) & (b >= r + 18) & (brightness >= 42) & (brightness <= 215)
+    row_label = (b >= 70) & (r <= 85) & (g <= 120) & (b >= r + 22) & (brightness <= 145)
+    protected = blue_line | row_label
+
+    pink = (r > 105) & (b > 70) & (g < r * 0.82) & (g < b * 0.95) & ~protected
+    green = (g > 85) & (g > r * 1.06) & (g > b * 1.04) & ~protected
+    gray = ((maximum - minimum) <= 30) & (maximum >= 58) & (maximum <= 220) & ~protected
+    light = (minimum >= 205) & ~protected
+
+    arr[:, :, 0][pink] = np.minimum(255, (r[pink] * 1.10).astype(np.int16))
+    arr[:, :, 1][pink] = np.maximum(0, (g[pink] * 0.45).astype(np.int16))
+    arr[:, :, 2][pink] = np.minimum(255, (b[pink] * 1.02).astype(np.int16))
+
+    arr[:, :, 0][green] = np.maximum(0, (r[green] * 0.50).astype(np.int16))
+    arr[:, :, 1][green] = np.minimum(255, (g[green] * 1.16).astype(np.int16))
+    arr[:, :, 2][green] = np.maximum(0, (b[green] * 0.58).astype(np.int16))
+
+    gray_value = np.maximum(0, (minimum[gray] * 0.55).astype(np.int16))
+    arr[:, :, 0][gray] = gray_value
+    arr[:, :, 1][gray] = gray_value
+    arr[:, :, 2][gray] = gray_value
+
+    arr[:, :, 0][light] = np.minimum(255, (r[light] * 1.05).astype(np.int16))
+    arr[:, :, 1][light] = np.minimum(255, (g[light] * 1.05).astype(np.int16))
+    arr[:, :, 2][light] = np.minimum(255, (b[light] * 1.05).astype(np.int16))
+
+    return Image.fromarray(arr.astype(np.uint8), "RGB")
+
+
 def prepare_ocr_image_data(source_image: Image.Image, field: str) -> Image.Image:
     image = ImageOps.exif_transpose(source_image).convert("RGB")
     scale = 3 if field in {"sub_judgement_table", "sub_judgement_column"} else 2
     image = image.resize((image.width * scale, image.height * scale), Image.Resampling.LANCZOS)
 
     if field == "sub_judgement_column":
+        image = enhance_judgement_color_contrast(image)
         image = ImageOps.autocontrast(image, cutoff=1)
         image = ImageEnhance.Contrast(image).enhance(1.75)
         image = ImageEnhance.Sharpness(image).enhance(2.0)
@@ -1492,6 +1532,8 @@ def recognize_judgement_cells_direct(
                 ))
             )
             secondary_slots.append((row_name, column_name, "tight"))
+            secondary_images.append(enhance_judgement_color_contrast(crop))
+            secondary_slots.append((row_name, column_name, "color_boost"))
             great_height_ratio = 0.84 if crop.height < 80 else 0.80
             for left_ratio in (0.0, 0.15):
                 blue_crop = crop.crop((
@@ -1545,11 +1587,13 @@ def recognize_judgement_cells_direct(
             ).convert("RGB"),
             ImageOps.autocontrast(grayscale, cutoff=1).convert("RGB"),
             ImageOps.autocontrast(crop.getchannel("B"), cutoff=1).convert("RGB"),
+            enhance_judgement_color_contrast(crop),
         ])
         secondary_slots.extend([
             (row_name, column_name, "threshold"),
             (row_name, column_name, "digit_gray"),
             (row_name, column_name, "digit_blue"),
+            (row_name, column_name, "color_boost"),
         ])
 
     secondary_items = engine.read_cropped_lines(secondary_images) if secondary_images else []
@@ -1631,6 +1675,18 @@ def recognize_judgement_cells_direct(
         if tight_candidates:
             result[row_name][column_name] = max(
                 tight_candidates,
+                key=lambda candidate: candidate[1],
+            )[0]
+            continue
+
+        color_boost_candidates = [
+            (value, score)
+            for value, score, mode in values
+            if mode == "color_boost" and score >= 0.58
+        ]
+        if color_boost_candidates:
+            result[row_name][column_name] = max(
+                color_boost_candidates,
                 key=lambda candidate: candidate[1],
             )[0]
             continue

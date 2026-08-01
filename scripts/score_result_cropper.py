@@ -19,6 +19,10 @@ from typing import Callable, Iterable
 from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 
 
+_CROPPER_MODEL = None
+_CROPPER_MODEL_UNAVAILABLE = False
+
+
 @dataclass(frozen=True)
 class Box:
     left: int
@@ -168,6 +172,99 @@ def _cluster_ranges(values: list[int], max_gap: int = 3) -> list[tuple[int, int]
     if start is not None:
         ranges.append((start, previous if previous is not None else start))
     return ranges
+
+
+def _load_cropper_model():
+    global _CROPPER_MODEL, _CROPPER_MODEL_UNAVAILABLE
+    if _CROPPER_MODEL_UNAVAILABLE:
+        return None
+    if _CROPPER_MODEL is not None:
+        return _CROPPER_MODEL
+
+    model_path = Path(__file__).with_name("cropper.pt")
+    if not model_path.exists():
+        _CROPPER_MODEL_UNAVAILABLE = True
+        return None
+
+    try:
+        os.environ.setdefault(
+            "MPLCONFIGDIR",
+            str(Path(os.getenv("TMPDIR", "/tmp")) / "jietng_matplotlib"),
+        )
+        from ultralytics import YOLO
+
+        _CROPPER_MODEL = YOLO(str(model_path))
+    except Exception:
+        _CROPPER_MODEL_UNAVAILABLE = True
+        return None
+    return _CROPPER_MODEL
+
+
+def detect_sub_screen_by_cropper_model(image: Image.Image) -> Box | None:
+    model = _load_cropper_model()
+    if model is None:
+        return None
+
+    try:
+        prediction = model.predict(image, imgsz=960, conf=0.15, verbose=False)[0]
+    except Exception:
+        return None
+
+    names = getattr(model, "names", {}) or getattr(prediction, "names", {}) or {}
+    width, height = image.size
+    candidates: list[tuple[float, Box]] = []
+    for raw_box in getattr(prediction, "boxes", []) or []:
+        try:
+            cls_id = int(raw_box.cls[0])
+            confidence = float(raw_box.conf[0])
+            x1, y1, x2, y2 = [float(value) for value in raw_box.xyxy[0]]
+        except (TypeError, ValueError, IndexError):
+            continue
+
+        box = Box(
+            int(round(x1)),
+            int(round(y1)),
+            int(round(x2)),
+            int(round(y2)),
+        ).clamp(width, height)
+        if box.width <= 0 or box.height <= 0:
+            continue
+
+        class_name = str(names.get(cls_id, "")).lower()
+        aspect = box.width / max(1, box.height)
+        center_y_ratio = ((box.top + box.bottom) / 2) / max(1, height)
+        if center_y_ratio > 0.42 or aspect < 1.45:
+            continue
+
+        label_score = 2.0 if "screen" in class_name or "upper" in class_name else 0.0
+        position_score = 1.0 - abs(center_y_ratio - 0.14)
+        score = confidence * 10.0 + label_score + position_score + min(aspect, 4.0) * 0.25
+        candidates.append((score, box))
+
+    if not candidates:
+        return None
+    return max(candidates, key=lambda item: item[0])[1]
+
+
+def detect_sub_judgement_table_with_cropper_model(image: Image.Image) -> tuple[Box | None, Box | None, str]:
+    sub_screen = detect_sub_screen_by_cropper_model(image)
+    if sub_screen is None:
+        return None, None, "blue_grid"
+
+    # The model marks the upper LCD area tightly. The judgement table can reach
+    # close to its right edge, while the legacy color-scanned sub_screen also
+    # includes more FAST/LATE area and therefore used a smaller relative search
+    # width. Expand only the model anchor so the MISS column stays inside.
+    table_anchor = Box(
+        sub_screen.left,
+        sub_screen.top,
+        min(image.width, sub_screen.right + int(sub_screen.width * 0.24)),
+        sub_screen.bottom,
+    )
+    candidate = detect_sub_judgement_table(image, table_anchor)
+    if is_complete_sub_judgement_table(candidate):
+        return candidate, sub_screen, "cropper_pt"
+    return None, sub_screen, "blue_grid"
 
 
 def detect_sub_screen(image: Image.Image) -> Box:
@@ -837,18 +934,24 @@ def crop_result_fields_in_memory(source_image: Image.Image) -> dict:
     main_title = detect_main_title(image, screen, main_achievement)
     main_screen_only = image.height <= image.width * 1.16
     sub_judgement_table = None
+    sub_judgement_detector = "blue_grid"
     if not main_screen_only:
-        sub_screen = detect_sub_screen(image)
-        candidate = detect_sub_judgement_table(image, sub_screen)
+        candidate, _, detector = detect_sub_judgement_table_with_cropper_model(image)
         if is_complete_sub_judgement_table(candidate):
             sub_judgement_table = candidate
+            sub_judgement_detector = detector
         else:
-            # A portrait photo can still contain only the round main screen.
-            # Rescan from near the top instead of treating its upper half as a
-            # cabinet sub-monitor and shifting every main-screen field down.
-            screen = detect_result_screen(image, main_screen_only=True)
-            main_achievement = detect_main_achievement(image, screen)
-            main_title = detect_main_title(image, screen, main_achievement)
+            sub_screen = detect_sub_screen(image)
+            candidate = detect_sub_judgement_table(image, sub_screen)
+            if is_complete_sub_judgement_table(candidate):
+                sub_judgement_table = candidate
+            else:
+                # A portrait photo can still contain only the round main screen.
+                # Rescan from near the top instead of treating its upper half as a
+                # cabinet sub-monitor and shifting every main-screen field down.
+                screen = detect_result_screen(image, main_screen_only=True)
+                main_achievement = detect_main_achievement(image, screen)
+                main_title = detect_main_title(image, screen, main_achievement)
 
     if main_title is None:
         main_title = relative_box(screen, (0.285, 0.222, 0.790, 0.282)).clamp(
@@ -873,7 +976,7 @@ def crop_result_fields_in_memory(source_image: Image.Image) -> dict:
         "main_achievement": (main_achievement, achievement_detector),
     }
     if sub_judgement_table is not None:
-        field_boxes["sub_judgement_table"] = (sub_judgement_table, "blue_grid")
+        field_boxes["sub_judgement_table"] = (sub_judgement_table, sub_judgement_detector)
 
     fields = {}
     for name, (field_box, detector) in field_boxes.items():
@@ -937,20 +1040,30 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
             json.dump(result, fp, ensure_ascii=False, indent=2)
         return result
     screen = detect_result_screen(image)
-    sub_screen = detect_sub_screen(image)
     stem = source.stem
     sample_dir = output / stem
     if sample_dir.exists():
         shutil.rmtree(sample_dir)
     sample_dir.mkdir(parents=True, exist_ok=True)
 
-    sub_judgement_table = detect_sub_judgement_table(image, sub_screen)
+    sub_judgement_table, model_sub_screen, sub_judgement_detector = (
+        detect_sub_judgement_table_with_cropper_model(image)
+    )
+    sub_screen = model_sub_screen or detect_sub_screen(image)
     main_screen_only = image.height <= image.width * 1.16
     if main_screen_only:
         sub_judgement_table = None
     elif not is_complete_sub_judgement_table(sub_judgement_table):
-        sub_judgement_table = None
-        screen = detect_result_screen(image, main_screen_only=True)
+        rule_sub_screen = detect_sub_screen(image)
+        candidate = detect_sub_judgement_table(image, rule_sub_screen)
+        if is_complete_sub_judgement_table(candidate):
+            sub_screen = rule_sub_screen
+            sub_judgement_table = candidate
+            sub_judgement_detector = "blue_grid"
+        else:
+            sub_judgement_table = None
+            sub_screen = rule_sub_screen
+            screen = detect_result_screen(image, main_screen_only=True)
     content_screen = main_content_box(screen).clamp(image.width, image.height)
     main_achievement = detect_main_achievement(image, screen)
     main_title = detect_main_title(image, screen, main_achievement)
@@ -997,6 +1110,7 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
             "bottom": sub_screen.bottom,
             "width": sub_screen.width,
             "height": sub_screen.height,
+            "detector": "cropper_pt" if model_sub_screen is not None and sub_screen == model_sub_screen else "color_scan",
         },
         "fields": {},
     }
@@ -1075,7 +1189,7 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
             "top": sub_judgement_table.top,
             "right": sub_judgement_table.right,
             "bottom": sub_judgement_table.bottom,
-            "detector": "blue_grid",
+            "detector": sub_judgement_detector,
         }
     else:
         fallback = relative_box(sub_screen, (0.050, 0.285, 0.675, 0.720)).clamp(image.width, image.height)
