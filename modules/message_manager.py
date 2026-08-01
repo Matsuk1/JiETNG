@@ -2211,10 +2211,11 @@ def generate_score_recognition_flex(result, user_id=None):
         isinstance(judgement.get(row_name), dict)
         for row_name in ("tap", "hold", "slide", "touch", "break")
     )
+    fix_command = build_fix_command() if has_judgement_data else None
     if break_row_inferred and fully_validated:
-        compact_fix_command = build_fix_command()
+        compact_fix_command = fix_command
     elif not fully_validated and has_judgement_data:
-        manual_fix_command = build_fix_command()
+        manual_fix_command = fix_command
         body_contents.extend([
             _help_section_title(tr("manual_fix"), accent="#315B7D"),
             {
@@ -2251,33 +2252,18 @@ def generate_score_recognition_flex(result, user_id=None):
             "contents": body_contents,
         },
     }
-    if manual_fix_command:
-        bubble["footer"] = {
-            "type": "box",
-            "layout": "vertical",
-            "paddingAll": "12px",
-            "contents": [
-                _pill_action_box(
-                    tr("copy_fix"),
-                    {
-                        "type": "clipboard",
-                        "label": tr("copy_fix"),
-                        "clipboardText": manual_fix_command,
-                    },
-                    bg_color="#315B7D",
-                )
-            ],
-        }
-    elif compact_fix_command:
-        compact_fix = _help_pill(
-            tr("compact_fix"),
+    footer_fix_command = manual_fix_command or compact_fix_command or fix_command
+    if footer_fix_command:
+        fix_label = tr("compact_fix") if compact_fix_command and not manual_fix_command else tr("copy_fix")
+        fix_pill = _help_pill(
+            fix_label,
             color="#B66A00",
             bg_color="#FFF4E6",
         )
-        compact_fix["action"] = {
+        fix_pill["action"] = {
             "type": "clipboard",
             "label": "fix-rcd",
-            "clipboardText": compact_fix_command,
+            "clipboardText": footer_fix_command,
         }
         bubble["footer"] = {
             "type": "box",
@@ -2288,7 +2274,7 @@ def generate_score_recognition_flex(result, user_id=None):
             "paddingEnd": "16px",
             "contents": [
                 {"type": "filler"},
-                compact_fix,
+                fix_pill,
                 {"type": "filler"},
             ],
         }

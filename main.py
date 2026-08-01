@@ -4467,7 +4467,7 @@ def _handle_fix_record_command(event, command_text: str) -> bool:
     return True
 
 
-def _score_recognition_queue_task(event, command: str, quoted_message_id: str) -> None:
+def _score_recognition_queue_task(event, command: str, quoted_message_id: str, force_flex: bool = False) -> None:
     user_id = event.source.user_id
     source_type = getattr(event.source, 'type', 'user')
     request_started_at = time.perf_counter()
@@ -4510,7 +4510,7 @@ def _score_recognition_queue_task(event, command: str, quoted_message_id: str) -
             )
             ver = get_user_field(user_id, "version", "jp") or "jp"
             result = validate_recognized_judgement(result, ver=ver)
-            if score_recognition_needs_manual_fix(result):
+            if force_flex or score_recognition_needs_manual_fix(result):
                 reply_messages = [
                     generate_score_recognition_flex(
                         result,
@@ -4593,7 +4593,7 @@ def _score_recognition_queue_task(event, command: str, quoted_message_id: str) -
         )
 
 
-def _enqueue_score_recognition_task(event, command: str, quoted_message_id: str) -> None:
+def _enqueue_score_recognition_task(event, command: str, quoted_message_id: str, force_flex: bool = False) -> None:
     user_id = event.source.user_id
     source_type = getattr(event.source, 'type', 'user')
     task_id = f"image_query_{user_id}_{datetime.now().timestamp()}"
@@ -4610,7 +4610,7 @@ def _enqueue_score_recognition_task(event, command: str, quoted_message_id: str)
         show_loading(user_id)
         image_query_queue.put_nowait((
             _score_recognition_queue_task,
-            (event, command, quoted_message_id),
+            (event, command, quoted_message_id, force_flex),
             task_id,
         ))
     except queue.Full:
@@ -4629,9 +4629,13 @@ def _enqueue_score_recognition_task(event, command: str, quoted_message_id: str)
 
 
 def _handle_recognize_command(event, cleaned_text: str) -> bool:
-    command = cleaned_text.strip().lower()
-    command_match = re.fullmatch(r"(rec|crop)", command)
+    command_text = cleaned_text.strip().lower()
+    command_match = re.fullmatch(r"(?P<command>rec|crop)(?P<suffix>-flex)?", command_text)
     if not command_match:
+        return False
+    command = command_match.group("command")
+    force_flex = bool(command_match.group("suffix"))
+    if force_flex and command != "rec":
         return False
 
     user_id = event.source.user_id
@@ -4645,9 +4649,9 @@ def _handle_recognize_command(event, cleaned_text: str) -> bool:
             generate_status_flex(
                 {"zh": "缺少成绩图", "en": "Score Image Required", "ja": "リザルト画像が必要です"},
                 {
-                    "zh": f"请回复一张成绩图并发送 {command}。",
-                    "en": f"Reply to a score image with {command}.",
-                    "ja": f"リザルト画像に返信して {command} を送信してください。",
+                    "zh": f"请回复一张成绩图并发送 {command_text}。",
+                    "en": f"Reply to a score image with {command_text}.",
+                    "ja": f"リザルト画像に返信して {command_text} を送信してください。",
                 },
                 user_id,
                 tone="warning",
@@ -4658,7 +4662,7 @@ def _handle_recognize_command(event, cleaned_text: str) -> bool:
         )
         return True
 
-    _enqueue_score_recognition_task(event, command, quoted_message_id)
+    _enqueue_score_recognition_task(event, command, quoted_message_id, force_flex=force_flex)
     return True
 
 
@@ -4779,9 +4783,9 @@ COMMAND_HELP = {
         "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 楽曲情報、譜面情報、BPM を表示します。\n参数: 必須: <曲名>。info / song-info の前に置き、正式名・部分一致・別名を指定できます。\n検索: 複数候補がある場合は選択候補を返します。\n示例: ヒバナ info\nヒバナってどんな曲",
     ),
     "score_recognition": _help_text(
-        "命令: rec\ncrop\nfix-rcd <曲名>\n说明: rec 识别完整成绩；能完全校验时返回成绩图片，需要修正时返回可复制的修正卡片。crop 只返回裁切图，用于检查识别区域。\n参数: rec 和 crop 都必须回复一张成绩图，不接受其他参数。\nfix-rcd: 第一行填写不含 [DX]/[STD] 的曲名，第二行填写达成率，随后依次填写 TAP、HOLD、SLIDE、TOUCH、BREAK。\n格式: 达成率可带 %；判定行必须为 CP/PF/GR/GD/MS 五个非负整数。\n示例: fix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
-        "命令: rec\ncrop\nfix-rcd <title>\n说明: rec recognizes the full score; it returns a generated result image when validation is complete, or a correction card when manual fixes are needed. crop returns only crop previews for checking detected regions.\n参数: rec and crop must reply to a score image and accept no other arguments.\nfix-rcd: put the title without [DX]/[STD] on line 1, achievement on line 2, then TAP, HOLD, SLIDE, TOUCH, and BREAK.\nFormat: achievement may include %; judgement rows must contain five non-negative integers as CP/PF/GR/GD/MS.\n示例: fix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
-        "命令: rec\ncrop\nfix-rcd <曲名>\n说明: rec はリザルト全体を認識します。完全に検証できた場合は生成画像を返し、修正が必要な場合はコピー可能な修正カードを返します。crop は認識範囲確認用の裁切画像だけを返します。\n参数: rec と crop はリザルト画像への返信が必須で、追加引数は使用できません。\nfix-rcd: 1 行目に [DX]/[STD] を含まない曲名、2 行目に達成率、その後に TAP、HOLD、SLIDE、TOUCH、BREAK を記述します。\n形式: 達成率の % は任意です。判定行は CP/PF/GR/GD/MS の非負整数 5 個です。\n示例: fix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
+        "命令: rec\nrec-flex\ncrop\nfix-rcd <曲名>\n说明: rec 识别完整成绩；能完全校验时返回成绩图片，需要修正时返回可复制的修正卡片。rec-flex 是 rec 的 -flex 后缀形式，会强制返回 FlexMsg。crop 只返回裁切图，用于检查识别区域。\n参数: rec、rec-flex 和 crop 都必须回复一张成绩图，不接受其他参数。\nfix-rcd: 第一行填写不含 [DX]/[STD] 的曲名，第二行填写达成率，随后依次填写 TAP、HOLD、SLIDE、TOUCH、BREAK。\n格式: 达成率可带 %；判定行必须为 CP/PF/GR/GD/MS 五个非负整数。\n示例: rec-flex\nfix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
+        "命令: rec\nrec-flex\ncrop\nfix-rcd <title>\n说明: rec recognizes the full score; it returns a generated result image when validation is complete, or a correction card when manual fixes are needed. rec-flex is rec with the -flex suffix and always returns FlexMsg. crop returns only crop previews for checking detected regions.\n参数: rec, rec-flex, and crop must reply to a score image and accept no other arguments.\nfix-rcd: put the title without [DX]/[STD] on line 1, achievement on line 2, then TAP, HOLD, SLIDE, TOUCH, and BREAK.\nFormat: achievement may include %; judgement rows must contain five non-negative integers as CP/PF/GR/GD/MS.\n示例: rec-flex\nfix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
+        "命令: rec\nrec-flex\ncrop\nfix-rcd <曲名>\n说明: rec はリザルト全体を認識します。完全に検証できた場合は生成画像を返し、修正が必要な場合はコピー可能な修正カードを返します。rec-flex は rec の -flex 接尾辞で、常に FlexMsg を返します。crop は認識範囲確認用の裁切画像だけを返します。\n参数: rec、rec-flex、crop はリザルト画像への返信が必須で、追加引数は使用できません。\nfix-rcd: 1 行目に [DX]/[STD] を含まない曲名、2 行目に達成率、その後に TAP、HOLD、SLIDE、TOUCH、BREAK を記述します。\n形式: 達成率の % は任意です。判定行は CP/PF/GR/GD/MS の非負整数 5 個です。\n示例: rec-flex\nfix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
     ),
     "plate": _help_text(
         "命令: <牌子名> achievement [-uc|-up|-c] / <牌子名>の達成状況\n说明: 查看版本牌子或称号类目标的完成情况。\n参数: 必填: <牌子名>，写在 achievement 前面，例如 真極、檄将 等。\n可选: -uc 仅看未完成项目，-up 仅看未游玩项目，-c 仅看已完成项目。\n格式: 过滤项写在命令最后；不写过滤项时显示完整完成度。\n示例: 真極 achievement\n真極 achievement -uc",
@@ -4902,6 +4906,7 @@ EXACT_HELP_ALIASES = {
     "ranking": "ranking",
     "random": "random_song",
     "rec": "score_recognition",
+    "rec-flex": "score_recognition",
     "crop": "score_recognition",
     "fix-rcd": "score_recognition",
 }

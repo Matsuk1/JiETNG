@@ -270,12 +270,33 @@ def _apply_unique_calc_judgement_correction(
     uncertainties,
 ):
     """Apply a Calc correction only when one cell has one valid solution."""
+    def row_total_matches_notes(row_name):
+        row = judgement.get(row_name)
+        if not isinstance(row, dict):
+            return False
+        try:
+            expected = max(0, int(notes.get(row_name, 0) or 0))
+            total = sum(
+                max(0, int(row.get(field_name, 0) or 0))
+                for field_name in (
+                    "critical_perfect",
+                    "perfect",
+                    "great",
+                    "good",
+                    "miss",
+                )
+            )
+        except (TypeError, ValueError):
+            return False
+        return expected > 0 and total == expected
+
     resolvable = [
         item for item in uncertainties
         if not item.get("row_missing")
         and item.get("candidate_count") == 1
         and item.get("candidate_min") == item.get("candidate_max")
         and item.get("miss_min") == item.get("miss_max")
+        and not row_total_matches_notes(item.get("row"))
     ]
     if len(resolvable) == 1:
         uncertainty = resolvable[0]
@@ -306,6 +327,8 @@ def _apply_unique_calc_judgement_correction(
     corrected_judgement[row_name] = corrected_row
     score_range = calc_judgement_achievement_range(notes, corrected_judgement)
     if _calc_achievement_distance(achievement, score_range) != 0:
+        return None
+    if not _has_break_calc_solution(notes, corrected_judgement, achievement):
         return None
 
     return {
@@ -354,6 +377,10 @@ def _apply_calc_row_balance(
     except (TypeError, ValueError):
         return None
 
+    row_total = previous_cp + perfect + great + good + previous_miss
+    if row_total == expected:
+        return None
+
     remaining = expected - perfect - great - good
     if remaining < 0:
         return None
@@ -373,6 +400,8 @@ def _apply_calc_row_balance(
             candidate_judgement,
         )
         if _calc_achievement_distance(achievement, score_range) != 0:
+            continue
+        if not _has_break_calc_solution(notes, candidate_judgement, achievement):
             continue
         candidates.append({
             "judgement": candidate_judgement,
@@ -396,6 +425,193 @@ def _apply_calc_row_balance(
             "miss_validated": candidate["candidate_miss"],
         },
     }
+
+
+def _apply_same_row_miss_redistribution(
+    notes,
+    judgement,
+    achievement,
+    uncertainties,
+):
+    """Redistribute same-row MISS OCR noise without changing row totals."""
+    if not isinstance(achievement, (int, float)):
+        return None
+
+    uncertain_targets = {
+        (item.get("row"), item.get("field"))
+        for item in uncertainties
+        if not item.get("row_missing")
+    }
+    target_fields = ("great", "good", "perfect", "critical_perfect")
+    field_names = (
+        "critical_perfect",
+        "perfect",
+        "great",
+        "good",
+        "miss",
+    )
+    current_range = calc_judgement_achievement_range(notes, judgement)
+    current_distance = _calc_achievement_distance(achievement, current_range)
+    if current_distance is None or current_distance == 0:
+        return None
+
+    def iter_distributions(total, slot_count):
+        if slot_count <= 0:
+            return
+        if slot_count == 1:
+            yield (total,)
+            return
+        for value in range(total + 1):
+            for rest in iter_distributions(total - value, slot_count - 1):
+                yield (value, *rest)
+
+    candidates = []
+    for row_name in ("tap", "hold", "slide", "touch"):
+        source_row = judgement.get(row_name)
+        if not isinstance(source_row, dict):
+            continue
+        try:
+            expected = max(0, int(notes.get(row_name, 0) or 0))
+            original = {
+                field_name: max(0, int(source_row.get(field_name, 0) or 0))
+                for field_name in field_names
+            }
+        except (TypeError, ValueError):
+            continue
+        if expected <= 0 or sum(original.values()) != expected:
+            continue
+        miss = original["miss"]
+        if miss <= 0:
+            continue
+
+        eligible_targets = [
+            field_name for field_name in target_fields
+            if (
+                original[field_name] == 0
+                or (row_name, field_name) in uncertain_targets
+            )
+        ]
+        if not eligible_targets:
+            continue
+
+        checked_count = 0
+        for amount in range(1, miss + 1):
+            for distribution in iter_distributions(amount, len(eligible_targets)):
+                if not any(distribution):
+                    continue
+                checked_count += 1
+                if checked_count > 250_000:
+                    break
+                candidate_row = dict(original)
+                candidate_row["miss"] -= amount
+                changed_targets = []
+                for target_field, increment in zip(eligible_targets, distribution):
+                    if increment <= 0:
+                        continue
+                    candidate_row[target_field] += increment
+                    changed_targets.append({
+                        "field": target_field,
+                        "amount": increment,
+                        "before": original[target_field],
+                        "after": candidate_row[target_field],
+                    })
+                if not changed_targets:
+                    continue
+                candidate_judgement = dict(judgement)
+                candidate_judgement[row_name] = candidate_row
+                score_range = calc_judgement_achievement_range(
+                    notes,
+                    candidate_judgement,
+                )
+                distance = _calc_achievement_distance(achievement, score_range)
+                if distance is None or distance >= current_distance:
+                    continue
+                if distance != 0:
+                    continue
+                if not _has_break_calc_solution(
+                    notes,
+                    candidate_judgement,
+                    achievement,
+                ):
+                    continue
+                candidates.append({
+                    "judgement": candidate_judgement,
+                    "score_range": score_range,
+                    "row": row_name,
+                    "amount": amount,
+                    "changed_targets": changed_targets,
+                    "miss_before": miss,
+                    "miss_after": candidate_row["miss"],
+                    "rank": (
+                        amount,
+                        len(changed_targets),
+                        tuple(
+                            target_fields.index(item["field"])
+                            for item in changed_targets
+                        ),
+                        sum(
+                            abs(candidate_row[name] - original[name])
+                            for name in field_names
+                        ),
+                    ),
+                })
+            if checked_count > 250_000:
+                break
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: item["rank"])
+    best = candidates[0]
+    if len(candidates) > 1:
+        second = candidates[1]
+        if second["rank"] == best["rank"]:
+            return None
+
+    row_name = best["row"]
+    corrections = [
+        {
+            "row": row_name,
+            "field": "miss",
+            "ocr": best["miss_before"],
+            "validated": best["miss_after"],
+            "miss_ocr": best["miss_before"],
+            "miss_validated": best["miss_after"],
+            "same_row_miss_redistribution": True,
+        },
+    ]
+    for target in best["changed_targets"]:
+        corrections.append({
+            "row": row_name,
+            "field": target["field"],
+            "ocr": target["before"],
+            "validated": target["after"],
+            "miss_ocr": best["miss_before"],
+            "miss_validated": best["miss_after"],
+            "same_row_miss_redistribution": True,
+        })
+    return {
+        "judgement": best["judgement"],
+        "score_range": best["score_range"],
+        "correction": corrections[0],
+        "corrections": corrections,
+    }
+
+
+def _has_break_calc_solution(notes, judgement, achievement):
+    """Return whether the current table can resolve BREAK detail with Calc."""
+    if not isinstance(achievement, (int, float)):
+        return True
+    try:
+        break_count = max(0, int(notes.get("break", 0) or 0))
+    except (TypeError, ValueError):
+        return False
+    if break_count <= 0:
+        return True
+    break_row = judgement.get("break")
+    if isinstance(break_row, dict):
+        return _infer_break_judgement_detail(notes, judgement, achievement) is not None
+    return _infer_missing_break_judgement(notes, judgement, achievement) is not None
 
 
 def _infer_missing_break_judgement(notes, judgement, achievement):
@@ -1273,12 +1489,19 @@ def validate_recognized_judgement(
         )
         resolution = None
         if not preserve_input:
-            resolution = _apply_calc_row_balance(
+            resolution = _apply_same_row_miss_redistribution(
                 best["notes"],
                 judgement,
                 achievement,
                 calc_uncertainties,
             )
+            if not resolution:
+                resolution = _apply_calc_row_balance(
+                    best["notes"],
+                    judgement,
+                    achievement,
+                    calc_uncertainties,
+                )
             if not resolution:
                 resolution = _apply_unique_calc_judgement_correction(
                     best["notes"],
@@ -1291,13 +1514,17 @@ def validate_recognized_judgement(
             parsed["sub_judgement"] = judgement
             achievement_range = resolution["score_range"]
             achievement_distance = 0.0
-            calc_corrections.append(resolution["correction"])
+            resolution_corrections = (
+                resolution.get("corrections")
+                or [resolution["correction"]]
+            )
+            calc_corrections.extend(resolution_corrections)
             calc_uncertainties = []
 
-            row_name = resolution["correction"]["row"]
+            row_name = resolution_corrections[0]["row"]
             if row_name in corrections:
                 original_miss = corrections[row_name]["ocr"]
-                final_miss = resolution["correction"]["miss_validated"]
+                final_miss = resolution_corrections[0]["miss_validated"]
                 if original_miss == final_miss:
                     del corrections[row_name]
                 else:

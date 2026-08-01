@@ -474,15 +474,27 @@ def _paste_local_icon(img, directory, name, size, position):
 
 
 def _format_score_loss(value):
-    if not isinstance(value, (int, float)):
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
         return "-"
-    if abs(float(value)) < 0.00005:
+    if abs(value) < 0.00005:
         return "0.0000%"
-    return f"-{float(value):.4f}%"
+    return f"-{value:.4f}%"
 
 
 def _has_score_loss(value):
-    return isinstance(value, (int, float)) and abs(float(value)) >= 0.00005
+    try:
+        return abs(float(value)) >= 0.00005
+    except (TypeError, ValueError):
+        return False
+
+
+def _has_judgement_count(value):
+    try:
+        return int(value or 0) != 0
+    except (TypeError, ValueError):
+        return False
 
 
 def _draw_score_section_title(draw, x, y, title, accent, font):
@@ -833,7 +845,8 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
                     fg, bg = color_map.get(label, ((154, 91, 18), (255, 240, 199)))
                 cell_right = min(cell_x + cell_w - 8, detail_right - 8)
                 _draw_score_card(draw, (cell_x, y + 10, cell_right, y + 72), radius=10, fill=bg)
-                draw.text(((cell_x + cell_right) / 2, y + 27), _format_score_loss(loss), font=font_small_detail, fill=(105, 110, 120), anchor="mm")
+                loss_fill = (192, 57, 43) if _has_judgement_count(count) else (105, 110, 120)
+                draw.text(((cell_x + cell_right) / 2, y + 27), _format_score_loss(loss), font=font_small_detail, fill=loss_fill, anchor="mm")
                 draw.text(((cell_x + cell_right) / 2, y + 54), str(count), font=font_table_bold, fill=fg, anchor="mm")
                 cell_x += cell_w
             y += 90
