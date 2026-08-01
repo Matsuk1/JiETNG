@@ -18,7 +18,6 @@ import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 from score_result_cropper import (
-    _is_table_blue_pixel,
     crop_result_fields,
     crop_result_fields_in_memory,
     iter_images,
@@ -41,6 +40,12 @@ OCR_FIELDS = (
 )
 
 OCR_MODEL_NAMES = ("PP-OCRv6_small_det", "PP-OCRv6_small_rec")
+FIXED_TABLE_LAYOUT_HINTS = {"dxnet", "cropper_pt_pose_warp"}
+SUB_JUDGEMENT_COLUMN_OCR_SCALE = 5
+
+
+def is_table_blue_pixel(red: int, green: int, blue: int) -> bool:
+    return blue >= 95 and blue >= red + 18 and blue >= green + 8
 
 
 def normalize_text(value: str) -> str:
@@ -120,14 +125,15 @@ def enhance_judgement_color_contrast(image: Image.Image) -> Image.Image:
 
 def prepare_ocr_image_data(source_image: Image.Image, field: str) -> Image.Image:
     image = ImageOps.exif_transpose(source_image).convert("RGB")
-    scale = 3 if field in {"sub_judgement_table", "sub_judgement_column"} else 2
+    scale = (
+        SUB_JUDGEMENT_COLUMN_OCR_SCALE
+        if field == "sub_judgement_column"
+        else 3 if field == "sub_judgement_table" else 2
+    )
     image = image.resize((image.width * scale, image.height * scale), Image.Resampling.LANCZOS)
 
     if field == "sub_judgement_column":
-        image = enhance_judgement_color_contrast(image)
-        image = ImageOps.autocontrast(image, cutoff=1)
-        image = ImageEnhance.Contrast(image).enhance(1.75)
-        image = ImageEnhance.Sharpness(image).enhance(2.0)
+        pass
     elif field in {"main_achievement", "rating", "dx_score", "max_combo", "judgement", "level"}:
         image = ImageEnhance.Contrast(image).enhance(1.65)
         image = ImageEnhance.Sharpness(image).enhance(1.75)
@@ -939,7 +945,7 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
         blue_scores = []
         for line_x in full_column_bounds:
             blue_scores.append(sum(
-                _is_table_blue_pixel(*pixels[x, y])
+                is_table_blue_pixel(*pixels[x, y])
                 for x in range(max(0, line_x - 5), min(width, line_x + 6))
                 for y in range(height)
             ))
@@ -1761,10 +1767,28 @@ def recognize_judgement_by_columns(
             for ratio in (0.173, 0.340, 0.504, 0.671, 0.830, 0.997)
         ]
         detect_row_labels = False
+    elif layout_hint == "cropper_pt_pose_warp":
+        layout = detect_judgement_rows_and_columns(image)
+        col_bounds = [
+            int(round(width * ratio))
+            for ratio in (0.184, 0.348, 0.513, 0.677, 0.842, 0.997)
+        ]
+        if layout:
+            row_centers, _ = layout
+            if row_centers and row_centers[0] < height * 0.20:
+                gaps = [b - a for a, b in zip(row_centers, row_centers[1:])]
+                row_gap = sum(gaps) / len(gaps) if gaps else height / 7
+                row_centers = row_centers[1:] + [row_centers[-1] + row_gap]
+        else:
+            row_centers = [
+                height * ratio
+                for ratio in (0.286, 0.429, 0.571, 0.714, 0.857)
+            ]
+        detect_row_labels = False
     else:
         layout = detect_judgement_rows_and_columns(image)
         detect_row_labels = True
-    if layout_hint != "dxnet" and not layout:
+    if layout_hint not in FIXED_TABLE_LAYOUT_HINTS and not layout:
         # The cropper normalizes this field to the same table region. Use its
         # stable relative geometry when reflections hide the blue grid lines.
         row_centers = [height * (0.259 + index * 0.1205) for index in range(5)]
@@ -1772,7 +1796,7 @@ def recognize_judgement_by_columns(
             int(round(width * ratio))
             for ratio in (0.281, 0.410, 0.535, 0.659, 0.783, 0.906)
         ]
-    elif layout_hint != "dxnet":
+    elif layout_hint not in FIXED_TABLE_LAYOUT_HINTS:
         row_centers, col_bounds = layout
 
     row_names = ("tap", "hold", "slide", "touch", "break")
@@ -1780,7 +1804,7 @@ def recognize_judgement_by_columns(
     output = Path(output_dir) if output_dir is not None else None
     if output is not None:
         output.mkdir(parents=True, exist_ok=True)
-    if layout_hint != "dxnet":
+    if layout_hint not in FIXED_TABLE_LAYOUT_HINTS:
         rectified = rectify_judgement_numeric_grid(image, col_bounds)
         if rectified is not None:
             image = rectified
@@ -1800,7 +1824,7 @@ def recognize_judgement_by_columns(
         )
     gaps = [b - a for a, b in zip(row_centers, row_centers[1:])]
     row_gap = sum(gaps) / len(gaps) if gaps else max(44, height / 8)
-    if layout_hint != "dxnet":
+    if layout_hint not in FIXED_TABLE_LAYOUT_HINTS:
         direct_values = recognize_judgement_cells_direct(
             image,
             row_centers,
@@ -1820,7 +1844,7 @@ def recognize_judgement_by_columns(
     top = max(0, int(round(row_centers[0] - row_gap * 0.75)))
     bottom = min(height, int(round(row_centers[-1] + row_gap * 0.75)))
     row_targets = {
-        row_name: (center - top) * 3
+        row_name: (center - top) * SUB_JUDGEMENT_COLUMN_OCR_SCALE
         for row_name, center in zip(row_names, row_centers)
     }
     result: dict[str, dict[str, int]] = {row_name: {} for row_name in row_names}
@@ -1843,7 +1867,7 @@ def recognize_judgement_by_columns(
                 continue
             _, y = center
             row_name, target = min(row_targets.items(), key=lambda pair: abs(pair[1] - y))
-            if abs(target - y) <= row_gap * 3 * 0.58:
+            if abs(target - y) <= row_gap * SUB_JUDGEMENT_COLUMN_OCR_SCALE * 0.58:
                 result[row_name][column_name] = value
 
     for row_name, center_y in zip(row_names, row_centers):
@@ -1854,11 +1878,22 @@ def recognize_judgement_by_columns(
             # OCR sees the whole column. Missing values are also rescanned as
             # isolated cells so small colored digits are not silently zeroed.
             existing_value = result[row_name].get(column_name)
-            if existing_value is not None and not (
-                column_name == "miss" and existing_value == 8
+            should_rescan_zero = (
+                layout_hint == "cropper_pt_pose_warp"
+                and existing_value == 0
+                and row_name != "break"
+                and column_name != "miss"
+            )
+            if (
+                existing_value is not None
+                and not should_rescan_zero
+                and not (column_name == "miss" and existing_value == 8)
             ):
                 continue
-            pad_x = max(8, int(width * 0.008))
+            if layout_hint == "cropper_pt_pose_warp":
+                pad_x = max(2, int(width * 0.004))
+            else:
+                pad_x = max(8, int(width * 0.008))
             cell_width = col_bounds[index + 1] - col_bounds[index]
             if column_name == "miss":
                 cell_left = max(0, int(round(col_bounds[index] + cell_width * 0.40)))
@@ -1886,7 +1921,7 @@ def recognize_judgement_by_columns(
                     break
                 if low_confidence_value is None:
                     low_confidence_value = candidate_value
-            if value is None and column_name != "miss":
+            if value is None and column_name != "miss" and not should_rescan_zero:
                 # Small models can lose the left edge of dim colored digits.
                 # Retry only failed cells with a wider grayscale crop; applying
                 # grayscale to the full table regresses otherwise clear values.
@@ -1900,14 +1935,12 @@ def recognize_judgement_by_columns(
                     width,
                     int(round(col_bounds[index + 1] + cell_width * 0.06)),
                 )
-                fallback_cell = ImageOps.grayscale(
-                    image.crop((
-                        fallback_left,
-                        fallback_top,
-                        fallback_right,
-                        fallback_bottom,
-                    ))
-                ).convert("RGB")
+                fallback_cell = image.crop((
+                    fallback_left,
+                    fallback_top,
+                    fallback_right,
+                    fallback_bottom,
+                ))
                 fallback_prepared = prepare_ocr_image_data(
                     fallback_cell,
                     "sub_judgement_column",
@@ -2043,7 +2076,7 @@ def process_image_data(
             continue
         if field == "sub_judgement_table":
             table_image = field_meta["image"]
-            if field_meta.get("layout_hint") != "dxnet":
+            if field_meta.get("layout_hint") not in FIXED_TABLE_LAYOUT_HINTS:
                 table_image = prepare_ocr_image_data(table_image, field)
             column_values = recognize_judgement_by_columns(
                 table_image,
@@ -2113,7 +2146,7 @@ def process_image(
         if field == "sub_judgement_table":
             table_source = (
                 field_meta["path"]
-                if field_meta.get("layout_hint") == "dxnet"
+                if field_meta.get("layout_hint") in FIXED_TABLE_LAYOUT_HINTS
                 else prepared
             )
             column_values = recognize_judgement_by_columns(

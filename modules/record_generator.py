@@ -719,7 +719,8 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
         )
 
     constant = payload.get("internal_level")
-    rcd_rating = get_single_ra(constant, achievement,("ap" in combo_icon))
+    combo_icon_name = str(combo_icon or "")
+    rcd_rating = get_single_ra(constant, achievement, "ap" in combo_icon_name)
     constant_text = f"{constant:.1f} → {rcd_rating}" if isinstance(constant, (int, float)) else "-"
     draw.text((metric_boxes[2][1] + 28, y + 18), constant_text, font=font_value, fill=metric_color)
     y += metric_h + 42

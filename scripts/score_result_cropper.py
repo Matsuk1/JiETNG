@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable
 
+import cv2
+import numpy as np
 from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 
 
@@ -200,6 +202,126 @@ def _load_cropper_model():
     return _CROPPER_MODEL
 
 
+def _order_quad_points(points: np.ndarray) -> np.ndarray:
+    points = np.asarray(points, dtype=np.float32)
+    if points.shape != (4, 2):
+        raise ValueError(f"points must be (4, 2), got {points.shape}")
+
+    ordered = np.zeros((4, 2), dtype=np.float32)
+    point_sum = points.sum(axis=1)
+    point_diff = np.diff(points, axis=1).reshape(-1)
+    ordered[0] = points[np.argmin(point_sum)]
+    ordered[2] = points[np.argmax(point_sum)]
+    ordered[1] = points[np.argmin(point_diff)]
+    ordered[3] = points[np.argmax(point_diff)]
+    return ordered
+
+
+def _box_from_quad(points: np.ndarray, width: int, height: int) -> Box:
+    points = np.asarray(points, dtype=np.float32)
+    left = int(np.floor(points[:, 0].min()))
+    top = int(np.floor(points[:, 1].min()))
+    right = int(np.ceil(points[:, 0].max()))
+    bottom = int(np.ceil(points[:, 1].max()))
+    return Box(left, top, right, bottom).clamp(width, height)
+
+
+def _warp_quad(image: Image.Image, points: np.ndarray) -> Image.Image | None:
+    try:
+        rect = _order_quad_points(points)
+    except ValueError:
+        return None
+
+    top_left, top_right, bottom_right, bottom_left = rect
+    left_vertical = bottom_left - top_left
+    right_vertical = bottom_right - top_right
+    top_horizontal = top_right - top_left
+    bottom_horizontal = bottom_right - bottom_left
+    rect[0] = rect[0] - left_vertical * 0.015 - top_horizontal * 0.006
+    rect[1] = rect[1] - right_vertical * 0.015 + top_horizontal * 0.008
+    rect[2] = rect[2] + right_vertical * 0.060 + bottom_horizontal * 0.008
+    rect[3] = rect[3] + left_vertical * 0.060 - bottom_horizontal * 0.006
+    rect[:, 0] = np.clip(rect[:, 0], 0, image.width - 1)
+    rect[:, 1] = np.clip(rect[:, 1], 0, image.height - 1)
+
+    top_left, top_right, bottom_right, bottom_left = rect
+    width_top = np.linalg.norm(top_right - top_left)
+    width_bottom = np.linalg.norm(bottom_right - bottom_left)
+    height_left = np.linalg.norm(bottom_left - top_left)
+    height_right = np.linalg.norm(bottom_right - top_right)
+    output_width = int(round(max(width_top, width_bottom)))
+    output_height = int(round(max(height_left, height_right)))
+    if output_width < 120 or output_height < 40:
+        return None
+
+    destination = np.array(
+        [
+            [0, 0],
+            [output_width - 1, 0],
+            [output_width - 1, output_height - 1],
+            [0, output_height - 1],
+        ],
+        dtype=np.float32,
+    )
+    matrix = cv2.getPerspectiveTransform(rect, destination)
+    source = cv2.cvtColor(np.asarray(image.convert("RGB")), cv2.COLOR_RGB2BGR)
+    warped = cv2.warpPerspective(
+        source,
+        matrix,
+        (output_width, output_height),
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_REPLICATE,
+    )
+    return Image.fromarray(cv2.cvtColor(warped, cv2.COLOR_BGR2RGB))
+
+
+def _cropper_pose_table(image: Image.Image) -> tuple[Box | None, Image.Image | None]:
+    model = _load_cropper_model()
+    if model is None:
+        return None, None
+
+    try:
+        prediction = model.predict(image, imgsz=960, conf=0.15, verbose=False)[0]
+    except Exception:
+        return None, None
+
+    keypoints = getattr(prediction, "keypoints", None)
+    points_tensor = getattr(keypoints, "xy", None)
+    if points_tensor is None or len(points_tensor) == 0:
+        return None, None
+
+    confidence_tensor = getattr(keypoints, "conf", None)
+    width, height = image.size
+    candidates: list[tuple[float, Box, Image.Image]] = []
+    for index, raw_points in enumerate(points_tensor):
+        points = np.asarray(raw_points.cpu(), dtype=np.float32)
+        if points.shape != (4, 2) or not np.isfinite(points).all():
+            continue
+        box = _box_from_quad(points, width, height)
+        if box.width <= 0 or box.height <= 0:
+            continue
+        aspect = box.width / max(1, box.height)
+        center_y_ratio = ((box.top + box.bottom) / 2) / max(1, height)
+        if center_y_ratio > 0.42 or aspect < 1.45:
+            continue
+
+        warped = _warp_quad(image, points)
+        if warped is None:
+            continue
+
+        if confidence_tensor is not None:
+            confidence = float(np.asarray(confidence_tensor[index].cpu(), dtype=np.float32).mean())
+        else:
+            confidence = 0.5
+        score = confidence * 10.0 + (1.0 - abs(center_y_ratio - 0.14)) + min(aspect, 4.0) * 0.25
+        candidates.append((score, box, warped))
+
+    if not candidates:
+        return None, None
+    _, box, warped = max(candidates, key=lambda item: item[0])
+    return box, warped
+
+
 def detect_sub_screen_by_cropper_model(image: Image.Image) -> Box | None:
     model = _load_cropper_model()
     if model is None:
@@ -246,25 +368,13 @@ def detect_sub_screen_by_cropper_model(image: Image.Image) -> Box | None:
     return max(candidates, key=lambda item: item[0])[1]
 
 
-def detect_sub_judgement_table_with_cropper_model(image: Image.Image) -> tuple[Box | None, Box | None, str]:
-    sub_screen = detect_sub_screen_by_cropper_model(image)
-    if sub_screen is None:
-        return None, None, "blue_grid"
-
-    # The model marks the upper LCD area tightly. The judgement table can reach
-    # close to its right edge, while the legacy color-scanned sub_screen also
-    # includes more FAST/LATE area and therefore used a smaller relative search
-    # width. Expand only the model anchor so the MISS column stays inside.
-    table_anchor = Box(
-        sub_screen.left,
-        sub_screen.top,
-        min(image.width, sub_screen.right + int(sub_screen.width * 0.24)),
-        sub_screen.bottom,
-    )
-    candidate = detect_sub_judgement_table(image, table_anchor)
-    if is_complete_sub_judgement_table(candidate):
-        return candidate, sub_screen, "cropper_pt"
-    return None, sub_screen, "blue_grid"
+def detect_sub_judgement_table_with_cropper_model(
+    image: Image.Image,
+) -> tuple[Box | None, Box | None, str, Image.Image | None]:
+    table_box, table_image = _cropper_pose_table(image)
+    if table_box is None or table_image is None:
+        return None, None, "cropper_pt_missing", None
+    return table_box, table_box, "cropper_pt_pose_warp", table_image
 
 
 def detect_sub_screen(image: Image.Image) -> Box:
@@ -747,12 +857,24 @@ def detect_main_title(
         left = screen.left + int(screen.width * 0.285)
         right = screen.left + int(screen.width * 0.790)
 
-    return Box(
+    candidate = Box(
         left,
         top,
         right,
         band_bottom,
     ).clamp(width, height)
+    center_ratio = (
+        ((candidate.top + candidate.bottom) / 2) - screen.top
+    ) / max(1, screen.height)
+    if center_ratio < 0.230:
+        # The outer ring and CLEAR glow can form a dark strip above the actual
+        # song title. When that happens, fall back to the fixed in-screen title
+        # lane instead of feeding an obviously high crop to OCR.
+        return relative_box(screen, (0.300, 0.322, 0.800, 0.372)).clamp(
+            width,
+            height,
+        )
+    return candidate
 
 
 def relative_box(screen: Box, relative: tuple[float, float, float, float]) -> Box:
@@ -934,18 +1056,17 @@ def crop_result_fields_in_memory(source_image: Image.Image) -> dict:
     main_title = detect_main_title(image, screen, main_achievement)
     main_screen_only = image.height <= image.width * 1.16
     sub_judgement_table = None
+    sub_judgement_image = None
     sub_judgement_detector = "blue_grid"
     if not main_screen_only:
-        candidate, _, detector = detect_sub_judgement_table_with_cropper_model(image)
+        candidate, _, detector, warped_table = detect_sub_judgement_table_with_cropper_model(image)
         if is_complete_sub_judgement_table(candidate):
             sub_judgement_table = candidate
+            sub_judgement_image = warped_table
             sub_judgement_detector = detector
         else:
             sub_screen = detect_sub_screen(image)
-            candidate = detect_sub_judgement_table(image, sub_screen)
-            if is_complete_sub_judgement_table(candidate):
-                sub_judgement_table = candidate
-            else:
+            if sub_screen.bottom < image.height * 0.08:
                 # A portrait photo can still contain only the round main screen.
                 # Rescan from near the top instead of treating its upper half as a
                 # cabinet sub-monitor and shifting every main-screen field down.
@@ -980,13 +1101,19 @@ def crop_result_fields_in_memory(source_image: Image.Image) -> dict:
 
     fields = {}
     for name, (field_box, detector) in field_boxes.items():
+        crop_image = image.crop(field_box.to_tuple())
+        if name == "sub_judgement_table" and sub_judgement_image is not None:
+            crop_image = sub_judgement_image
         fields[name] = {
-            "image": sharpen_for_ocr(image.crop(field_box.to_tuple())),
+            "image": sharpen_for_ocr(crop_image),
             "left": field_box.left,
             "top": field_box.top,
             "right": field_box.right,
             "bottom": field_box.bottom,
             "detector": detector,
+            "layout_hint": "cropper_pt_pose_warp"
+            if name == "sub_judgement_table" and detector == "cropper_pt_pose_warp"
+            else None,
         }
 
     return {
@@ -1046,23 +1173,18 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
         shutil.rmtree(sample_dir)
     sample_dir.mkdir(parents=True, exist_ok=True)
 
-    sub_judgement_table, model_sub_screen, sub_judgement_detector = (
+    sub_judgement_table, model_sub_screen, sub_judgement_detector, sub_judgement_image = (
         detect_sub_judgement_table_with_cropper_model(image)
     )
     sub_screen = model_sub_screen or detect_sub_screen(image)
     main_screen_only = image.height <= image.width * 1.16
     if main_screen_only:
         sub_judgement_table = None
+        sub_judgement_image = None
     elif not is_complete_sub_judgement_table(sub_judgement_table):
-        rule_sub_screen = detect_sub_screen(image)
-        candidate = detect_sub_judgement_table(image, rule_sub_screen)
-        if is_complete_sub_judgement_table(candidate):
-            sub_screen = rule_sub_screen
-            sub_judgement_table = candidate
-            sub_judgement_detector = "blue_grid"
-        else:
-            sub_judgement_table = None
-            sub_screen = rule_sub_screen
+        sub_judgement_table = None
+        sub_judgement_image = None
+        if sub_screen.bottom < image.height * 0.08:
             screen = detect_result_screen(image, main_screen_only=True)
     content_screen = main_content_box(screen).clamp(image.width, image.height)
     main_achievement = detect_main_achievement(image, screen)
@@ -1178,7 +1300,8 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
         }
 
     if sub_judgement_table is not None:
-        crop = sharpen_for_ocr(image.crop(sub_judgement_table.to_tuple()))
+        crop_source = sub_judgement_image or image.crop(sub_judgement_table.to_tuple())
+        crop = sharpen_for_ocr(crop_source)
         crop_path = sample_dir / "sub_judgement_table.png"
         crop.save(crop_path)
         draw.rectangle(sub_judgement_table.to_tuple(), outline=(255, 80, 0), width=max(2, image.width // 500))
@@ -1190,21 +1313,9 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
             "right": sub_judgement_table.right,
             "bottom": sub_judgement_table.bottom,
             "detector": sub_judgement_detector,
-        }
-    else:
-        fallback = relative_box(sub_screen, (0.050, 0.285, 0.675, 0.720)).clamp(image.width, image.height)
-        crop = sharpen_for_ocr(image.crop(fallback.to_tuple()))
-        crop_path = sample_dir / "sub_judgement_table.png"
-        crop.save(crop_path)
-        draw.rectangle(fallback.to_tuple(), outline=(255, 80, 0), width=max(2, image.width // 500))
-        draw.text((fallback.left + 4, fallback.top + 4), "sub_judgement_table", fill=(255, 255, 255))
-        result["fields"]["sub_judgement_table"] = {
-            "path": str(crop_path),
-            "left": fallback.left,
-            "top": fallback.top,
-            "right": fallback.right,
-            "bottom": fallback.bottom,
-            "detector": "fallback_relative",
+            "layout_hint": "cropper_pt_pose_warp"
+            if sub_judgement_detector == "cropper_pt_pose_warp"
+            else None,
         }
 
     overlay.save(sample_dir / "debug_overlay.png")
