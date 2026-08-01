@@ -197,6 +197,7 @@ from modules.storelist_generator import generate_store_buttons
 # 队列配置
 MAX_QUEUE_SIZE = 10
 MAX_CONCURRENT_IMAGE_TASKS = 5  # 图片生成并发数
+IMAGE_QUERY_MAX_CONCURRENT_TASKS = int(os.getenv("IMAGE_QUERY_MAX_CONCURRENT_TASKS", "1"))  # 图片查询/识别并发数
 WEB_MAX_CONCURRENT_TASKS = 2    # 网络任务并发数
 TASK_TIMEOUT_SECONDS = 120
 
@@ -336,6 +337,10 @@ stats_lock = threading.Lock()  # 保护统计数据的线程锁
 image_queue = queue.Queue(maxsize=MAX_QUEUE_SIZE)
 image_concurrency_limit = threading.Semaphore(MAX_CONCURRENT_IMAGE_TASKS)
 
+# 图片查询任务队列 (处理成绩图 OCR / 裁切预览等)
+image_query_queue = queue.Queue(maxsize=MAX_QUEUE_SIZE)
+image_query_concurrency_limit = threading.Semaphore(IMAGE_QUERY_MAX_CONCURRENT_TASKS)
+
 # Web任务队列 (处理耗时的网络请求，如 maimai_update 等)
 webtask_queue = queue.Queue(maxsize=MAX_QUEUE_SIZE)
 webtask_concurrency_limit = threading.Semaphore(WEB_MAX_CONCURRENT_TASKS)
@@ -464,6 +469,22 @@ def image_worker() -> None:
             _run_image_task(item)
         finally:
             image_queue.task_done()
+
+
+@notify_on_error("Image Query Worker Error", context={"Worker": "image_query_worker"}, reraise=False)
+def _run_image_query_task(item):
+    func, args, task_id = (item if len(item) == 3 else (*item, None))
+    run_task_with_limit(func, args, image_query_concurrency_limit, image_query_queue, task_id, False)
+
+
+def image_query_worker() -> None:
+    """图片查询任务队列的工作线程"""
+    while True:
+        item = image_query_queue.get()
+        try:
+            _run_image_query_task(item)
+        finally:
+            image_query_queue.task_done()
 
 
 @notify_on_error("Web Task Worker Error", context={"Worker": "webtask_worker"}, reraise=False)
@@ -2791,7 +2812,7 @@ def get_bot_status(user_id):
 
     return generate_bot_status_flex(
         uptime_str=uptime_str,
-        image_queue_size=image_queue.qsize(),
+        image_queue_size=image_queue.qsize() + image_query_queue.qsize(),
         web_queue_size=webtask_queue.qsize(),
         tasks_today=tasks_today,
         song_count=song_count,
@@ -4446,37 +4467,9 @@ def _handle_fix_record_command(event, command_text: str) -> bool:
     return True
 
 
-def _handle_recognize_command(event, cleaned_text: str) -> bool:
-    command = cleaned_text.strip().lower()
-    command_match = re.fullmatch(r"(rec|crop)", command)
-    if not command_match:
-        return False
-
+def _score_recognition_queue_task(event, command: str, quoted_message_id: str) -> None:
     user_id = event.source.user_id
     source_type = getattr(event.source, 'type', 'user')
-    quoted_message_id = getattr(event.message, 'quoted_message_id', None)
-
-    if not quoted_message_id:
-        smart_reply(
-            user_id,
-            event.reply_token,
-            generate_status_flex(
-                {"zh": "缺少成绩图", "en": "Score Image Required", "ja": "リザルト画像が必要です"},
-                {
-                    "zh": f"请回复一张成绩图并发送 {command}。",
-                    "en": f"Reply to a score image with {command}.",
-                    "ja": f"リザルト画像に返信して {command} を送信してください。",
-                },
-                user_id,
-                tone="warning",
-            ),
-            configuration,
-            addition=False,
-            source_type=source_type,
-        )
-        return True
-
-    show_loading(user_id)
     request_started_at = time.perf_counter()
     try:
         logger.info(
@@ -4598,6 +4591,74 @@ def _handle_recognize_command(event, cleaned_text: str) -> bool:
             context={"Task": "recognize_reply", "QuotedMessageId": quoted_message_id},
             user_id=user_id,
         )
+
+
+def _enqueue_score_recognition_task(event, command: str, quoted_message_id: str) -> None:
+    user_id = event.source.user_id
+    source_type = getattr(event.source, 'type', 'user')
+    task_id = f"image_query_{user_id}_{datetime.now().timestamp()}"
+    nickname = get_user_nickname_wrapper(user_id, use_cache=True)
+    with task_tracking_lock:
+        task_tracking['queued'].append({
+            'id': task_id,
+            'function': f"score_{command}",
+            'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'user_id': user_id,
+            'nickname': nickname,
+        })
+    try:
+        show_loading(user_id)
+        image_query_queue.put_nowait((
+            _score_recognition_queue_task,
+            (event, command, quoted_message_id),
+            task_id,
+        ))
+    except queue.Full:
+        with task_tracking_lock:
+            task_tracking['queued'] = [
+                t for t in task_tracking['queued']
+                if t.get('id') != task_id
+            ]
+        smart_reply(
+            user_id,
+            event.reply_token,
+            access_error(user_id),
+            configuration,
+            source_type=source_type,
+        )
+
+
+def _handle_recognize_command(event, cleaned_text: str) -> bool:
+    command = cleaned_text.strip().lower()
+    command_match = re.fullmatch(r"(rec|crop)", command)
+    if not command_match:
+        return False
+
+    user_id = event.source.user_id
+    source_type = getattr(event.source, 'type', 'user')
+    quoted_message_id = getattr(event.message, 'quoted_message_id', None)
+
+    if not quoted_message_id:
+        smart_reply(
+            user_id,
+            event.reply_token,
+            generate_status_flex(
+                {"zh": "缺少成绩图", "en": "Score Image Required", "ja": "リザルト画像が必要です"},
+                {
+                    "zh": f"请回复一张成绩图并发送 {command}。",
+                    "en": f"Reply to a score image with {command}.",
+                    "ja": f"リザルト画像に返信して {command} を送信してください。",
+                },
+                user_id,
+                tone="warning",
+            ),
+            configuration,
+            addition=False,
+            source_type=source_type,
+        )
+        return True
+
+    _enqueue_score_recognition_task(event, command, quoted_message_id)
     return True
 
 
@@ -5718,6 +5779,7 @@ def _build_admin_overview_stats(force_refresh=False):
         'hostname': socket.gethostname(),
         'port': PORT,
         'image_queue_size': image_queue.qsize(),
+        'image_query_queue_size': image_query_queue.qsize(),
         'web_queue_size': webtask_queue.qsize(),
         'max_queue_size': MAX_QUEUE_SIZE,
         'thread_count': threading.active_count(),
@@ -8804,10 +8866,18 @@ def start_runtime():
     for i in range(MAX_CONCURRENT_IMAGE_TASKS):
         threading.Thread(target=image_worker, daemon=True, name=f"ImageWorker-{i+1}").start()
 
+    for i in range(IMAGE_QUERY_MAX_CONCURRENT_TASKS):
+        threading.Thread(target=image_query_worker, daemon=True, name=f"ImageQueryWorker-{i+1}").start()
+
     for i in range(WEB_MAX_CONCURRENT_TASKS):
         threading.Thread(target=webtask_worker, daemon=True, name=f"WebTaskWorker-{i+1}").start()
 
-    logger.info(f"[System] ✓ Workers started: image={MAX_CONCURRENT_IMAGE_TASKS}, web={WEB_MAX_CONCURRENT_TASKS}")
+    logger.info(
+        "[System] ✓ Workers started: image=%s, image_query=%s, web=%s",
+        MAX_CONCURRENT_IMAGE_TASKS,
+        IMAGE_QUERY_MAX_CONCURRENT_TASKS,
+        WEB_MAX_CONCURRENT_TASKS,
+    )
 
     # 启动定期清理线程（图床 + 成绩导出）
     _start_periodic_cleanup()

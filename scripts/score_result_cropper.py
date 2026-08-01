@@ -23,6 +23,8 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 
 _CROPPER_MODEL = None
 _CROPPER_MODEL_UNAVAILABLE = False
+_MAIN_SCREEN_MODEL = None
+_MAIN_SCREEN_MODEL_UNAVAILABLE = False
 
 
 @dataclass(frozen=True)
@@ -183,7 +185,7 @@ def _load_cropper_model():
     if _CROPPER_MODEL is not None:
         return _CROPPER_MODEL
 
-    model_path = Path(__file__).with_name("cropper.pt")
+    model_path = Path(__file__).with_name("judgement_table.pt")
     if not model_path.exists():
         _CROPPER_MODEL_UNAVAILABLE = True
         return None
@@ -200,6 +202,32 @@ def _load_cropper_model():
         _CROPPER_MODEL_UNAVAILABLE = True
         return None
     return _CROPPER_MODEL
+
+
+def _load_main_screen_model():
+    global _MAIN_SCREEN_MODEL, _MAIN_SCREEN_MODEL_UNAVAILABLE
+    if _MAIN_SCREEN_MODEL_UNAVAILABLE:
+        return None
+    if _MAIN_SCREEN_MODEL is not None:
+        return _MAIN_SCREEN_MODEL
+
+    model_path = Path(__file__).with_name("main_screen.pt")
+    if not model_path.exists():
+        _MAIN_SCREEN_MODEL_UNAVAILABLE = True
+        return None
+
+    try:
+        os.environ.setdefault(
+            "MPLCONFIGDIR",
+            str(Path(os.getenv("TMPDIR", "/tmp")) / "jietng_matplotlib"),
+        )
+        from ultralytics import YOLO
+
+        _MAIN_SCREEN_MODEL = YOLO(str(model_path))
+    except Exception:
+        _MAIN_SCREEN_MODEL_UNAVAILABLE = True
+        return None
+    return _MAIN_SCREEN_MODEL
 
 
 def _order_quad_points(points: np.ndarray) -> np.ndarray:
@@ -226,23 +254,29 @@ def _box_from_quad(points: np.ndarray, width: int, height: int) -> Box:
     return Box(left, top, right, bottom).clamp(width, height)
 
 
-def _warp_quad(image: Image.Image, points: np.ndarray) -> Image.Image | None:
+def _warp_quad(
+    image: Image.Image,
+    points: np.ndarray,
+    *,
+    expand_table_edges: bool = True,
+) -> Image.Image | None:
     try:
         rect = _order_quad_points(points)
     except ValueError:
         return None
 
-    top_left, top_right, bottom_right, bottom_left = rect
-    left_vertical = bottom_left - top_left
-    right_vertical = bottom_right - top_right
-    top_horizontal = top_right - top_left
-    bottom_horizontal = bottom_right - bottom_left
-    rect[0] = rect[0] - left_vertical * 0.015 - top_horizontal * 0.006
-    rect[1] = rect[1] - right_vertical * 0.015 + top_horizontal * 0.008
-    rect[2] = rect[2] + right_vertical * 0.060 + bottom_horizontal * 0.008
-    rect[3] = rect[3] + left_vertical * 0.060 - bottom_horizontal * 0.006
-    rect[:, 0] = np.clip(rect[:, 0], 0, image.width - 1)
-    rect[:, 1] = np.clip(rect[:, 1], 0, image.height - 1)
+    if expand_table_edges:
+        top_left, top_right, bottom_right, bottom_left = rect
+        left_vertical = bottom_left - top_left
+        right_vertical = bottom_right - top_right
+        top_horizontal = top_right - top_left
+        bottom_horizontal = bottom_right - bottom_left
+        rect[0] = rect[0] - left_vertical * 0.015 - top_horizontal * 0.006
+        rect[1] = rect[1] - right_vertical * 0.015 + top_horizontal * 0.008
+        rect[2] = rect[2] + right_vertical * 0.060 + bottom_horizontal * 0.008
+        rect[3] = rect[3] + left_vertical * 0.060 - bottom_horizontal * 0.006
+        rect[:, 0] = np.clip(rect[:, 0], 0, image.width - 1)
+        rect[:, 1] = np.clip(rect[:, 1], 0, image.height - 1)
 
     top_left, top_right, bottom_right, bottom_left = rect
     width_top = np.linalg.norm(top_right - top_left)
@@ -273,6 +307,63 @@ def _warp_quad(image: Image.Image, points: np.ndarray) -> Image.Image | None:
         borderMode=cv2.BORDER_REPLICATE,
     )
     return Image.fromarray(cv2.cvtColor(warped, cv2.COLOR_BGR2RGB))
+
+
+def _main_screen_pose_image(image: Image.Image) -> tuple[Box | None, Image.Image | None]:
+    model = _load_main_screen_model()
+    if model is None:
+        return None, None
+
+    try:
+        prediction = model.predict(image, imgsz=960, conf=0.15, verbose=False)[0]
+    except Exception:
+        return None, None
+
+    keypoints = getattr(prediction, "keypoints", None)
+    points_tensor = getattr(keypoints, "xy", None)
+    if points_tensor is None or len(points_tensor) == 0:
+        return None, None
+
+    confidence_tensor = getattr(keypoints, "conf", None)
+    width, height = image.size
+    image_area = max(1, width * height)
+    candidates: list[tuple[float, Box, Image.Image]] = []
+    for index, raw_points in enumerate(points_tensor):
+        points = np.asarray(raw_points.cpu(), dtype=np.float32)
+        if points.shape != (4, 2) or not np.isfinite(points).all():
+            continue
+        box = _box_from_quad(points, width, height)
+        if box.width <= 0 or box.height <= 0:
+            continue
+        aspect = box.width / max(1, box.height)
+        area_ratio = (box.width * box.height) / image_area
+        if aspect < 1.8 or area_ratio < 0.025:
+            continue
+
+        warped = _warp_quad(image, points, expand_table_edges=False)
+        if warped is None:
+            continue
+        warped_aspect = warped.width / max(1, warped.height)
+        if warped_aspect < 1.8:
+            continue
+
+        if confidence_tensor is not None:
+            confidence = float(np.asarray(confidence_tensor[index].cpu(), dtype=np.float32).mean())
+        else:
+            confidence = 0.5
+        score = confidence * 10.0 + min(aspect, 5.0) * 0.35 + min(area_ratio * 10.0, 2.0)
+        candidates.append((score, box, warped))
+
+    if not candidates:
+        return None, None
+    _, box, warped = max(candidates, key=lambda item: item[0])
+    return box, warped
+
+
+def detect_main_screen_with_cropper_model(
+    image: Image.Image,
+) -> tuple[Box | None, Image.Image | None]:
+    return _main_screen_pose_image(image)
 
 
 def _cropper_pose_table(image: Image.Image) -> tuple[Box | None, Image.Image | None]:
@@ -887,6 +978,12 @@ def relative_box(screen: Box, relative: tuple[float, float, float, float]) -> Bo
     )
 
 
+def main_screen_model_field_boxes(screen: Box, width: int, height: int) -> tuple[Box, Box]:
+    title = relative_box(screen, (0.240, 0.000, 0.985, 0.220)).clamp(width, height)
+    achievement = relative_box(screen, (0.000, 0.390, 0.760, 0.960)).clamp(width, height)
+    return title, achievement
+
+
 def sharpen_for_ocr(image: Image.Image) -> Image.Image:
     image = ImageOps.exif_transpose(image).convert("RGB")
     image = ImageEnhance.Contrast(image).enhance(1.35)
@@ -1052,8 +1149,19 @@ def crop_result_fields_in_memory(source_image: Image.Image) -> dict:
     if is_dxnet_result_screenshot(image):
         return _dxnet_fields_in_memory(image)
     screen = detect_result_screen(image)
-    main_achievement = detect_main_achievement(image, screen)
-    main_title = detect_main_title(image, screen, main_achievement)
+    main_source = image
+    main_screen_box, main_screen_image = detect_main_screen_with_cropper_model(image)
+    if main_screen_image is not None:
+        main_source = main_screen_image
+        screen = Box(0, 0, main_source.width, main_source.height)
+        main_title, main_achievement = main_screen_model_field_boxes(
+            screen,
+            main_source.width,
+            main_source.height,
+        )
+    else:
+        main_achievement = detect_main_achievement(main_source, screen)
+        main_title = detect_main_title(main_source, screen, main_achievement)
     main_screen_only = image.height <= image.width * 1.16
     sub_judgement_table = None
     sub_judgement_image = None
@@ -1070,27 +1178,40 @@ def crop_result_fields_in_memory(source_image: Image.Image) -> dict:
                 # A portrait photo can still contain only the round main screen.
                 # Rescan from near the top instead of treating its upper half as a
                 # cabinet sub-monitor and shifting every main-screen field down.
-                screen = detect_result_screen(image, main_screen_only=True)
-                main_achievement = detect_main_achievement(image, screen)
-                main_title = detect_main_title(image, screen, main_achievement)
+                if main_screen_image is None:
+                    screen = detect_result_screen(image, main_screen_only=True)
+                    main_achievement = detect_main_achievement(image, screen)
+                    main_title = detect_main_title(image, screen, main_achievement)
 
     if main_title is None:
         main_title = relative_box(screen, (0.285, 0.222, 0.790, 0.282)).clamp(
-            image.width,
-            image.height,
+            main_source.width,
+            main_source.height,
         )
-        title_detector = "fallback_relative"
+        title_detector = (
+            "main_screen_pt_fallback_relative"
+            if main_screen_image is not None
+            else "fallback_relative"
+        )
     else:
-        title_detector = "title_bar"
+        title_detector = "main_screen_pt_title_bar" if main_screen_image is not None else "title_bar"
 
     if main_achievement is None:
         main_achievement = relative_box(screen, (0.055, 0.300, 0.650, 0.395)).clamp(
-            image.width,
-            image.height,
+            main_source.width,
+            main_source.height,
         )
-        achievement_detector = "fallback_relative"
+        achievement_detector = (
+            "main_screen_pt_fallback_relative"
+            if main_screen_image is not None
+            else "fallback_relative"
+        )
     else:
-        achievement_detector = "achievement_digits"
+        achievement_detector = (
+            "main_screen_pt_achievement_digits"
+            if main_screen_image is not None
+            else "achievement_digits"
+        )
 
     field_boxes = {
         "main_title": (main_title, title_detector),
@@ -1101,7 +1222,8 @@ def crop_result_fields_in_memory(source_image: Image.Image) -> dict:
 
     fields = {}
     for name, (field_box, detector) in field_boxes.items():
-        crop_image = image.crop(field_box.to_tuple())
+        crop_source = main_source if name in {"main_title", "main_achievement"} else image
+        crop_image = crop_source.crop(field_box.to_tuple())
         if name == "sub_judgement_table" and sub_judgement_image is not None:
             crop_image = sub_judgement_image
         fields[name] = {
@@ -1111,12 +1233,27 @@ def crop_result_fields_in_memory(source_image: Image.Image) -> dict:
             "right": field_box.right,
             "bottom": field_box.bottom,
             "detector": detector,
-            "layout_hint": "cropper_pt_pose_warp"
-            if name == "sub_judgement_table" and detector == "cropper_pt_pose_warp"
-            else None,
+            "layout_hint": (
+                "cropper_pt_pose_warp"
+                if name == "sub_judgement_table" and detector == "cropper_pt_pose_warp"
+                else "main_screen_pt_pose_warp"
+                if name in {"main_title", "main_achievement"} and main_screen_image is not None
+                else None
+            ),
         }
 
     return {
+        "main_screen": {
+            "left": main_screen_box.left,
+            "top": main_screen_box.top,
+            "right": main_screen_box.right,
+            "bottom": main_screen_box.bottom,
+            "width": main_screen_box.width,
+            "height": main_screen_box.height,
+            "detector": "main_screen_pt_pose_warp",
+        }
+        if main_screen_box is not None
+        else None,
         "screen": {
             "left": screen.left,
             "top": screen.top,
@@ -1187,12 +1324,26 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
         if sub_screen.bottom < image.height * 0.08:
             screen = detect_result_screen(image, main_screen_only=True)
     content_screen = main_content_box(screen).clamp(image.width, image.height)
-    main_achievement = detect_main_achievement(image, screen)
-    main_title = detect_main_title(image, screen, main_achievement)
+    main_source = image
+    main_field_screen = screen
+    main_screen_box, main_screen_image = detect_main_screen_with_cropper_model(image)
+    if main_screen_image is not None:
+        main_source = main_screen_image
+        main_field_screen = Box(0, 0, main_source.width, main_source.height)
+        main_title, main_achievement = main_screen_model_field_boxes(
+            main_field_screen,
+            main_source.width,
+            main_source.height,
+        )
+    else:
+        main_achievement = detect_main_achievement(main_source, main_field_screen)
+        main_title = detect_main_title(main_source, main_field_screen, main_achievement)
     refined_sub_screen = refine_sub_screen(sub_screen, sub_judgement_table).clamp(image.width, image.height)
     image.crop(screen.to_tuple()).save(sample_dir / "screen.png")
     image.crop(content_screen.to_tuple()).save(sample_dir / "main_content.png")
     image.crop(refined_sub_screen.to_tuple()).save(sample_dir / "sub_screen.png")
+    if main_screen_image is not None:
+        main_screen_image.save(sample_dir / "main_screen_rectified.png")
 
     overlay = image.copy()
     draw = ImageDraw.Draw(overlay)
@@ -1234,69 +1385,99 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
             "height": sub_screen.height,
             "detector": "cropper_pt" if model_sub_screen is not None and sub_screen == model_sub_screen else "color_scan",
         },
+        "main_screen_model": {
+            "left": main_screen_box.left,
+            "top": main_screen_box.top,
+            "right": main_screen_box.right,
+            "bottom": main_screen_box.bottom,
+            "width": main_screen_box.width,
+            "height": main_screen_box.height,
+            "detector": "main_screen_pt_pose_warp",
+            "path": str(sample_dir / "main_screen_rectified.png"),
+        }
+        if main_screen_box is not None
+        else None,
         "fields": {},
     }
 
     draw.rectangle(refined_sub_screen.to_tuple(), outline=(0, 180, 255), width=max(4, image.width // 300))
 
     if main_title is not None:
-        crop = sharpen_for_ocr(image.crop(main_title.to_tuple()))
+        crop = sharpen_for_ocr(main_source.crop(main_title.to_tuple()))
         crop_path = sample_dir / "main_title.png"
         crop.save(crop_path)
-        draw.rectangle(main_title.to_tuple(), outline=(255, 80, 0), width=max(2, image.width // 500))
-        draw.text((main_title.left + 4, main_title.top + 4), "main_title", fill=(255, 255, 255))
+        if main_screen_image is None:
+            draw.rectangle(main_title.to_tuple(), outline=(255, 80, 0), width=max(2, image.width // 500))
+            draw.text((main_title.left + 4, main_title.top + 4), "main_title", fill=(255, 255, 255))
         result["fields"]["main_title"] = {
             "path": str(crop_path),
             "left": main_title.left,
             "top": main_title.top,
             "right": main_title.right,
             "bottom": main_title.bottom,
-            "detector": "title_bar",
+            "detector": "main_screen_pt_title_bar" if main_screen_image is not None else "title_bar",
+            "layout_hint": "main_screen_pt_pose_warp" if main_screen_image is not None else None,
         }
     else:
-        fallback = relative_box(screen, (0.285, 0.222, 0.790, 0.282)).clamp(image.width, image.height)
-        crop = sharpen_for_ocr(image.crop(fallback.to_tuple()))
+        fallback = relative_box(main_field_screen, (0.285, 0.222, 0.790, 0.282)).clamp(
+            main_source.width,
+            main_source.height,
+        )
+        crop = sharpen_for_ocr(main_source.crop(fallback.to_tuple()))
         crop_path = sample_dir / "main_title.png"
         crop.save(crop_path)
-        draw.rectangle(fallback.to_tuple(), outline=(255, 80, 0), width=max(2, image.width // 500))
-        draw.text((fallback.left + 4, fallback.top + 4), "main_title", fill=(255, 255, 255))
+        if main_screen_image is None:
+            draw.rectangle(fallback.to_tuple(), outline=(255, 80, 0), width=max(2, image.width // 500))
+            draw.text((fallback.left + 4, fallback.top + 4), "main_title", fill=(255, 255, 255))
         result["fields"]["main_title"] = {
             "path": str(crop_path),
             "left": fallback.left,
             "top": fallback.top,
             "right": fallback.right,
             "bottom": fallback.bottom,
-            "detector": "fallback_relative",
+            "detector": "main_screen_pt_fallback_relative" if main_screen_image is not None else "fallback_relative",
+            "layout_hint": "main_screen_pt_pose_warp" if main_screen_image is not None else None,
         }
 
     if main_achievement is not None:
-        crop = sharpen_for_ocr(image.crop(main_achievement.to_tuple()))
+        crop = sharpen_for_ocr(main_source.crop(main_achievement.to_tuple()))
         crop_path = sample_dir / "main_achievement.png"
         crop.save(crop_path)
-        draw.rectangle(main_achievement.to_tuple(), outline=(255, 80, 0), width=max(2, image.width // 500))
-        draw.text((main_achievement.left + 4, main_achievement.top + 4), "main_achievement", fill=(255, 255, 255))
+        if main_screen_image is None:
+            draw.rectangle(main_achievement.to_tuple(), outline=(255, 80, 0), width=max(2, image.width // 500))
+            draw.text((main_achievement.left + 4, main_achievement.top + 4), "main_achievement", fill=(255, 255, 255))
         result["fields"]["main_achievement"] = {
             "path": str(crop_path),
             "left": main_achievement.left,
             "top": main_achievement.top,
             "right": main_achievement.right,
             "bottom": main_achievement.bottom,
-            "detector": "orange_digits",
+            "detector": (
+                "main_screen_pt_achievement_digits"
+                if main_screen_image is not None
+                else "orange_digits"
+            ),
+            "layout_hint": "main_screen_pt_pose_warp" if main_screen_image is not None else None,
         }
     else:
-        fallback = relative_box(screen, (0.055, 0.300, 0.650, 0.395)).clamp(image.width, image.height)
-        crop = sharpen_for_ocr(image.crop(fallback.to_tuple()))
+        fallback = relative_box(main_field_screen, (0.055, 0.300, 0.650, 0.395)).clamp(
+            main_source.width,
+            main_source.height,
+        )
+        crop = sharpen_for_ocr(main_source.crop(fallback.to_tuple()))
         crop_path = sample_dir / "main_achievement.png"
         crop.save(crop_path)
-        draw.rectangle(fallback.to_tuple(), outline=(255, 80, 0), width=max(2, image.width // 500))
-        draw.text((fallback.left + 4, fallback.top + 4), "main_achievement", fill=(255, 255, 255))
+        if main_screen_image is None:
+            draw.rectangle(fallback.to_tuple(), outline=(255, 80, 0), width=max(2, image.width // 500))
+            draw.text((fallback.left + 4, fallback.top + 4), "main_achievement", fill=(255, 255, 255))
         result["fields"]["main_achievement"] = {
             "path": str(crop_path),
             "left": fallback.left,
             "top": fallback.top,
             "right": fallback.right,
             "bottom": fallback.bottom,
-            "detector": "fallback_relative",
+            "detector": "main_screen_pt_fallback_relative" if main_screen_image is not None else "fallback_relative",
+            "layout_hint": "main_screen_pt_pose_warp" if main_screen_image is not None else None,
         }
 
     if sub_judgement_table is not None:

@@ -609,6 +609,11 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
     loss_rows = _score_loss_rows_from_internal(judgement, payload.get("loss_percentages") or {})
     break_detail = payload.get("break_detail") or {}
     break_rows = _score_break_rows_from_internal(judgement, break_detail)
+    total_loss = sum(
+        float(total)
+        for _, _, total in loss_rows
+        if isinstance(total, (int, float))
+    )
 
     header_h = 150
     metric_h = 100
@@ -616,9 +621,14 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
     loss_h = 0
     if loss_rows:
         loss_h = 98 + len(loss_rows) * 148
+        if _has_score_loss(total_loss):
+            loss_h += 74
     break_h = 0
     if break_rows:
-        break_h = 98 + 4 * 148 + 58
+        break_h = 98 + len(break_rows) * 148
+        break_total = break_detail.get("total_loss")
+        if _has_score_loss(break_total) or break_total is None:
+            break_h += 74
     img_height = margin + 24 + header_h + 28 + metric_h + 42 + 58 + table_h + loss_h + break_h + margin + 80
 
     img = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
@@ -821,9 +831,7 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
                     fg, bg = (146, 52, 104), (251, 229, 241)
                 else:
                     fg, bg = color_map.get(label, ((154, 91, 18), (255, 240, 199)))
-                cell_right = cell_x + cell_w - 8
-                if cell_x + cell_w >= detail_right - 1:
-                    cell_right = detail_right
+                cell_right = min(cell_x + cell_w - 8, detail_right - 8)
                 _draw_score_card(draw, (cell_x, y + 10, cell_right, y + 72), radius=10, fill=bg)
                 draw.text(((cell_x + cell_right) / 2, y + 27), _format_score_loss(loss), font=font_small_detail, fill=(105, 110, 120), anchor="mm")
                 draw.text(((cell_x + cell_right) / 2, y + 54), str(count), font=font_table_bold, fill=fg, anchor="mm")
@@ -831,12 +839,41 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
             y += 90
             if _has_score_loss(total):
                 _draw_score_card(draw, (detail_x, y, detail_right, y + 46), radius=10, fill=(253, 237, 236))
-                draw.text((detail_x + 24, y + 23), "TOTAL", font=font_small_detail, fill=(105, 110, 120), anchor="lm")
+                draw.text((detail_x + 16, y + 8), "TOTAL", font=font_small_detail, fill=(105, 110, 120))
                 draw.text((detail_right - 24, y + 23), _format_score_loss(total), font=font_table_bold, fill=(192, 57, 43), anchor="rm")
                 y += 58
 
+    def draw_summary_total_bar(label, total, accent):
+        nonlocal y
+        if not _has_score_loss(total):
+            return
+        bar_h = 62
+        fill = (
+            max(0, accent[0] - 18),
+            max(0, accent[1] - 18),
+            max(0, accent[2] - 18),
+        )
+        _draw_score_card(draw, (table_x, y + 4, table_x + table_w, y + bar_h), radius=14, fill=fill)
+        draw.text(
+            (table_x + 24, y + bar_h / 2 + 2),
+            label,
+            font=font_small_detail,
+            fill=(255, 255, 255),
+            anchor="lm",
+        )
+        draw.text(
+            (table_x + table_w - 24, y + bar_h / 2 + 2),
+            _format_score_loss(float(total or 0)),
+            font=font_table_bold,
+            fill=(255, 246, 220),
+            anchor="rm",
+        )
+        y += bar_h + 12
+
     if loss_rows:
-        draw_loss_panel(texts["loss"], (192, 57, 43), loss_rows)
+        loss_accent = (192, 57, 43)
+        draw_loss_panel(texts["loss"], loss_accent, loss_rows)
+        draw_summary_total_bar("COMMON TOTAL", total_loss, loss_accent)
 
     if break_rows:
         def break_row_total(cells):
@@ -860,14 +897,9 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
                 for _, cells, _ in break_rows
                 for _, count, loss in cells
             )
-        draw_loss_panel(texts["break"], (184, 110, 25), break_rows)
-        if _has_score_loss(total_break_loss):
-            detail_x = table_x + 180
-            detail_right = table_x + table_w
-            _draw_score_card(draw, (detail_x, y, detail_right, y + 46), radius=10, fill=(253, 237, 236))
-            draw.text((detail_x + 24, y + 23), "BREAK TOTAL", font=font_small_detail, fill=(105, 110, 120), anchor="lm")
-            draw.text((detail_right - 24, y + 23), _format_score_loss(float(total_break_loss or 0)), font=font_table_bold, fill=(192, 57, 43), anchor="rm")
-            y += 58
+        break_accent = (184, 110, 25)
+        draw_loss_panel(texts["break"], break_accent, break_rows)
+        draw_summary_total_bar("BREAK TOTAL", total_break_loss, break_accent)
 
     final_h = min(img_height, y + margin + 8)
     cropped = img.crop((0, 0, img_width, final_h))

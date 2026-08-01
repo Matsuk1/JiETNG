@@ -436,8 +436,24 @@ def parse_result(fields: dict[str, dict[str, Any]]) -> dict[str, Any]:
     return parsed
 
 
+def normalize_achievement_percent_text(text: str) -> str | None:
+    match = re.fullmatch(r"\s*(\d{0,3})[.,](\d{3,4})\s*%?\s*", text)
+    if not match:
+        return None
+    integer, decimal = match.groups()
+    # Result screenshots sometimes crop the leading achievement digit:
+    # `.xxxx` / `00.xxxx` / `0.xxxx` mean `100.xxxx`, while `9.xxxx` means `99.xxxx`.
+    if integer == "":
+        integer = "100"
+    elif len(integer) == 2 and integer == "00":
+        integer = "100"
+    elif len(integer) == 1:
+        integer = "100" if integer == "0" else f"9{integer}"
+    return f"{integer}.{decimal}"
+
+
 def parse_percent(text: str) -> float | None:
-    candidates = re.findall(r"(\d{2,3}[.,]\d{3,4})\s*%?", text)
+    candidates = re.findall(r"(?<!\d)(\d{0,3}[.,]\d{3,4})\s*%?", text)
     # Paddle occasionally repeats the integer's last digit before the decimal:
     # `100 0.9934%` and `97 7.6199%` mean `100.9934%` and `97.6199%`.
     split_candidates = re.findall(
@@ -446,8 +462,11 @@ def parse_percent(text: str) -> float | None:
     )
     values = []
     for item in candidates:
+        normalized = normalize_achievement_percent_text(item)
+        if normalized is None:
+            continue
         try:
-            values.append(float(item.replace(",", ".")))
+            values.append(float(normalized))
         except ValueError:
             continue
     for integer, repeated_digit, decimal in split_candidates:

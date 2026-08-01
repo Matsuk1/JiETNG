@@ -45,6 +45,48 @@ SUPPORTED_SCORE_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP"}
 MAX_SCORE_IMAGE_PIXELS = 40_000_000
 
 
+def _rolling_title_parts(title):
+    parts = []
+    for part in re.split(r"\s+", str(title or "").strip()):
+        normalized = normalize_text(part)
+        if len(normalized) >= 2:
+            parts.append(normalized)
+    return parts
+
+
+def _rotated_title_candidates(parts):
+    if len(parts) < 2:
+        return []
+    candidates = []
+    seen = set()
+    for index in range(1, len(parts)):
+        rotated = parts[index:] + parts[:index]
+        joined = "".join(rotated)
+        if len(joined) < 4 or joined in seen:
+            continue
+        seen.add(joined)
+        candidates.append((rotated, joined))
+    return candidates
+
+
+def _song_matches_rolling_title(normalized_song_title, rotated_parts):
+    if len(rotated_parts) < 2 or len(normalized_song_title) < 4:
+        return False
+
+    first = rotated_parts[0]
+    last = rotated_parts[-1]
+    if not normalized_song_title.startswith(first) or not normalized_song_title.endswith(last):
+        return False
+
+    cursor = 0
+    for part in rotated_parts:
+        position = normalized_song_title.find(part, cursor)
+        if position < 0:
+            return False
+        cursor = position + len(part)
+    return True
+
+
 def _match_recognized_song_title(title, songs, max_results=12):
     """Match noisy OCR text while preferring complete canonical song titles."""
     normalized_ocr = normalize_text(str(title or ""))
@@ -57,6 +99,35 @@ def _match_recognized_song_title(title, songs, max_results=12):
     ]
     if exact_matches:
         return exact_matches[:max_results], "exact"
+
+    rolling_candidates = _rotated_title_candidates(_rolling_title_parts(title))
+    if rolling_candidates:
+        for _, candidate in rolling_candidates:
+            rolling_exact_matches = [
+                song for song in songs
+                if normalize_text(str(song.get("title") or "")) == candidate
+            ]
+            if rolling_exact_matches:
+                return rolling_exact_matches[:max_results], "rolling_exact"
+
+        rolling_partial_matches = []
+        matched_song_ids = set()
+        for parts, candidate in rolling_candidates:
+            for song in songs:
+                normalized_song_title = normalize_text(str(song.get("title") or ""))
+                if _song_matches_rolling_title(normalized_song_title, parts):
+                    song_key = song.get("id") or normalized_song_title
+                    if song_key in matched_song_ids:
+                        continue
+                    matched_song_ids.add(song_key)
+                    rolling_partial_matches.append((len(candidate), song))
+        if rolling_partial_matches:
+            longest_length = max(length for length, _ in rolling_partial_matches)
+            longest_matches = [
+                song for length, song in rolling_partial_matches
+                if length == longest_length
+            ]
+            return longest_matches[:max_results], "rolling_partial"
 
     def normalize_ocr_kana(value):
         normalized = normalize_text(str(value or ""))
