@@ -7,6 +7,7 @@ from modules.user_db import get_user
 from modules.user_manager import get_notice_interaction, get_user_timezone
 from modules.tip_ad_manager import get_random_tip, get_random_ad
 from modules.message_texts import *
+from modules.score_result_recognizer import expand_score_recognition_calc_variants
 from linebot.v3.messaging import (
     TextMessage,
     QuickReply,
@@ -1324,6 +1325,34 @@ def generate_song_info_flex(song_id, image_url, image_width, image_height, user_
 
 
 def generate_score_recognition_flex(result, user_id=None):
+    variants = expand_score_recognition_calc_variants(result)
+    if len(variants) <= 1:
+        return _generate_score_recognition_single_flex(result, user_id)
+
+    bubbles = []
+    alt_titles = []
+    for variant in variants:
+        message = _generate_score_recognition_single_flex(variant, user_id)
+        bubbles.append(message.contents.to_dict())
+        variant_validation = variant.get("validation") or {}
+        title = variant_validation.get("title") or (variant.get("parsed") or {}).get("title")
+        index = variant_validation.get("calc_completion_candidate_index")
+        count = variant_validation.get("calc_completion_candidate_count")
+        if index and count:
+            alt_titles.append(f"{title or '-'} #{index}/{count}")
+        else:
+            alt_titles.append(str(title or "-"))
+
+    return FlexMessage(
+        alt_text=" / ".join(alt_titles[:3]),
+        contents=FlexContainer.from_dict({
+            "type": "carousel",
+            "contents": bubbles,
+        }),
+    )
+
+
+def _generate_score_recognition_single_flex(result, user_id=None):
     """Generate the judgement details shown after score-image recognition."""
     lang = get_user_language(user_id)
     texts = {
@@ -2170,11 +2199,18 @@ def generate_score_recognition_flex(result, user_id=None):
                     correction.get("field"),
                     str(correction.get("field") or "").upper(),
                 )
-                correction_lines.append(
-                    f"{row_label} {field_label} "
-                    f"{correction.get('ocr')}→{correction.get('validated')} / "
-                    f"MS {correction.get('miss_ocr')}→{correction.get('miss_validated')}"
-                )
+                if correction.get("calc_completion"):
+                    amount = correction.get("amount", correction.get("added", 0))
+                    sign = "+" if amount >= 0 else ""
+                    correction_lines.append(
+                        f"{row_label} {field_label} {sign}{amount}"
+                    )
+                else:
+                    correction_lines.append(
+                        f"{row_label} {field_label} "
+                        f"{correction.get('ocr')}→{correction.get('validated')} / "
+                        f"MS {correction.get('miss_ocr')}→{correction.get('miss_validated')}"
+                    )
             calc_text = tr("calc_inferred" if has_inferred_row else "calc_corrected")
             if correction_lines:
                 calc_text += "\n" + "\n".join(correction_lines)
@@ -2882,7 +2918,7 @@ def _build_calc_bubble(notes, scores, difficulty=None, level=None, lang="ja"):
                         },
                         {
                             "type": "text",
-                            "text": f"-{score_value:.5f}%",
+                            "text": f"-{score_value:.7f}%",
                             "size": "xs",
                             "color": get_judgement_color(score_name),
                             "align": "end",

@@ -175,6 +175,7 @@ from modules.score_result_recognizer import (
     InvalidScoreImageError,
     UnsupportedScoreImageError,
     build_score_crop_preview_image,
+    expand_score_recognition_calc_variants,
     initialize_score_recognizer,
     parse_fix_record_command,
     recognize_score_image_bytes,
@@ -4510,7 +4511,11 @@ def _score_recognition_queue_task(event, command: str, quoted_message_id: str, f
             )
             ver = get_user_field(user_id, "version", "jp") or "jp"
             result = validate_recognized_judgement(result, ver=ver)
-            if force_flex or score_recognition_needs_manual_fix(result):
+            result_variants = expand_score_recognition_calc_variants(result)
+            if force_flex or (
+                len(result_variants) == 1
+                and score_recognition_needs_manual_fix(result_variants[0])
+            ):
                 reply_messages = [
                     generate_score_recognition_flex(
                         result,
@@ -4518,25 +4523,27 @@ def _score_recognition_queue_task(event, command: str, quoted_message_id: str, f
                     )
                 ]
             else:
-                result_img = generate_score_recognition_picture(
-                    result,
-                    ver=ver,
-                    timezone_offset=get_user_timezone(user_id),
-                    bg_filter=_get_user_bg_filter(user_id),
-                )
-                try:
-                    original_url, preview_url = asyncio.run(smart_upload(result_img, user_id))
-                finally:
-                    result_img.close()
-                    gc.collect(0)
-                if not original_url or not preview_url:
-                    raise RuntimeError("Score recognition image upload failed")
-                reply_messages = [
-                    ImageMessage(
-                        original_content_url=original_url,
-                        preview_image_url=preview_url,
+                reply_messages = []
+                for result_variant in result_variants:
+                    result_img = generate_score_recognition_picture(
+                        result_variant,
+                        ver=ver,
+                        timezone_offset=get_user_timezone(user_id),
+                        bg_filter=_get_user_bg_filter(user_id),
                     )
-                ]
+                    try:
+                        original_url, preview_url = asyncio.run(smart_upload(result_img, user_id))
+                    finally:
+                        result_img.close()
+                        gc.collect(0)
+                    if not original_url or not preview_url:
+                        raise RuntimeError("Score recognition image upload failed")
+                    reply_messages.append(
+                        ImageMessage(
+                            original_content_url=original_url,
+                            preview_image_url=preview_url,
+                        )
+                    )
             logger.info(
                 "[Recognize] ✓ OCR completed: command=%s user_id=%s download=%.3fs "
                 "total_before_reply=%.3fs title=%s validation=%s",

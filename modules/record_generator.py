@@ -478,14 +478,14 @@ def _format_score_loss(value):
         value = float(value)
     except (TypeError, ValueError):
         return "-"
-    if abs(value) < 0.00005:
-        return "0.0000%"
-    return f"-{value:.4f}%"
+    if abs(value) < 0.000005:
+        return "0.00000%"
+    return f"-{value:.5f}%"
 
 
 def _has_score_loss(value):
     try:
-        return abs(float(value)) >= 0.00005
+        return abs(float(value)) >= 0.000005
     except (TypeError, ValueError):
         return False
 

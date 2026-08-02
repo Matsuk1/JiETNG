@@ -5,12 +5,22 @@ import asyncio
 import aiohttp
 import unicodedata
 import re
+from decimal import Decimal, ROUND_DOWN
 from urllib.parse import quote
 from lxml import etree
 import os
 from modules.config_loader import DOMAIN, RATING_DIR
 
 logger = logging.getLogger(__name__)
+
+
+def _truncate_decimal(value, places):
+    quantum = Decimal("1").scaleb(-places)
+    return Decimal(str(value)).quantize(quantum, rounding=ROUND_DOWN)
+
+
+def _truncate_float(value, places):
+    return float(_truncate_decimal(value, places))
 
 # Rating → 本地图片映射
 RATING_TIERS = [
@@ -126,22 +136,8 @@ def extract_onclick_url_from_button(li, keyword):
                 return onclick.split("'")[1]
     return ""
 
-def get_note_score(notes):
-    """计算每个 note 类型的扣分比例
-
-    Args:
-        notes: 字典，包含各类 note 的数量
-            {
-                'tap': int,
-                'hold': int,
-                'slide': int,
-                'touch': int,
-                'break': int
-            }
-
-    Returns:
-        字典，包含各类判定的扣分百分比
-    """
+def _get_note_achievement_score(notes):
+    """Calculate each judgement's per-note achievement value, truncated to 7 decimals."""
     tap_num = notes['tap'] if notes['tap'] else 0
     hold_num = notes['hold'] if notes['hold'] else 0
     slide_num = notes['slide'] if notes['slide'] else 0
@@ -167,57 +163,157 @@ def get_note_score(notes):
     if total_base == 0 or break_add_total == 0:
         return {}
 
-    note_score = {
-        'tap_great': round((tap_base[0] - tap_base[1]) / total_base * 100, 5),
-        'tap_good': round((tap_base[0] - tap_base[2]) / total_base * 100, 5),
-        'tap_miss': round(tap_base[0] / total_base * 100, 5),
+    return {
+        'tap_full': _truncate_float(tap_base[0] / total_base * 100, 7),
+        'tap_great': _truncate_float(tap_base[1] / total_base * 100, 7),
+        'tap_good': _truncate_float(tap_base[2] / total_base * 100, 7),
+        'tap_miss': 0.0,
 
-        'hold_great': round((hold_base[0] - hold_base[1]) / total_base * 100, 5),
-        'hold_good': round((hold_base[0] - hold_base[2]) / total_base * 100, 5),
-        'hold_miss': round(hold_base[0] / total_base * 100, 5),
+        'hold_full': _truncate_float(hold_base[0] / total_base * 100, 7),
+        'hold_great': _truncate_float(hold_base[1] / total_base * 100, 7),
+        'hold_good': _truncate_float(hold_base[2] / total_base * 100, 7),
+        'hold_miss': 0.0,
 
-        'slide_great': round((slide_base[0] - slide_base[1]) / total_base * 100, 5),
-        'slide_good': round((slide_base[0] - slide_base[2]) / total_base * 100, 5),
-        'slide_miss': round(slide_base[0] / total_base * 100, 5),
+        'slide_full': _truncate_float(slide_base[0] / total_base * 100, 7),
+        'slide_great': _truncate_float(slide_base[1] / total_base * 100, 7),
+        'slide_good': _truncate_float(slide_base[2] / total_base * 100, 7),
+        'slide_miss': 0.0,
 
-        'touch_great': round((touch_base[0] - touch_base[1]) / total_base * 100, 5),
-        'touch_good': round((touch_base[0] - touch_base[2]) / total_base * 100, 5),
-        'touch_miss': round(touch_base[0] / total_base * 100, 5),
+        'touch_full': _truncate_float(touch_base[0] / total_base * 100, 7),
+        'touch_great': _truncate_float(touch_base[1] / total_base * 100, 7),
+        'touch_good': _truncate_float(touch_base[2] / total_base * 100, 7),
+        'touch_miss': 0.0,
 
-        'break_high_perfect': round(((break_base[0] - break_base[1]) / total_base * 100) + ((break_add[0] - break_add[1]) / break_add_total), 5),
-        'break_low_perfect': round(((break_base[0] - break_base[2]) / total_base * 100) + ((break_add[0] - break_add[2]) / break_add_total), 5),
-        'break_high_great': round(((break_base[0] - break_base[3]) / total_base * 100) + ((break_add[0] - break_add[3]) / break_add_total), 5),
-        'break_middle_great': round(((break_base[0] - break_base[4]) / total_base * 100) + ((break_add[0] - break_add[4]) / break_add_total), 5),
-        'break_low_great': round(((break_base[0] - break_base[5]) / total_base * 100) + ((break_add[0] - break_add[5]) / break_add_total), 5),
-        'break_good': round(((break_base[0] - break_base[6]) / total_base * 100) + ((break_add[0] - break_add[6]) / break_add_total), 5),
-        'break_miss': round((break_base[0] / total_base * 100) + (break_add[0] / break_add_total), 5)
+        'break_critical': _truncate_float((break_base[0] / total_base * 100) + (break_add[0] / break_add_total), 7),
+        'break_high_perfect': _truncate_float((break_base[1] / total_base * 100) + (break_add[1] / break_add_total), 7),
+        'break_low_perfect': _truncate_float((break_base[2] / total_base * 100) + (break_add[2] / break_add_total), 7),
+        'break_high_great': _truncate_float((break_base[3] / total_base * 100) + (break_add[3] / break_add_total), 7),
+        'break_middle_great': _truncate_float((break_base[4] / total_base * 100) + (break_add[4] / break_add_total), 7),
+        'break_low_great': _truncate_float((break_base[5] / total_base * 100) + (break_add[5] / break_add_total), 7),
+        'break_good': _truncate_float((break_base[6] / total_base * 100) + (break_add[6] / break_add_total), 7),
+        'break_miss': 0.0,
     }
 
-    return note_score
 
-def calc_score(notes, judgements):
-    """根据 note 数量和判定结果计算最终得分
+def get_note_score(notes):
+    """计算每个 note 类型的扣分比例"""
+    achievement_scores = _get_note_achievement_score(notes)
+    if not achievement_scores:
+        return {}
+
+    def loss(max_key, score_key):
+        return _truncate_float(
+            Decimal(str(achievement_scores[max_key]))
+            - Decimal(str(achievement_scores[score_key])),
+            7,
+        )
+
+    return {
+        'tap_great': loss('tap_full', 'tap_great'),
+        'tap_good': loss('tap_full', 'tap_good'),
+        'tap_miss': loss('tap_full', 'tap_miss'),
+
+        'hold_great': loss('hold_full', 'hold_great'),
+        'hold_good': loss('hold_full', 'hold_good'),
+        'hold_miss': loss('hold_full', 'hold_miss'),
+
+        'slide_great': loss('slide_full', 'slide_great'),
+        'slide_good': loss('slide_full', 'slide_good'),
+        'slide_miss': loss('slide_full', 'slide_miss'),
+
+        'touch_great': loss('touch_full', 'touch_great'),
+        'touch_good': loss('touch_full', 'touch_good'),
+        'touch_miss': loss('touch_full', 'touch_miss'),
+
+        'break_high_perfect': loss('break_critical', 'break_high_perfect'),
+        'break_low_perfect': loss('break_critical', 'break_low_perfect'),
+        'break_high_great': loss('break_critical', 'break_high_great'),
+        'break_middle_great': loss('break_critical', 'break_middle_great'),
+        'break_low_great': loss('break_critical', 'break_low_great'),
+        'break_good': loss('break_critical', 'break_good'),
+        'break_miss': loss('break_critical', 'break_miss'),
+    }
+
+def calc_score_precise(notes, judgements):
+    """根据 note 数量和判定结果累加每个 note 的精确得分值
 
     Args:
         notes: 字典，包含各类 note 的数量
         judgements: 字典，包含各类判定的数量
 
     Returns:
-        float: 计算出的得分（满分101）
+        Decimal: 每 note 得分截断到 7 位后的累加值，未做最终 4 位截断
     """
-    scores = get_note_score(notes)
-    total_deduction = 0
-    for k, v in judgements.items():
-        if k in scores:
-            total_deduction += scores[k] * v
-    return round(101 - total_deduction, 4)
+    scores = _get_note_achievement_score(notes)
+    if not scores:
+        return Decimal("0")
+
+    total_score = Decimal("0")
+    for note_type in ('tap', 'hold', 'slide', 'touch'):
+        note_count = int(notes.get(note_type, 0) or 0)
+        great = int(judgements.get(f'{note_type}_great', 0) or 0)
+        good = int(judgements.get(f'{note_type}_good', 0) or 0)
+        miss = int(judgements.get(f'{note_type}_miss', 0) or 0)
+        full = max(0, note_count - great - good - miss)
+        total_score += Decimal(str(scores[f'{note_type}_full'])) * Decimal(full)
+        total_score += Decimal(str(scores[f'{note_type}_great'])) * Decimal(great)
+        total_score += Decimal(str(scores[f'{note_type}_good'])) * Decimal(good)
+
+    break_count = int(notes.get('break', 0) or 0)
+    break_high_perfect = int(judgements.get('break_high_perfect', 0) or 0)
+    break_low_perfect = int(judgements.get('break_low_perfect', 0) or 0)
+    break_high_great = int(judgements.get('break_high_great', 0) or 0)
+    break_middle_great = int(judgements.get('break_middle_great', 0) or 0)
+    break_low_great = int(judgements.get('break_low_great', 0) or 0)
+    break_good = int(judgements.get('break_good', 0) or 0)
+    break_miss = int(judgements.get('break_miss', 0) or 0)
+    break_critical = max(
+        0,
+        break_count
+        - break_high_perfect
+        - break_low_perfect
+        - break_high_great
+        - break_middle_great
+        - break_low_great
+        - break_good
+        - break_miss,
+    )
+    for key, count in (
+        ('break_critical', break_critical),
+        ('break_high_perfect', break_high_perfect),
+        ('break_low_perfect', break_low_perfect),
+        ('break_high_great', break_high_great),
+        ('break_middle_great', break_middle_great),
+        ('break_low_great', break_low_great),
+        ('break_good', break_good),
+    ):
+        total_score += Decimal(str(scores[key])) * Decimal(count)
+
+    return total_score
+
+
+def calc_score(notes, judgements):
+    """根据 note 数量和判定结果计算游戏显示的达成率
+
+    Args:
+        notes: 字典，包含各类 note 的数量
+        judgements: 字典，包含各类判定的数量
+
+    Returns:
+        float: 游戏显示的达成率（精确得分值最终截断到 4 位）
+    """
+    return float(calc_score_precise(notes, judgements).quantize(
+        Decimal("0.0001"),
+        rounding=ROUND_DOWN,
+    ))
 
 
 def calc_judgement_achievement_range(notes, judgement_rows):
-    """Calculate the achievement range represented by the result-table rows.
+    """Calculate the display achievement range represented by the result rows.
 
     The table does not expose the two BREAK PERFECT grades or the three BREAK
     GREAT grades, so those values produce a range instead of one exact score.
+    Range endpoints use maimai's displayed achievement precision.
     """
     if not isinstance(judgement_rows, dict):
         return None

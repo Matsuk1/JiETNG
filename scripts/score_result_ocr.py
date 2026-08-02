@@ -432,6 +432,8 @@ def parse_result(fields: dict[str, dict[str, Any]]) -> dict[str, Any]:
             or parse_sub_judgement(raw.get("sub_judgement_table", ""))
         ),
     }
+    if sub_judgement_field.get("column_confidences"):
+        parsed["sub_judgement_confidence"] = sub_judgement_field.get("column_confidences")
     parsed["raw"] = raw
     return parsed
 
@@ -555,20 +557,32 @@ def normalize_label_text(text: str) -> str:
     return re.sub(r"[^A-Z]", "", value)
 
 
+def normalize_digit_ocr_text(text: str) -> str:
+    value = unicodedata.normalize("NFKC", text or "").upper()
+    value = re.sub(r"\s+", "", value)
+    return value.translate(str.maketrans({
+        "Z": "2",
+    }))
+
+
 def parse_item_int(text: str) -> int | None:
-    normalized = normalize_text(text)
+    normalized = normalize_digit_ocr_text(text)
+    if re.fullmatch(r"[O0〇]+", unicodedata.normalize("NFKC", text or "").upper().strip()):
+        return 0
     match = re.fullmatch(r"\d{1,4}", normalized)
     return int(match.group(0)) if match else None
 
 
 def parse_column_int(text: str) -> int | None:
-    normalized = normalize_text(text).upper()
+    raw = unicodedata.normalize("NFKC", text or "").upper()
+    raw_compact = re.sub(r"\s+", "", raw)
+    normalized = normalize_digit_ocr_text(text)
     if re.fullmatch(r"\d{1,3}日", normalized):
         normalized = normalized[:-1] + "1"
     match = re.search(r"\d{1,4}", normalized)
     if match:
         return int(match.group(0))
-    if re.fullmatch(r"[O0]+", normalized):
+    if re.fullmatch(r"[O0〇]+", raw_compact):
         return 0
     return None
 
@@ -1769,6 +1783,7 @@ def recognize_judgement_by_columns(
     output_dir: str | Path | None,
     engine: PaddleOcrEngine,
     layout_hint: str | None = None,
+    confidence_out: dict[str, dict[str, float]] | None = None,
 ) -> dict[str, dict[str, int]] | None:
     if isinstance(table_image_source, Image.Image):
         image = table_image_source.convert("RGB")
@@ -1845,23 +1860,6 @@ def recognize_judgement_by_columns(
         )
     gaps = [b - a for a, b in zip(row_centers, row_centers[1:])]
     row_gap = sum(gaps) / len(gaps) if gaps else max(44, height / 8)
-    if layout_hint not in FIXED_TABLE_LAYOUT_HINTS:
-        direct_values = recognize_judgement_cells_direct(
-            image,
-            row_centers,
-            col_bounds,
-            row_gap,
-            output,
-            engine,
-        )
-        if direct_values is not None:
-            direct_result = {
-                row_name: values
-                for row_name, values in direct_values.items()
-                if values and any(int(value or 0) != 0 for value in values.values())
-            }
-            return direct_result or None
-
     top = max(0, int(round(row_centers[0] - row_gap * 0.75)))
     bottom = min(height, int(round(row_centers[-1] + row_gap * 0.75)))
     row_targets = {
@@ -1869,6 +1867,7 @@ def recognize_judgement_by_columns(
         for row_name, center in zip(row_names, row_centers)
     }
     result: dict[str, dict[str, int]] = {row_name: {} for row_name in row_names}
+    confidences: dict[str, dict[str, float]] = {row_name: {} for row_name in row_names}
 
     for index, column_name in enumerate(column_names):
         pad_x = max(5, int(width * 0.004))
@@ -1890,6 +1889,28 @@ def recognize_judgement_by_columns(
             row_name, target = min(row_targets.items(), key=lambda pair: abs(pair[1] - y))
             if abs(target - y) <= row_gap * SUB_JUDGEMENT_COLUMN_OCR_SCALE * 0.58:
                 result[row_name][column_name] = value
+                try:
+                    confidences[row_name][column_name] = float(item.get("score", 0.0) or 0.0)
+                except (TypeError, ValueError):
+                    confidences[row_name][column_name] = 0.0
+
+    if layout_hint not in FIXED_TABLE_LAYOUT_HINTS:
+        direct_values = recognize_judgement_cells_direct(
+            image,
+            row_centers,
+            col_bounds,
+            row_gap,
+            output,
+            engine,
+        )
+        if direct_values is not None:
+            for row_name, values in direct_values.items():
+                if row_name not in result:
+                    continue
+                for column_name, value in values.items():
+                    if column_name not in result[row_name]:
+                        result[row_name][column_name] = value
+                        confidences[row_name][column_name] = 0.70
 
     for row_name, center_y in zip(row_names, row_centers):
         cell_top = max(0, int(round(center_y - row_gap * 0.32)))
@@ -1931,7 +1952,9 @@ def recognize_judgement_by_columns(
                 prepared.save(output / f"{row_name}_{column_name}_ocr.png")
             cell_items = engine.read(prepared)
             value = None
+            value_score = None
             low_confidence_value = None
+            low_confidence_score = None
             for item in cell_items:
                 candidate_value = parse_column_int(str(item.get("text", "")))
                 if candidate_value is None:
@@ -1939,9 +1962,11 @@ def recognize_judgement_by_columns(
                 score = item.get("score")
                 if score is None or float(score) >= 0.90:
                     value = candidate_value
+                    value_score = float(score) if score is not None else 1.0
                     break
                 if low_confidence_value is None:
                     low_confidence_value = candidate_value
+                    low_confidence_score = float(score)
             if value is None and column_name != "miss" and not should_rescan_zero:
                 # Small models can lose the left edge of dim colored digits.
                 # Retry only failed cells with a wider grayscale crop; applying
@@ -1970,17 +1995,24 @@ def recognize_judgement_by_columns(
                     fallback_cell.save(output / f"{row_name}_{column_name}_gray.png")
                     fallback_prepared.save(
                         output / f"{row_name}_{column_name}_gray_ocr.png"
-                    )
+                )
                 for item in engine.read(fallback_prepared):
                     value = parse_column_int(str(item.get("text", "")))
                     if value is not None:
+                        try:
+                            value_score = float(item.get("score", 0.0) or 0.0)
+                        except (TypeError, ValueError):
+                            value_score = 0.0
                         break
             if value is None:
                 value = low_confidence_value
+                value_score = low_confidence_score
             if value is not None:
                 result[row_name][column_name] = value
+                confidences[row_name][column_name] = float(value_score or 0.0)
             else:
                 result[row_name].setdefault(column_name, 0)
+                confidences[row_name].setdefault(column_name, 0.0)
 
     for row_name in tuple(result):
         values = result[row_name]
@@ -1998,6 +2030,15 @@ def recognize_judgement_by_columns(
         for row, values in result.items()
         if values and any(int(value or 0) != 0 for value in values.values())
     }
+    if confidence_out is not None:
+        confidence_out.clear()
+        confidence_out.update({
+            row_name: {
+                column_name: confidences.get(row_name, {}).get(column_name, 0.0)
+                for column_name in values
+            }
+            for row_name, values in result.items()
+        })
     return result or None
 
 
@@ -2059,14 +2100,32 @@ def parse_sub_judgement_items(items: list[dict[str, Any]]) -> dict[str, dict[str
 
 
 def parse_sub_judgement(text: str) -> dict[str, dict[str, int]] | None:
-    normalized = normalize_text(text).upper()
+    normalized = unicodedata.normalize("NFKC", text or "").upper()
+    normalized = re.sub(r"\s+", " ", normalized).strip()
     labels = ("TAP", "HOLD", "SLIDE", "TOUCH", "BREAK")
     result: dict[str, dict[str, int]] = {}
+    digit_pattern = r"([0-9OZ〇]{1,4})"
+    separator_pattern = r"[^0-9OZ〇]+"
     for label in labels:
-        match = re.search(label + r"\D+(\d{1,4})\D+(\d{1,4})\D+(\d{1,4})\D+(\d{1,4})\D+(\d{1,4})", normalized)
+        match = re.search(
+            label
+            + separator_pattern
+            + digit_pattern
+            + separator_pattern
+            + digit_pattern
+            + separator_pattern
+            + digit_pattern
+            + separator_pattern
+            + digit_pattern
+            + separator_pattern
+            + digit_pattern,
+            normalized,
+        )
         if not match:
             continue
-        values = [int(item) for item in match.groups()]
+        values = [parse_column_int(item) for item in match.groups()]
+        if any(value is None for value in values):
+            continue
         result[label.lower()] = {
             "critical_perfect": values[0],
             "perfect": values[1],
@@ -2099,16 +2158,19 @@ def process_image_data(
             table_image = field_meta["image"]
             if field_meta.get("layout_hint") not in FIXED_TABLE_LAYOUT_HINTS:
                 table_image = prepare_ocr_image_data(table_image, field)
+            column_confidences: dict[str, dict[str, float]] = {}
             column_values = recognize_judgement_by_columns(
                 table_image,
                 None,
                 engine,
                 layout_hint=field_meta.get("layout_hint"),
+                confidence_out=column_confidences,
             )
             ocr_fields[field] = {
                 "items": [],
                 "text": "",
                 "column_values": column_values,
+                "column_confidences": column_confidences,
             }
             field_seconds[field] = time.perf_counter() - field_started_at
             continue
@@ -2170,11 +2232,13 @@ def process_image(
                 if field_meta.get("layout_hint") in FIXED_TABLE_LAYOUT_HINTS
                 else prepared
             )
+            column_confidences: dict[str, dict[str, float]] = {}
             column_values = recognize_judgement_by_columns(
                 table_source,
                 output_base / "sub_judgement_columns",
                 engine,
                 layout_hint=field_meta.get("layout_hint"),
+                confidence_out=column_confidences,
             )
             ocr_fields[field] = {
                 "crop": field_meta["path"],
@@ -2182,6 +2246,7 @@ def process_image(
                 "items": [],
                 "text": "",
                 "column_values": column_values,
+                "column_confidences": column_confidences,
             }
             continue
 

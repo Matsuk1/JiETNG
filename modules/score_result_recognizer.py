@@ -25,6 +25,7 @@ from modules.config_loader import read_dxdata
 from modules.maimai_manager import (
     calc_judgement_achievement_range,
     calc_score,
+    calc_score_precise,
     get_note_score,
 )
 from modules.song_matcher import find_matching_songs, normalize_text
@@ -368,12 +369,24 @@ def _match_recognized_song_title(title, songs, max_results=12):
     )
 
 
-def _calc_achievement_distance(achievement, score_range, tolerance=0.0006):
+CALC_ACHIEVEMENT_TOLERANCE = 0.0
+CALC_ACHIEVEMENT_EPSILON = 1e-9
+
+
+def _calc_achievement_distance(
+    achievement,
+    score_range,
+    tolerance=CALC_ACHIEVEMENT_TOLERANCE,
+):
     if not isinstance(achievement, (int, float)) or not score_range:
         return None
     minimum = float(score_range["minimum"])
     maximum = float(score_range["maximum"])
-    if minimum - tolerance <= achievement <= maximum + tolerance:
+    if (
+        minimum - tolerance - CALC_ACHIEVEMENT_EPSILON
+        <= achievement
+        <= maximum + tolerance + CALC_ACHIEVEMENT_EPSILON
+    ):
         return 0.0
     return min(abs(achievement - minimum), abs(achievement - maximum))
 
@@ -457,194 +470,76 @@ def _find_calc_judgement_uncertainties(notes, judgement, achievement):
     return uncertainties
 
 
-def _apply_unique_calc_judgement_correction(
-    notes,
-    judgement,
-    achievement,
-    uncertainties,
-):
-    """Apply a Calc correction only when one cell has one valid solution."""
-    def row_total_matches_notes(row_name):
-        row = judgement.get(row_name)
-        if not isinstance(row, dict):
-            return False
-        try:
-            expected = max(0, int(notes.get(row_name, 0) or 0))
-            total = sum(
-                max(0, int(row.get(field_name, 0) or 0))
-                for field_name in (
-                    "critical_perfect",
-                    "perfect",
-                    "great",
-                    "good",
-                    "miss",
-                )
-            )
-        except (TypeError, ValueError):
-            return False
-        return expected > 0 and total == expected
-
-    resolvable = [
-        item for item in uncertainties
-        if not item.get("row_missing")
-        and item.get("candidate_count") == 1
-        and item.get("candidate_min") == item.get("candidate_max")
-        and item.get("miss_min") == item.get("miss_max")
-        and not row_total_matches_notes(item.get("row"))
-    ]
-    if len(resolvable) == 1:
-        uncertainty = resolvable[0]
-    else:
-        break_non_cp = [
-            item for item in resolvable
-            if item.get("row") == "break"
-            and item.get("field") in {"perfect", "great", "good"}
-        ]
-        if len(break_non_cp) != 1:
-            return None
-        uncertainty = break_non_cp[0]
-
-    row_name = uncertainty.get("row")
-    field_name = uncertainty.get("field")
-    if field_name not in {"critical_perfect", "perfect", "great", "good"}:
-        return None
-    source_row = judgement.get(row_name)
-    if not isinstance(source_row, dict):
-        return None
-
-    corrected_row = dict(source_row)
-    previous_value = max(0, int(corrected_row.get(field_name, 0)))
-    previous_miss = max(0, int(corrected_row.get("miss", 0)))
-    corrected_row[field_name] = uncertainty["candidate_min"]
-    corrected_row["miss"] = uncertainty["miss_min"]
-    corrected_judgement = dict(judgement)
-    corrected_judgement[row_name] = corrected_row
-    score_range = calc_judgement_achievement_range(notes, corrected_judgement)
-    if _calc_achievement_distance(achievement, score_range) != 0:
-        return None
-    if not _has_break_calc_solution(notes, corrected_judgement, achievement):
-        return None
-
-    return {
-        "judgement": corrected_judgement,
-        "score_range": score_range,
-        "correction": {
-            "row": row_name,
-            "field": field_name,
-            "ocr": previous_value,
-            "validated": uncertainty["candidate_min"],
-            "miss_ocr": previous_miss,
-            "miss_validated": uncertainty["miss_min"],
-        },
-    }
+def _iter_note_distributions(total, fields):
+    if not fields:
+        if total == 0:
+            yield {}
+        return
+    if len(fields) == 1:
+        yield {fields[0]: total}
+        return
+    first, *rest = fields
+    for value in range(total + 1):
+        for tail in _iter_note_distributions(total - value, rest):
+            yield {first: value, **tail}
 
 
-def _apply_calc_row_balance(
-    notes,
-    judgement,
-    achievement,
-    uncertainties,
-):
-    """Balance CP and MISS when Calc isolates OCR errors to one normal row."""
-    if not isinstance(achievement, (int, float)):
-        return None
-    suspected_rows = {
-        item.get("row")
-        for item in uncertainties
-        if item.get("row") in {"tap", "hold", "slide", "touch"}
-        and not item.get("row_missing")
-    }
-    if len(suspected_rows) != 1:
-        return None
+def _calc_completion_confidence_penalty(confidence):
+    if not isinstance(confidence, (int, float)):
+        return 0
+    if confidence >= 0.90:
+        return 100
+    if confidence >= 0.80:
+        return 40
+    if confidence >= 0.70:
+        return 15
+    return 0
 
-    row_name = next(iter(suspected_rows))
-    source_row = judgement.get(row_name)
-    if not isinstance(source_row, dict):
-        return None
+
+def _is_calc_completion_locked_cell(value, confidence):
     try:
-        expected = max(0, int(notes.get(row_name, 0)))
-        previous_cp = max(0, int(source_row.get("critical_perfect", 0)))
-        previous_miss = max(0, int(source_row.get("miss", 0)))
-        perfect = max(0, int(source_row.get("perfect", 0)))
-        great = max(0, int(source_row.get("great", 0)))
-        good = max(0, int(source_row.get("good", 0)))
+        value = int(value or 0)
     except (TypeError, ValueError):
-        return None
+        value = 0
+    return value != 0 and isinstance(confidence, (int, float)) and confidence >= 0.95
 
-    row_total = previous_cp + perfect + great + good + previous_miss
-    if row_total == expected:
-        return None
 
-    remaining = expected - perfect - great - good
-    if remaining < 0:
-        return None
+def _calc_completion_scanned_cell_penalty(confidence):
+    if confidence is None:
+        return 0
+    if not isinstance(confidence, (int, float)):
+        return 0
+    if confidence <= 0.05:
+        return 0
+    if confidence < 0.50:
+        return 12
+    if confidence < 0.80:
+        return 35
+    return 90
 
-    candidates = []
-    for candidate_miss in range(remaining + 1):
-        candidate_cp = remaining - candidate_miss
-        if candidate_cp == previous_cp and candidate_miss == previous_miss:
-            continue
-        candidate_row = dict(source_row)
-        candidate_row["critical_perfect"] = candidate_cp
-        candidate_row["miss"] = candidate_miss
-        candidate_judgement = dict(judgement)
-        candidate_judgement[row_name] = candidate_row
-        score_range = calc_judgement_achievement_range(
-            notes,
-            candidate_judgement,
-        )
-        if _calc_achievement_distance(achievement, score_range) != 0:
-            continue
-        if not _has_break_calc_solution(notes, candidate_judgement, achievement):
-            continue
-        candidates.append({
-            "judgement": candidate_judgement,
-            "score_range": score_range,
-            "candidate_cp": candidate_cp,
-            "candidate_miss": candidate_miss,
-        })
 
-    if len(candidates) != 1:
-        return None
-    candidate = candidates[0]
+def _calc_completion_field_penalty(field_name):
     return {
-        "judgement": candidate["judgement"],
-        "score_range": candidate["score_range"],
-        "correction": {
-            "row": row_name,
-            "field": "critical_perfect",
-            "ocr": previous_cp,
-            "validated": candidate["candidate_cp"],
-            "miss_ocr": previous_miss,
-            "miss_validated": candidate["candidate_miss"],
-        },
-    }
+        "good": 0,
+        "great": 8,
+        "miss": 18,
+        "perfect": 350,
+        "critical_perfect": 700,
+    }.get(field_name, 100)
 
 
-def _apply_same_row_miss_redistribution(
+def _find_calc_completion_candidates(
     notes,
     judgement,
+    unmatched_notes,
     achievement,
-    uncertainties,
+    confidence=None,
+    limit=20,
 ):
-    """Redistribute same-row MISS OCR noise without changing row totals."""
-    if not isinstance(achievement, (int, float)):
-        return None
+    if not unmatched_notes or not isinstance(achievement, (int, float)):
+        return []
 
-    uncertain_targets = {
-        (item.get("row"), item.get("field"))
-        for item in uncertainties
-        if not item.get("row_missing")
-    }
-    exact_uncertainties = {
-        (item.get("row"), item.get("field")): item
-        for item in uncertainties
-        if not item.get("row_missing")
-        and item.get("candidate_count") == 1
-        and item.get("candidate_min") == item.get("candidate_max")
-        and item.get("miss_min") == item.get("miss_max")
-    }
-    target_fields = ("great", "good", "perfect", "critical_perfect")
+    confidence = confidence or {}
     field_names = (
         "critical_perfect",
         "perfect",
@@ -652,189 +547,218 @@ def _apply_same_row_miss_redistribution(
         "good",
         "miss",
     )
-    current_range = calc_judgement_achievement_range(notes, judgement)
-    current_distance = _calc_achievement_distance(achievement, current_range)
-    if current_distance is None or current_distance == 0:
-        return None
-
-    def iter_distributions(total, slot_count):
-        if slot_count <= 0:
-            return
-        if slot_count == 1:
-            yield (total,)
-            return
-        for value in range(total + 1):
-            for rest in iter_distributions(total - value, slot_count - 1):
-                yield (value, *rest)
-
-    candidates = []
-    for row_name in ("tap", "hold", "slide", "touch"):
-        source_row = judgement.get(row_name)
-        if not isinstance(source_row, dict):
+    row_names = ("tap", "hold", "slide", "touch", "break")
+    row_options = []
+    for row_name in row_names:
+        row = judgement.get(row_name)
+        if not isinstance(row, dict):
             continue
         try:
-            expected = max(0, int(notes.get(row_name, 0) or 0))
-            original = {
-                field_name: max(0, int(source_row.get(field_name, 0) or 0))
-                for field_name in field_names
-            }
+            gap = int(unmatched_notes.get(row_name, 0) or 0)
         except (TypeError, ValueError):
             continue
-        if expected <= 0 or sum(original.values()) != expected:
-            continue
-        miss = original["miss"]
-        if miss <= 0:
-            continue
-
-        eligible_targets = [
-            field_name for field_name in target_fields
-            if (
-                original[field_name] == 0
-                or (row_name, field_name) in uncertain_targets
-            )
-        ]
-        if not eligible_targets:
+        try:
+            source_miss = max(0, int(row.get("miss", 0) or 0))
+        except (TypeError, ValueError):
+            source_miss = 0
+        if gap <= 0 and source_miss <= 0:
             continue
 
-        checked_count = 0
-        for amount in range(1, miss + 1):
-            for distribution in iter_distributions(amount, len(eligible_targets)):
-                if not any(distribution):
-                    continue
-                checked_count += 1
-                if checked_count > 250_000:
-                    break
-                candidate_row = dict(original)
-                candidate_row["miss"] -= amount
-                changed_targets = []
-                for target_field, increment in zip(eligible_targets, distribution):
-                    if increment <= 0:
+        options_by_key = {}
+        gap_distributions = (
+            list(_iter_note_distributions(gap, field_names))
+            if gap > 0 else [{}]
+        )
+        redistribution_targets = ("good", "great", "perfect", "critical_perfect")
+        redistribution_options = [(0, None)]
+        if row_name != "break" and source_miss > 0:
+            for amount in range(1, source_miss + 1):
+                for target_field in redistribution_targets:
+                    redistribution_options.append((amount, target_field))
+
+        for distribution in gap_distributions:
+            for moved_miss, target_field in redistribution_options:
+                candidate_row = dict(row)
+                changes = []
+                locked_cell_changed = False
+                for field_name, amount in distribution.items():
+                    if amount <= 0:
                         continue
-                    candidate_row[target_field] += increment
-                    changed_targets.append({
-                        "field": target_field,
-                        "amount": increment,
-                        "before": original[target_field],
-                        "after": candidate_row[target_field],
+                    field_confidence = (confidence.get(row_name) or {}).get(field_name)
+                    if _is_calc_completion_locked_cell(
+                        candidate_row.get(field_name, 0),
+                        field_confidence,
+                    ):
+                        locked_cell_changed = True
+                        break
+                    candidate_row[field_name] = (
+                        max(0, int(candidate_row.get(field_name, 0) or 0))
+                        + amount
+                    )
+                    changes.append({
+                        "field": field_name,
+                        "amount": amount,
+                        "kind": "add",
                     })
-                if not changed_targets:
+                if locked_cell_changed:
                     continue
-                candidate_judgement = dict(judgement)
-                candidate_judgement[row_name] = candidate_row
-                score_range = calc_judgement_achievement_range(
-                    notes,
-                    candidate_judgement,
-                )
-                distance = _calc_achievement_distance(achievement, score_range)
-                if distance is None or distance >= current_distance:
+                if moved_miss > 0 and target_field:
+                    miss_confidence = (confidence.get(row_name) or {}).get("miss")
+                    target_confidence = (confidence.get(row_name) or {}).get(target_field)
+                    if (
+                        _is_calc_completion_locked_cell(
+                            candidate_row.get("miss", 0),
+                            miss_confidence,
+                        )
+                        or _is_calc_completion_locked_cell(
+                            candidate_row.get(target_field, 0),
+                            target_confidence,
+                        )
+                    ):
+                        continue
+                    candidate_row["miss"] = max(
+                        0,
+                        int(candidate_row.get("miss", 0) or 0) - moved_miss,
+                    )
+                    candidate_row[target_field] = (
+                        max(0, int(candidate_row.get(target_field, 0) or 0))
+                        + moved_miss
+                    )
+                    changes.append({
+                        "field": target_field,
+                        "amount": moved_miss,
+                        "kind": "move_from_miss",
+                    })
+                    changes.append({
+                        "field": "miss",
+                        "amount": -moved_miss,
+                        "kind": "move_to",
+                    })
+                if not changes:
                     continue
-                if distance != 0:
-                    continue
-                has_break_solution = _has_break_calc_solution(
-                    notes,
-                    candidate_judgement,
-                    achievement,
+                key = tuple(
+                    int(candidate_row.get(field_name, 0) or 0)
+                    for field_name in field_names
                 )
-                row_exact_uncertainties = {
-                    field: item
-                    for (uncertain_row, field), item in exact_uncertainties.items()
-                    if uncertain_row == row_name
-                }
-                exact_hits = sum(
-                    1
-                    for field, item in row_exact_uncertainties.items()
-                    if candidate_row.get(field) == item.get("candidate_min")
-                    and candidate_row.get("miss") == item.get("miss_min")
-                )
-                exact_misses = len(row_exact_uncertainties) - exact_hits
-                changed_non_uncertain_zero_targets = sum(
-                    1
-                    for item in changed_targets
-                    if original[item["field"]] == 0
-                    and (row_name, item["field"]) not in exact_uncertainties
-                )
-                candidates.append({
-                    "judgement": candidate_judgement,
-                    "score_range": score_range,
-                    "row": row_name,
-                    "amount": amount,
-                    "changed_targets": changed_targets,
-                    "miss_before": miss,
-                    "miss_after": candidate_row["miss"],
-                    "rank": (
-                        0 if has_break_solution else 1,
-                        exact_misses,
-                        -exact_hits,
-                        changed_non_uncertain_zero_targets,
-                        len(changed_targets),
-                        amount,
-                        tuple(
-                            target_fields.index(item["field"])
-                            for item in changed_targets
+                options_by_key[key] = (candidate_row, changes)
+        if options_by_key:
+            row_options.append((row_name, list(options_by_key.values())))
+
+    if not row_options:
+        return []
+
+    candidates = []
+
+    def visit(index, current_judgement, corrections):
+        if index >= len(row_options):
+            score_range = calc_judgement_achievement_range(notes, current_judgement)
+            if _calc_achievement_distance(achievement, score_range) != 0:
+                return
+            break_detail = _infer_break_judgement_detail(
+                notes,
+                current_judgement,
+                achievement,
+            )
+            if not break_detail:
+                return
+            break_detail = _attach_break_loss_percentages(notes, break_detail)
+            detail_achievement = break_detail.get("calculated_achievement")
+            detail_distance = (
+                abs(float(achievement) - float(detail_achievement))
+                if isinstance(detail_achievement, (int, float))
+                else float("inf")
+            )
+            total_miss_added = sum(
+                item["amount"]
+                for item in corrections
+                if item.get("field") == "miss" and item.get("amount", 0) > 0
+            )
+            confidence_penalty = sum(
+                _calc_completion_confidence_penalty(item.get("confidence"))
+                * max(1, abs(int(item.get("amount", 0) or 0)))
+                for item in corrections
+            )
+            scanned_cell_penalty = sum(
+                _calc_completion_scanned_cell_penalty(item.get("confidence"))
+                * max(1, abs(int(item.get("amount", 0) or 0)))
+                for item in corrections
+            )
+            field_penalty = sum(
+                _calc_completion_field_penalty(item.get("field"))
+                * max(1, abs(int(item.get("amount", 0) or 0)))
+                for item in corrections
+                if item.get("amount", 0) > 0
+            )
+            high_grade_touches = sum(
+                1
+                for item in corrections
+                if item.get("field") in {"critical_perfect", "perfect"}
+            )
+            great_touches = sum(
+                max(1, abs(int(item.get("amount", 0) or 0)))
+                for item in corrections
+                if item.get("field") == "great" and item.get("amount", 0) > 0
+            )
+            changed_fields = len(corrections)
+            candidates.append({
+                "judgement": current_judgement,
+                "score_range": score_range,
+                "break_detail": break_detail,
+                "corrections": corrections,
+                "rank": (
+                    high_grade_touches,
+                    great_touches,
+                    detail_distance,
+                    scanned_cell_penalty,
+                    field_penalty,
+                    confidence_penalty,
+                    total_miss_added,
+                    changed_fields,
+                    sum(abs(item["amount"]) for item in corrections),
+                    tuple((item["row"], item["field"], item["amount"]) for item in corrections),
+                ),
+            })
+            return
+
+        row_name, options = row_options[index]
+        for candidate_row, additions in options:
+            next_judgement = dict(current_judgement)
+            next_judgement[row_name] = candidate_row
+            next_corrections = [
+                *corrections,
+                *(
+                    {
+                        "row": row_name,
+                        "field": item["field"],
+                        "ocr": max(0, int((current_judgement.get(row_name) or {}).get(item["field"], 0) or 0)),
+                        "validated": max(0, int(candidate_row.get(item["field"], 0) or 0)),
+                        "calc_completion": True,
+                        "added": item["amount"],
+                        "amount": item["amount"],
+                        "kind": item.get("kind", "add"),
+                        "confidence": (
+                            (confidence.get(row_name) or {}).get(item["field"])
                         ),
-                        sum(
-                            abs(candidate_row[name] - original[name])
-                            for name in field_names
-                        ),
-                    ),
-                })
-            if checked_count > 250_000:
-                break
+                    }
+                    for item in additions
+                ),
+            ]
+            visit(index + 1, next_judgement, next_corrections)
 
-    if not candidates:
-        return None
-
-    candidates.sort(key=lambda item: item["rank"])
-    best = candidates[0]
-    if len(candidates) > 1:
-        second = candidates[1]
-        if second["rank"] == best["rank"]:
-            return None
-
-    row_name = best["row"]
-    corrections = [
-        {
-            "row": row_name,
-            "field": "miss",
-            "ocr": best["miss_before"],
-            "validated": best["miss_after"],
-            "miss_ocr": best["miss_before"],
-            "miss_validated": best["miss_after"],
-            "same_row_miss_redistribution": True,
-        },
-    ]
-    for target in best["changed_targets"]:
-        corrections.append({
-            "row": row_name,
-            "field": target["field"],
-            "ocr": target["before"],
-            "validated": target["after"],
-            "miss_ocr": best["miss_before"],
-            "miss_validated": best["miss_after"],
-            "same_row_miss_redistribution": True,
-        })
-    return {
-        "judgement": best["judgement"],
-        "score_range": best["score_range"],
-        "correction": corrections[0],
-        "corrections": corrections,
+    base_judgement = {
+        row_name: dict(row)
+        for row_name, row in judgement.items()
+        if isinstance(row, dict)
     }
-
-
-def _has_break_calc_solution(notes, judgement, achievement):
-    """Return whether the current table can resolve BREAK detail with Calc."""
-    if not isinstance(achievement, (int, float)):
-        return True
-    try:
-        break_count = max(0, int(notes.get("break", 0) or 0))
-    except (TypeError, ValueError):
-        return False
-    if break_count <= 0:
-        return True
-    break_row = judgement.get("break")
-    if isinstance(break_row, dict):
-        return _infer_break_judgement_detail(notes, judgement, achievement) is not None
-    return _infer_missing_break_judgement(notes, judgement, achievement) is not None
+    visit(0, base_judgement, [])
+    candidates.sort(key=lambda item: item["rank"])
+    non_high_grade_candidates = [
+        candidate for candidate in candidates
+        if candidate["rank"][0] == 0
+    ]
+    if non_high_grade_candidates:
+        candidates = non_high_grade_candidates
+    return candidates[:limit]
 
 
 def _infer_missing_break_judgement(notes, judgement, achievement):
@@ -1075,9 +999,10 @@ def _infer_break_judgement_detail(notes, judgement, achievement):
                     "break_middle_great": middle_great,
                     "break_low_great": low_great,
                 }
+                precise_calculated = calc_score_precise(notes, candidate_judgements)
                 calculated = calc_score(notes, candidate_judgements)
                 distance = abs(float(achievement) - calculated)
-                if distance > 0.0006:
+                if distance > CALC_ACHIEVEMENT_TOLERANCE + CALC_ACHIEVEMENT_EPSILON:
                     continue
                 candidate = {
                     "critical_perfect": critical_perfect,
@@ -1088,6 +1013,7 @@ def _infer_break_judgement_detail(notes, judgement, achievement):
                     "great_low": low_great,
                     "good": good,
                     "miss": miss,
+                    "precise_achievement": float(precise_calculated),
                     "calculated_achievement": calculated,
                     "rank": (
                         distance,
@@ -1130,6 +1056,11 @@ def _attach_break_loss_percentages(notes, break_detail):
         if isinstance(value, (int, float)):
             loss_percentages[detail_key] = float(value)
     break_detail["loss_percentages"] = loss_percentages
+    break_detail["total_loss"] = sum(
+        max(0, int(break_detail.get(detail_key, 0) or 0))
+        * float(loss_percentages.get(detail_key, 0) or 0)
+        for detail_key in loss_percentages
+    )
     return break_detail
 
 
@@ -1432,7 +1363,7 @@ def validate_recognized_judgement(
                     if not valid:
                         continue
 
-                    predicted_miss = {}
+                    unmatched_notes = {}
                     compared_rows = 0
                     matching_rows = 0
                     total_delta = 0
@@ -1492,11 +1423,11 @@ def validate_recognized_judgement(
                                     repaired_field = row_name
                                     inferred_single_cells.extend(row_corrections)
                             if repaired_field is not None and known <= expected:
-                                calculated_miss = expected - known
-                                predicted_miss[row_name] = calculated_miss
+                                row_unmatched_notes = expected - known - observed_miss
+                                unmatched_notes[row_name] = row_unmatched_notes
                                 compared_rows += 1
-                                total_delta += abs(calculated_miss - observed_miss)
-                                if calculated_miss == observed_miss:
+                                total_delta += abs(row_unmatched_notes)
+                                if row_unmatched_notes == 0:
                                     matching_rows += 1
                                 continue
                             if (
@@ -1513,20 +1444,17 @@ def validate_recognized_judgement(
                                 continue
                             valid = False
                             break
-                        calculated_miss = expected - known
-                        predicted_miss[row_name] = calculated_miss
+                        row_unmatched_notes = expected - known - observed_miss
+                        unmatched_notes[row_name] = row_unmatched_notes
                         compared_rows += 1
-                        total_delta += abs(calculated_miss - observed_miss)
-                        if calculated_miss == observed_miss:
+                        total_delta += abs(row_unmatched_notes)
+                        if row_unmatched_notes == 0:
                             matching_rows += 1
                     if valid and compared_rows >= 3:
                         calculated_rows = {
                             row_name: dict(row)
                             for row_name, row in aligned.items()
                         }
-                        if not preserve_input:
-                            for row_name, calculated_miss in predicted_miss.items():
-                                calculated_rows[row_name]["miss"] = calculated_miss
                         notes = {
                             row_name: int(note_counts.get(row_name, 0) or 0)
                             for row_name in row_names
@@ -1567,7 +1495,7 @@ def validate_recognized_judgement(
                                 for item in inferred_single_cells
                                 if item.get("overfull_repair")
                             ),
-                            "miss": predicted_miss,
+                            "unmatched_notes": unmatched_notes,
                             "compared_rows": compared_rows,
                             "matching_rows": matching_rows,
                             "delta": total_delta,
@@ -1673,7 +1601,7 @@ def validate_recognized_judgement(
             and second["delta"] == best["delta"]
             and second["achievement_distance"] == best["achievement_distance"]
             and (
-                second["miss"] != best["miss"]
+                second["unmatched_notes"] != best["unmatched_notes"]
                 or second["row_offset"] != best["row_offset"]
                 or second["column_offset"] != best["column_offset"]
             )
@@ -1689,16 +1617,6 @@ def validate_recognized_judgement(
             }
     parsed["sub_judgement"] = judgement
     corrections = {}
-    if not preserve_input:
-        for row_name, calculated_miss in best["miss"].items():
-            row = judgement.get(row_name)
-            if not isinstance(row, dict):
-                continue
-            previous = row.get("miss", 0)
-            row["miss"] = calculated_miss
-            if previous != calculated_miss:
-                corrections[row_name] = {"ocr": previous, "validated": calculated_miss}
-
     song = best["song"]
     sheet = best["sheet"]
     achievement_distance = best["achievement_distance"]
@@ -1736,48 +1654,6 @@ def validate_recognized_judgement(
             judgement,
             achievement,
         )
-        resolution = None
-        if not preserve_input:
-            resolution = _apply_same_row_miss_redistribution(
-                best["notes"],
-                judgement,
-                achievement,
-                calc_uncertainties,
-            )
-            if not resolution:
-                resolution = _apply_calc_row_balance(
-                    best["notes"],
-                    judgement,
-                    achievement,
-                    calc_uncertainties,
-                )
-            if not resolution:
-                resolution = _apply_unique_calc_judgement_correction(
-                    best["notes"],
-                    judgement,
-                    achievement,
-                    calc_uncertainties,
-                )
-        if resolution:
-            judgement = resolution["judgement"]
-            parsed["sub_judgement"] = judgement
-            achievement_range = resolution["score_range"]
-            achievement_distance = 0.0
-            resolution_corrections = (
-                resolution.get("corrections")
-                or [resolution["correction"]]
-            )
-            calc_corrections.extend(resolution_corrections)
-            calc_uncertainties = []
-
-            row_name = resolution_corrections[0]["row"]
-            if row_name in corrections:
-                original_miss = corrections[row_name]["ocr"]
-                final_miss = resolution_corrections[0]["miss_validated"]
-                if original_miss == final_miss:
-                    del corrections[row_name]
-                else:
-                    corrections[row_name]["validated"] = final_miss
     else:
         for row_name, expected in best["notes"].items():
             if expected > 0 and not isinstance(judgement.get(row_name), dict):
@@ -1805,6 +1681,18 @@ def validate_recognized_judgement(
         break_detail["row_candidate_count"] = break_inference["candidate_count"]
     break_detail = _attach_break_loss_percentages(best["notes"], break_detail)
     loss_percentages = get_note_score(best["notes"])
+    unmatched_notes = {
+        row_name: int(value)
+        for row_name, value in (best.get("unmatched_notes") or {}).items()
+        if int(value or 0) != 0
+    }
+    calc_completion_candidates = _find_calc_completion_candidates(
+        best["notes"],
+        judgement,
+        unmatched_notes,
+        achievement,
+        parsed.get("sub_judgement_confidence") or {},
+    )
     canonical_title = song.get("title")
     parsed["title"] = canonical_title if canonical_title is not None else title
     result["validation"] = {
@@ -1823,6 +1711,7 @@ def validate_recognized_judgement(
         "row_offset": best["row_offset"],
         "column_offset": best["column_offset"],
         "miss_corrections": corrections,
+        "unmatched_notes": unmatched_notes,
         "achievement_calc": {
             "observed": achievement,
             "minimum": (
@@ -1834,14 +1723,65 @@ def validate_recognized_judgement(
                 if achievement_range else None
             ),
             "consistent": achievement_distance == 0 if achievement_distance is not None else None,
-            "complete": not any(item.get("row_missing") for item in calc_uncertainties),
+            "complete": (
+                not any(item.get("row_missing") for item in calc_uncertainties)
+                and not unmatched_notes
+            ),
         },
         "calc_corrections": calc_corrections,
+        "calc_completion_candidates": calc_completion_candidates,
+        "calc_completion_candidate_count": len(calc_completion_candidates),
         "uncertain_cells": calc_uncertainties,
         "break_detail": break_detail,
         "loss_percentages": loss_percentages,
     }
     return result
+
+
+def expand_score_recognition_calc_variants(result, max_results=5):
+    validation = (result or {}).get("validation") or {}
+    candidates = validation.get("calc_completion_candidates") or []
+    if not candidates:
+        return [result]
+
+    variants = []
+    total_count = len(candidates)
+    for index, candidate in enumerate(candidates[:max_results], start=1):
+        variant = dict(result)
+        parsed = dict((result.get("parsed") or {}))
+        variant_validation = dict(validation)
+        parsed["sub_judgement"] = {
+            row_name: dict(row)
+            for row_name, row in (candidate.get("judgement") or {}).items()
+            if isinstance(row, dict)
+        }
+        score_range = candidate.get("score_range")
+        variant_validation["unmatched_notes"] = {}
+        variant_validation["calc_completion_applied"] = True
+        variant_validation["calc_completion_candidate_index"] = index
+        variant_validation["calc_completion_candidate_count"] = total_count
+        variant_validation["calc_completion_candidates"] = []
+        variant_validation["break_detail"] = candidate.get("break_detail") or {}
+        variant_validation["calc_corrections"] = [
+            *(validation.get("calc_corrections") or []),
+            *(candidate.get("corrections") or []),
+        ]
+        achievement_calc = dict(validation.get("achievement_calc") or {})
+        achievement_calc["minimum"] = (
+            score_range.get("minimum")
+            if score_range else achievement_calc.get("minimum")
+        )
+        achievement_calc["maximum"] = (
+            score_range.get("maximum")
+            if score_range else achievement_calc.get("maximum")
+        )
+        achievement_calc["consistent"] = True
+        achievement_calc["complete"] = True
+        variant_validation["achievement_calc"] = achievement_calc
+        variant["parsed"] = parsed
+        variant["validation"] = variant_validation
+        variants.append(variant)
+    return variants
 
 
 def _parse_fix_record_command(command_text):
