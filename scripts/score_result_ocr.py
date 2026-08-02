@@ -497,21 +497,40 @@ def parse_percent_items(items: list[dict[str, Any]], fallback_text: str) -> floa
         boxed_items.append((left, top, right, bottom, str(item.get("text", ""))))
 
     if boxed_items:
-        max_height = max(item[3] - item[1] for item in boxed_items)
-        large_items = sorted(
-            (item for item in boxed_items if item[3] - item[1] >= max_height * 0.35),
-            key=lambda item: item[0],
+        groups: list[list[tuple[float, float, float, float, str]]] = []
+        for item in sorted(boxed_items, key=lambda candidate: (candidate[1] + candidate[3]) / 2):
+            height = item[3] - item[1]
+            center_y = (item[1] + item[3]) / 2
+            for group in groups:
+                group_top = min(candidate[1] for candidate in group)
+                group_bottom = max(candidate[3] for candidate in group)
+                group_height = max(candidate[3] - candidate[1] for candidate in group)
+                group_center_y = (group_top + group_bottom) / 2
+                if abs(center_y - group_center_y) <= max(height, group_height) * 0.65:
+                    group.append(item)
+                    break
+            else:
+                groups.append([item])
+
+        ranked_groups = sorted(
+            groups,
+            key=lambda group: (
+                max(item[3] - item[1] for item in group),
+                sum((item[2] - item[0]) * (item[3] - item[1]) for item in group),
+            ),
+            reverse=True,
         )
-        merged = ""
-        for *_, text in large_items:
-            compact = re.sub(r"\s+", "", text)
-            overlap = min(len(merged), len(compact))
-            while overlap and merged[-overlap:] != compact[:overlap]:
-                overlap -= 1
-            merged += compact[overlap:]
-        merged_value = parse_percent(merged)
-        if merged_value is not None:
-            return merged_value
+        for group in ranked_groups:
+            merged = ""
+            for *_, text in sorted(group, key=lambda item: item[0]):
+                compact = re.sub(r"\s+", "", text)
+                overlap = min(len(merged), len(compact))
+                while overlap and merged[-overlap:] != compact[:overlap]:
+                    overlap -= 1
+                merged += compact[overlap:]
+            merged_value = parse_percent(merged)
+            if merged_value is not None:
+                return merged_value
 
     candidates: list[tuple[float, float]] = []
     for item in items:

@@ -1190,7 +1190,7 @@ def relative_box(screen: Box, relative: tuple[float, float, float, float]) -> Bo
 
 def main_screen_model_field_boxes(screen: Box, width: int, height: int) -> tuple[Box, Box]:
     title = relative_box(screen, (0.240, 0.000, 0.985, 0.220)).clamp(width, height)
-    achievement = relative_box(screen, (0.000, 0.390, 0.760, 0.960)).clamp(width, height)
+    achievement = relative_box(screen, (0.000, 0.480, 0.760, 0.960)).clamp(width, height)
     return title, achievement
 
 
