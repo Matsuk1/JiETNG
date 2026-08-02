@@ -45,11 +45,21 @@ _PROCESS_IMAGE_DATA: Any | None = None
 SUPPORTED_SCORE_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP"}
 MAX_SCORE_IMAGE_PIXELS = 40_000_000
 
+_TITLE_OCR_CONFUSABLES = str.maketrans({
+    "极": "極",
+    "圈": "圏",
+    "園": "圏",
+})
+
+
+def _normalize_title_for_ocr(text):
+    return normalize_text(str(text or "")).translate(_TITLE_OCR_CONFUSABLES)
+
 
 def _rolling_title_parts(title):
     parts = []
     for part in re.split(r"\s+", str(title or "").strip()):
-        normalized = normalize_text(part)
+        normalized = _normalize_title_for_ocr(part)
         if len(normalized) >= 2:
             parts.append(normalized)
     return parts
@@ -191,25 +201,42 @@ def _dedupe_title_matches(ranked_matches, max_results):
     return matches, match_kinds
 
 
+def _song_identity_key(song):
+    return (
+        str(song.get("id") or ""),
+        str(song.get("type") or ""),
+        normalize_text(str(song.get("title") or "")),
+    )
+
+
 def _match_recognized_song_title(title, songs, max_results=12):
     """Match noisy OCR text while preferring complete canonical song titles."""
-    normalized_ocr = normalize_text(str(title or ""))
-    if not normalized_ocr:
+    normalized_exact_ocr = normalize_text(str(title or ""))
+    normalized_ocr = _normalize_title_for_ocr(title)
+    if not normalized_exact_ocr:
         return [], "none"
 
     exact_matches = [
         song for song in songs
-        if normalize_text(str(song.get("title") or "")) == normalized_ocr
+        if normalize_text(str(song.get("title") or "")) == normalized_exact_ocr
     ]
     if exact_matches:
         return exact_matches[:max_results], "exact"
+
+    if normalized_ocr != normalized_exact_ocr:
+        confusable_matches = [
+            song for song in songs
+            if _normalize_title_for_ocr(song.get("title")) == normalized_ocr
+        ]
+        if confusable_matches:
+            return confusable_matches[:max_results], "ocr_confusable"
 
     rolling_candidates = _rotated_title_candidates(_rolling_title_parts(title))
     if rolling_candidates:
         for _, candidate in rolling_candidates:
             rolling_exact_matches = [
                 song for song in songs
-                if normalize_text(str(song.get("title") or "")) == candidate
+                if _normalize_title_for_ocr(song.get("title")) == candidate
             ]
             if rolling_exact_matches:
                 return rolling_exact_matches[:max_results], "rolling_exact"
@@ -218,7 +245,7 @@ def _match_recognized_song_title(title, songs, max_results=12):
         matched_song_ids = set()
         for parts, candidate in rolling_candidates:
             for song in songs:
-                normalized_song_title = normalize_text(str(song.get("title") or ""))
+                normalized_song_title = _normalize_title_for_ocr(song.get("title"))
                 if _song_matches_rolling_title(normalized_song_title, parts):
                     song_key = song.get("id") or normalized_song_title
                     if song_key in matched_song_ids:
@@ -258,7 +285,7 @@ def _match_recognized_song_title(title, songs, max_results=12):
 
     directional_matches = []
     for song in songs:
-        normalized_song_title = normalize_text(str(song.get("title") or ""))
+        normalized_song_title = _normalize_title_for_ocr(song.get("title"))
         if len(normalized_song_title) < 2:
             continue
 
@@ -1123,7 +1150,7 @@ def validate_recognized_judgement(
         matching_songs, title_match_type = _match_recognized_song_title(
             title,
             songs,
-            max_results=40,
+            max_results=120,
         )
     else:
         matching_songs = [
@@ -1133,6 +1160,10 @@ def validate_recognized_judgement(
         title_match_type = "blank"
     if not matching_songs:
         return result
+    title_candidate_ranks = {
+        _song_identity_key(song): index
+        for index, song in enumerate(matching_songs)
+    }
 
     row_names = ("tap", "hold", "slide", "touch", "break")
     value_names = ("critical_perfect", "perfect", "great", "good")
@@ -1545,6 +1576,10 @@ def validate_recognized_judgement(
                             "achievement_distance": achievement_distance,
                             "raw_overfull_rows": raw_overfull_rows,
                             "raw_matching_rows": raw_matching_rows,
+                            "title_candidate_rank": title_candidate_ranks.get(
+                                _song_identity_key(song),
+                                len(title_candidate_ranks),
+                            ),
                         })
 
     if not candidates:
@@ -1552,6 +1587,7 @@ def validate_recognized_judgement(
     trusted_title_match_types = {
         "exact",
         "blank",
+        "ocr_confusable",
         "ocr_kana",
         "rolling_exact",
         "rolling_partial",
@@ -1581,6 +1617,7 @@ def validate_recognized_judgement(
             -item["matching_rows"],
             item["compared_rows"] - item["matching_rows"],
             item["delta"],
+            item["title_candidate_rank"],
             0 if (
                 title_match_type == "exact"
                 and item["row_offset"] == 0

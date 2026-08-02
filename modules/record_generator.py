@@ -497,6 +497,10 @@ def _has_judgement_count(value):
         return False
 
 
+def _has_weighted_score_loss(count, loss):
+    return _has_judgement_count(count) and _has_score_loss(loss)
+
+
 def _draw_score_section_title(draw, x, y, title, accent, font):
     draw.rounded_rectangle((x, y + 5, x + 10, y + 42), radius=5, fill=accent)
     draw.text((x + 20, y), title, font=font, fill=(20, 24, 32))
@@ -845,7 +849,7 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
                     fg, bg = color_map.get(label, ((154, 91, 18), (255, 240, 199)))
                 cell_right = min(cell_x + cell_w - 8, detail_right - 8)
                 _draw_score_card(draw, (cell_x, y + 10, cell_right, y + 72), radius=10, fill=bg)
-                loss_fill = (192, 57, 43) if _has_score_loss(loss) else (105, 110, 120)
+                loss_fill = (192, 57, 43) if _has_weighted_score_loss(count, loss) else (105, 110, 120)
                 draw.text(((cell_x + cell_right) / 2, y + 27), _format_score_loss(loss), font=font_small_detail, fill=loss_fill, anchor="mm")
                 draw.text(((cell_x + cell_right) / 2, y + 54), str(count), font=font_table_bold, fill=fg, anchor="mm")
                 cell_x += cell_w
