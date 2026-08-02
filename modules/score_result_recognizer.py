@@ -10,6 +10,7 @@ import math
 import logging
 import re
 import unicodedata
+import difflib
 import sys
 import threading
 import time
@@ -87,6 +88,109 @@ def _song_matches_rolling_title(normalized_song_title, rotated_parts):
     return True
 
 
+def _title_edit_similarity(left, right):
+    if not left or not right:
+        return 0.0
+    return difflib.SequenceMatcher(None, left, right).ratio()
+
+
+def _edit_distance_at_most_one(left, right):
+    if abs(len(left) - len(right)) > 1:
+        return False
+    if left == right:
+        return True
+    if len(left) == len(right):
+        return sum(a != b for a, b in zip(left, right)) <= 1
+
+    shorter, longer = (left, right) if len(left) < len(right) else (right, left)
+    index_short = 0
+    skipped = 0
+    for character in longer:
+        if index_short < len(shorter) and shorter[index_short] == character:
+            index_short += 1
+            continue
+        skipped += 1
+        if skipped > 1:
+            return False
+    return True
+
+
+def _title_edge_trim_similarity(normalized_ocr, normalized_song_title):
+    """Score cases where OCR adds or drops a leading/trailing character."""
+    candidates = [normalized_ocr]
+    if len(normalized_ocr) >= 5:
+        candidates.extend([
+            normalized_ocr[1:],
+            normalized_ocr[:-1],
+        ])
+    if len(normalized_ocr) >= 6:
+        candidates.extend([
+            normalized_ocr[1:-1],
+            normalized_ocr[2:],
+            normalized_ocr[:-2],
+        ])
+    return max(
+        _title_edit_similarity(candidate, normalized_song_title)
+        for candidate in candidates
+        if candidate
+    )
+
+
+def _cyclic_title_similarity(normalized_ocr, normalized_song_title):
+    """Score scrolling-title crops such as tail+head without whitespace."""
+    if len(normalized_ocr) < 4 or len(normalized_song_title) < 4:
+        return 0.0
+
+    doubled_title = normalized_song_title + normalized_song_title
+    if normalized_ocr in doubled_title:
+        coverage = len(normalized_ocr) / max(1, len(normalized_song_title))
+        return min(0.97, 0.72 + coverage * 0.25)
+
+    best = 0.0
+    # Compare OCR against the visible prefix of every circular rotation. This
+    # catches one-character OCR noise inside a wrapped title crop.
+    for index in range(len(normalized_song_title)):
+        rotated = normalized_song_title[index:] + normalized_song_title[:index]
+        window = rotated[:len(normalized_ocr)]
+        if len(window) >= 4:
+            best = max(best, _title_edit_similarity(normalized_ocr, window))
+        if len(normalized_ocr) > len(rotated):
+            best = max(best, _title_edit_similarity(normalized_ocr, rotated))
+    return best
+
+
+def _dedupe_title_matches(ranked_matches, max_results):
+    seen = set()
+    matches = []
+    match_kinds = []
+    for rank in sorted(
+        ranked_matches,
+        key=lambda item: (
+            item[0],
+            item[1],
+            item[2],
+            str(item[-1]),
+            str(item[-2].get("id") or ""),
+            str(item[-2].get("type") or ""),
+        ),
+    ):
+        song = rank[-2]
+        match_kind = rank[-1]
+        song_key = (
+            str(song.get("id") or ""),
+            str(song.get("type") or ""),
+            normalize_text(str(song.get("title") or "")),
+        )
+        if song_key in seen:
+            continue
+        seen.add(song_key)
+        matches.append(song)
+        match_kinds.append(match_kind)
+        if len(matches) >= max_results:
+            break
+    return matches, match_kinds
+
+
 def _match_recognized_song_title(title, songs, max_results=12):
     """Match noisy OCR text while preferring complete canonical song titles."""
     normalized_ocr = normalize_text(str(title or ""))
@@ -152,21 +256,84 @@ def _match_recognized_song_title(title, songs, max_results=12):
         if kana_matches and len(canonical_titles) == 1:
             return kana_matches[:max_results], "ocr_kana"
 
-    embedded_matches = []
+    directional_matches = []
     for song in songs:
         normalized_song_title = normalize_text(str(song.get("title") or ""))
-        # Very short titles produce too many accidental matches in OCR noise.
-        if len(normalized_song_title) >= 2 and normalized_song_title in normalized_ocr:
-            embedded_matches.append((len(normalized_song_title), song))
-    if embedded_matches:
-        longest_length = max(length for length, _ in embedded_matches)
-        longest_matches = [
-            song for length, song in embedded_matches
-            if length == longest_length
-        ]
-        extra_length = len(normalized_ocr) - longest_length
-        match_type = "ocr_embedded" if extra_length <= 2 else "embedded"
-        return longest_matches[:max_results], match_type
+        if len(normalized_song_title) < 2:
+            continue
+
+        score = None
+        match_kind = None
+        # OCR may read only the visible prefix of a scrolling long title:
+        # "AAABBBCCC" can appear as "CCC AAA" or be cut as "AAABBB".
+        if len(normalized_ocr) >= 4 and normalized_song_title.startswith(normalized_ocr):
+            score = len(normalized_ocr) / max(1, len(normalized_song_title))
+            match_kind = "prefix"
+        elif len(normalized_song_title) >= 4 and normalized_song_title in normalized_ocr:
+            score = len(normalized_song_title) / max(1, len(normalized_ocr))
+            match_kind = "embedded"
+        elif (
+            min(len(normalized_ocr), len(normalized_song_title)) >= 4
+            and _edit_distance_at_most_one(normalized_ocr, normalized_song_title)
+        ):
+            score = 0.93
+            match_kind = "edit_fuzzy"
+        elif len(normalized_ocr) >= 6:
+            similarity = difflib.SequenceMatcher(
+                None,
+                normalized_ocr,
+                normalized_song_title,
+            ).ratio()
+            if similarity >= 0.76:
+                score = similarity
+                match_kind = "fuzzy"
+
+        cyclic_score = _cyclic_title_similarity(normalized_ocr, normalized_song_title)
+        if cyclic_score >= 0.72 and cyclic_score > (score or 0):
+            score = cyclic_score
+            match_kind = "rolling_fuzzy"
+
+        trim_score = _title_edge_trim_similarity(normalized_ocr, normalized_song_title)
+        if trim_score >= 0.88 and trim_score > (score or 0):
+            score = trim_score
+            match_kind = "edge_fuzzy"
+
+        if score is not None:
+            directional_matches.append((
+                (
+                    0 if match_kind == "edge_fuzzy"
+                    else 1 if match_kind == "rolling_fuzzy"
+                    else 2 if match_kind == "edit_fuzzy"
+                    else 3 if match_kind == "prefix"
+                    else 4 if match_kind == "embedded"
+                    else 5
+                ),
+                -score,
+                -len(normalized_song_title),
+                song,
+                match_kind,
+            ))
+    if directional_matches:
+        matches, match_kinds = _dedupe_title_matches(directional_matches, max_results)
+        match_types = set(match_kinds)
+        if match_types == {"embedded"}:
+            longest_length = max(
+                len(normalize_text(str(song.get("title") or "")))
+                for song in matches
+            )
+            extra_length = len(normalized_ocr) - longest_length
+            match_type = "ocr_embedded" if extra_length <= 2 else "embedded"
+        elif "edge_fuzzy" in match_types:
+            match_type = "edge_fuzzy"
+        elif "rolling_fuzzy" in match_types:
+            match_type = "rolling_fuzzy"
+        elif "edit_fuzzy" in match_types:
+            match_type = "edit_fuzzy"
+        elif "prefix" in match_types:
+            match_type = "prefix"
+        else:
+            match_type = "fuzzy"
+        return matches, match_type
 
     return (
         find_matching_songs(title, songs, max_results=max_results, threshold=0.82),
@@ -442,6 +609,14 @@ def _apply_same_row_miss_redistribution(
         for item in uncertainties
         if not item.get("row_missing")
     }
+    exact_uncertainties = {
+        (item.get("row"), item.get("field")): item
+        for item in uncertainties
+        if not item.get("row_missing")
+        and item.get("candidate_count") == 1
+        and item.get("candidate_min") == item.get("candidate_max")
+        and item.get("miss_min") == item.get("miss_max")
+    }
     target_fields = ("great", "good", "perfect", "critical_perfect")
     field_names = (
         "critical_perfect",
@@ -528,12 +703,29 @@ def _apply_same_row_miss_redistribution(
                     continue
                 if distance != 0:
                     continue
-                if not _has_break_calc_solution(
+                has_break_solution = _has_break_calc_solution(
                     notes,
                     candidate_judgement,
                     achievement,
-                ):
-                    continue
+                )
+                row_exact_uncertainties = {
+                    field: item
+                    for (uncertain_row, field), item in exact_uncertainties.items()
+                    if uncertain_row == row_name
+                }
+                exact_hits = sum(
+                    1
+                    for field, item in row_exact_uncertainties.items()
+                    if candidate_row.get(field) == item.get("candidate_min")
+                    and candidate_row.get("miss") == item.get("miss_min")
+                )
+                exact_misses = len(row_exact_uncertainties) - exact_hits
+                changed_non_uncertain_zero_targets = sum(
+                    1
+                    for item in changed_targets
+                    if original[item["field"]] == 0
+                    and (row_name, item["field"]) not in exact_uncertainties
+                )
                 candidates.append({
                     "judgement": candidate_judgement,
                     "score_range": score_range,
@@ -543,8 +735,12 @@ def _apply_same_row_miss_redistribution(
                     "miss_before": miss,
                     "miss_after": candidate_row["miss"],
                     "rank": (
-                        amount,
+                        0 if has_break_solution else 1,
+                        exact_misses,
+                        -exact_hits,
+                        changed_non_uncertain_zero_targets,
                         len(changed_targets),
+                        amount,
                         tuple(
                             target_fields.index(item["field"])
                             for item in changed_targets
@@ -924,7 +1120,11 @@ def validate_recognized_judgement(
 
     songs, _ = read_dxdata(ver)
     if title:
-        matching_songs, title_match_type = _match_recognized_song_title(title, songs)
+        matching_songs, title_match_type = _match_recognized_song_title(
+            title,
+            songs,
+            max_results=40,
+        )
     else:
         matching_songs = [
             song for song in songs
@@ -1349,8 +1549,20 @@ def validate_recognized_judgement(
 
     if not candidates:
         return result
+    trusted_title_match_types = {
+        "exact",
+        "blank",
+        "ocr_kana",
+        "rolling_exact",
+        "rolling_partial",
+        "rolling_fuzzy",
+        "edge_fuzzy",
+        "edit_fuzzy",
+        "ocr_embedded",
+        "prefix",
+    }
     prefer_achievement_alignment = (
-        title_match_type == "exact"
+        title_match_type in trusted_title_match_types
         and achievement is not None
     )
 
@@ -1396,14 +1608,14 @@ def validate_recognized_judgement(
     }
     minimum_matching_rows = max(2, best["compared_rows"] - 2)
     exact_unique_unshifted_match = (
-        title_match_type == "exact"
+        title_match_type in trusted_title_match_types
         and best["row_offset"] == 0
         and best["column_offset"] == 0
         and best["compared_rows"] >= 4
         and len(unshifted_chart_keys) == 1
     )
     exact_unshifted_match = (
-        title_match_type in {"exact", "blank", "ocr_embedded"}
+        title_match_type in trusted_title_match_types
         and best["row_offset"] == 0
         and best["column_offset"] == 0
         and best["compared_rows"] >= 4

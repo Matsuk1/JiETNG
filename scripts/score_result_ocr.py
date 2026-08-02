@@ -1797,7 +1797,9 @@ def recognize_judgement_by_columns(
             if row_centers and row_centers[0] < height * 0.20:
                 gaps = [b - a for a, b in zip(row_centers, row_centers[1:])]
                 row_gap = sum(gaps) / len(gaps) if gaps else height / 7
-                row_centers = row_centers[1:] + [row_centers[-1] + row_gap]
+                shifted_centers = row_centers[1:] + [row_centers[-1] + row_gap]
+                if shifted_centers[-1] <= height * 0.98:
+                    row_centers = shifted_centers
         else:
             row_centers = [
                 height * ratio

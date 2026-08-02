@@ -845,7 +845,7 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
                     fg, bg = color_map.get(label, ((154, 91, 18), (255, 240, 199)))
                 cell_right = min(cell_x + cell_w - 8, detail_right - 8)
                 _draw_score_card(draw, (cell_x, y + 10, cell_right, y + 72), radius=10, fill=bg)
-                loss_fill = (192, 57, 43) if _has_judgement_count(count) else (105, 110, 120)
+                loss_fill = (192, 57, 43) if _has_score_loss(loss) else (105, 110, 120)
                 draw.text(((cell_x + cell_right) / 2, y + 27), _format_score_loss(loss), font=font_small_detail, fill=loss_fill, anchor="mm")
                 draw.text(((cell_x + cell_right) / 2, y + 54), str(count), font=font_table_bold, fill=fg, anchor="mm")
                 cell_x += cell_w

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import shutil
 from dataclasses import dataclass
@@ -18,7 +19,7 @@ from typing import Callable, Iterable
 
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageEnhance, ImageOps
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
 
 _CROPPER_MODEL = None
@@ -259,6 +260,8 @@ def _warp_quad(
     points: np.ndarray,
     *,
     expand_table_edges: bool = True,
+    edge_expansion: dict[str, float] | None = None,
+    y_adjust: dict[str, float] | None = None,
 ) -> Image.Image | None:
     try:
         rect = _order_quad_points(points)
@@ -266,15 +269,35 @@ def _warp_quad(
         return None
 
     if expand_table_edges:
+        edge_expansion = edge_expansion or {}
+        top_expand = edge_expansion.get("top", 0.015)
+        bottom_expand = edge_expansion.get("bottom", 0.060)
+        left_expand = edge_expansion.get("left", 0.006)
+        right_expand = edge_expansion.get("right", 0.008)
+        left_top_expand = edge_expansion.get("left_top", left_expand)
+        left_bottom_expand = edge_expansion.get("left_bottom", left_expand)
+        right_top_expand = edge_expansion.get("right_top", right_expand)
+        right_bottom_expand = edge_expansion.get("right_bottom", right_expand)
         top_left, top_right, bottom_right, bottom_left = rect
         left_vertical = bottom_left - top_left
         right_vertical = bottom_right - top_right
         top_horizontal = top_right - top_left
         bottom_horizontal = bottom_right - bottom_left
-        rect[0] = rect[0] - left_vertical * 0.015 - top_horizontal * 0.006
-        rect[1] = rect[1] - right_vertical * 0.015 + top_horizontal * 0.008
-        rect[2] = rect[2] + right_vertical * 0.060 + bottom_horizontal * 0.008
-        rect[3] = rect[3] + left_vertical * 0.060 - bottom_horizontal * 0.006
+        rect[0] = rect[0] - left_vertical * top_expand - top_horizontal * left_top_expand
+        rect[1] = rect[1] - right_vertical * top_expand + top_horizontal * right_top_expand
+        rect[2] = rect[2] + right_vertical * bottom_expand + bottom_horizontal * right_bottom_expand
+        rect[3] = rect[3] + left_vertical * bottom_expand - bottom_horizontal * left_bottom_expand
+
+    if y_adjust:
+        top_left, top_right, bottom_right, bottom_left = rect
+        height_left = np.linalg.norm(bottom_left - top_left)
+        height_right = np.linalg.norm(bottom_right - top_right)
+        rect[0][1] += height_left * y_adjust.get("left_top", 0.0)
+        rect[3][1] += height_left * y_adjust.get("left_bottom", 0.0)
+        rect[1][1] += height_right * y_adjust.get("right_top", 0.0)
+        rect[2][1] += height_right * y_adjust.get("right_bottom", 0.0)
+
+    if expand_table_edges or y_adjust:
         rect[:, 0] = np.clip(rect[:, 0], 0, image.width - 1)
         rect[:, 1] = np.clip(rect[:, 1], 0, image.height - 1)
 
@@ -309,6 +332,178 @@ def _warp_quad(
     return Image.fromarray(cv2.cvtColor(warped, cv2.COLOR_BGR2RGB))
 
 
+def _table_crop_edge_risks(image: Image.Image) -> dict[str, bool]:
+    rgb = image.convert("RGB")
+    width, height = rgb.size
+    if width <= 0 or height <= 0:
+        return {}
+    pixels = rgb.load()
+    y_start = int(height * 0.22)
+    y_end = int(height * 0.94)
+    left_limit = max(2, int(width * 0.018))
+    white_near_left = 0
+    blue_on_left_edge = 0
+    samples = 0
+    for y in range(y_start, y_end, 2):
+        samples += 1
+        for x in range(0, left_limit):
+            r, g, b = pixels[x, y]
+            brightness = (r + g + b) / 3
+            if brightness >= 178 and max(r, g, b) - min(r, g, b) <= 48:
+                white_near_left += 1
+                break
+        r, g, b = pixels[0, y]
+        if b >= 70 and r <= 95 and g <= 135 and b >= r + 18:
+            blue_on_left_edge += 1
+
+    bottom_band_top = int(height * 0.88)
+    blue_near_bottom = 0
+    bottom_samples = 0
+    for y in range(bottom_band_top, height):
+        for x in range(int(width * 0.04), int(width * 0.96), 3):
+            bottom_samples += 1
+            if _is_table_blue_pixel(*pixels[x, y]):
+                blue_near_bottom += 1
+
+    right_band_left = int(width * 0.94)
+    dark_near_right = 0
+    right_samples = 0
+    for y in range(y_start, y_end, 3):
+        for x in range(right_band_left, width):
+            right_samples += 1
+            r, g, b = pixels[x, y]
+            if (r + g + b) / 3 <= 120:
+                dark_near_right += 1
+
+    return {
+        "left": (
+            samples > 0
+            and (
+                blue_on_left_edge / samples >= 0.35
+                or white_near_left >= max(2, samples * 0.030)
+            )
+        ),
+        "bottom": (
+            bottom_samples > 0
+            and blue_near_bottom / bottom_samples >= 0.055
+        ),
+        "right": (
+            right_samples > 0
+            and dark_near_right / right_samples >= 0.10
+        ),
+    }
+
+
+def _judgement_table_blue_grid_slopes(image: Image.Image) -> tuple[float, float]:
+    rgb = np.asarray(image.convert("RGB"))
+    red = rgb[:, :, 0].astype(np.int16)
+    green = rgb[:, :, 1].astype(np.int16)
+    blue = rgb[:, :, 2].astype(np.int16)
+    brightness = (red + green + blue) / 3
+    mask = (
+        (blue >= 80)
+        & (green >= 35)
+        & (blue >= red + 14)
+        & (brightness >= 35)
+        & (brightness <= 225)
+    ).astype(np.uint8) * 255
+    horizontal_mask = cv2.morphologyEx(
+        mask,
+        cv2.MORPH_CLOSE,
+        cv2.getStructuringElement(cv2.MORPH_RECT, (5, 1)),
+    )
+    vertical_mask = cv2.morphologyEx(
+        mask,
+        cv2.MORPH_CLOSE,
+        cv2.getStructuringElement(cv2.MORPH_RECT, (1, 5)),
+    )
+    min_line_length = max(40, int(image.width * 0.35))
+    horizontal_lines = cv2.HoughLinesP(
+        horizontal_mask,
+        rho=1,
+        theta=np.pi / 180,
+        threshold=max(24, int(image.width * 0.08)),
+        minLineLength=min_line_length,
+        maxLineGap=max(6, int(image.width * 0.025)),
+    )
+    vertical_lines = cv2.HoughLinesP(
+        vertical_mask,
+        rho=1,
+        theta=np.pi / 180,
+        threshold=max(18, int(image.height * 0.12)),
+        minLineLength=max(24, int(image.height * 0.38)),
+        maxLineGap=max(4, int(image.height * 0.035)),
+    )
+
+    horizontal_slopes = []
+    for line in horizontal_lines.reshape(-1, 4) if horizontal_lines is not None else []:
+        x1, y1, x2, y2 = (int(value) for value in line)
+        dx = x2 - x1
+        dy = y2 - y1
+        if dx == 0:
+            continue
+        length = math.hypot(dx, dy)
+        if length < min_line_length:
+            continue
+        angle = math.degrees(math.atan2(dy, dx))
+        if -12.0 <= angle <= 12.0:
+            horizontal_slopes.append(dy / dx)
+
+    vertical_slopes = []
+    for line in vertical_lines.reshape(-1, 4) if vertical_lines is not None else []:
+        x1, y1, x2, y2 = (int(value) for value in line)
+        dx = x2 - x1
+        dy = y2 - y1
+        if dy == 0:
+            continue
+        length = math.hypot(dx, dy)
+        if length < max(24, int(image.height * 0.38)):
+            continue
+        angle = math.degrees(math.atan2(dy, dx))
+        if 78.0 <= abs(angle) <= 102.0:
+            vertical_slopes.append(dx / dy)
+
+    if len(horizontal_slopes) < 3 and len(vertical_slopes) < 3:
+        return 0.0, 0.0
+    horizontal_slope = float(np.median(horizontal_slopes)) if len(horizontal_slopes) >= 3 else 0.0
+    vertical_slope = float(np.median(vertical_slopes)) if len(vertical_slopes) >= 3 else 0.0
+    if abs(horizontal_slope) < 0.005 and abs(vertical_slope) < 0.005:
+        return 0.0, 0.0
+    if abs(horizontal_slope) > 0.16 or abs(vertical_slope) > 0.16:
+        return 0.0, 0.0
+    return horizontal_slope, vertical_slope
+
+
+def _warp_judgement_table_quad(image: Image.Image, points: np.ndarray) -> Image.Image | None:
+    warped = _warp_quad(image, points)
+    if warped is None:
+        return None
+
+    risks = _table_crop_edge_risks(warped)
+    horizontal_slope, vertical_slope = _judgement_table_blue_grid_slopes(warped)
+
+    expansion = {
+        "top": 0.015,
+        "bottom": 0.155 if risks.get("bottom") else 0.060,
+        "left_top": 0.055 if risks.get("left") else 0.006,
+        "left_bottom": 0.078 if risks.get("left") else 0.006,
+        "right": 0.026 if risks.get("right") else 0.008,
+    }
+    y_adjust = {
+        "left_top": 0.0,
+        "left_bottom": 0.0,
+        "right_top": -horizontal_slope * 0.42,
+        "right_bottom": -horizontal_slope * 0.42,
+    }
+    adjusted = _warp_quad(
+        image,
+        points,
+        edge_expansion=expansion,
+        y_adjust=y_adjust,
+    )
+    return adjusted or warped
+
+
 def _main_screen_pose_image(image: Image.Image) -> tuple[Box | None, Image.Image | None]:
     model = _load_main_screen_model()
     if model is None:
@@ -340,7 +535,7 @@ def _main_screen_pose_image(image: Image.Image) -> tuple[Box | None, Image.Image
         if aspect < 1.8 or area_ratio < 0.025:
             continue
 
-        warped = _warp_quad(image, points, expand_table_edges=False)
+        warped = _warp_main_screen_quad(image, points)
         if warped is None:
             continue
         warped_aspect = warped.width / max(1, warped.height)
@@ -364,6 +559,21 @@ def detect_main_screen_with_cropper_model(
     image: Image.Image,
 ) -> tuple[Box | None, Image.Image | None]:
     return _main_screen_pose_image(image)
+
+
+def _warp_main_screen_quad(image: Image.Image, points: np.ndarray) -> Image.Image | None:
+    return _warp_quad(
+        image,
+        points,
+        expand_table_edges=True,
+        edge_expansion={
+            "top": 0.002,
+            "bottom": 0.045,
+            "left_top": 0.026,
+            "left_bottom": 0.040,
+            "right": 0.006,
+        },
+    )
 
 
 def _cropper_pose_table(image: Image.Image) -> tuple[Box | None, Image.Image | None]:
@@ -396,7 +606,7 @@ def _cropper_pose_table(image: Image.Image) -> tuple[Box | None, Image.Image | N
         if center_y_ratio > 0.42 or aspect < 1.45:
             continue
 
-        warped = _warp_quad(image, points)
+        warped = _warp_judgement_table_quad(image, points)
         if warped is None:
             continue
 
@@ -984,8 +1194,25 @@ def main_screen_model_field_boxes(screen: Box, width: int, height: int) -> tuple
     return title, achievement
 
 
-def sharpen_for_ocr(image: Image.Image) -> Image.Image:
+def enhance_judgement_table_for_ocr(image: Image.Image) -> Image.Image:
+    rgb = np.asarray(image.convert("RGB"))
+    lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB)
+    lightness, channel_a, channel_b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=1.08, tileGridSize=(8, 4))
+    lightness = clahe.apply(lightness)
+    clahe_rgb = cv2.cvtColor(cv2.merge((lightness, channel_a, channel_b)), cv2.COLOR_LAB2RGB)
+    blended = cv2.addWeighted(rgb, 0.86, clahe_rgb, 0.14, 0)
+
+    image = Image.fromarray(blended, "RGB")
+    image = ImageEnhance.Contrast(image).enhance(1.30)
+    image = ImageEnhance.Sharpness(image).enhance(1.42)
+    return image.filter(ImageFilter.UnsharpMask(radius=0.8, percent=55, threshold=4))
+
+
+def sharpen_for_ocr(image: Image.Image, field_name: str | None = None) -> Image.Image:
     image = ImageOps.exif_transpose(image).convert("RGB")
+    if field_name == "sub_judgement_table":
+        return enhance_judgement_table_for_ocr(image)
     image = ImageEnhance.Contrast(image).enhance(1.35)
     image = ImageEnhance.Sharpness(image).enhance(1.45)
     return image
@@ -1121,7 +1348,7 @@ def _dxnet_fields_in_memory(image: Image.Image) -> dict:
     fields = {}
     for name, field_box in field_boxes.items():
         fields[name] = {
-            "image": sharpen_for_ocr(image.crop(field_box.to_tuple())),
+            "image": sharpen_for_ocr(image.crop(field_box.to_tuple()), name),
             "left": field_box.left,
             "top": field_box.top,
             "right": field_box.right,
@@ -1227,7 +1454,7 @@ def crop_result_fields_in_memory(source_image: Image.Image) -> dict:
         if name == "sub_judgement_table" and sub_judgement_image is not None:
             crop_image = sub_judgement_image
         fields[name] = {
-            "image": sharpen_for_ocr(crop_image),
+            "image": sharpen_for_ocr(crop_image, name),
             "left": field_box.left,
             "top": field_box.top,
             "right": field_box.right,
@@ -1403,7 +1630,7 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
     draw.rectangle(refined_sub_screen.to_tuple(), outline=(0, 180, 255), width=max(4, image.width // 300))
 
     if main_title is not None:
-        crop = sharpen_for_ocr(main_source.crop(main_title.to_tuple()))
+        crop = sharpen_for_ocr(main_source.crop(main_title.to_tuple()), "main_title")
         crop_path = sample_dir / "main_title.png"
         crop.save(crop_path)
         if main_screen_image is None:
@@ -1423,7 +1650,7 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
             main_source.width,
             main_source.height,
         )
-        crop = sharpen_for_ocr(main_source.crop(fallback.to_tuple()))
+        crop = sharpen_for_ocr(main_source.crop(fallback.to_tuple()), "main_title")
         crop_path = sample_dir / "main_title.png"
         crop.save(crop_path)
         if main_screen_image is None:
@@ -1440,7 +1667,7 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
         }
 
     if main_achievement is not None:
-        crop = sharpen_for_ocr(main_source.crop(main_achievement.to_tuple()))
+        crop = sharpen_for_ocr(main_source.crop(main_achievement.to_tuple()), "main_achievement")
         crop_path = sample_dir / "main_achievement.png"
         crop.save(crop_path)
         if main_screen_image is None:
@@ -1464,7 +1691,7 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
             main_source.width,
             main_source.height,
         )
-        crop = sharpen_for_ocr(main_source.crop(fallback.to_tuple()))
+        crop = sharpen_for_ocr(main_source.crop(fallback.to_tuple()), "main_achievement")
         crop_path = sample_dir / "main_achievement.png"
         crop.save(crop_path)
         if main_screen_image is None:
@@ -1482,7 +1709,7 @@ def crop_result_fields(image_path: str | os.PathLike[str], output_dir: str | os.
 
     if sub_judgement_table is not None:
         crop_source = sub_judgement_image or image.crop(sub_judgement_table.to_tuple())
-        crop = sharpen_for_ocr(crop_source)
+        crop = sharpen_for_ocr(crop_source, "sub_judgement_table")
         crop_path = sample_dir / "sub_judgement_table.png"
         crop.save(crop_path)
         draw.rectangle(sub_judgement_table.to_tuple(), outline=(255, 80, 0), width=max(2, image.width // 500))
