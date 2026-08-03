@@ -11,6 +11,7 @@ import logging
 import re
 import unicodedata
 import difflib
+import os
 import sys
 import threading
 import time
@@ -51,6 +52,15 @@ _TITLE_OCR_CONFUSABLES = str.maketrans({
     "圈": "圏",
     "園": "圏",
 })
+
+
+def _process_rss_mb() -> float | None:
+    try:
+        import psutil
+
+        return round(psutil.Process(os.getpid()).memory_info().rss / (1024**2), 1)
+    except Exception:
+        return None
 
 
 def _normalize_title_for_ocr(text):
@@ -528,6 +538,60 @@ def _calc_completion_field_penalty(field_name):
     }.get(field_name, 100)
 
 
+MAX_CALC_COMPLETION_ROW_GAP = 16
+MAX_CALC_COMPLETION_ROW_OPTIONS = 48
+MAX_CALC_COMPLETION_SEARCH_VISITS = 12000
+
+
+def _calc_completion_changes_rank(changes, confidence):
+    def change_confidence(item):
+        return (confidence.get(item.get("row")) or {}).get(item.get("field"))
+
+    high_grade_touches = sum(
+        1
+        for item in changes
+        if item.get("field") in {"critical_perfect", "perfect"}
+        and item.get("amount", 0) > 0
+    )
+    great_touches = sum(
+        max(1, abs(int(item.get("amount", 0) or 0)))
+        for item in changes
+        if item.get("field") == "great" and item.get("amount", 0) > 0
+    )
+    scanned_cell_penalty = sum(
+        _calc_completion_scanned_cell_penalty(change_confidence(item))
+        * max(1, abs(int(item.get("amount", 0) or 0)))
+        for item in changes
+    )
+    field_penalty = sum(
+        _calc_completion_field_penalty(item.get("field"))
+        * max(1, abs(int(item.get("amount", 0) or 0)))
+        for item in changes
+        if item.get("amount", 0) > 0
+    )
+    confidence_penalty = sum(
+        _calc_completion_confidence_penalty(change_confidence(item))
+        * max(1, abs(int(item.get("amount", 0) or 0)))
+        for item in changes
+    )
+    total_miss_added = sum(
+        item.get("amount", 0)
+        for item in changes
+        if item.get("field") == "miss" and item.get("amount", 0) > 0
+    )
+    return (
+        high_grade_touches,
+        great_touches,
+        scanned_cell_penalty,
+        field_penalty,
+        confidence_penalty,
+        total_miss_added,
+        len(changes),
+        sum(abs(int(item.get("amount", 0) or 0)) for item in changes),
+        tuple((item.get("row"), item.get("field"), item.get("amount")) for item in changes),
+    )
+
+
 def _find_calc_completion_candidates(
     notes,
     judgement,
@@ -563,16 +627,21 @@ def _find_calc_completion_candidates(
             source_miss = 0
         if gap <= 0 and source_miss <= 0:
             continue
+        if gap > MAX_CALC_COMPLETION_ROW_GAP:
+            logger.info(
+                "Skip calc completion for %s: unmatched note gap too large (%s)",
+                row_name,
+                gap,
+            )
+            continue
 
         options_by_key = {}
-        gap_distributions = (
-            list(_iter_note_distributions(gap, field_names))
-            if gap > 0 else [{}]
-        )
+        gap_distributions = _iter_note_distributions(gap, field_names) if gap > 0 else ({},)
         redistribution_targets = ("good", "great", "perfect", "critical_perfect")
         redistribution_options = [(0, None)]
         if row_name != "break" and source_miss > 0:
-            for amount in range(1, source_miss + 1):
+            max_move_miss = min(source_miss, MAX_CALC_COMPLETION_ROW_GAP)
+            for amount in range(1, max_move_miss + 1):
                 for target_field in redistribution_targets:
                     redistribution_options.append((amount, target_field))
 
@@ -641,16 +710,49 @@ def _find_calc_completion_candidates(
                     for field_name in field_names
                 )
                 options_by_key[key] = (candidate_row, changes)
+            if len(options_by_key) > MAX_CALC_COMPLETION_ROW_OPTIONS * 8:
+                ranked_options = sorted(
+                    options_by_key.values(),
+                    key=lambda option: _calc_completion_changes_rank(
+                        [
+                            {"row": row_name, **item}
+                            for item in option[1]
+                        ],
+                        confidence,
+                    ),
+                )
+                options_by_key = {
+                    tuple(
+                        int(option[0].get(field_name, 0) or 0)
+                        for field_name in field_names
+                    ): option
+                    for option in ranked_options[:MAX_CALC_COMPLETION_ROW_OPTIONS]
+                }
         if options_by_key:
-            row_options.append((row_name, list(options_by_key.values())))
+            ranked_options = sorted(
+                options_by_key.values(),
+                key=lambda option: _calc_completion_changes_rank(
+                    [
+                        {"row": row_name, **item}
+                        for item in option[1]
+                    ],
+                    confidence,
+                ),
+            )
+            row_options.append((row_name, ranked_options[:MAX_CALC_COMPLETION_ROW_OPTIONS]))
 
     if not row_options:
         return []
 
     candidates = []
+    search_visits = 0
 
     def visit(index, current_judgement, corrections):
+        nonlocal search_visits
+        if search_visits >= MAX_CALC_COMPLETION_SEARCH_VISITS:
+            return
         if index >= len(row_options):
+            search_visits += 1
             score_range = calc_judgement_achievement_range(notes, current_judgement)
             if _calc_achievement_distance(achievement, score_range) != 0:
                 return
@@ -1275,6 +1377,29 @@ def validate_recognized_judgement(
         )
     )
     achievement = parsed.get("achievement")
+    trusted_title_match_types = {
+        "exact",
+        "blank",
+        "ocr_confusable",
+        "ocr_kana",
+        "rolling_exact",
+        "rolling_partial",
+        "rolling_fuzzy",
+        "edge_fuzzy",
+        "edit_fuzzy",
+        "ocr_embedded",
+        "prefix",
+    }
+    overfull_repair_title_match_types = {
+        "exact",
+        "ocr_confusable",
+        "ocr_kana",
+        "rolling_exact",
+        "rolling_fuzzy",
+        "edge_fuzzy",
+        "edit_fuzzy",
+        "ocr_embedded",
+    }
     candidates = []
     for song in matching_songs:
         for sheet in song.get("sheets", []):
@@ -1403,7 +1528,7 @@ def validate_recognized_judgement(
                             repaired_field = None
                             if (
                                 not preserve_input
-                                and title_match_type == "exact"
+                                and title_match_type in overfull_repair_title_match_types
                                 and row_offset == 0
                                 and column_offset == 0
                             ):
@@ -1512,19 +1637,6 @@ def validate_recognized_judgement(
 
     if not candidates:
         return result
-    trusted_title_match_types = {
-        "exact",
-        "blank",
-        "ocr_confusable",
-        "ocr_kana",
-        "rolling_exact",
-        "rolling_partial",
-        "rolling_fuzzy",
-        "edge_fuzzy",
-        "edit_fuzzy",
-        "ocr_embedded",
-        "prefix",
-    }
     prefer_achievement_alignment = (
         title_match_type in trusted_title_match_types
         and achievement is not None
@@ -1986,9 +2098,18 @@ def recognize_score_image_bytes(
         lock_wait_seconds = time.perf_counter() - lock_started_at
         if lock_wait_seconds >= 0.01:
             logger.info("Score OCR lock wait: %.3fs", lock_wait_seconds)
+        rss_before = _process_rss_mb()
         ocr_fields, _, process_image_data = _load_ocr_module()
-        return process_image_data(
+        result = process_image_data(
             image,
             fields or ocr_fields,
             _engine(),
         )
+        rss_after = _process_rss_mb()
+        if rss_before is not None or rss_after is not None:
+            logger.info(
+                "Score OCR memory: rss_before=%sMB rss_after=%sMB",
+                rss_before,
+                rss_after,
+            )
+        return result

@@ -475,33 +475,7 @@ def _judgement_table_blue_grid_slopes(image: Image.Image) -> tuple[float, float]
 
 
 def _warp_judgement_table_quad(image: Image.Image, points: np.ndarray) -> Image.Image | None:
-    warped = _warp_quad(image, points)
-    if warped is None:
-        return None
-
-    risks = _table_crop_edge_risks(warped)
-    horizontal_slope, vertical_slope = _judgement_table_blue_grid_slopes(warped)
-
-    expansion = {
-        "top": 0.015,
-        "bottom": 0.155 if risks.get("bottom") else 0.060,
-        "left_top": 0.055 if risks.get("left") else 0.006,
-        "left_bottom": 0.078 if risks.get("left") else 0.006,
-        "right": 0.026 if risks.get("right") else 0.008,
-    }
-    y_adjust = {
-        "left_top": 0.0,
-        "left_bottom": 0.0,
-        "right_top": -horizontal_slope * 0.42,
-        "right_bottom": -horizontal_slope * 0.42,
-    }
-    adjusted = _warp_quad(
-        image,
-        points,
-        edge_expansion=expansion,
-        y_adjust=y_adjust,
-    )
-    return adjusted or warped
+    return _warp_quad(image, points)
 
 
 def _main_screen_pose_image(image: Image.Image) -> tuple[Box | None, Image.Image | None]:
@@ -1189,7 +1163,7 @@ def relative_box(screen: Box, relative: tuple[float, float, float, float]) -> Bo
 
 
 def main_screen_model_field_boxes(screen: Box, width: int, height: int) -> tuple[Box, Box]:
-    title = relative_box(screen, (0.240, 0.000, 0.985, 0.220)).clamp(width, height)
+    title = relative_box(screen, (0.300, 0.000, 0.985, 0.220)).clamp(width, height)
     achievement = relative_box(screen, (0.000, 0.480, 0.760, 0.960)).clamp(width, height)
     return title, achievement
 

@@ -4735,6 +4735,11 @@ def _enqueue_task(cmd, ctx, target_queue, lane_name, payload):
         show_loading(ctx.user_id)
         target_queue.put_nowait((*payload, task_id))
     except queue.Full:
+        with task_tracking_lock:
+            task_tracking['queued'] = [
+                t for t in task_tracking['queued']
+                if t.get('id') != task_id
+            ]
         smart_reply(
             ctx.user_id,
             ctx.reply_token,
@@ -5703,6 +5708,7 @@ task_tracking_lock = threading.Lock()
 MAX_COMPLETED_TASKS = 20  # 最多保留20个已完成任务
 api_sync_locks = {}
 api_sync_locks_lock = threading.Lock()
+API_SYNC_LOCK_TTL_SECONDS = 600
 
 # ==================== 辅助函数 ====================
 
@@ -5768,6 +5774,8 @@ def _build_admin_overview_stats(force_refresh=False):
     cpu_percent = round(psutil.cpu_percent(interval=0.1), 1)
     cpu_count = psutil.cpu_count()
     memory = psutil.virtual_memory()
+    process = psutil.Process(os.getpid())
+    process_memory_mb = round(process.memory_info().rss / (1024**2), 1)
 
     with stats_lock:
         total_tasks = STATS['tasks_processed']
@@ -5784,6 +5792,7 @@ def _build_admin_overview_stats(force_refresh=False):
         'memory_percent': round(memory.percent, 1),
         'memory_used_gb': round(memory.used / (1024**3), 1),
         'total_memory': round(memory.total / (1024**3), 1),
+        'process_memory_mb': process_memory_mb,
         'uptime': uptime_str,
         'python_version': platform.python_version(),
         'platform': f"{platform.system()} {platform.release()}",
@@ -5922,6 +5931,11 @@ def admin_trigger_update():
             'message': f'Update task queued for user {user_id}'
         })
     except queue.Full:
+        with task_tracking_lock:
+            task_tracking['queued'] = [
+                t for t in task_tracking['queued']
+                if t.get('id') != task_id
+            ]
         return jsonify({
             'success': False,
             'message': 'Task queue is full'
@@ -7541,12 +7555,45 @@ def api_rebind_user(user_id):
 
 
 def _get_api_sync_lock(user_id):
+    now = time.monotonic()
     with api_sync_locks_lock:
-        lock = api_sync_locks.get(user_id)
-        if lock is None:
-            lock = threading.Lock()
-            api_sync_locks[user_id] = lock
-        return lock
+        _cleanup_api_sync_locks_locked(now)
+        entry = api_sync_locks.get(user_id)
+        if entry is None:
+            entry = {
+                "lock": threading.Lock(),
+                "last_used": now,
+            }
+            api_sync_locks[user_id] = entry
+        else:
+            entry["last_used"] = now
+        return entry["lock"]
+
+
+def _mark_api_sync_lock_released(user_id, lock):
+    now = time.monotonic()
+    with api_sync_locks_lock:
+        entry = api_sync_locks.get(user_id)
+        if entry and entry.get("lock") is lock:
+            entry["last_used"] = now
+
+
+def _cleanup_api_sync_locks_locked(now=None):
+    now = now or time.monotonic()
+    stale_user_ids = [
+        locked_user_id
+        for locked_user_id, entry in api_sync_locks.items()
+        if now - entry.get("last_used", now) >= API_SYNC_LOCK_TTL_SECONDS
+        and not entry.get("lock").locked()
+    ]
+    for locked_user_id in stale_user_ids:
+        api_sync_locks.pop(locked_user_id, None)
+    return len(stale_user_ids)
+
+
+def cleanup_api_sync_locks():
+    with api_sync_locks_lock:
+        return _cleanup_api_sync_locks_locked()
 
 
 def _api_sync_result_payload(result):
@@ -7628,6 +7675,7 @@ def api_sync_user_data_stream(user_id):
             yield write_event("failed", success=False, error="Internal server error", message=str(e))
         finally:
             lock.release()
+            _mark_api_sync_lock_released(user_id, lock)
 
     return Response(generate(), mimetype="application/x-ndjson")
 
@@ -8912,6 +8960,9 @@ def start_runtime():
             # 清理频率限制追踪数据
             cleaned_rate_limits = cleanup_rate_limiter_tracking(rate_limiter_module)
 
+            # 清理空闲的 API 同步锁
+            cleaned_api_sync_locks = cleanup_api_sync_locks()
+
             # 清理未绑定的用户（没有 sega_id 或 sega_pwd）
             cleanup_result = clean_unbound_users()
             cleaned_unbound_users = cleanup_result.get('deleted_count', 0)
@@ -8919,7 +8970,7 @@ def start_runtime():
             # 刷新 dev tokens 缓存到磁盘
             flush_dev_tokens()
 
-            logger.info(f"[System] ✓ Custom cleanup completed: nicknames={cleaned_nicknames}, rate_limits={cleaned_rate_limits}, unbound_users={cleaned_unbound_users}")
+            logger.info(f"[System] ✓ Custom cleanup completed: nicknames={cleaned_nicknames}, rate_limits={cleaned_rate_limits}, api_sync_locks={cleaned_api_sync_locks}, unbound_users={cleaned_unbound_users}")
         except Exception as e:
             logger.error(f"[System] ✗ Custom cleanup error: error={e}", exc_info=True)
 
