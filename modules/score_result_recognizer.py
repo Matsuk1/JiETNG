@@ -761,15 +761,19 @@ def _find_calc_completion_candidates(
                 current_judgement,
                 achievement,
             )
-            if not break_detail:
-                return
-            break_detail = _attach_break_loss_percentages(notes, break_detail)
-            detail_achievement = break_detail.get("calculated_achievement")
-            detail_distance = (
-                abs(float(achievement) - float(detail_achievement))
-                if isinstance(detail_achievement, (int, float))
-                else float("inf")
-            )
+            if break_detail:
+                break_detail = _attach_break_loss_percentages(notes, break_detail)
+                detail_achievement = break_detail.get("calculated_achievement")
+                detail_distance = (
+                    abs(float(achievement) - float(detail_achievement))
+                    if isinstance(detail_achievement, (int, float))
+                    else 0.0
+                )
+            else:
+                midpoint = (
+                    float(score_range["minimum"]) + float(score_range["maximum"])
+                ) / 2
+                detail_distance = abs(float(achievement) - midpoint)
             total_miss_added = sum(
                 item["amount"]
                 for item in corrections
@@ -1403,9 +1407,6 @@ def validate_recognized_judgement(
     candidates = []
     for song in matching_songs:
         for sheet in song.get("sheets", []):
-            regions = sheet.get("regions") or {}
-            if regions and regions.get(ver) is False:
-                continue
             note_counts = sheet.get("noteCounts") or {}
             raw_overfull_rows = 0
             raw_matching_rows = 0

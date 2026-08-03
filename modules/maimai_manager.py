@@ -136,8 +136,14 @@ def extract_onclick_url_from_button(li, keyword):
                 return onclick.split("'")[1]
     return ""
 
-def _get_note_achievement_score(notes):
-    """Calculate each judgement's per-note achievement value, truncated to 7 decimals."""
+def _get_note_achievement_score(notes, places=7):
+    """Calculate each judgement's per-note achievement value.
+
+    Args:
+        notes: note counts by type.
+        places: decimal places to truncate each value to. Use None to keep raw
+            Decimal values until the final displayed achievement truncation.
+    """
     tap_num = notes['tap'] if notes['tap'] else 0
     hold_num = notes['hold'] if notes['hold'] else 0
     slide_num = notes['slide'] if notes['slide'] else 0
@@ -163,41 +169,55 @@ def _get_note_achievement_score(notes):
     if total_base == 0 or break_add_total == 0:
         return {}
 
+    def maybe_truncate(value):
+        return _truncate_decimal(value, places) if places is not None else value
+
+    def base_score(value):
+        score = Decimal(value) * Decimal(100) / Decimal(total_base)
+        return maybe_truncate(score)
+
+    def break_score(base_value, add_value):
+        score = (
+            (Decimal(base_value) * Decimal(100) / Decimal(total_base))
+            + (Decimal(add_value) / Decimal(break_add_total))
+        )
+        return maybe_truncate(score)
+
     return {
-        'tap_full': _truncate_float(tap_base[0] / total_base * 100, 7),
-        'tap_great': _truncate_float(tap_base[1] / total_base * 100, 7),
-        'tap_good': _truncate_float(tap_base[2] / total_base * 100, 7),
-        'tap_miss': 0.0,
+        'tap_full': base_score(tap_base[0]),
+        'tap_great': base_score(tap_base[1]),
+        'tap_good': base_score(tap_base[2]),
+        'tap_miss': Decimal("0"),
 
-        'hold_full': _truncate_float(hold_base[0] / total_base * 100, 7),
-        'hold_great': _truncate_float(hold_base[1] / total_base * 100, 7),
-        'hold_good': _truncate_float(hold_base[2] / total_base * 100, 7),
-        'hold_miss': 0.0,
+        'hold_full': base_score(hold_base[0]),
+        'hold_great': base_score(hold_base[1]),
+        'hold_good': base_score(hold_base[2]),
+        'hold_miss': Decimal("0"),
 
-        'slide_full': _truncate_float(slide_base[0] / total_base * 100, 7),
-        'slide_great': _truncate_float(slide_base[1] / total_base * 100, 7),
-        'slide_good': _truncate_float(slide_base[2] / total_base * 100, 7),
-        'slide_miss': 0.0,
+        'slide_full': base_score(slide_base[0]),
+        'slide_great': base_score(slide_base[1]),
+        'slide_good': base_score(slide_base[2]),
+        'slide_miss': Decimal("0"),
 
-        'touch_full': _truncate_float(touch_base[0] / total_base * 100, 7),
-        'touch_great': _truncate_float(touch_base[1] / total_base * 100, 7),
-        'touch_good': _truncate_float(touch_base[2] / total_base * 100, 7),
-        'touch_miss': 0.0,
+        'touch_full': base_score(touch_base[0]),
+        'touch_great': base_score(touch_base[1]),
+        'touch_good': base_score(touch_base[2]),
+        'touch_miss': Decimal("0"),
 
-        'break_critical': _truncate_float((break_base[0] / total_base * 100) + (break_add[0] / break_add_total), 7),
-        'break_high_perfect': _truncate_float((break_base[1] / total_base * 100) + (break_add[1] / break_add_total), 7),
-        'break_low_perfect': _truncate_float((break_base[2] / total_base * 100) + (break_add[2] / break_add_total), 7),
-        'break_high_great': _truncate_float((break_base[3] / total_base * 100) + (break_add[3] / break_add_total), 7),
-        'break_middle_great': _truncate_float((break_base[4] / total_base * 100) + (break_add[4] / break_add_total), 7),
-        'break_low_great': _truncate_float((break_base[5] / total_base * 100) + (break_add[5] / break_add_total), 7),
-        'break_good': _truncate_float((break_base[6] / total_base * 100) + (break_add[6] / break_add_total), 7),
-        'break_miss': 0.0,
+        'break_critical': break_score(break_base[0], break_add[0]),
+        'break_high_perfect': break_score(break_base[1], break_add[1]),
+        'break_low_perfect': break_score(break_base[2], break_add[2]),
+        'break_high_great': break_score(break_base[3], break_add[3]),
+        'break_middle_great': break_score(break_base[4], break_add[4]),
+        'break_low_great': break_score(break_base[5], break_add[5]),
+        'break_good': break_score(break_base[6], break_add[6]),
+        'break_miss': Decimal("0"),
     }
 
 
 def get_note_score(notes):
     """计算每个 note 类型的扣分比例"""
-    achievement_scores = _get_note_achievement_score(notes)
+    achievement_scores = _get_note_achievement_score(notes, places=7)
     if not achievement_scores:
         return {}
 
@@ -242,9 +262,9 @@ def calc_score_precise(notes, judgements):
         judgements: 字典，包含各类判定的数量
 
     Returns:
-        Decimal: 每 note 得分截断到 7 位后的累加值，未做最终 4 位截断
+        Decimal: precise summed score before final 4-decimal display truncation.
     """
-    scores = _get_note_achievement_score(notes)
+    scores = _get_note_achievement_score(notes, places=None)
     if not scores:
         return Decimal("0")
 
