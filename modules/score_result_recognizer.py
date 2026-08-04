@@ -625,7 +625,9 @@ def _find_calc_completion_candidates(
             source_miss = max(0, int(row.get("miss", 0) or 0))
         except (TypeError, ValueError):
             source_miss = 0
-        if gap <= 0 and source_miss <= 0:
+        # An unmatched note belongs to its note-type row. Rows whose note
+        # counts already match must not be changed to satisfy another row.
+        if gap <= 0:
             continue
         if gap > MAX_CALC_COMPLETION_ROW_GAP:
             logger.info(
@@ -1870,6 +1872,7 @@ def expand_score_recognition_calc_variants(result, max_results=5):
         variant_validation["calc_completion_candidate_index"] = index
         variant_validation["calc_completion_candidate_count"] = total_count
         variant_validation["calc_completion_candidates"] = []
+        variant_validation["uncertain_cells"] = []
         variant_validation["break_detail"] = candidate.get("break_detail") or {}
         variant_validation["calc_corrections"] = [
             *(validation.get("calc_corrections") or []),

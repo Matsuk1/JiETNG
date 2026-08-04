@@ -908,7 +908,7 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
             trailing_step = sorted(trailing_gaps)[len(trailing_gaps) // 2]
             if (
                 numeric_column_bounds[0] < width * 0.22
-                and width * 0.25 <= numeric_column_bounds[1] <= width * 0.36
+                and width * 0.16 <= numeric_column_bounds[1] <= width * 0.36
                 and label_column_fill_ratio(
                     numeric_column_bounds[0],
                     numeric_column_bounds[1],
@@ -1033,6 +1033,109 @@ def detect_judgement_rows_and_columns(image: Image.Image) -> tuple[list[float], 
         step = (table_right - table_left) / 5
         col_bounds = [int(round(table_left + step * index)) for index in range(6)]
     return row_centers, col_bounds
+
+
+def cropper_judgement_has_left_header(image: Image.Image) -> bool:
+    """Return whether a cropper pose image still contains the row labels."""
+    rgb = image.convert("RGB")
+    width, height = rgb.size
+    pixels = rgb.load()
+    sampled = 0
+    label_pixels = 0
+    dark_label_pixels = 0
+    for x in range(0, max(1, int(width * 0.20)), 3):
+        for y in range(int(height * 0.10), int(height * 0.94), 3):
+            sampled += 1
+            r, g, b = pixels[x, y]
+            brightness = (r + g + b) / 3
+            if brightness <= 70:
+                dark_label_pixels += 1
+            if (
+                b >= 60
+                and r <= 95
+                and g <= 130
+                and b >= r + 16
+                and brightness <= 165
+            ):
+                label_pixels += 1
+    return bool(
+        sampled
+        and (
+            label_pixels / sampled >= 0.45
+            or dark_label_pixels / sampled >= 0.45
+        )
+    )
+
+
+def cropper_judgement_has_top_header(
+    image: Image.Image,
+    output_dir: str | Path | None,
+    engine: PaddleOcrEngine,
+) -> bool:
+    """Return whether the first of six cropper rows is the column header."""
+    top_strip = image.crop((0, 0, image.width, max(1, int(image.height * 0.23))))
+    prepared = prepare_ocr_image_data(top_strip, "sub_judgement_column")
+    if output_dir is not None:
+        output = Path(output_dir)
+        output.mkdir(parents=True, exist_ok=True)
+        top_strip.save(output / "top_header.png")
+        prepared.save(output / "top_header_ocr.png")
+
+    header_labels = {"CRITICAL", "PERFECT", "GREAT", "GOOD", "MISS"}
+    return any(
+        normalize_label_text(str(item.get("text", ""))) in header_labels
+        for item in engine.read(prepared)
+    )
+
+
+def detect_cropper_numeric_row_centers(
+    image: Image.Image,
+    col_bounds: list[int],
+) -> list[float] | None:
+    """Fit numeric row centers from the blue grid in at least two columns."""
+    detected = []
+    for index in range(5):
+        boundaries = detect_local_judgement_row_boundaries(
+            image,
+            col_bounds[index],
+            col_bounds[index + 1],
+        )
+        if boundaries is not None:
+            detected.append((
+                (col_bounds[index] + col_bounds[index + 1]) / 2,
+                boundaries,
+            ))
+    if len(detected) < 2:
+        return None
+
+    steps = [
+        sorted(right - left for left, right in zip(bounds, bounds[1:]))[2]
+        for _, bounds in detected
+    ]
+    median_step = sorted(steps)[len(steps) // 2]
+    if median_step <= 0 or any(
+        step < median_step * 0.78 or step > median_step * 1.22
+        for step in steps
+    ):
+        return None
+
+    target_x = image.width / 2
+    fitted = []
+    for row_index in range(5):
+        points = [
+            (x, (bounds[row_index] + bounds[row_index + 1]) / 2)
+            for x, bounds in detected
+        ]
+        mean_x = sum(x for x, _ in points) / len(points)
+        mean_y = sum(y for _, y in points) / len(points)
+        denominator = sum((x - mean_x) ** 2 for x, _ in points)
+        slope = (
+            sum((x - mean_x) * (y - mean_y) for x, y in points) / denominator
+            if denominator
+            else 0.0
+        )
+        fitted.append(mean_y + slope * (target_x - mean_x))
+    return fitted
 
 
 def recognize_judgement_row_centers(
@@ -1797,6 +1900,49 @@ def recognize_judgement_cells_direct(
     } or None
 
 
+def recognize_judgement_cells_raw(
+    image: Image.Image,
+    row_centers: list[float],
+    col_bounds: list[int],
+    row_gap: float,
+    engine: PaddleOcrEngine,
+) -> tuple[dict[str, dict[str, int]], dict[str, dict[str, float]]] | None:
+    """Recognize isolated numeric cells without enhancement or value repair."""
+    row_names = ("tap", "hold", "slide", "touch", "break")
+    column_names = ("critical_perfect", "perfect", "great", "good", "miss")
+    crops: list[Image.Image] = []
+    slots: list[tuple[str, str]] = []
+    for row_name, center_y in zip(row_names, row_centers):
+        cell_top = max(0, int(round(center_y - row_gap * 0.40)))
+        cell_bottom = min(image.height, int(round(center_y + row_gap * 0.40)))
+        for index, column_name in enumerate(column_names):
+            cell_width = col_bounds[index + 1] - col_bounds[index]
+            pad_x = max(8, int(cell_width * 0.16))
+            cell_left = max(0, col_bounds[index] + pad_x)
+            cell_right = min(image.width, col_bounds[index + 1] - pad_x)
+            if cell_right <= cell_left or cell_bottom <= cell_top:
+                return None
+            crops.append(image.crop((cell_left, cell_top, cell_right, cell_bottom)))
+            slots.append((row_name, column_name))
+
+    items = engine.read_cropped_lines(crops)
+    if items is None:
+        return None
+
+    result: dict[str, dict[str, int]] = {row_name: {} for row_name in row_names}
+    confidences: dict[str, dict[str, float]] = {
+        row_name: {} for row_name in row_names
+    }
+    for (row_name, column_name), item in zip(slots, items):
+        value = parse_column_int(str(item.get("text", "")))
+        score = float(item.get("score", 0.0) or 0.0)
+        if value is None or score < 0.90:
+            continue
+        result[row_name][column_name] = value
+        confidences[row_name][column_name] = score
+    return result, confidences
+
+
 def recognize_judgement_by_columns(
     table_image_source: str | Path | Image.Image,
     output_dir: str | Path | None,
@@ -1810,6 +1956,7 @@ def recognize_judgement_by_columns(
         with Image.open(table_image_source) as source:
             image = source.convert("RGB")
     width, height = image.size
+    prefer_isolated_cells = False
     if layout_hint == "dxnet":
         row_centers = [
             height * ratio
@@ -1822,12 +1969,25 @@ def recognize_judgement_by_columns(
         detect_row_labels = False
     elif layout_hint == "cropper_pt_pose_warp":
         layout = detect_judgement_rows_and_columns(image)
-        col_bounds = [
-            int(round(width * ratio))
-            for ratio in (0.184, 0.348, 0.513, 0.677, 0.842, 0.997)
-        ]
+        has_left_header = cropper_judgement_has_left_header(image)
+        prefer_isolated_cells = True
+        if has_left_header:
+            col_bounds = [
+                int(round(width * ratio))
+                for ratio in (0.184, 0.348, 0.513, 0.677, 0.842, 0.997)
+            ]
+        else:
+            col_bounds = [
+                int(round(width * index / 5))
+                for index in range(6)
+            ]
         if layout:
-            row_centers, _ = layout
+            row_centers, detected_col_bounds = layout
+            if (
+                not has_left_header
+                or detected_col_bounds[0] <= width * 0.22
+            ):
+                col_bounds = detected_col_bounds
             if row_centers and row_centers[0] < height * 0.20:
                 gaps = [b - a for a, b in zip(row_centers, row_centers[1:])]
                 row_gap = sum(gaps) / len(gaps) if gaps else height / 7
@@ -1835,10 +1995,19 @@ def recognize_judgement_by_columns(
                 if shifted_centers[-1] <= height * 0.98:
                     row_centers = shifted_centers
         else:
-            row_centers = [
-                height * ratio
-                for ratio in (0.286, 0.429, 0.571, 0.714, 0.857)
-            ]
+            row_centers = detect_cropper_numeric_row_centers(image, col_bounds)
+            if row_centers is None:
+                has_top_header = cropper_judgement_has_top_header(
+                    image,
+                    output_dir,
+                    engine,
+                )
+                total_rows = 6 if has_top_header else 5
+                first_data_row = 1 if has_top_header else 0
+                row_centers = [
+                    height * (first_data_row + index + 0.5) / total_rows
+                    for index in range(5)
+                ]
         detect_row_labels = False
     else:
         layout = detect_judgement_rows_and_columns(image)
@@ -1904,14 +2073,45 @@ def recognize_judgement_by_columns(
             center = item_center(item)
             if value is None or center is None:
                 continue
+            try:
+                item_score = float(item.get("score", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                item_score = 0.0
+            if layout_hint == "cropper_pt_pose_warp" and item_score < 0.50:
+                continue
+            box = item.get("box")
+            if (
+                isinstance(box, list)
+                and len(box) == 4
+                and all(isinstance(value, (int, float)) for value in box)
+                and abs(float(box[3]) - float(box[1]))
+                > row_gap * SUB_JUDGEMENT_COLUMN_OCR_SCALE * 1.45
+            ):
+                # A detector box spanning adjacent rows joins values such as
+                # GOOD 5 and GOOD 0 into "50". Let isolated-cell OCR handle it.
+                continue
             _, y = center
             row_name, target = min(row_targets.items(), key=lambda pair: abs(pair[1] - y))
             if abs(target - y) <= row_gap * SUB_JUDGEMENT_COLUMN_OCR_SCALE * 0.58:
                 result[row_name][column_name] = value
-                try:
-                    confidences[row_name][column_name] = float(item.get("score", 0.0) or 0.0)
-                except (TypeError, ValueError):
-                    confidences[row_name][column_name] = 0.0
+                confidences[row_name][column_name] = item_score
+
+    if prefer_isolated_cells:
+        isolated = recognize_judgement_cells_raw(
+            image,
+            row_centers,
+            col_bounds,
+            row_gap,
+            engine,
+        )
+        if isolated is not None:
+            isolated_values, isolated_confidences = isolated
+            for row_name, values in isolated_values.items():
+                for column_name, value in values.items():
+                    result[row_name][column_name] = value
+                    confidences[row_name][column_name] = (
+                        isolated_confidences[row_name][column_name]
+                    )
 
     if layout_hint not in FIXED_TABLE_LAYOUT_HINTS:
         direct_values = recognize_judgement_cells_direct(
@@ -1944,6 +2144,7 @@ def recognize_judgement_by_columns(
                 and existing_value == 0
                 and row_name != "break"
                 and column_name != "miss"
+                and confidences[row_name].get(column_name, 0.0) < 0.90
             )
             if (
                 existing_value is not None
@@ -2024,8 +2225,12 @@ def recognize_judgement_by_columns(
                             value_score = 0.0
                         break
             if value is None:
-                value = low_confidence_value
-                value_score = low_confidence_score
+                if (
+                    low_confidence_value is not None
+                    and float(low_confidence_score or 0.0) >= 0.50
+                ):
+                    value = low_confidence_value
+                    value_score = low_confidence_score
             if value is not None:
                 result[row_name][column_name] = value
                 confidences[row_name][column_name] = float(value_score or 0.0)

@@ -4518,7 +4518,7 @@ def _score_recognition_queue_task(event, command: str, quoted_message_id: str, f
             ):
                 reply_messages = [
                     generate_score_recognition_flex(
-                        result,
+                        result_variants,
                         user_id,
                     )
                 ]
@@ -4790,9 +4790,9 @@ COMMAND_HELP = {
         "命令: <レベルまたはカテゴリ><評価> progress [-uc|-up|-c]\n说明: 指定レベルまたはカテゴリ内の評価目標進捗を表示します。\n参数: 必須: <レベルまたはカテゴリ>。レベルは 11-15、カテゴリは vocaloid、touhou、popani、gekichu、game、maimai に対応します。\n必須: <評価>。レベル/カテゴリの後に書きます。s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+ に対応します。\n任意: -uc は目標未達成のみ、-up は未プレイのみ、-c は目標達成済みのみを表示します。\n形式: レベルは 14sss+ progress のように連結できます。カテゴリは vocaloid sss+ progress のように空白区切りを推奨します。\n示例: 14sss+ progress\n13ap progress -uc\nvocaloid sss+ progress\npopani ss+ progress -up",
     ),
     "song_info": _help_text(
-        "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 查询歌曲基本信息、谱面信息和 BPM。\n参数: 必填: <曲名>，写在 info / song-info 前面，可以是完整曲名、部分曲名或别名。\n匹配: 如果匹配到多首歌，会返回可选择的候选结果。\n示例: ヒバナ info\nヒバナってどんな曲",
-        "命令: <song> info / <song> song-info / <song>ってどんな曲\n说明: Show song details, chart data, and BPM.\n参数: Required: <song>, placed before info / song-info; accepts full title, partial title, or alias.\nMatching: if multiple songs match, the bot returns selectable candidates.\n示例: ヒバナ info\nヒバナってどんな曲",
-        "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 楽曲情報、譜面情報、BPM を表示します。\n参数: 必須: <曲名>。info / song-info の前に置き、正式名・部分一致・別名を指定できます。\n検索: 複数候補がある場合は選択候補を返します。\n示例: ヒバナ info\nヒバナってどんな曲",
+        "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 查询歌曲基本信息、谱面信息和 BPM；也可以回复成绩图片直接发送 info，自动识别曲名。\n参数: 文本查询时填写 <曲名>，可以是完整曲名、部分曲名或别名；图片查询时无需填写曲名。\n匹配: 如果匹配到多首歌，会返回可选择的候选结果。\n示例: ヒバナ info\nヒバナってどんな曲\n（回复图片）info",
+        "命令: <song> info / <song> song-info / <song>ってどんな曲\n说明: Show song details, chart data, and BPM; you can also reply to a result image with info to recognize its title.\n参数: For text search, provide a full title, partial title, or alias; no title is needed when replying to an image.\nMatching: if multiple songs match, the bot returns selectable candidates.\n示例: ヒバナ info\nヒバナってどんな曲\n(reply to image) info",
+        "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 楽曲情報、譜面情報、BPM を表示します。リザルト画像に返信して info を送ると、曲名を自動認識できます。\n参数: テキスト検索では正式名・部分一致・別名を指定します。画像への返信時は曲名の入力は不要です。\n検索: 複数候補がある場合は選択候補を返します。\n示例: ヒバナ info\nヒバナってどんな曲\n（画像に返信）info",
     ),
     "score_recognition": _help_text(
         "命令: rec\nrec-flex\ncrop\nfix-rcd <曲名>\n说明: rec 识别完整成绩；能完全校验时返回成绩图片，需要修正时返回可复制的修正卡片。rec-flex 是 rec 的 -flex 后缀形式，会强制返回 FlexMsg。crop 只返回裁切图，用于检查识别区域。\n参数: rec、rec-flex 和 crop 都必须回复一张成绩图，不接受其他参数。\nfix-rcd: 第一行填写不含 [DX]/[STD] 的曲名，第二行填写达成率，随后依次填写 TAP、HOLD、SLIDE、TOUCH、BREAK。\n格式: 达成率可带 %；判定行必须为 CP/PF/GR/GD/MS 五个非负整数。\n示例: rec-flex\nfix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
@@ -5053,6 +5053,11 @@ def _reply_command_help_if_needed(ctx):
 
     help_key = _detect_missing_param_help_key(ctx.text)
     if help_key:
+        if (
+            help_key == "song_info"
+            and getattr(ctx.event.message, "quoted_message_id", None)
+        ):
+            return False
         reply = _command_help_message(help_key, ctx.user_id)
         _bump_stats()
         smart_reply(ctx.user_id, ctx.reply_token, reply, configuration,
@@ -5209,6 +5214,28 @@ def cmd_bpm(ctx):
 
 def cmd_song_info(ctx):
     keyword = re.sub(r"\s*(ってどんな曲|info|song-info)$", "", ctx.text).strip()
+    if not keyword:
+        quoted_message_id = getattr(ctx.event.message, "quoted_message_id", None)
+        if not quoted_message_id:
+            return info_error(ctx.user_id)
+        try:
+            image_bytes = _download_line_message_content(quoted_message_id)
+            recognition = recognize_score_image_bytes(
+                image_bytes,
+                fields=("main_title",),
+            )
+        except InvalidScoreImageError:
+            return song_error(ctx.user_id)
+        keyword = str(
+            (recognition.get("parsed") or {}).get("title") or ""
+        ).strip()
+        if not keyword:
+            return song_error(ctx.user_id)
+        logger.info(
+            "[SongInfo] OCR title search: user_id=%s title=%s",
+            ctx.user_id,
+            keyword,
+        )
     return asyncio.run(search_song(ctx.user_id, keyword, ctx.mai_ver))
 
 def cmd_random_song(ctx):

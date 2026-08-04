@@ -7,7 +7,6 @@ from modules.user_db import get_user
 from modules.user_manager import get_notice_interaction, get_user_timezone
 from modules.tip_ad_manager import get_random_tip, get_random_ad
 from modules.message_texts import *
-from modules.score_result_recognizer import expand_score_recognition_calc_variants
 from linebot.v3.messaging import (
     TextMessage,
     QuickReply,
@@ -1324,10 +1323,10 @@ def generate_song_info_flex(song_id, image_url, image_width, image_height, user_
     )
 
 
-def generate_score_recognition_flex(result, user_id=None):
-    variants = expand_score_recognition_calc_variants(result)
+def generate_score_recognition_flex(results, user_id=None):
+    variants = list(results) if isinstance(results, (list, tuple)) else [results]
     if len(variants) <= 1:
-        return _generate_score_recognition_single_flex(result, user_id)
+        return _generate_score_recognition_single_flex(variants[0], user_id)
 
     bubbles = []
     alt_titles = []
