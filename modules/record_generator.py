@@ -19,7 +19,7 @@ from modules.config_loader import (
 )
 from modules.image_cache import download_and_cache_icon, get_cover_image, paste_icon_optimized
 from modules.image_manager import (
-    compose_images,
+    compose_generated_images,
     draw_aligned_colon_text,
     font_large,
     font_level_badge,
@@ -1164,7 +1164,7 @@ def generate_score_recognition_picture(
         fill=(255, 255, 255, 245),
     )
     card_img.alpha_composite(cropped, (0, 0))
-    return compose_images(
+    return compose_generated_images(
         [card_img],
         timezone_offset=timezone_offset,
         bg_filter=bg_filter,
