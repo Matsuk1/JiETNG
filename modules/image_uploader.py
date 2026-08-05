@@ -154,3 +154,11 @@ async def smart_upload(image, user_id=None):
 
     url = await asyncio.to_thread(_save_to_local, png_bytes)
     return (url, url) if url else (None, None)
+
+
+async def upload_generated_image(image, user_id=None):
+    """Upload an owned generated image and always release its pixel buffer."""
+    try:
+        return await smart_upload(image, user_id)
+    finally:
+        image.close()
