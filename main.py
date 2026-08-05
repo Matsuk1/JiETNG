@@ -197,7 +197,7 @@ from modules.message_manager import (
 )
 
 # Image processing
-from modules.image_uploader import smart_upload, _start_periodic_cleanup
+from modules.image_uploader import upload_generated_image, _start_periodic_cleanup
 from modules.export_manager import (
     export_records,
     shutdown_periodic_cleanup as shutdown_export_cleanup,
@@ -1966,7 +1966,7 @@ async def random_song(user_id, key="", ver="jp"):
     user_tz = get_user_timezone(user_id)
     song_img = song_info_generate(song, timezone_offset=user_tz, ver=ver, bg_filter=_get_user_bg_filter(user_id))
     img_w, img_h = song_img.size
-    original_url, preview_url = await smart_upload(song_img, user_id)
+    original_url, preview_url = await upload_generated_image(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='info')
 
 async def search_song(user_id, acronym, ver="jp"):
@@ -2005,7 +2005,7 @@ async def search_song_by_id(user_id, song_id, ver="jp"):
     user_tz = get_user_timezone(user_id)
     song_img = song_info_generate(matching_song, timezone_offset=user_tz, ver=ver, bg_filter=_get_user_bg_filter(user_id))
     img_w, img_h = song_img.size
-    original_url, preview_url = await smart_upload(song_img, user_id)
+    original_url, preview_url = await upload_generated_image(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='info')
 
 def _ranking_enabled(data, field):
@@ -2404,7 +2404,7 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
     user_tz = get_user_timezone(user_id)
     song_img = song_info_generate(matching_song, played_data, timezone_offset=user_tz, ver=ver, bg_filter=_get_user_bg_filter(user_id))
     img_w, img_h = song_img.size
-    original_url, preview_url = await smart_upload(song_img, user_id)
+    original_url, preview_url = await upload_generated_image(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='record')
 
 async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None):
@@ -2590,11 +2590,7 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None)
     del profile_img, plate_img
     gc.collect(0)
 
-    original_url, preview_url = await smart_upload(img, user_id)
-
-    # 清理最终图片对象
-    del img
-    gc.collect(0)
+    original_url, preview_url = await upload_generated_image(img, user_id)
 
     # 检查上传是否成功
     if not original_url or not preview_url:
@@ -2811,11 +2807,8 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
     del profile_img, record_img
     gc.collect(0)
 
-    original_url, preview_url = await smart_upload(img, user_id)
+    original_url, preview_url = await upload_generated_image(img, user_id)
     message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
-
-    del img
-    gc.collect(0)
 
     return message
 
@@ -3265,11 +3258,7 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
     del profile_img, record_img
     gc.collect(0)
 
-    original_url, preview_url = await smart_upload(img, user_id)
-
-    # 清理最终图片对象
-    del img
-    gc.collect(0)
+    original_url, preview_url = await upload_generated_image(img, user_id)
 
     # 检查上传是否成功
     if not original_url or not preview_url:
@@ -3342,15 +3331,11 @@ async def generate_friend_record(user_id, friend_code, type="best50", cmd="", ve
     del user_info_img, rcd_img
     gc.collect(0)
 
-    original_url, preview_url = await smart_upload(img, user_id)
+    original_url, preview_url = await upload_generated_image(img, user_id)
     message = [
         TextMessage(text=get_multilingual_text(language_catalog("messages.friend_rcd_text"), user_id).format(name=friend_info["name"])),
         ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
     ]
-
-    # 清理最终图片对象
-    del img
-    gc.collect(0)
 
     return message
 
@@ -3400,11 +3385,7 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     del profile_img, record_img
     gc.collect(0)
 
-    original_url, preview_url = await smart_upload(img, user_id)
-
-    # 清理最终图片对象
-    del img
-    gc.collect(0)
+    original_url, preview_url = await upload_generated_image(img, user_id)
 
     message = [
         ImageMessage(original_content_url=original_url, preview_image_url=preview_url),
@@ -3453,11 +3434,7 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
     del version_list_img
     gc.collect(0)
 
-    original_url, preview_url = await smart_upload(img, user_id)
-
-    # 清理最终图片对象
-    del img
-    gc.collect(0)
+    original_url, preview_url = await upload_generated_image(img, user_id)
 
     # 检查上传是否成功
     if not original_url or not preview_url:
@@ -3714,11 +3691,9 @@ def _handle_fix_record_command(event, command_text: str) -> bool:
                 bg_filter=_get_user_bg_filter(user_id),
                 language=get_user_language(user_id),
             )
-            try:
-                original_url, preview_url = asyncio.run(smart_upload(result_img, user_id))
-            finally:
-                result_img.close()
-                gc.collect(0)
+            original_url, preview_url = asyncio.run(
+                upload_generated_image(result_img, user_id)
+            )
             if not original_url or not preview_url:
                 raise RuntimeError("Score recognition image upload failed")
             message = ImageMessage(
@@ -3753,11 +3728,9 @@ def _score_recognition_queue_task(event, command: str, quoted_message_id: str, f
         download_seconds = time.perf_counter() - download_started_at
         if command == "crop":
             crop_img = build_score_crop_preview_image(image_bytes)
-            try:
-                original_url, preview_url = asyncio.run(smart_upload(crop_img, user_id))
-            finally:
-                crop_img.close()
-                gc.collect(0)
+            original_url, preview_url = asyncio.run(
+                upload_generated_image(crop_img, user_id)
+            )
             if not original_url or not preview_url:
                 raise RuntimeError("Score crop preview upload failed")
             reply_messages = [
@@ -3801,11 +3774,9 @@ def _score_recognition_queue_task(event, command: str, quoted_message_id: str, f
                         bg_filter=_get_user_bg_filter(user_id),
                         language=get_user_language(user_id),
                     )
-                    try:
-                        original_url, preview_url = asyncio.run(smart_upload(result_img, user_id))
-                    finally:
-                        result_img.close()
-                        gc.collect(0)
+                    original_url, preview_url = asyncio.run(
+                        upload_generated_image(result_img, user_id)
+                    )
                     if not original_url or not preview_url:
                         raise RuntimeError("Score recognition image upload failed")
                     reply_messages.append(
