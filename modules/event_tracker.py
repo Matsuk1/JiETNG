@@ -11,8 +11,6 @@ import queue
 import threading
 import time
 from datetime import datetime, timedelta
-from typing import Any
-
 from modules.dbpool_manager import database_cursor
 
 # events 表保留天数（超过后由后台任务清理）
@@ -31,7 +29,7 @@ _init_lock = threading.Lock()
 _initialized = False
 
 # 后台事件写入队列：避免在 webhook / API 热路径上阻塞 DB
-_event_queue: "queue.Queue[Any]" = queue.Queue(maxsize=10000)
+_event_queue = queue.Queue(maxsize=10000)
 _worker_started = False
 _worker_lock = threading.Lock()
 _worker_thread = None
@@ -221,6 +219,63 @@ def _scalar(cursor, sql, args=()):
     return row[0] if row else 0
 
 
+def _activity_stats(cursor, date_filter, args=()):
+    def count(event_type, *, distinct=False, success=False):
+        field = "DISTINCT user_id" if distinct else "*"
+        success_filter = (
+            " AND JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.success')) = 'true'"
+            if success
+            else ""
+        )
+        return _scalar(
+            cursor,
+            f"SELECT COUNT({field}) FROM events WHERE event_type=%s AND {date_filter}{success_filter}",
+            (event_type, *args),
+        )
+
+    sync_total = count("sync_task")
+    sync_success = count("sync_task", success=True)
+    bindings = _scalar(
+        cursor,
+        "SELECT COUNT(DISTINCT user_id) FROM events "
+        f"WHERE event_type IN ('user_bind','user_rebind') AND user_id IS NOT NULL AND {date_filter}",
+        args,
+    )
+    return {
+        "image_calls": count("image_gen"),
+        "webhook_msgs": count("line_webhook"),
+        "bindings": bindings,
+        "unbinds": count("user_unbind", distinct=True),
+        "sync_total": sync_total,
+        "sync_success": sync_success,
+        "sync_success_rate": round(sync_success / sync_total * 100, 1) if sync_total else 0.0,
+    }
+
+
+def _hourly_distribution(cursor, date_filter, args=()):
+    cursor.execute(
+        f"SELECT HOUR(ts), COUNT(*) FROM events WHERE {date_filter} GROUP BY HOUR(ts)",
+        args,
+    )
+    hourly = [0] * 24
+    for hour, count in cursor.fetchall():
+        hourly[int(hour)] = count
+    return hourly
+
+
+def _image_command_breakdown(cursor, date_filter, args=()):
+    cursor.execute(
+        "SELECT JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.command')) AS cmd, COUNT(*) AS cnt "
+        f"FROM events WHERE event_type='image_gen' AND {date_filter} "
+        "GROUP BY cmd ORDER BY cnt DESC",
+        args,
+    )
+    return [
+        {"command": command or "unknown", "count": count}
+        for command, count in cursor.fetchall()
+    ]
+
+
 _stats_cache_lock = threading.Lock()
 _stats_cache = {"ts": 0.0, "data": None}
 
@@ -314,55 +369,23 @@ def _compute_business_stats() -> tuple[dict, bool]:
             ) t
         """,
             )
-            out["today_image_calls"] = _scalar(
-                cursor,
-                "SELECT COUNT(*) FROM events WHERE event_type='image_gen' AND ts >= CURDATE()",
-            )
             out["today_sync_cmd_calls"] = _scalar(
                 cursor,
                 "SELECT COUNT(*) FROM events WHERE event_type='sync_cmd' AND ts >= CURDATE()",
             )
-            out["today_webhook_msgs"] = _scalar(
-                cursor,
-                "SELECT COUNT(*) FROM events WHERE event_type='line_webhook' AND ts >= CURDATE()",
+            activity = _activity_stats(cursor, "ts >= CURDATE()")
+            out.update(
+                today_image_calls=activity["image_calls"],
+                today_webhook_msgs=activity["webhook_msgs"],
+                today_bindings=activity["bindings"],
+                today_unbinds=activity["unbinds"],
+                today_sync_total=activity["sync_total"],
+                today_sync_success=activity["sync_success"],
+                sync_success_rate=activity["sync_success_rate"],
             )
-            # today_bindings：今日全部绑定动作（首绑 + 重绑），按 distinct user_id 去重
-            out["today_bindings"] = _scalar(
-                cursor,
-                "SELECT COUNT(DISTINCT user_id) FROM events "
-                "WHERE event_type IN ('user_bind','user_rebind') AND user_id IS NOT NULL AND ts >= CURDATE()",
+            out["image_command_breakdown"] = _image_command_breakdown(
+                cursor, "ts >= CURDATE()"
             )
-            out["today_unbinds"] = _scalar(
-                cursor,
-                "SELECT COUNT(DISTINCT user_id) FROM events "
-                "WHERE event_type='user_unbind' AND user_id IS NOT NULL AND ts >= CURDATE()",
-            )
-            out["today_sync_total"] = _scalar(
-                cursor,
-                "SELECT COUNT(*) FROM events WHERE event_type='sync_task' AND ts >= CURDATE()",
-            )
-            out["today_sync_success"] = _scalar(
-                cursor,
-                "SELECT COUNT(*) FROM events WHERE event_type='sync_task' AND ts >= CURDATE() "
-                "AND JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.success')) = 'true'",
-            )
-            if out["today_sync_total"]:
-                out["sync_success_rate"] = round(
-                    out["today_sync_success"] / out["today_sync_total"] * 100, 1
-                )
-
-            # 图片命令分布（今日）
-            cursor.execute("""
-            SELECT JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.command')) AS cmd, COUNT(*) AS cnt
-            FROM events
-            WHERE event_type='image_gen' AND ts >= CURDATE()
-            GROUP BY cmd
-            ORDER BY cnt DESC
-        """)
-            out["image_command_breakdown"] = [
-                {"command": (r[0] or "unknown"), "count": r[1]}
-                for r in cursor.fetchall()
-            ]
 
             # DAU 近 30 天（按日聚合，日期全部由 DB 侧生成以避免进程与 DB 时区错位）
             cursor.execute("""
@@ -387,17 +410,7 @@ def _compute_business_stats() -> tuple[dict, bool]:
                 )
             out["dau_30d"] = series
 
-            # 今日小时分布（所有事件调用量）
-            cursor.execute("""
-            SELECT HOUR(ts) AS h, COUNT(*) AS c
-            FROM events
-            WHERE ts >= CURDATE()
-            GROUP BY h
-        """)
-            hourly = [0] * 24
-            for r in cursor.fetchall():
-                hourly[int(r[0])] = r[1]
-            out["hourly_today"] = hourly
+            out["hourly_today"] = _hourly_distribution(cursor, "ts >= CURDATE()")
     except Exception as e:
         ok = False
         logger.error("[EventTracker] get_business_stats failed: %s", e)
@@ -428,72 +441,13 @@ def get_hourly_stats(date_str):
     }
     try:
         with database_cursor() as (_, cursor):
-
-            cursor.execute(
-                """
-            SELECT HOUR(ts) AS h, COUNT(*) AS c
-            FROM events
-            WHERE DATE(ts) = %s
-            GROUP BY h
-        """,
-                (date_str,),
+            date_filter = "DATE(ts) = %s"
+            args = (date_str,)
+            result["hourly"] = _hourly_distribution(cursor, date_filter, args)
+            result["image_command_breakdown"] = _image_command_breakdown(
+                cursor, date_filter, args
             )
-            for r in cursor.fetchall():
-                result["hourly"][int(r[0])] = r[1]
-
-            cursor.execute(
-                """
-            SELECT JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.command')) AS cmd, COUNT(*) AS cnt
-            FROM events
-            WHERE event_type='image_gen' AND DATE(ts) = %s
-            GROUP BY cmd
-            ORDER BY cnt DESC
-        """,
-                (date_str,),
-            )
-            result["image_command_breakdown"] = [
-                {"command": (r[0] or "unknown"), "count": r[1]}
-                for r in cursor.fetchall()
-            ]
-
-            # Activity stats
-            result["image_calls"] = _scalar(
-                cursor,
-                "SELECT COUNT(*) FROM events WHERE event_type='image_gen' AND DATE(ts) = %s",
-                (date_str,),
-            )
-            result["webhook_msgs"] = _scalar(
-                cursor,
-                "SELECT COUNT(*) FROM events WHERE event_type='line_webhook' AND DATE(ts) = %s",
-                (date_str,),
-            )
-            result["bindings"] = _scalar(
-                cursor,
-                "SELECT COUNT(DISTINCT user_id) FROM events "
-                "WHERE event_type IN ('user_bind','user_rebind') AND user_id IS NOT NULL AND DATE(ts) = %s",
-                (date_str,),
-            )
-            result["unbinds"] = _scalar(
-                cursor,
-                "SELECT COUNT(DISTINCT user_id) FROM events "
-                "WHERE event_type='user_unbind' AND user_id IS NOT NULL AND DATE(ts) = %s",
-                (date_str,),
-            )
-            result["sync_total"] = _scalar(
-                cursor,
-                "SELECT COUNT(*) FROM events WHERE event_type='sync_task' AND DATE(ts) = %s",
-                (date_str,),
-            )
-            result["sync_success"] = _scalar(
-                cursor,
-                "SELECT COUNT(*) FROM events WHERE event_type='sync_task' AND DATE(ts) = %s "
-                "AND JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.success')) = 'true'",
-                (date_str,),
-            )
-            if result["sync_total"]:
-                result["sync_success_rate"] = round(
-                    result["sync_success"] / result["sync_total"] * 100, 1
-                )
+            result.update(_activity_stats(cursor, date_filter, args))
     except Exception as e:
         logger.error(
             "[EventTracker] get_hourly_stats failed: date=%s error=%s", date_str, e
