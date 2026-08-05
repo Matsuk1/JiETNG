@@ -638,4 +638,13 @@ TEXTS["images"] = {
         "progress_suffix": "進度",
         "level_list_suffix": "等級列表",
     },
+    "song": {
+        "artist": "藝術家", "category": "分類", "bpm": "BPM", "version": "版本",
+        "unknown_title": "未知曲名", "unknown_artist": "未知藝術家", "unknown_category": "未知分類",
+        "headers": {
+            "chart_type": "譜面難度", "level": "等級", "designer": "譜師",
+            "total": "合計", "tap": "TAP", "hold": "HOLD", "slide": "SLIDE",
+            "touch": "TOUCH", "break": "BREAK", "jp": "日服", "intl": "國際服", "usa": "美國",
+        },
+    },
 }

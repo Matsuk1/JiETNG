@@ -642,4 +642,13 @@ TEXTS["images"] = {
         "progress_suffix": "進捗",
         "level_list_suffix": "レベル一覧",
     },
+    "song": {
+        "artist": "アーティスト", "category": "カテゴリ", "bpm": "BPM", "version": "バージョン",
+        "unknown_title": "タイトル不明", "unknown_artist": "アーティスト不明", "unknown_category": "カテゴリ不明",
+        "headers": {
+            "chart_type": "譜面種類", "level": "レベル", "designer": "ノーツデザイナー",
+            "total": "合計", "tap": "TAP", "hold": "HOLD", "slide": "SLIDE",
+            "touch": "TOUCH", "break": "BREAK", "jp": "国内", "intl": "海外", "usa": "USA",
+        },
+    },
 }

@@ -717,4 +717,13 @@ TEXTS["images"] = {
         "progress_suffix": "PROGRESS",
         "level_list_suffix": "LEVEL LIST",
     },
+    "song": {
+        "artist": "ARTIST", "category": "CATEGORY", "bpm": "BPM", "version": "VERSION",
+        "unknown_title": "Unknown title", "unknown_artist": "Unknown artist", "unknown_category": "Unknown category",
+        "headers": {
+            "chart_type": "Difficulty", "level": "Level", "designer": "Notes Designer",
+            "total": "Total", "tap": "TAP", "hold": "HOLD", "slide": "SLIDE",
+            "touch": "TOUCH", "break": "BREAK", "jp": "JP", "intl": "INTL", "usa": "USA",
+        },
+    },
 }
