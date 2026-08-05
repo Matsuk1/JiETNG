@@ -488,6 +488,11 @@ def api_sync_user_data_stream(user_id):
     token_info = request.token_info
     ver = _get_sync_version(user_id)
     lock = _get_api_sync_lock(user_id)
+    track_event(
+        "sync_cmd",
+        user_id=user_id,
+        metadata={"command": "sync-stream", "source": "api"},
+    )
 
     def write_event(event, **payload):
         payload["event"] = event
@@ -503,18 +508,43 @@ def api_sync_user_data_stream(user_id):
         try:
             start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             yield write_event("accepted", success=True, version=ver, started_at=start_time, message="Sync started.")
-            logger.info(f"[API] Stream sync started: user_id={user_id}, token_id={token_info['token_id']}")
+            logger.info(
+                "[API] Stream sync started: user_id=%s, token_id=%s",
+                user_id, token_info["token_id"],
+            )
             result = _run_api_sync(user_id, ver)
             payload, _ = _api_sync_result_payload(result)
+            track_event("sync_task", user_id=user_id, metadata={
+                "success": bool(payload.get("success")),
+                "trigger": "api",
+                "version": ver,
+                "elapsed_time": payload.get("elapsed_time"),
+                "error": payload.get("error"),
+            })
             event = "completed" if payload.get("success") else "failed"
             yield write_event(event, **payload)
-            logger.info(f"[API] Stream sync finished: user_id={user_id}, success={payload.get('success')}, token_id={token_info['token_id']}")
+            logger.info(
+                "[API] Stream sync finished: user_id=%s, success=%s, token_id=%s",
+                user_id, payload.get("success"), token_info["token_id"],
+            )
         except asyncio.TimeoutError:
-            logger.warning(f"[API] Stream sync timeout: user_id={user_id}")
+            track_event("sync_task", user_id=user_id, metadata={
+                "success": False,
+                "trigger": "api",
+                "version": ver,
+                "error": "Timeout",
+            })
+            logger.warning("[API] Stream sync timeout: user_id=%s", user_id)
             yield write_event("failed", success=False, error="Timeout", message=f"Sync exceeded {_services.sync_timeout}s")
-        except Exception as e:
-            logger.error(f"[API] ✗ Stream sync error: user_id={user_id}, error={e}", exc_info=True)
-            yield write_event("failed", success=False, error="Internal server error", message=str(e))
+        except Exception as exc:
+            track_event("sync_task", user_id=user_id, metadata={
+                "success": False,
+                "trigger": "api",
+                "version": ver,
+                "error": str(exc)[:200],
+            })
+            logger.exception("[API] Stream sync failed: user_id=%s", user_id)
+            yield write_event("failed", success=False, error="Internal server error", message=str(exc))
         finally:
             lock.release()
             _mark_api_sync_lock_released(user_id, lock)
