@@ -66,10 +66,23 @@ from linebot.v3.webhooks import (
 
 # Song and record generators
 from modules.song_generator import song_info_generate, generate_version_list
-from modules.record_generator import *
+from modules.record_generator import (
+    generate_cover,
+    generate_level_rank_progress_image,
+    generate_plate_image,
+    generate_records_picture,
+    generate_score_recognition_picture,
+)
 
 # User and data managers
-from modules.user_manager import *
+from modules.user_manager import (
+    add_user,
+    delete_user,
+    edit_user_value,
+    get_user_nickname,
+    get_user_timezone,
+    record_notice_vote,
+)
 from modules.user_db import (
     save_user, get_user, user_exists,
     get_user_field, update_user_field, load_all_users,
@@ -80,13 +93,33 @@ from modules.bindtoken_manager import (
     generate_settings_token, get_user_id_from_settings_token,
     generate_unbind_token, get_user_id_from_unbind_token,
 )
-from modules.notice_manager import *
-from modules.notice_stats import *
+from modules.notice_manager import get_notice_by_id
+from modules.notice_stats import calculate_notice_stats
 from modules.tip_ad_manager import load_tip_ad_data
-from modules.maimai_manager import *
+from modules.maimai_manager import (
+    fetch_dom,
+    get_aime_candidates,
+    get_friend_info,
+    get_friend_records,
+    get_friends_list,
+    get_maimai_info,
+    get_maimai_records,
+    get_nearby_maimai_stores,
+    get_rating_image_path,
+    get_recent_records,
+    get_single_record,
+    login_to_maimai,
+    parse_level_value,
+)
 from modules.score_calculator import get_note_score
 from modules.dxdata_manager import start_weekly_update_scheduler as start_dxdata_weekly_update
-from modules.record_manager import *
+from modules.record_manager import (
+    get_detailed_info,
+    get_ideal_score,
+    get_single_ra,
+    read_record,
+    write_record,
+)
 from modules.devtoken_manager import (
     load_dev_tokens,
     save_dev_tokens,
@@ -95,11 +128,73 @@ from modules.devtoken_manager import (
 
 from modules.perm_request_handler import accept_perm_request, reject_perm_request
 
-# Config loader
-from modules.config_loader import *
+from modules.config_loader import (
+    BG_DIR,
+    DOMAIN,
+    DXDATA_FILE,
+    DXDATA_URL,
+    EXPORT_DIR,
+    HOST,
+    IMG_DIR,
+    LINE_ADDING_URL,
+    LINE_CHANNEL_ACCESS_TOKEN,
+    LINE_CHANNEL_SECRET,
+    LOGO_FILE,
+    LOG_FILE,
+    MAIMAI_VERSION,
+    PORT,
+    TEMP_VERSION,
+    VERSIONS_DIR,
+    load_user,
+    read_dxdata,
+)
 
-# UI and message modules
-from modules.message_manager import *
+from modules.message_manager import (
+    access_error,
+    cannot_do_for_others,
+    friend_error,
+    friend_rcd_error,
+    generate_account_action_flex,
+    generate_bot_status_flex,
+    generate_calc_carousel,
+    generate_calc_result_flex,
+    generate_export_flex,
+    generate_friend_buttons,
+    generate_ranking_flex,
+    generate_rc_flex,
+    generate_score_recognition_flex,
+    generate_search_results_flex,
+    generate_song_info_flex,
+    generate_song_list_flex,
+    generate_status_flex,
+    generate_update_result_flex,
+    generate_user_info_flex,
+    generate_welcome_flex,
+    get_friend_list_alt_text,
+    get_multilingual_text,
+    get_nearby_stores_alt_text,
+    get_user_language,
+    info_error,
+    input_error,
+    level_not_supported,
+    level_record_not_found,
+    level_record_page_hint,
+    maintenance_error,
+    mention_error,
+    mention_no_matching_data,
+    mention_record_error,
+    no_matching_data,
+    plate_error,
+    rate_limit_msg,
+    rebind_msg,
+    record_error,
+    segaid_error,
+    song_error,
+    store_error,
+    system_error,
+    system_error_text,
+    version_error,
+)
 
 # Image processing
 from modules.image_uploader import smart_upload, _start_periodic_cleanup
@@ -138,7 +233,14 @@ from modules.command_parsers import (
     parse_plate_query,
 )
 from modules.dbpool_manager import close_pool
-from modules.image_manager import *
+from modules.image_manager import (
+    compose_images,
+    font_profile,
+    font_trophy,
+    resize_by_width,
+    round_corner,
+    truncate_text,
+)
 
 # System utilities
 from modules.system_checker import run_system_check, clean_unbound_users
@@ -198,7 +300,7 @@ from modules.image_api import configure_image_api, image_api
 from modules.record_transfer_api import record_transfer_api
 from modules.developer_api import cleanup_api_sync_locks, configure_developer_api, developer_api
 from modules.score_api import create_score_api
-from modules.admin_api import ADMIN_CSRF_EXEMPT_ENDPOINTS, admin_api, configure_admin_api
+from modules.admin_api import CSRF_EXEMPT_ENDPOINTS, admin_api, configure_admin_api
 from modules.mention_parser import (
     clean_message_text,
     has_non_bot_mention,
@@ -247,7 +349,7 @@ score_api = create_score_api(SCORE_RECOGNITION_API_MAX_IMAGE_BYTES)
 csrf.exempt(score_api)
 app.register_blueprint(score_api)
 app.register_blueprint(admin_api)
-for endpoint in ADMIN_CSRF_EXEMPT_ENDPOINTS:
+for endpoint in CSRF_EXEMPT_ENDPOINTS:
     csrf.exempt(app.view_functions[f"admin_api.{endpoint}"])
 
 # 配置安全响应头
@@ -1455,7 +1557,7 @@ def async_get_friend_list_task(event):
             reply_token,
             generate_status_flex(
                 language_catalog("main.private_chat_title"),
-                friend_rcd_group_warning_text,
+                language_catalog("messages.friend_rcd_group_warning_text"),
                 user_id,
                 tone="warning",
             ),
@@ -1519,7 +1621,7 @@ def async_generate_friend_record_task(event):
     if source_type != 'user':
         reply_message = generate_status_flex(
             language_catalog("main.private_chat_title"),
-            friend_rcd_group_warning_text,
+            language_catalog("messages.friend_rcd_group_warning_text"),
             user_id,
             tone="warning",
         )
@@ -1828,13 +1930,13 @@ def handle_export_command(user_id: str, fmt: str):
         meta = export_records(user_id, fmt)
     except Exception as e:
         logger.error(f"[Export] ✗ Handler error: user_id={user_id}, fmt={fmt}, error={e}", exc_info=True)
-        return TextMessage(text=get_multilingual_text(export_failed_text, user_id))
+        return TextMessage(text=get_multilingual_text(language_catalog("messages.export_failed_text"), user_id))
 
     status = meta.get("status")
     if status == "empty":
-        return TextMessage(text=get_multilingual_text(export_empty_text, user_id))
+        return TextMessage(text=get_multilingual_text(language_catalog("messages.export_empty_text"), user_id))
     if status != "ok":
-        return TextMessage(text=get_multilingual_text(export_failed_text, user_id))
+        return TextMessage(text=get_multilingual_text(language_catalog("messages.export_failed_text"), user_id))
 
     logger.info(f"[Export] ✓ Export delivered: user_id={user_id}, fmt={fmt}, "
                 f"size={meta['size']}, best={meta['best_count']}, recent={meta['recent_count']}")
@@ -2036,7 +2138,7 @@ def get_ranking(user_id, id_use, ver=None, source_type="user", group_key=None):
             })
 
     if not ranked_users:
-        return TextMessage(text=get_multilingual_text(ranking_no_data_text, user_id))
+        return TextMessage(text=get_multilingual_text(language_catalog("messages.ranking_no_data_text"), user_id))
 
     # 按 rating 降序排序
     ranked_users.sort(key=lambda x: x["rating_int"], reverse=True)
@@ -2114,7 +2216,7 @@ def search_by_artist(user_id, artist_query, ver="jp", page=1, source_type="user"
     if source_type != 'user':
         return generate_status_flex(
             language_catalog("main.private_chat_title"),
-            search_group_warning_text,
+            language_catalog("messages.search_group_warning_text"),
             user_id,
             tone="warning",
         )
@@ -2151,7 +2253,7 @@ def search_by_designer(user_id, designer_query, ver="jp", page=1, source_type="u
     if source_type != 'user':
         return generate_status_flex(
             language_catalog("main.private_chat_title"),
-            search_group_warning_text,
+            language_catalog("messages.search_group_warning_text"),
             user_id,
             tone="warning",
         )
@@ -2196,7 +2298,7 @@ def search_by_bpm(user_id, bpm_min, bpm_max=None, ver="jp", page=1, source_type=
     if source_type != 'user':
         return generate_status_flex(
             language_catalog("main.private_chat_title"),
-            search_group_warning_text,
+            language_catalog("messages.search_group_warning_text"),
             user_id,
             tone="warning",
         )
@@ -2287,7 +2389,7 @@ def get_user_info(user_id, source_type):
     if source_type != 'user':
         return generate_status_flex(
             language_catalog("main.private_chat_title"),
-            private_info_group_warning_text,
+            language_catalog("messages.private_info_group_warning_text"),
             user_id,
             tone="warning",
         )
@@ -3428,7 +3530,7 @@ async def generate_friend_record(user_id, friend_code, type="best50", cmd="", ve
 
     original_url, preview_url = await smart_upload(img, user_id)
     message = [
-        TextMessage(text=get_multilingual_text(friend_rcd_text, user_id).format(name=friend_info["name"])),
+        TextMessage(text=get_multilingual_text(language_catalog("messages.friend_rcd_text"), user_id).format(name=friend_info["name"])),
         ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
     ]
 
@@ -3564,12 +3666,12 @@ def handle_accept_perm_request(user_id: str, request_id: str) -> TextMessage:
     result = accept_perm_request(user_id, request_id)
 
     if result['success']:
-        text = get_multilingual_text(perm_request_accept_success_text, user_id).format(
+        text = get_multilingual_text(language_catalog("messages.perm_request_accept_success_text"), user_id).format(
             token_id=result['token_id'],
             requester_name=result.get('requester_name', result['token_id'])
         )
     elif result.get('error') == 'Request not found':
-        text = get_multilingual_text(perm_request_already_processed_text, user_id)
+        text = get_multilingual_text(language_catalog("messages.perm_request_already_processed_text"), user_id)
     else:
         notify_admins_error(
             error_title="Permission Request Accept Error",
@@ -3600,12 +3702,12 @@ def handle_reject_perm_request(user_id: str, request_id: str) -> TextMessage:
     result = reject_perm_request(user_id, request_id)
 
     if result['success']:
-        text = get_multilingual_text(perm_request_reject_success_text, user_id).format(
+        text = get_multilingual_text(language_catalog("messages.perm_request_reject_success_text"), user_id).format(
             token_id=result['token_id'],
             requester_name=result.get('requester_name', result['token_id'])
         )
     elif result.get('error') == 'Request not found':
-        text = get_multilingual_text(perm_request_already_processed_text, user_id)
+        text = get_multilingual_text(language_catalog("messages.perm_request_already_processed_text"), user_id)
     else:
         notify_admins_error(
             error_title="Permission Request Reject Error",
@@ -4215,14 +4317,14 @@ def cmd_refresh_menu(ctx):
     return None
 
 def cmd_unbind_prompt(ctx):
-    warn = _check_private_or_warn(ctx, unbind_group_warning_text)
+    warn = _check_private_or_warn(ctx, language_catalog("messages.unbind_group_warning_text"))
     if warn is not None:
         return warn
     user_data = get_user(ctx.user_id) or {}
     if not _can_open_settings(user_data):
         return generate_status_flex(
             language_catalog("main.not_linked_title"),
-            rebind_not_bound_text,
+            language_catalog("messages.rebind_not_bound_text"),
             ctx.user_id,
             tone="warning",
         )
@@ -4396,14 +4498,14 @@ def _can_open_settings(user_data):
     )
 
 def cmd_bind(ctx):
-    warn = _check_private_or_warn(ctx, bind_group_warning_text)
+    warn = _check_private_or_warn(ctx, language_catalog("messages.bind_group_warning_text"))
     if warn is not None:
         return warn
     add_user(ctx.user_id)
     if _has_full_account(get_user(ctx.user_id) or {}):
         return generate_status_flex(
             language_catalog("main.already_linked_title"),
-            already_bound_text,
+            language_catalog("messages.already_bound_text"),
             ctx.user_id,
             tone="warning",
         )
@@ -4411,13 +4513,13 @@ def cmd_bind(ctx):
     return generate_account_action_flex("bind", url, ctx.user_id)
 
 def cmd_rebind(ctx):
-    warn = _check_private_or_warn(ctx, rebind_group_warning_text)
+    warn = _check_private_or_warn(ctx, language_catalog("messages.rebind_group_warning_text"))
     if warn is not None:
         return warn
     if not _has_full_account(get_user(ctx.user_id) or {}):
         return generate_status_flex(
             language_catalog("main.not_linked_title"),
-            rebind_not_bound_text,
+            language_catalog("messages.rebind_not_bound_text"),
             ctx.user_id,
             tone="warning",
         )
@@ -4425,13 +4527,13 @@ def cmd_rebind(ctx):
     return generate_account_action_flex("rebind", url, ctx.user_id)
 
 def cmd_settings(ctx):
-    warn = _check_private_or_warn(ctx, settings_group_warning_text)
+    warn = _check_private_or_warn(ctx, language_catalog("messages.settings_group_warning_text"))
     if warn is not None:
         return warn
     if not _can_open_settings(get_user(ctx.user_id) or {}):
         return generate_status_flex(
             language_catalog("main.not_linked_title"),
-            rebind_not_bound_text,
+            language_catalog("messages.rebind_not_bound_text"),
             ctx.user_id,
             tone="warning",
         )
