@@ -10,14 +10,12 @@ import re
 import traceback
 import threading
 import queue
-import logging
 import psutil
 import platform
 import socket
 import secrets
 import asyncio
 import aiohttp
-import urllib3
 import atexit
 from urllib.parse import quote as _url_quote
 import time
@@ -25,7 +23,6 @@ import gc
 import math
 import base64 as b64mod
 
-from functools import wraps
 from datetime import datetime
 
 from PIL import Image, ImageDraw
@@ -145,6 +142,20 @@ from modules.import_token_manager import (
     revoke_import_token,
     verify_import_token,
 )
+from modules.api_auth import (
+    check_user_permission,
+    maimai_session_cors as _maimai_session_cors,
+    require_dev_token,
+    require_import_token,
+    require_owner_permission,
+    require_user_permission,
+)
+from modules.logging_config import configure_logging
+from modules.web_i18n import (
+    error_page as _error_page,
+    localized_payload as _localized_payload,
+    register_web_i18n,
+)
 from modules.command_router import (
     Exact, Prefix, Suffix, Regex, FirstWord,
     Command, CommandContext,
@@ -195,7 +206,6 @@ from modules.i18n import (
     language_catalog,
     language_codes,
     language_options,
-    localized_catalog,
     normalize_language,
     select_text,
 )
@@ -214,6 +224,19 @@ from modules.score_recognition_api import (
     ScoreRecognitionResultError,
     build_score_recognition_response,
 )
+from modules.command_config import (
+    API_MAX_SEARCH_RESULTS,
+    MAX_SEARCH_RESULTS,
+    RANK_COMMANDS,
+    rank_command_words,
+)
+from modules.command_help import (
+    HELP_INDEX_WORDS,
+    HIDDEN_HELP_COMMAND_WORDS,
+    command_help_message as _command_help_message,
+    detect_command_help_key,
+    detect_missing_param_help_key as _detect_missing_param_help_key,
+)
 
 # Module aliases for specific use cases
 import modules.user_manager as user_manager_module
@@ -230,123 +253,17 @@ IMAGE_QUERY_MAX_CONCURRENT_TASKS = int(os.getenv("IMAGE_QUERY_MAX_CONCURRENT_TAS
 WEB_MAX_CONCURRENT_TASKS = 2    # 网络任务并发数
 TASK_TIMEOUT_SECONDS = 120
 
-# 搜索结果限制
-MAX_SEARCH_RESULTS = 10
-API_MAX_SEARCH_RESULTS = 50
 SCORE_RECOGNITION_API_MAX_IMAGE_BYTES = int(
     os.getenv("SCORE_RECOGNITION_API_MAX_IMAGE_BYTES", 20 * 1024 * 1024)
 )
 
 # ==================== 日志配置 ====================
 
-# 配置日志
-# 带颜色的日志格式化器
-class ColoredFormatter(logging.Formatter):
-    COLORS = {
-        'DEBUG': '\033[36m',    # 青色
-        'INFO': '\033[32m',     # 绿色
-        'WARNING': '\033[33m',  # 黄色
-        'ERROR': '\033[31m',    # 红色
-        'CRITICAL': '\033[35m', # 紫色
-    }
-    RESET = '\033[0m'
-    GRAY = '\033[90m'
-
-    def format(self, record):
-        # 为级别名添加颜色
-        levelname = record.levelname
-        if levelname in self.COLORS:
-            record.levelname = f"{self.COLORS[levelname]}{levelname}{self.RESET}"
-
-        # 时间戳使用灰色
-        formatted = super().format(record)
-        formatted = formatted.replace(record.asctime, f"{self.GRAY}{record.asctime}{self.RESET}", 1)
-
-        return formatted
-
-# 禁用 SSL 警告
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-# 配置日志
-file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
-file_handler.setFormatter(logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-))
-
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(ColoredFormatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%H:%M:%S'
-))
-
-logging.basicConfig(
-    level=logging.INFO,
-    handlers=[file_handler, console_handler]
-)
-
-logger = logging.getLogger(__name__)
+logger = configure_logging(LOG_FILE, __name__)
 
 app = Flask(__name__, static_folder='assets', static_url_path='/static')
 app.secret_key = secrets.token_hex(32)  # 用于session加密
-
-
-@app.context_processor
-def _inject_language_context():
-    return {
-        "default_language": DEFAULT_WEB_LANGUAGE,
-        "i18n_catalog": language_catalog,
-        "i18n_section": localized_catalog,
-        "language_options": language_options(),
-        "i18n_select": select_text,
-    }
-
-
-def _localized_payload(data, key):
-    values = data.get(key)
-    if isinstance(values, dict):
-        return {str(code): str(value or "").strip() for code, value in values.items()}
-    return {
-        code: str(data.get(f"{key}_{code.replace('-', '_')}", "") or "").strip()
-        for code in language_codes()
-    }
-
-
-def _error_page(message, language=DEFAULT_WEB_LANGUAGE, status=400):
-    message_i18n = None
-    if isinstance(message, dict):
-        message_i18n = {
-            code: select_text(message, language=code, default_language=DEFAULT_WEB_LANGUAGE)
-            for code in language_codes()
-        }
-    language = normalize_language(language, DEFAULT_WEB_LANGUAGE)
-    message = select_text(
-        message_i18n or message,
-        language=language,
-        default_language=DEFAULT_WEB_LANGUAGE,
-    )
-    return render_template("error.html", message=message, message_i18n=message_i18n, language=language), status
-
-# 配置成绩命令列表
-RANK_COMMANDS = {
-    # Best 系列
-    ("b50", "best50"): "best50",
-    ("b40", "best40"): "best40",
-    ("b35", "best35"): "best35",
-    ("b15", "best15"): "best15",
-
-    # All Best 系列
-    ("ab35", "allb35"): "allb35",
-    ("ab50", "allb50"): "allb50",
-
-    # 特殊系列
-    ("apb50", "ap50"): "apb50",
-    ("fdxb50", "fdx50"): "fdxb50",
-    ("rct50", "r50"): "rct50",
-    ("idealb50", "idlb50"): "idlb50",
-    ("s50", "sun50", "寸止め", "寸50"): "sun50",
-    ("unknown",): "unknown",
-}
+register_web_i18n(app)
 
 # 启用 CSRF 保护
 csrf = CSRFProtect(app)
@@ -571,233 +488,6 @@ def cancel_if_timeout(task_done: threading.Event) -> None:
 
 configuration = Configuration(access_token=LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
-
-# ==================== API 认证装饰器 ====================
-
-def require_dev_token(f):
-    """
-    验证开发者 token 的装饰器
-
-    使用方法:
-    @app.route('/api/endpoint')
-    @require_dev_token
-    def endpoint():
-        # token_info 会被添加到 request 对象中
-        token_info = request.token_info
-        return jsonify({"status": "success"})
-    """
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # 从 Authorization header 获取 token
-        auth_header = request.headers.get('Authorization')
-
-        if not auth_header:
-            return jsonify({
-                "error": "No authorization header",
-                "message": "Authorization header is required"
-            }), 401
-
-        # 检查 Bearer token 格式
-        parts = auth_header.split()
-        if len(parts) != 2 or parts[0].lower() != 'bearer':
-            return jsonify({
-                "error": "Invalid authorization header",
-                "message": "Authorization header must be in format: Bearer <token>"
-            }), 401
-
-        token = parts[1]
-
-        # 验证 token
-        token_info = verify_dev_token(token)
-        if not token_info:
-            return jsonify({
-                "error": "Invalid token",
-                "message": "Token is invalid or has been revoked"
-            }), 401
-
-        # 将 token 信息添加到 request 对象中
-        request.token_info = token_info
-
-        return f(*args, **kwargs)
-
-    return decorated_function
-
-
-def require_import_token(f):
-    """验证用户成绩导入 token；通过后 request.import_token_info 包含 user_id/token_id。"""
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if request.method == "OPTIONS":
-            return f(*args, **kwargs)
-
-        auth_header = request.headers.get('Authorization')
-        if not auth_header:
-            return _maimai_session_cors(jsonify({
-                "error": "No authorization header",
-                "message": "Authorization header is required"
-            })), 401
-
-        parts = auth_header.split()
-        if len(parts) != 2 or parts[0].lower() != 'bearer':
-            return _maimai_session_cors(jsonify({
-                "error": "Invalid authorization header",
-                "message": "Authorization header must be in format: Bearer <token>"
-            })), 401
-
-        token_info = verify_import_token(parts[1])
-        if not token_info:
-            return _maimai_session_cors(jsonify({
-                "error": "Invalid token",
-                "message": "Import token is invalid or has been revoked"
-            })), 401
-
-        request.import_token_info = token_info
-        return f(*args, **kwargs)
-
-    return decorated_function
-
-
-def require_user_permission(f):
-    """
-    验证 token 是否有权限访问指定用户的装饰器
-
-    必须在 @require_dev_token 之后使用
-
-    使用方法:
-    @app.route('/api/endpoint/<user_id>')
-    @csrf.exempt
-    @require_dev_token
-    @require_user_permission
-    def endpoint(user_id):
-        # 此时已验证 token 有权限访问 user_id
-        return jsonify({"status": "success"})
-
-    权限检查逻辑:
-    1. 如果用户是通过该 token 创建的 (registered_via_token) - 允许访问
-    2. 如果 token 的 allowed_users 列表包含该用户 - 允许访问
-    3. 否则拒绝访问
-    """
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # 获取 user_id 参数
-        user_id = kwargs.get('user_id')
-        if not user_id:
-            return jsonify({
-                "error": "Missing parameter",
-                "message": "user_id is required"
-            }), 400
-
-        # 获取 token 信息（由 require_dev_token 装饰器提供）
-        token_info = request.token_info
-        token_id = token_info['token_id']
-
-        # 使用辅助函数检查权限
-        has_permission, result = check_user_permission(user_id, token_id)
-        if not has_permission:
-            return result
-
-        return f(*args, **kwargs)
-
-    return decorated_function
-
-
-def require_owner_permission(f):
-    """
-    验证 token 是否为用户的所有者（创建者）的装饰器
-
-    只允许创建该用户的 token 访问，不允许被授权的 token 访问
-    用于敏感操作如：删除用户、管理权限等
-
-    必须在 @require_dev_token 之后使用
-
-    使用方法:
-    @app.route('/api/endpoint/<user_id>')
-    @csrf.exempt
-    @require_dev_token
-    @require_owner_permission
-    def endpoint(user_id):
-        # 此时已验证 token 是 user_id 的所有者（创建者）
-        return jsonify({"status": "success"})
-
-    权限检查逻辑:
-    只检查用户是否通过该 token 创建 (registered_via_token)
-    不检查 allowed_users 列表
-    """
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # 获取 user_id 参数
-        user_id = kwargs.get('user_id')
-        if not user_id:
-            return jsonify({
-                "error": "Missing parameter",
-                "message": "user_id is required"
-            }), 400
-
-        # 获取 token 信息（由 require_dev_token 装饰器提供）
-        token_info = request.token_info
-        token_id = token_info['token_id']
-
-        # 检查用户是否存在且为该 token 创建
-        _owner_token = get_user_field(user_id, 'registered_via_token')
-        if _owner_token is None:
-            return jsonify({
-                "error": "User not found",
-                "message": f"User {user_id} does not exist"
-            }), 404
-
-        if _owner_token != token_id:
-            return jsonify({
-                "error": "Forbidden",
-                "message": "Only the owner token (creator) can perform this operation"
-            }), 403
-
-        return f(*args, **kwargs)
-
-    return decorated_function
-
-
-def check_user_permission(user_id, token_id):
-    """
-    检查 token 是否有权限访问指定用户的辅助函数
-
-    Args:
-        user_id: 用户ID
-        token_id: Token ID
-
-    Returns:
-        tuple: (has_permission: bool, error_response_or_user_data)
-            成功时返回 (True, user_data_dict)
-            失败时返回 (False, error_response)
-    """
-    user_data = get_user(user_id)
-
-    # 检查用户是否存在
-    if not user_data:
-        return False, (jsonify({
-            "error": "User not found",
-            "message": f"User {user_id} does not exist"
-        }), 404)
-
-    # 检查权限：方式1 - 用户是通过该 token 创建的
-    if user_data.get('registered_via_token') == token_id:
-        return True, user_data
-
-    # 检查权限：方式2 - token 的 allowed_users 列表包含该用户
-    dev_tokens = load_dev_tokens()
-    if token_id in dev_tokens:
-        allowed_users = dev_tokens[token_id].get('allowed_users', [])
-        if user_id in allowed_users:
-            return True, user_data
-
-    # 没有权限
-    return False, (jsonify({
-        "error": "Permission denied",
-        "message": f"Token does not have permission to access user {user_id}"
-    }), 403)
 
 # ==================== Flask 路由 ====================
 
@@ -1604,13 +1294,6 @@ DEMO_CORS_ORIGINS = {
     for origin in os.getenv("DEMO_CORS_ORIGINS", DEMO_CORS_ORIGIN).split(",")
     if origin.strip()
 }
-MAIMAI_SESSION_CORS_ORIGINS = {
-    "https://maimaidx.jp",
-    "https://maimaidx-eng.com",
-    "https://dxrating.net",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-}
 
 def _demo_cors(response):
     origin = request.headers.get("Origin")
@@ -1623,14 +1306,6 @@ def _demo_cors(response):
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return response
 
-def _maimai_session_cors(response):
-    origin = request.headers.get("Origin")
-    if origin in MAIMAI_SESSION_CORS_ORIGINS:
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Vary"] = "Origin"
-    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-    return response
 
 def _normalize_session_profile(profile: dict, ver: str) -> dict:
     base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
@@ -4696,138 +4371,12 @@ def _enqueue_task(cmd, ctx, target_queue, lane_name, payload):
         )
 
 
-COMMAND_HELP = localized_catalog("command_help")
-
-EXACT_HELP_ALIASES = {
-    "maimai update": "maimai_update",
-    "update": "maimai_update",
-    "friend list": "friend_list",
-    "friends": "friend_list",
-    "unbind": "unbind_prompt",
-    "bind": "bind",
-    "rebind": "rebind",
-    "settings": "settings",
-    "profile": "profile",
-    "getme": "profile",
-    "status": "status",
-    "refreshmenu": "refreshmenu",
-    "rank": "ranking",
-    "ranking": "ranking",
-    "random": "random_song",
-    "rec": "score_recognition",
-    "rec-flex": "score_recognition",
-    "crop": "score_recognition",
-    "fix-rcd": "score_recognition",
-}
-
-FIRST_WORD_HELP_ALIASES = {
-    "friend-rcd": "friend_rcd",
-    "search-record": "search_record",
-    "search": "search_by_id",
-    "calc-song": "calc_song",
-    "artist": "search_by_artist",
-    "designer": "search_by_designer",
-    "bpm": "search_by_bpm",
-    "rc": "rc",
-    "export": "export",
-    "成績エクスポート": "export",
-    "成绩导出": "export",
-    "calc": "calc_notes",
-}
-
-SUFFIX_HELP_ALIASES = {
-    "record": "song_record",
-    "song-record": "song_record",
-    "のレコード": "song_record",
-    "info": "song_info",
-    "song-info": "song_info",
-    "ってどんな曲": "song_info",
-    "version-list": "version_songs",
-    "のバージョンリスト": "version_songs",
-    "level-list": "level_rank_list",
-    "の定数リスト": "level_rank_list",
-    "のレベルリスト": "level_rank_list",
-    "records": "level_records",
-    "record-list": "level_records",
-    "のレコードリスト": "level_records",
-    "achievement": "plate",
-    "の達成状況": "plate",
-    "progress": "level_rank_progress",
-    "進捗": "level_rank_progress",
-    "进度": "level_rank_progress",
-}
-
-REQUIRED_PARAM_HELP_WORDS = set(FIRST_WORD_HELP_ALIASES) | {
-    *SUFFIX_HELP_ALIASES,
-}
-
-
-def _command_help_message(help_key, user_id=None):
-    if help_key == "help_index":
-        return generate_help_index_flex(user_id)
-    if help_key == "b_records":
-        return generate_b_records_help_flex(user_id)
-    help_data = COMMAND_HELP.get(help_key)
-    return generate_standard_help_flex(help_data, user_id) if help_data else None
-
-
-HIDDEN_HELP_COMMAND_WORDS = {"unknown"}
-HELP_INDEX_WORDS = {"help", "commands", "command", "帮助", "幫助", "ヘルプ", "コマンド"}
-
 def _detect_command_help_key(text):
-    normalized = re.sub(r"\s+", " ", text.strip())
-    lowered = normalized.lower()
-    if not lowered:
-        return None
-
-    if lowered in EXACT_HELP_ALIASES:
-        return EXACT_HELP_ALIASES[lowered]
-    if lowered in HELP_INDEX_WORDS:
-        return "help_index"
-    if lowered in SUFFIX_HELP_ALIASES:
-        return SUFFIX_HELP_ALIASES[lowered]
-
-    first_word = re.split(r"[ \n]", lowered, 1)[0]
-    if first_word in ("rank", "ranking"):
-        return "ranking"
-    if first_word == "random":
-        return "random_song"
-    if first_word in HELP_B_COMMAND_WORDS:
-        return "b_records"
-    if first_word in FIRST_WORD_HELP_ALIASES:
-        return FIRST_WORD_HELP_ALIASES[first_word]
-
-    if lowered.endswith(("のレコード", "song-record", "record")):
-        return "song_record"
-    if lowered.endswith(("ってどんな曲", "info", "song-info")):
-        return "song_info"
-    if lowered.endswith(("のバージョンリスト", "version-list")):
-        return "version_songs"
-    if lowered.endswith(("の定数リスト", "のレベルリスト", "level-list")):
-        return "level_rank_list"
-
-    if re.match(r".+(のレコードリスト|record-list|records)(?:[ 　]*\d*)?$", lowered):
-        return "level_records"
-    if re.match(r"^.+(の達成状況|achievement)(\s*-(uc|up|c))?$", lowered):
-        return "plate"
-    if re.match(fr"^.+\s*{PROGRESS_RANK_PATTERN}\s*(progress|進捗|进度)\s*(?:-(uc|up|c))?$", lowered):
-        return "level_rank_progress"
-
-    missing_param_help_key = _detect_missing_param_help_key(lowered)
-    if missing_param_help_key:
-        return missing_param_help_key
-    return None
-
-
-def _detect_missing_param_help_key(text):
-    lowered = text.strip().lower()
-    if not lowered:
-        return None
-    if lowered in REQUIRED_PARAM_HELP_WORDS:
-        if lowered in SUFFIX_HELP_ALIASES:
-            return SUFFIX_HELP_ALIASES[lowered]
-        return FIRST_WORD_HELP_ALIASES.get(lowered)
-    return None
+    return detect_command_help_key(
+        text,
+        b_command_words=HELP_B_COMMAND_WORDS,
+        progress_rank_pattern=PROGRESS_RANK_PATTERN,
+    )
 
 
 def _reply_command_help_if_needed(ctx):
@@ -5155,11 +4704,8 @@ def cmd_settings(ctx):
 
 
 # ---- B 系列命令的 first-word 集合（从 RANK_COMMANDS 自动展开）----
-_B_COMMAND_WORDS = tuple(sorted({alias for aliases in RANK_COMMANDS for alias in aliases}))
-HELP_B_COMMAND_WORDS = tuple(
-    word for word in _B_COMMAND_WORDS
-    if word not in HIDDEN_HELP_COMMAND_WORDS
-)
+_B_COMMAND_WORDS = rank_command_words()
+HELP_B_COMMAND_WORDS = rank_command_words(hidden=HIDDEN_HELP_COMMAND_WORDS)
 
 
 # ---- 命令注册表 ----
