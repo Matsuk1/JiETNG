@@ -1,8 +1,4 @@
-"""
-配置加载模块
-
-负责加载和管理配置文件、歌曲数据、用户数据等全局配置
-"""
+"""加载应用配置和缓存后的歌曲数据。"""
 
 import copy
 import json
@@ -15,8 +11,7 @@ from cryptography.fernet import Fernet
 
 CONFIG_PATH = "./config.json"
 
-# 默认配置
-default_config = {
+DEFAULT_CONFIG = {
     "admin_password": "",
     "maimai_version": {
         "jp": [],
@@ -76,10 +71,6 @@ default_config = {
     }
 }
 
-config_dir = os.path.dirname(CONFIG_PATH)
-if config_dir:
-    os.makedirs(config_dir, exist_ok=True)
-
 def _generate_vapid_keys():
     """生成 VAPID 密钥对（EC P-256），返回 (private_b64, public_b64)"""
     from cryptography.hazmat.primitives.asymmetric import ec
@@ -95,7 +86,6 @@ def _generate_vapid_keys():
     )
 
 def _ensure_fernet_key(value: str) -> str:
-
     if not isinstance(value, str):
         value = ""
 
@@ -112,47 +102,60 @@ def _ensure_bind_token(value: str) -> str:
 
     return value
 
-# 加载配置，若不存在则创建；若缺字段则补全
-if not os.path.exists(CONFIG_PATH):
-    _config = copy.deepcopy(default_config)
-else:
-    with open(CONFIG_PATH, 'r', encoding='utf-8') as file:
-        _config = json.load(file)
 
-    # 递归补字段
-    def deep_update(default, current):
-        for key, value in default.items():
-            if key not in current:
-                current[key] = value
-            elif isinstance(value, dict):
-                deep_update(value, current[key])
+def _merge_defaults(current, defaults):
+    """Fill missing or malformed mapping nodes without sharing default values."""
+    for key, default in defaults.items():
+        if key not in current:
+            current[key] = copy.deepcopy(default)
+        elif isinstance(default, dict):
+            if isinstance(current[key], dict):
+                _merge_defaults(current[key], default)
+            else:
+                current[key] = copy.deepcopy(default)
+    return current
 
-    deep_update(default_config, _config)
 
-_config["keys"]["user_data"] = _ensure_fernet_key(_config["keys"].get("user_data", ""))
-_config["keys"]["bind_token"] = _ensure_bind_token(_config["keys"].get("bind_token", ""))
+def _save_config(config):
+    directory = os.path.dirname(CONFIG_PATH)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    temporary_path = f"{CONFIG_PATH}.tmp"
+    with open(temporary_path, "w", encoding="utf-8") as file:
+        json.dump(config, file, indent=4, ensure_ascii=False)
+    os.replace(temporary_path, CONFIG_PATH)
 
-# 自动生成 VAPID 密钥
-if not _config["web_push"].get("vapid_private_key") or not _config["web_push"].get("vapid_public_key"):
-    _config["web_push"]["vapid_private_key"], _config["web_push"]["vapid_public_key"] = _generate_vapid_keys()
 
-# 写回更新后的配置
-with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
-    json.dump(_config, f, indent=4, ensure_ascii=False)
+def _load_config():
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, encoding="utf-8") as file:
+            loaded = json.load(file)
+        config = loaded if isinstance(loaded, dict) else {}
+    else:
+        config = {}
 
-# 顶层字段
+    _merge_defaults(config, DEFAULT_CONFIG)
+    keys = config["keys"]
+    keys["user_data"] = _ensure_fernet_key(keys.get("user_data", ""))
+    keys["bind_token"] = _ensure_bind_token(keys.get("bind_token", ""))
+    web_push = config["web_push"]
+    if not web_push.get("vapid_private_key") or not web_push.get("vapid_public_key"):
+        web_push["vapid_private_key"], web_push["vapid_public_key"] = _generate_vapid_keys()
+    _save_config(config)
+    return config
+
+
+_config = _load_config()
+
 ADMIN_PASSWORD = _config["admin_password"]
 MAIMAI_VERSION = _config["maimai_version"]
 TEMP_VERSION = _config["temp_version"]
 
-# 域名字段
 DOMAIN = _config["domain"]
 
-# 服务地址端口
 HOST = _config["host"]
 PORT = _config["port"]
 
-# 数据文件路径（./data/）
 LOG_FILE = "./jietng.log"
 DXDATA_FILE = "./data/dxdata/dxdata.json"
 DXDATA_VERSION_FILE = "./data/dxdata/dxdata_version.json"
@@ -162,17 +165,14 @@ NOTICE_FILE = "./data/notice.json"
 TIP_AD_FILE = "./data/tip_ad.json"
 DEV_TOKENS_FILE = "./data/dev_tokens.json"
 
-# 数据目录路径（./data/）
 BACKUP_DIR = "./data/backup"
 IMG_DIR = "./data/images"
 EXPORT_DIR = "./data/exports"
 
-# 资源文件路径（./assets/）
 FONT_FILE = "./assets/fonts/line_seed_jietng.ttf"
 LOGO_FILE = "./assets/pics/logo.png"
 QR_CODE_FILE = "./assets/pics/qrcode.png"
 
-# 资源目录路径（./assets/）
 VERSIONS_DIR = "./assets/versions"
 COVERS_DIR = "./assets/covers"
 PLATES_DIR = "./assets/plates"
@@ -187,26 +187,22 @@ ICON_BASE_DIR = "./assets/icon"
 BG_DIR = "./assets/pics/bg"
 RATING_DIR = "./assets/pics/rating"
 
-# 数据库配置字段
 RECORD_DATABASE = _config["record_database"]
 DB_HOST = RECORD_DATABASE["host"]
 DB_USER = RECORD_DATABASE["user"]
 DB_PASSWORD = RECORD_DATABASE["password"]
 DB_NAME = RECORD_DATABASE["database"]
 
-# URL 配置字段
 URLS = _config["urls"]
 LINE_ADDING_URL = URLS["line_adding"]
 SUPPORT_PAGE = URLS["support_page"]
 DXDATA_URL = URLS["dxdata"]
 
-# LINE 配置字段
 LINE_CHANNEL = _config["line_channel"]
 LINE_ACCOUNT_ID = LINE_CHANNEL["account_id"]
 LINE_CHANNEL_ACCESS_TOKEN = LINE_CHANNEL["access_token"]
 LINE_CHANNEL_SECRET = LINE_CHANNEL["secret"]
 
-# Rich menu 配置字段
 RICH_MENU = _config.get("rich_menu", {})
 RICH_MENU_ENABLED = bool(RICH_MENU.get("enabled", False))
 RICH_MENU_UNBOUND_ID = RICH_MENU.get("unbound_id", "")
@@ -214,11 +210,9 @@ RICH_MENU_BOUND_ID = RICH_MENU.get("bound_id", "")
 RICH_MENU_DEFAULT_LANGUAGE = RICH_MENU.get("default_language", "zh")
 RICH_MENU_MENUS = RICH_MENU.get("menus", {})
 
-# key 配置字段
 KEYS = _config["keys"]
 BIND_TOKEN_KEY = KEYS["bind_token"].encode()
 
-# Cloudflare R2 配置字段
 R2_CONFIG = _config.get("cloudflare_r2", {})
 R2_ENABLED = R2_CONFIG.get("enabled", False)
 R2_ACCOUNT_ID = R2_CONFIG.get("account_id", "")
@@ -227,7 +221,6 @@ R2_SECRET_ACCESS_KEY = R2_CONFIG.get("secret_access_key", "")
 R2_BUCKET_NAME = R2_CONFIG.get("bucket_name", "")
 R2_PUBLIC_URL = R2_CONFIG.get("public_url", "")
 
-# Web Push 配置字段
 WEB_PUSH_CONFIG = _config.get("web_push", {})
 VAPID_PRIVATE_KEY = WEB_PUSH_CONFIG.get("vapid_private_key", "")
 VAPID_PUBLIC_KEY = WEB_PUSH_CONFIG.get("vapid_public_key", "")

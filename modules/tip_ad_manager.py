@@ -1,285 +1,224 @@
-"""
-Tip/Ad 管理模块
-用于管理update完成后显示的提示和广告信息
-"""
+"""Manage localized tips and ads shown after selected bot responses."""
 
 import json
+import logging
 import os
 import random
-import logging
+import threading
 from datetime import datetime
+
 from modules.config_loader import TIP_AD_FILE
 
-logger = logging.getLogger(__name__)
 
-# 全局变量
+logger = logging.getLogger(__name__)
+LANGUAGES = ("zh", "zh-tw", "en", "ja")
 TIP_AD_DATA = []
-_ENABLED_TIPS = []  # 缓存启用的 tip 列表
-_ENABLED_ADS = []   # 缓存启用的 ad 列表
+_enabled_items = {"tip": [], "ad": []}
+_data_lock = threading.RLock()
+_loaded = False
+
+
+def _now():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _rebuild_cache():
-    """重建启用的 tip/ad 缓存"""
-    global _ENABLED_TIPS, _ENABLED_ADS
+    global _enabled_items
+    _enabled_items = {
+        item_type: [
+            item
+            for item in TIP_AD_DATA
+            if item.get("enabled", True) and item.get("type") == item_type
+        ]
+        for item_type in ("tip", "ad")
+    }
 
-    _ENABLED_TIPS = [
-        item for item in TIP_AD_DATA
-        if item.get('enabled', True) and item.get('type') == 'tip'
-    ]
-    _ENABLED_ADS = [
-        item for item in TIP_AD_DATA
-        if item.get('enabled', True) and item.get('type') == 'ad'
-    ]
 
-    logger.debug(f"[TipAd] Cache rebuilt: {len(_ENABLED_TIPS)} tips, {len(_ENABLED_ADS)} ads")
+def _save_locked():
+    directory = os.path.dirname(TIP_AD_FILE)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    temporary_file = f"{TIP_AD_FILE}.tmp"
+    with open(temporary_file, "w", encoding="utf-8") as file:
+        json.dump(TIP_AD_DATA, file, ensure_ascii=False, indent=2)
+    os.replace(temporary_file, TIP_AD_FILE)
+    _rebuild_cache()
 
 
 def load_tip_ad_data():
-    """
-    加载tip/ad数据
-
-    Returns:
-        list: tip/ad数据列表
-    """
-    global TIP_AD_DATA
-
-    try:
-        if os.path.exists(TIP_AD_FILE):
-            with open(TIP_AD_FILE, 'r', encoding='utf-8') as f:
-                TIP_AD_DATA = json.load(f)
-                logger.info(f"[TipAd] Loaded {len(TIP_AD_DATA)} tip/ad items from {TIP_AD_FILE}")
-        else:
+    global TIP_AD_DATA, _loaded
+    with _data_lock:
+        try:
+            if os.path.exists(TIP_AD_FILE):
+                with open(TIP_AD_FILE, encoding="utf-8") as file:
+                    loaded = json.load(file)
+                TIP_AD_DATA = (
+                    [item for item in loaded if isinstance(item, dict)]
+                    if isinstance(loaded, list)
+                    else []
+                )
+            else:
+                TIP_AD_DATA = []
+                _save_locked()
+            _loaded = True
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.error("Failed to load tip/ad data: %s", exc, exc_info=True)
             TIP_AD_DATA = []
-            save_tip_ad_data()
-            logger.info(f"[TipAd] Created new tip/ad data file at {TIP_AD_FILE}")
-    except Exception as e:
-        logger.error(f"[TipAd] Failed to load tip/ad data: {e}", exc_info=True)
-        TIP_AD_DATA = []
+            _loaded = True
+        _rebuild_cache()
+        return TIP_AD_DATA
 
-    _rebuild_cache()
 
-    return TIP_AD_DATA
+def _ensure_loaded():
+    if not _loaded:
+        load_tip_ad_data()
 
 
 def save_tip_ad_data():
-    """
-    保存tip/ad数据到文件
-
-    Returns:
-        bool: 是否保存成功
-    """
-    try:
-        with open(TIP_AD_FILE, 'w', encoding='utf-8') as f:
-            json.dump(TIP_AD_DATA, f, ensure_ascii=False, indent=2)
-
-        logger.info(f"[TipAd] Saved {len(TIP_AD_DATA)} tip/ad items to {TIP_AD_FILE}")
-
-        # 重建缓存
-        _rebuild_cache()
-
-        return True
-    except Exception as e:
-        logger.error(f"[TipAd] Failed to save tip/ad data: {e}", exc_info=True)
-        return False
+    with _data_lock:
+        try:
+            _save_locked()
+            return True
+        except OSError as exc:
+            logger.error("Failed to save tip/ad data: %s", exc, exc_info=True)
+            return False
 
 
 def get_all_tip_ads():
-    """
-    获取所有tip/ad数据
+    with _data_lock:
+        _ensure_loaded()
+        return TIP_AD_DATA.copy()
 
-    Returns:
-        list: 所有tip/ad数据
-    """
-    return TIP_AD_DATA.copy()
+
+def _random_enabled(item_type):
+    with _data_lock:
+        _ensure_loaded()
+        items = _enabled_items[item_type]
+        return random.choice(items) if items and random.random() <= 0.75 else None
 
 
 def get_random_tip():
-    """
-    随机获取一个启用的tip
-
-    Returns:
-        dict: 随机选择的tip数据，如果没有启用的则返回None
-    """
-    if not _ENABLED_TIPS or random.random() > 0.75:
-        return None
-
-    return random.choice(_ENABLED_TIPS)
+    return _random_enabled("tip")
 
 
 def get_random_ad():
-    """
-    随机获取一个启用的ad
+    return _random_enabled("ad")
 
-    Returns:
-        dict: 随机选择的ad数据，如果没有启用的则返回None
-    """
-    if not _ENABLED_ADS or random.random() > 0.75:
+
+def _button(button_type, button_value, labels):
+    if not button_type or not button_value:
         return None
-
-    return random.choice(_ENABLED_ADS)
-
-
-def create_tip_ad(tip_type, text_zh, text_en, text_ja, text_zh_tw=None, button_type=None,
-                  button_label_zh=None, button_label_zh_tw=None, button_label_en=None,
-                  button_label_ja=None, button_value=None, enabled=True):
-    """
-    创建新的tip/ad
-
-    Args:
-        tip_type: 类型 ('tip' 或 'ad')
-        text_zh: 中文文本
-        text_zh_tw: 繁体中文文本
-        text_en: 英文文本
-        text_ja: 日文文本
-        button_type: 按钮类型 ('uri' 或 'message')，None表示无按钮
-        button_label_zh: 按钮中文标签
-        button_label_zh_tw: 按钮繁体中文标签
-        button_label_en: 按钮英文标签
-        button_label_ja: 按钮日文标签
-        button_value: 按钮值（URI或消息文本）
-        enabled: 是否启用
-
-    Returns:
-        dict: 创建的tip/ad数据
-    """
-    load_tip_ad_data()
-    tip_ad = {
-        'id': f"{int(datetime.now().timestamp())}",
-        'type': tip_type,
-        'text': {
-            'zh': text_zh,
-            'zh-tw': text_zh_tw or '',
-            'en': text_en,
-            'ja': text_ja
-        },
-        'enabled': enabled,
-        'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    return {
+        "type": button_type,
+        "label": dict(zip(LANGUAGES, (label or "" for label in labels))),
+        "value": button_value,
     }
 
-    if button_type and button_value:
-        tip_ad['button'] = {
-            'type': button_type,
-            'label': {
-                'zh': button_label_zh or '',
-                'zh-tw': button_label_zh_tw or '',
-                'en': button_label_en or '',
-                'ja': button_label_ja or ''
-            },
-            'value': button_value
+
+def _new_id():
+    existing_ids = {item.get("id") for item in TIP_AD_DATA}
+    base = str(int(datetime.now().timestamp()))
+    item_id = base
+    suffix = 1
+    while item_id in existing_ids:
+        item_id = f"{base}_{suffix}"
+        suffix += 1
+    return item_id
+
+
+def create_tip_ad(
+    tip_type,
+    text_zh,
+    text_en,
+    text_ja,
+    text_zh_tw=None,
+    button_type=None,
+    button_label_zh=None,
+    button_label_zh_tw=None,
+    button_label_en=None,
+    button_label_ja=None,
+    button_value=None,
+    enabled=True,
+):
+    with _data_lock:
+        _ensure_loaded()
+        timestamp = _now()
+        item = {
+            "id": _new_id(),
+            "type": tip_type,
+            "text": dict(zip(LANGUAGES, (text_zh, text_zh_tw or "", text_en, text_ja))),
+            "enabled": enabled,
+            "created_at": timestamp,
+            "updated_at": timestamp,
         }
+        button = _button(
+            button_type,
+            button_value,
+            (button_label_zh, button_label_zh_tw, button_label_en, button_label_ja),
+        )
+        if button:
+            item["button"] = button
+        TIP_AD_DATA.append(item)
+        return item if save_tip_ad_data() else None
 
-    TIP_AD_DATA.append(tip_ad)
-    save_tip_ad_data()
 
-    logger.info(f"[TipAd] Created new {tip_type}: id={tip_ad['id']}")
-    return tip_ad
+def update_tip_ad(
+    tip_ad_id,
+    tip_type=None,
+    text_zh=None,
+    text_en=None,
+    text_ja=None,
+    text_zh_tw=None,
+    button_type=None,
+    button_label_zh=None,
+    button_label_zh_tw=None,
+    button_label_en=None,
+    button_label_ja=None,
+    button_value=None,
+    enabled=None,
+    remove_button=False,
+):
+    with _data_lock:
+        _ensure_loaded()
+        item = next((item for item in TIP_AD_DATA if item.get("id") == tip_ad_id), None)
+        if not item:
+            return None
 
-
-def update_tip_ad(tip_ad_id, tip_type=None, text_zh=None, text_en=None, text_ja=None,
-                  text_zh_tw=None, button_type=None, button_label_zh=None,
-                  button_label_zh_tw=None, button_label_en=None,
-                  button_label_ja=None, button_value=None, enabled=None, remove_button=False):
-    """
-    更新tip/ad
-
-    Args:
-        tip_ad_id: tip/ad ID
-        tip_type: 类型
-        text_zh: 中文文本
-        text_zh_tw: 繁体中文文本
-        text_en: 英文文本
-        text_ja: 日文文本
-        button_type: 按钮类型
-        button_label_zh: 按钮中文标签
-        button_label_zh_tw: 按钮繁体中文标签
-        button_label_en: 按钮英文标签
-        button_label_ja: 按钮日文标签
-        button_value: 按钮值
-        enabled: 是否启用
-        remove_button: 是否移除按钮
-
-    Returns:
-        dict: 更新后的tip/ad数据，如果未找到则返回None
-    """
-    for tip_ad in TIP_AD_DATA:
-        if tip_ad['id'] == tip_ad_id:
-            if tip_type is not None:
-                tip_ad['type'] = tip_type
-
-            if text_zh is not None:
-                tip_ad['text']['zh'] = text_zh
-            if text_zh_tw is not None:
-                tip_ad['text']['zh-tw'] = text_zh_tw
-            if text_en is not None:
-                tip_ad['text']['en'] = text_en
-            if text_ja is not None:
-                tip_ad['text']['ja'] = text_ja
-
-            if enabled is not None:
-                tip_ad['enabled'] = enabled
-
-            # 处理按钮
-            if remove_button:
-                tip_ad.pop('button', None)
-            elif button_type and button_value:
-                tip_ad['button'] = {
-                    'type': button_type,
-                    'label': {
-                        'zh': button_label_zh or '',
-                        'zh-tw': button_label_zh_tw or '',
-                        'en': button_label_en or '',
-                        'ja': button_label_ja or ''
-                    },
-                    'value': button_value
-                }
-
-            tip_ad['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            save_tip_ad_data()
-
-            logger.info(f"[TipAd] Updated tip/ad: id={tip_ad_id}")
-            return tip_ad
-
-    logger.warning(f"[TipAd] Tip/ad not found: id={tip_ad_id}")
-    return None
+        if tip_type is not None:
+            item["type"] = tip_type
+        text = item.setdefault("text", {})
+        for language, value in zip(LANGUAGES, (text_zh, text_zh_tw, text_en, text_ja)):
+            if value is not None:
+                text[language] = value
+        if enabled is not None:
+            item["enabled"] = enabled
+        if remove_button:
+            item.pop("button", None)
+        else:
+            button = _button(
+                button_type,
+                button_value,
+                (button_label_zh, button_label_zh_tw, button_label_en, button_label_ja),
+            )
+            if button:
+                item["button"] = button
+        item["updated_at"] = _now()
+        return item if save_tip_ad_data() else None
 
 
 def delete_tip_ad(tip_ad_id):
-    """
-    删除tip/ad
-
-    Args:
-        tip_ad_id: tip/ad ID
-
-    Returns:
-        bool: 是否删除成功
-    """
     global TIP_AD_DATA
-
-    original_length = len(TIP_AD_DATA)
-    TIP_AD_DATA = [tip for tip in TIP_AD_DATA if tip['id'] != tip_ad_id]
-
-    if len(TIP_AD_DATA) < original_length:
-        save_tip_ad_data()
-        logger.info(f"[TipAd] Deleted tip/ad: id={tip_ad_id}")
-        return True
-
-    logger.warning(f"[TipAd] Tip/ad not found for deletion: id={tip_ad_id}")
-    return False
+    with _data_lock:
+        _ensure_loaded()
+        remaining = [item for item in TIP_AD_DATA if item.get("id") != tip_ad_id]
+        if len(remaining) == len(TIP_AD_DATA):
+            return False
+        TIP_AD_DATA = remaining
+        return save_tip_ad_data()
 
 
 def get_tip_ad_by_id(tip_ad_id):
-    """
-    根据ID获取tip/ad
-
-    Args:
-        tip_ad_id: tip/ad ID
-
-    Returns:
-        dict: tip/ad数据，如果未找到则返回None
-    """
-    for tip_ad in TIP_AD_DATA:
-        if tip_ad['id'] == tip_ad_id:
-            return tip_ad.copy()
-
-    return None
+    with _data_lock:
+        _ensure_loaded()
+        item = next((item for item in TIP_AD_DATA if item.get("id") == tip_ad_id), None)
+        return item.copy() if item else None

@@ -2386,10 +2386,7 @@ def get_rc(level: float, user_id=None):
 
 async def random_song(user_id, key="", ver="jp"):
     songs, _ = read_dxdata(ver)
-    length = len(songs)
-    is_exit = False
     valid_songs = []
-    result = []
 
     if key:
         level_values = parse_level_value(key)
@@ -4013,17 +4010,13 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
 async def generate_version_songs(user_id, version_title, ver="jp"):
     songs, versions = read_dxdata(ver)
 
-    target_version = []
-    target_icon = []
-    target_type = ""
-
     version_title = version_title.lower().replace("dx", "maimaiでらっくす").replace("deluxe", "maimaiでらっくす")
-
-    for version in versions:
-        if version_title == version['version'].lower():
-            target_version.append(version['version'])
-
-    if not len(target_version):
+    target_versions = [
+        version["version"]
+        for version in versions
+        if version_title == version["version"].lower()
+    ]
+    if not target_versions:
         return version_error(user_id)
 
     version_img = None
@@ -4034,7 +4027,11 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
     except Exception as e:
         logger.error(f"[VersionImage] ✗ Failed to load image: file={version_img_path}, error={e}")
 
-    songs_data = list(filter(lambda x: x['version'] in target_version and x['type'] not in ['utage'], songs))
+    songs_data = [
+        song
+        for song in songs
+        if song["version"] in target_versions and song["type"] != "utage"
+    ]
     version_list_img = generate_version_list(songs_data)
 
     user_tz = get_user_timezone(user_id)
