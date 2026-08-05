@@ -382,6 +382,17 @@ def _match_recognized_song_title(title, songs, max_results=12):
 
 CALC_ACHIEVEMENT_TOLERANCE = 0.0
 CALC_ACHIEVEMENT_EPSILON = 1e-9
+JUDGEMENT_ROW_NAMES = ("tap", "hold", "slide", "touch", "break")
+JUDGEMENT_VALUE_NAMES = ("critical_perfect", "perfect", "great", "good")
+ALL_JUDGEMENT_VALUE_NAMES = (*JUDGEMENT_VALUE_NAMES, "miss")
+TRUSTED_TITLE_MATCH_TYPES = {
+    "exact", "blank", "ocr_confusable", "ocr_kana", "rolling_exact",
+    "rolling_partial", "rolling_fuzzy", "edge_fuzzy", "edit_fuzzy",
+    "ocr_embedded", "prefix",
+}
+OVERFULL_REPAIR_TITLE_MATCH_TYPES = TRUSTED_TITLE_MATCH_TYPES - {
+    "blank", "rolling_partial", "prefix",
+}
 
 
 def _calc_achievement_distance(
@@ -407,8 +418,8 @@ def _find_calc_judgement_uncertainties(notes, judgement, achievement):
     if not isinstance(achievement, (int, float)):
         return []
 
-    row_names = ("tap", "hold", "slide", "touch", "break")
-    value_names = ("critical_perfect", "perfect", "great", "good")
+    row_names = JUDGEMENT_ROW_NAMES
+    value_names = JUDGEMENT_VALUE_NAMES
     uncertainties = []
     for row_name in row_names:
         source_row = judgement.get(row_name)
@@ -612,7 +623,7 @@ def _find_calc_completion_candidates(
         "good",
         "miss",
     )
-    row_names = ("tap", "hold", "slide", "touch", "break")
+    row_names = JUDGEMENT_ROW_NAMES
     row_options = []
     for row_name in row_names:
         row = judgement.get(row_name)
@@ -877,7 +888,7 @@ def _infer_missing_break_judgement(notes, judgement, achievement):
     if break_count <= 0:
         return None
 
-    value_names = ("critical_perfect", "perfect", "great", "good", "miss")
+    value_names = ALL_JUDGEMENT_VALUE_NAMES
     reference_counts = {name: 0 for name in value_names}
     for row_name in ("tap", "hold", "slide", "touch"):
         try:
@@ -1169,6 +1180,120 @@ def _attach_break_loss_percentages(notes, break_detail):
     return break_detail
 
 
+def _fixed_dxnet_note_counts(
+    chart_note_counts,
+    judgement,
+    source_layout,
+    title_match_type,
+):
+    if (
+        source_layout != "dxnet"
+        or title_match_type not in TRUSTED_TITLE_MATCH_TYPES
+        or not all(isinstance(judgement.get(row), dict) for row in JUDGEMENT_ROW_NAMES)
+    ):
+        return chart_note_counts, False
+    try:
+        expected = {
+            row: max(0, int(chart_note_counts.get(row, 0) or 0))
+            for row in JUDGEMENT_ROW_NAMES
+        }
+        observed = {
+            row: sum(
+                max(0, int(judgement[row].get(field, 0) or 0))
+                for field in ALL_JUDGEMENT_VALUE_NAMES
+            )
+            for row in JUDGEMENT_ROW_NAMES
+        }
+    except (TypeError, ValueError):
+        return chart_note_counts, False
+
+    deltas = [observed[row] - expected[row] for row in JUDGEMENT_ROW_NAMES]
+    if sum(observed.values()) != sum(expected.values()) or max(map(abs, deltas)) > 2:
+        return chart_note_counts, False
+    if not any(deltas):
+        return chart_note_counts, False
+    return {**chart_note_counts, **observed, "total": sum(observed.values())}, True
+
+
+def _select_validation_candidate(candidates, title_match_type, achievement):
+    if not candidates:
+        return None
+    prefer_achievement = (
+        title_match_type in TRUSTED_TITLE_MATCH_TYPES and achievement is not None
+    )
+
+    def sort_key(item):
+        distance = item["achievement_distance"]
+        alignment_score = (
+            distance
+            if prefer_achievement and distance is not None
+            else (float("inf") if prefer_achievement else 0)
+        )
+        return (
+            item["unexpected_dropped_rows"],
+            item["raw_overfull_rows"],
+            -item["raw_matching_rows"],
+            alignment_score,
+            -item["matching_rows"],
+            item["compared_rows"] - item["matching_rows"],
+            item["delta"],
+            item["title_candidate_rank"],
+            0 if (
+                title_match_type == "exact"
+                and item["row_offset"] == 0
+                and item["column_offset"] == 0
+                and item["ignored_impossible_rows"] == ["break"]
+            ) else 1,
+            distance if distance is not None else 0,
+            item["overfull_repair_count"],
+            item["overfull_repair_delta"],
+            item["dropped_cells"],
+            abs(item["row_offset"]),
+            abs(item["column_offset"]),
+        )
+
+    candidates.sort(key=sort_key)
+    best = candidates[0]
+    unshifted_charts = {
+        (
+            str(item["song"].get("id") or ""),
+            str(item["song"].get("type") or ""),
+            str(item["sheet"].get("difficulty") or ""),
+        )
+        for item in candidates
+        if item["row_offset"] == 0 and item["column_offset"] == 0
+    }
+    trusted_unshifted = (
+        title_match_type in TRUSTED_TITLE_MATCH_TYPES
+        and best["row_offset"] == 0
+        and best["column_offset"] == 0
+        and best["compared_rows"] >= 4
+    )
+    unique_unshifted = trusted_unshifted and len(unshifted_charts) == 1
+    exact_unshifted = trusted_unshifted and best["matching_rows"] >= 2
+    minimum_matches = max(2, best["compared_rows"] - 2)
+    if best["matching_rows"] < minimum_matches and not exact_unshifted and not unique_unshifted:
+        return None
+    if best["row_offset"] != 0 and best["matching_rows"] < 3:
+        return None
+
+    if len(candidates) > 1 and not unique_unshifted:
+        second = candidates[1]
+        tied = (
+            second["matching_rows"] == best["matching_rows"]
+            and second["delta"] == best["delta"]
+            and second["achievement_distance"] == best["achievement_distance"]
+        )
+        distinct_alignment = (
+            second["unmatched_notes"] != best["unmatched_notes"]
+            or second["row_offset"] != best["row_offset"]
+            or second["column_offset"] != best["column_offset"]
+        )
+        if tied and distinct_alignment:
+            return None
+    return best
+
+
 def validate_recognized_judgement(
     result,
     ver="jp",
@@ -1204,9 +1329,9 @@ def validate_recognized_judgement(
         for index, song in enumerate(matching_songs)
     }
 
-    row_names = ("tap", "hold", "slide", "touch", "break")
-    value_names = ("critical_perfect", "perfect", "great", "good")
-    all_value_names = (*value_names, "miss")
+    row_names = JUDGEMENT_ROW_NAMES
+    value_names = JUDGEMENT_VALUE_NAMES
+    all_value_names = ALL_JUDGEMENT_VALUE_NAMES
 
     def repair_overfull_normal_row(row_name, source_row, source_rows, note_counts):
         """Recover a JPEG-damaged normal row using chart totals and Calc."""
@@ -1383,63 +1508,6 @@ def validate_recognized_judgement(
         )
     )
     achievement = parsed.get("achievement")
-    trusted_title_match_types = {
-        "exact",
-        "blank",
-        "ocr_confusable",
-        "ocr_kana",
-        "rolling_exact",
-        "rolling_partial",
-        "rolling_fuzzy",
-        "edge_fuzzy",
-        "edit_fuzzy",
-        "ocr_embedded",
-        "prefix",
-    }
-    overfull_repair_title_match_types = {
-        "exact",
-        "ocr_confusable",
-        "ocr_kana",
-        "rolling_exact",
-        "rolling_fuzzy",
-        "edge_fuzzy",
-        "edit_fuzzy",
-        "ocr_embedded",
-    }
-
-    def fixed_dxnet_note_counts(chart_note_counts):
-        if (
-            source_layout != "dxnet"
-            or title_match_type not in trusted_title_match_types
-            or not all(isinstance(judgement.get(row_name), dict) for row_name in row_names)
-        ):
-            return chart_note_counts, False
-        try:
-            expected = {
-                row_name: max(0, int(chart_note_counts.get(row_name, 0) or 0))
-                for row_name in row_names
-            }
-            observed = {
-                row_name: sum(
-                    max(0, int(judgement[row_name].get(field_name, 0) or 0))
-                    for field_name in all_value_names
-                )
-                for row_name in row_names
-            }
-        except (TypeError, ValueError):
-            return chart_note_counts, False
-
-        deltas = [observed[row_name] - expected[row_name] for row_name in row_names]
-        if sum(observed.values()) != sum(expected.values()) or max(map(abs, deltas)) > 2:
-            return chart_note_counts, False
-        if not any(deltas):
-            return chart_note_counts, False
-        return {
-            **chart_note_counts,
-            **observed,
-            "total": sum(observed.values()),
-        }, True
-
     candidates = []
     for song in matching_songs:
         for sheet in song.get("sheets", []):
@@ -1462,8 +1530,11 @@ def validate_recognized_judgement(
                     raw_overfull_rows += 1
                 elif observed == expected:
                     raw_matching_rows += 1
-            note_counts, dxnet_fixed_note_counts = fixed_dxnet_note_counts(
+            note_counts, dxnet_fixed_note_counts = _fixed_dxnet_note_counts(
                 chart_note_counts,
+                judgement,
+                source_layout,
+                title_match_type,
             )
             alignment_enabled = allow_ocr_alignment and source_layout != "dxnet"
             row_offsets = range(-2, 3) if alignment_enabled else (0,)
@@ -1569,7 +1640,7 @@ def validate_recognized_judgement(
                             repaired_field = None
                             if (
                                 not preserve_input
-                                and title_match_type in overfull_repair_title_match_types
+                                and title_match_type in OVERFULL_REPAIR_TITLE_MATCH_TYPES
                                 and row_offset == 0
                                 and column_offset == 0
                             ):
@@ -1677,90 +1748,9 @@ def validate_recognized_judgement(
                             ),
                         })
 
-    if not candidates:
+    best = _select_validation_candidate(candidates, title_match_type, achievement)
+    if best is None:
         return result
-    prefer_achievement_alignment = (
-        title_match_type in trusted_title_match_types
-        and achievement is not None
-    )
-
-    def candidate_sort_key(item):
-        achievement_distance = item["achievement_distance"]
-        alignment_score = (
-            achievement_distance
-            if prefer_achievement_alignment and achievement_distance is not None
-            else (float("inf") if prefer_achievement_alignment else 0)
-        )
-        return (
-            item["unexpected_dropped_rows"],
-            item["raw_overfull_rows"],
-            -item["raw_matching_rows"],
-            alignment_score,
-            -item["matching_rows"],
-            item["compared_rows"] - item["matching_rows"],
-            item["delta"],
-            item["title_candidate_rank"],
-            0 if (
-                title_match_type == "exact"
-                and item["row_offset"] == 0
-                and item["column_offset"] == 0
-                and item["ignored_impossible_rows"] == ["break"]
-            ) else 1,
-            achievement_distance if achievement_distance is not None else 0,
-            item["overfull_repair_count"],
-            item["overfull_repair_delta"],
-            item["dropped_cells"],
-            abs(item["row_offset"]),
-            abs(item["column_offset"]),
-        )
-
-    candidates.sort(key=candidate_sort_key)
-    best = candidates[0]
-    unshifted_chart_keys = {
-        (
-            str(item["song"].get("id") or ""),
-            str(item["song"].get("type") or ""),
-            str(item["sheet"].get("difficulty") or ""),
-        )
-        for item in candidates
-        if item["row_offset"] == 0 and item["column_offset"] == 0
-    }
-    minimum_matching_rows = max(2, best["compared_rows"] - 2)
-    exact_unique_unshifted_match = (
-        title_match_type in trusted_title_match_types
-        and best["row_offset"] == 0
-        and best["column_offset"] == 0
-        and best["compared_rows"] >= 4
-        and len(unshifted_chart_keys) == 1
-    )
-    exact_unshifted_match = (
-        title_match_type in trusted_title_match_types
-        and best["row_offset"] == 0
-        and best["column_offset"] == 0
-        and best["compared_rows"] >= 4
-        and best["matching_rows"] >= 2
-    )
-    if (
-        best["matching_rows"] < minimum_matching_rows
-        and not exact_unshifted_match
-        and not exact_unique_unshifted_match
-    ):
-        return result
-    if best["row_offset"] != 0 and best["matching_rows"] < 3:
-        return result
-    if len(candidates) > 1 and not exact_unique_unshifted_match:
-        second = candidates[1]
-        if (
-            second["matching_rows"] == best["matching_rows"]
-            and second["delta"] == best["delta"]
-            and second["achievement_distance"] == best["achievement_distance"]
-            and (
-                second["unmatched_notes"] != best["unmatched_notes"]
-                or second["row_offset"] != best["row_offset"]
-                or second["column_offset"] != best["column_offset"]
-            )
-        ):
-            return result
 
     judgement = best["aligned"]
     for row_name, expected_notes in best["notes"].items():
@@ -1961,8 +1951,8 @@ def _parse_fix_record_command(command_text):
     if not 0 <= achievement <= 101:
         raise ValueError("achievement must be a percentage between 0 and 101")
 
-    row_names = ("tap", "hold", "slide", "touch", "break")
-    field_names = ("critical_perfect", "perfect", "great", "good", "miss")
+    row_names = JUDGEMENT_ROW_NAMES
+    field_names = ALL_JUDGEMENT_VALUE_NAMES
     judgement = {}
     for row_name, line in zip(row_names, lines[2:]):
         row_match = re.fullmatch(r"(\d{1,4})/(\d{1,4})/(\d{1,4})/(\d{1,4})/(\d{1,4})", line)
@@ -1992,7 +1982,7 @@ def score_recognition_needs_manual_fix(result) -> bool:
     )
     has_judgement_data = any(
         isinstance(judgement.get(row_name), dict)
-        for row_name in ("tap", "hold", "slide", "touch", "break")
+        for row_name in JUDGEMENT_ROW_NAMES
     )
     return has_judgement_data and not fully_validated
 
