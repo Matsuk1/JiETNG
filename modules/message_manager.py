@@ -1,5 +1,3 @@
-import re
-
 from urllib.parse import quote
 from modules.config_loader import SUPPORT_PAGE, LINE_ACCOUNT_ID
 from modules.i18n import (

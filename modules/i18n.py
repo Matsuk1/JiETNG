@@ -21,7 +21,6 @@ class Language:
 
 
 LANGUAGES: dict[str, Language] = {}
-SUPPORTED_LANGUAGES: tuple[str, ...] = ()
 
 
 def _clean_code(language: Any) -> str:
@@ -50,7 +49,6 @@ def register_language(
     texts: Mapping[str, Any] | None = None,
 ):
     """Register a language without changing normalization or selection code."""
-    global SUPPORTED_LANGUAGES
     code = _clean_code(code)
     if not code:
         raise ValueError("Language code must not be empty")
@@ -61,7 +59,6 @@ def register_language(
         transforms=dict(transforms or {}),
         texts=dict(texts or {}),
     )
-    SUPPORTED_LANGUAGES = tuple(LANGUAGES)
     return code
 
 
