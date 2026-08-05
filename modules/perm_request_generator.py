@@ -5,14 +5,12 @@
 """
 
 from linebot.v3.messaging import FlexMessage, FlexContainer
-from modules.message_manager import (
-    get_perm_request_notification_alt_text,
-    get_multilingual_text,
-    perm_request_notification_title_text,
-    perm_request_notification_subtitle_text,
-    perm_request_accept_button_text,
-    perm_request_reject_button_text
-)
+from modules.i18n import language_catalog, select_text
+
+
+def _text(key, user_id, **values):
+    text = select_text(language_catalog(f"messages.{key}"), user_id)
+    return text.format(**values) if values else text
 
 
 def generate_perm_request_message(requests: list, user_id: str = None) -> FlexMessage:
@@ -73,8 +71,8 @@ def generate_perm_request_message(requests: list, user_id: str = None) -> FlexMe
         }
 
         # 按钮行
-        accept_label = get_multilingual_text(perm_request_accept_button_text, user_id)
-        reject_label = get_multilingual_text(perm_request_reject_button_text, user_id)
+        accept_label = _text("perm_request_accept_button_text", user_id)
+        reject_label = _text("perm_request_reject_button_text", user_id)
 
         button_row = {
             "type": "box",
@@ -116,9 +114,9 @@ def generate_perm_request_message(requests: list, user_id: str = None) -> FlexMe
             })
 
     # 获取标题和副标题
-    title = get_multilingual_text(perm_request_notification_title_text, user_id)
+    title = _text("perm_request_notification_title_text", user_id)
     count = len(requests)
-    subtitle = get_multilingual_text(perm_request_notification_subtitle_text, user_id).format(count=count)
+    subtitle = _text("perm_request_notification_subtitle_text", user_id, count=count)
 
     # 创建bubble（极简黑白风格）
     bubble = {
@@ -154,6 +152,6 @@ def generate_perm_request_message(requests: list, user_id: str = None) -> FlexMe
     }
 
     return FlexMessage(
-        alt_text=get_perm_request_notification_alt_text(len(requests), user_id),
+        alt_text=_text("perm_request_notification_alt_text", user_id, count=len(requests)),
         contents=FlexContainer.from_dict(bubble)
     )
