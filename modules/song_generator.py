@@ -11,7 +11,12 @@ from modules.image_manager import (
     truncate_text,
     wrap_in_rounded_background,
 )
+from modules.i18n import language_catalog, select_text
 from modules.record_generator import _get_difficulty_color, create_thumbnail_in_line, generate_cover
+
+
+def _song_text(key, language):
+    return select_text(language_catalog(f"images.song.{key}"), language=language)
 
 
 def _draw_rounded_panel(base_img, box, radius=22, fill=(255, 255, 255, 255), outline=(180, 180, 180, 255), width=4):
@@ -31,19 +36,27 @@ def _draw_rounded_panel(base_img, box, radius=22, fill=(255, 255, 255, 255), out
     base_img.alpha_composite(panel, (x1, y1))
 
 
-def song_info_generate(song_json, played_data=(), timezone_offset=9, ver="jp", bg_filter=None):
-    img1 = resize_by_width(_render_basic_info_image(song_json, ver), 900)
+def song_info_generate(
+    song_json,
+    played_data=(),
+    timezone_offset=9,
+    ver="jp",
+    bg_filter=None,
+    language=None,
+):
+    language = language or ("ja" if ver == "jp" else "en")
+    img1 = resize_by_width(_render_basic_info_image(song_json, language), 900)
     if played_data:
         img2 = resize_by_width(_makeup_played_data(played_data), 780)
     else:
-        img2 = resize_by_width(_generate_song_table_image(song_json, ver=ver), 1200)
+        img2 = resize_by_width(_generate_song_table_image(song_json, language=language), 1200)
     return compose_generated_images(
         [img1, img2],
         timezone_offset=timezone_offset,
         bg_filter=bg_filter,
     )
 
-def _render_basic_info_image(song_json, ver="jp"):
+def _render_basic_info_image(song_json, language="en"):
     # 参数设定
     canvas_width = 1000
     canvas_height = 265
@@ -77,21 +90,21 @@ def _render_basic_info_image(song_json, ver="jp"):
     category = song_json.get("category", "UNKNOWN")
     bpm = song_json.get("bpm", "-")
     version = song_json.get("version", "UNKNOWN")
-    if ver == "jp":
-        info_text = [
-            truncate_text(draw, f"アーティスト: {artist}", font_song_info, canvas_width - text_x - margin),
-            f"カテゴリ: {category}",
-            f"BPM: {bpm}",
-            f"バージョン: {version}"
-        ]
-
-    else:
-        info_text = [
-            truncate_text(draw, f"ARTIST: {artist}", font_song_info, canvas_width - text_x - margin),
-            f"CATEGORY: {category}",
-            f"BPM: {bpm}",
-            f"VERSION: {version}"
-        ]
+    max_info_width = canvas_width - text_x - margin
+    info_text = [
+        truncate_text(
+            draw,
+            f"{_song_text(label, language)}: {value}",
+            font_song_info,
+            max_info_width,
+        )
+        for label, value in (
+            ("artist", artist),
+            ("category", category),
+            ("bpm", bpm),
+            ("version", version),
+        )
+    ]
 
     # 标题
     title = truncate_text(draw, title, font_song_title, canvas_width - text_x - margin)
@@ -107,11 +120,12 @@ def _render_basic_info_image(song_json, ver="jp"):
 
     return img
 
-def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0, ver="jp"):
-    if ver == "jp":
-        headers = ["譜面種類", "レベル", "ノーツデザイナー", "合計", "TAP", "HOLD", "SLIDE", "TOUCH", "BREAK", "国内", "海外", "USA"]
-    else:
-        headers = ["Difficulty", "Level", "Notes Designer", "Total", "TAP", "HOLD", "SLIDE", "TOUCH", "BREAK", "JP", "INTL", "USA"]
+def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0, language="en"):
+    header_keys = (
+        "chart_type", "level", "designer", "total", "tap", "hold",
+        "slide", "touch", "break", "jp", "intl", "usa",
+    )
+    headers = [_song_text(f"headers.{key}", language) for key in header_keys]
 
     base_col_widths = [160, 90, 300, 90, 80, 80, 90, 90, 95, 70, 70, 70]
     col_widths = [int(w * scale_width) for w in base_col_widths]
@@ -193,7 +207,7 @@ def _makeup_played_data(played_data, gap=10):
 
     return new_img
 
-def _render_song_info_small_img(song_json):
+def _render_song_info_small_img(song_json, language="en"):
     # 参数设定
     canvas_width = 1000
     canvas_height = 265
@@ -223,11 +237,16 @@ def _render_song_info_small_img(song_json):
     # 文字区域
     text_x = cover_x + cover_size + text_gap
     text_y = cover_y
-    title = song_json.get("title", "タイトル不明")
-    artist = song_json.get("artist", "アーティスト不明")
-    bpm = f"BPM: {song_json.get('bpm', '-')}"
-    category = song_json.get("category", "類別不明")
+    title = song_json.get("title") or _song_text("unknown_title", language)
+    artist = song_json.get("artist") or _song_text("unknown_artist", language)
+    bpm = f"{_song_text('bpm', language)}: {song_json.get('bpm', '-')}"
+    category = song_json.get("category") or _song_text("unknown_category", language)
     levels_str = " / ".join(f"{level:.1f}" for level in levels)
+    max_text_width = canvas_width - text_x - margin
+    title = truncate_text(draw, title, font_song_title, max_text_width)
+    artist = truncate_text(draw, artist, font_song_info, max_text_width)
+    category = truncate_text(draw, category, font_song_info, max_text_width)
+    levels_str = truncate_text(draw, levels_str, font_song_info, max_text_width)
 
     # 标题
     draw.text((text_x, text_y), title, font=font_song_title, fill=(0, 0, 0))
@@ -245,11 +264,11 @@ def _render_song_info_small_img(song_json):
 
     return img
 
-def generate_version_list(songs_json):
+def generate_version_list(songs_json, language="en"):
     song_imgs = []
 
     for song in songs_json:
-        song_img = _render_song_info_small_img(song)
+        song_img = _render_song_info_small_img(song, language)
         song_img = wrap_in_rounded_background(song_img)
         song_imgs.append(song_img)
 
@@ -267,7 +286,7 @@ def _concat_images_grid(image_list, cols=4, margin=20, inner_gap=10, bg_color=(0
         bg_color: 背景颜色
     """
     if not image_list:
-        raise ValueError("图片列表不能为空")
+        raise ValueError("Image list must not be empty")
 
     rows = (len(image_list) + cols - 1) // cols
     groups = [image_list[row * cols:(row + 1) * cols] for row in range(rows)]
