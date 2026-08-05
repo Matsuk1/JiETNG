@@ -307,6 +307,19 @@ def compose_images(images, timezone_offset=9, bg_filter=None):
     return final_img.convert("RGB")
 
 
+def compose_generated_images(images, **options):
+    """Compose owned source images and release them when composition finishes."""
+    images = list(images)
+    try:
+        return compose_images(images, **options)
+    finally:
+        closed = set()
+        for image in images:
+            if id(image) not in closed:
+                image.close()
+                closed.add(id(image))
+
+
 def round_corner(img, radius=20):
     img = img.convert("RGBA")
     mask_scale = 4
