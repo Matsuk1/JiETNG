@@ -10,7 +10,7 @@ import logging
 import threading
 from datetime import datetime
 
-from modules.config_loader import VAPID_PRIVATE_KEY, VAPID_PUBLIC_KEY, VAPID_CONTACT
+from modules.config_loader import VAPID_PRIVATE_KEY, VAPID_CONTACT
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ MAX_NOTIFICATIONS = 100
 PUSH_SUBS_FILE = './data/push_subscriptions.json'
 _subscriptions = {}   # endpoint -> subscription dict
 _subs_lock = threading.Lock()
+_push_dependency_missing = False
 
 
 def _load_subscriptions():
@@ -68,13 +69,18 @@ def remove_push_subscription(endpoint: str):
 
 def _send_push(title: str, body: str):
     """向所有订阅设备发送 Web Push 通知"""
+    global _push_dependency_missing
+
     if not _subscriptions:
+        return
+    if _push_dependency_missing:
         return
 
     try:
-        from pywebpush import webpush, WebPushException
+        from pywebpush import webpush
     except ImportError:
         logger.warning("[Push] pywebpush not installed, skipping push notification")
+        _push_dependency_missing = True
         return
 
     with _subs_lock:

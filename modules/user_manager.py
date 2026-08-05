@@ -16,7 +16,6 @@ from modules.user_db import (
     get_user_field, update_user_field, remove_user_field,
     get_all_user_ids, increment_user_field
 )
-from modules.notice_manager import get_latest_published_notice
 
 logger = logging.getLogger(__name__)
 

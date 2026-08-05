@@ -7,7 +7,6 @@
 
 import json
 import logging
-from datetime import datetime
 from modules.dbpool_manager import get_connection
 
 logger = logging.getLogger(__name__)

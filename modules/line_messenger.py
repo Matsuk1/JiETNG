@@ -8,14 +8,12 @@ import logging
 import functools
 import traceback as _traceback
 from contextlib import contextmanager
-from datetime import datetime
 from linebot.v3.messaging import (
     Configuration,
     ApiClient,
     MessagingApi,
     ReplyMessageRequest,
     PushMessageRequest,
-    TextMessage
 )
 from modules.user_db import user_exists
 from modules.notification_manager import record_notification

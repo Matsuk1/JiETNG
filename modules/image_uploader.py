@@ -6,8 +6,6 @@ import threading
 import asyncio
 from datetime import datetime
 from io import BytesIO
-from PIL import Image
-import aioboto3
 from modules.config_loader import (
     IMG_DIR, DOMAIN,
     R2_ENABLED, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID,
@@ -119,6 +117,12 @@ async def _upload_to_r2(img, user_id=None):
         str: 图片URL，如果失败返回None
     """
     if not R2_ENABLED:
+        return None
+
+    try:
+        import aioboto3
+    except ImportError:
+        logger.warning("[R2] aioboto3 not installed; falling back to local image host")
         return None
 
     img_io = BytesIO()

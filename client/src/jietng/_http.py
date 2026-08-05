@@ -1,12 +1,12 @@
 """HTTP 底层 / Shared HTTP helpers for sync & async clients."""
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional, Tuple
+from typing import Any, Mapping, Optional
 
 import httpx
 
 from . import __version__
-from .exceptions import APIError, from_response
+from .exceptions import from_response
 
 
 DEFAULT_BASE_URL = "https://jietng-endpoint.matsuk1.com/api/v2"

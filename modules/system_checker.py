@@ -5,7 +5,7 @@
 import logging
 from datetime import datetime, timedelta
 import os
-from typing import List, Dict, Any
+from typing import Dict, Any
 from modules.config_loader import (
     DXDATA_FILE, DXDATA_VERSION_FILE, OVERRIDE_FILE, INTL_OVERRIDE_FILE,
     NOTICE_FILE, TIP_AD_FILE,

@@ -36,9 +36,6 @@ try:
 except Exception:
     pass
 
-# 圆角
-from PIL import ImageDraw as ID
-
 def round_corner(im, radius):
     mask = Image.new("L", im.size, 255)
     d = ImageDraw.Draw(mask)

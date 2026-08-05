@@ -6,10 +6,9 @@
 
 import logging
 from datetime import datetime
-from modules.user_db import user_exists, get_user, get_user_field
+from modules.user_db import user_exists, get_user_field
 from modules.user_manager import edit_user_value
 from modules.devtoken_manager import load_dev_tokens, save_dev_tokens
-from modules.message_manager import segaid_error
 
 logger = logging.getLogger(__name__)
 
