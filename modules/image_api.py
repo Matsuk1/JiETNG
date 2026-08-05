@@ -54,14 +54,32 @@ def _send_image_response(buf):
 
 
 def _png_buffer(image):
+    buf = BytesIO()
     try:
-        buf = BytesIO()
         image.save(buf, "PNG")
         buf.seek(0)
         return buf
+    except Exception:
+        buf.close()
+        raise
     finally:
         image.close()
         gc.collect(0)
+
+
+def _compose_generated_images(images, **options):
+    try:
+        return compose_images(images, **options)
+    finally:
+        for image in images:
+            image.close()
+
+
+def _close_entry_images(entries):
+    for entry in entries:
+        image = entry.pop("img", None)
+        if image:
+            image.close()
 
 
 def _find_song(song_id, version):
@@ -206,8 +224,11 @@ def api_v2_generate_record_image(user_id):
         user_info = _udata.get('personal_info')
         profile_img = _services.generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = compose_images([profile_img, record_img], timezone_offset=user_tz, bg_filter=_services.background_filter(user_id))
-        del profile_img, record_img
+        img = _compose_generated_images(
+            [profile_img, record_img],
+            timezone_offset=user_tz,
+            bg_filter=_services.background_filter(user_id),
+        )
 
         buf = _png_buffer(img)
 
@@ -330,16 +351,19 @@ def api_v2_generate_plate(user_id):
                         "achievement_rate": achievement_rate
                     })
 
-        plate_img = generate_plate_image(target_data, title, headers=target_num)
-        for entry in target_data:
-            entry.pop("img", None)
-        del target_data
+        try:
+            plate_img = generate_plate_image(target_data, title, headers=target_num)
+        finally:
+            _close_entry_images(target_data)
 
         user_info = _udata.get('personal_info')
         profile_img = _services.generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = compose_images([profile_img, plate_img], timezone_offset=user_tz, bg_filter=_services.background_filter(user_id))
-        del profile_img, plate_img
+        img = _compose_generated_images(
+            [profile_img, plate_img],
+            timezone_offset=user_tz,
+            bg_filter=_services.background_filter(user_id),
+        )
 
         buf = _png_buffer(img)
 
@@ -484,16 +508,24 @@ def api_v2_generate_achievement(user_id):
             "total": total_charts
         }
 
-        record_img = generate_level_rank_progress_image(target_data, level_display, rank_display, stats)
-        for entry in target_data:
-            entry.pop("img", None)
-        del target_data
+        try:
+            record_img = generate_level_rank_progress_image(
+                target_data,
+                level_display,
+                rank_display,
+                stats,
+            )
+        finally:
+            _close_entry_images(target_data)
 
         user_info = _udata.get('personal_info')
         profile_img = _services.generate_profile(user_info, scale=1.5, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = compose_images([profile_img, record_img], timezone_offset=user_tz, bg_filter=_services.background_filter(user_id))
-        del profile_img, record_img
+        img = _compose_generated_images(
+            [profile_img, record_img],
+            timezone_offset=user_tz,
+            bg_filter=_services.background_filter(user_id),
+        )
 
         buf = _png_buffer(img)
 
