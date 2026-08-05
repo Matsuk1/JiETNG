@@ -483,14 +483,6 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 @app.route("/linebot/webhook", methods=['POST'])
 @csrf.exempt
 def linebot_reply():
-    """
-    LINE Webhook 接收端点
-
-    接收并处理来自LINE平台的webhook事件
-
-    Returns:
-        tuple: ('OK', 200) 表示成功接收
-    """
     signature = request.headers.get('X-Line-Signature', '')
     body = request.get_data(as_text=True)
     logger.info("[Webhook] → Received request")
@@ -580,14 +572,6 @@ def line_add_page():
 
 @app.route("/linebot/img/<image_id>", methods=["GET"])
 def serve_image(image_id):
-    """提供本地图床的图片访问
-
-    Args:
-        image_id: 图片ID
-
-    Returns:
-        图片文件或404错误
-    """
     # 验证image_id格式（防止路径穿越攻击）
     if not image_id.replace('-', '').replace('_', '').isalnum():
         logger.warning(f"[ImageHost] ⚠ Invalid image_id format: id={image_id}")
@@ -608,12 +592,6 @@ def serve_image(image_id):
 
 @app.route("/linebot/export/<file_id>/<friendly_name>", methods=["GET"])
 def serve_export(file_id, friendly_name):
-    """提供导出文件下载（30 分钟后自动失效）
-
-    URL 形如 `/linebot/export/{token}/{JiETNG-玩家名-时间戳.json}`：
-      - file_id: token_urlsafe 字符串，对应磁盘上的随机文件名
-      - friendly_name: 用户可见的下载文件名，浏览器 Save As 时使用
-    """
     # 防路径穿越：id 只允许 token_urlsafe 字符集（字母数字 + _ -）
     if not file_id.replace('-', '').replace('_', '').isalnum():
         logger.warning(f"[Export] ⚠ Invalid file_id: {file_id}")
@@ -643,24 +621,6 @@ def serve_export(file_id, friendly_name):
 
 @app.route("/linebot/sega_bind", methods=["GET", "POST"])
 def website_segaid_bind():
-    """
-    SEGA账户绑定页面
-
-    GET: 显示绑定表单
-    POST: 处理绑定请求
-
-    Query Args:
-        token: 绑定Token (GET/POST)
-        mode: 模式 (bind/rebind，默认 bind)
-
-    Form Data (POST):
-        segaid: SEGA ID
-        password: 密码
-        ver: 服务器版本 (jp/intl)
-        aime: Aime卡选择 (仅jp有，intl默认1)
-        timezone: 时区
-        language: 语言
-    """
     token = request.args.get("token")
     mode = request.args.get("mode", "bind")
     if not token:
@@ -908,21 +868,6 @@ def website_unbind():
 
 @app.route("/linebot/settings", methods=["GET", "POST"])
 def website_settings():
-    """
-    个人偏好设置页面
-
-    GET: 显示设置表单（timezone, language, 背景图, 权限管理）
-    POST: 保存设置
-
-    Query Args:
-        token: 绑定Token
-
-    Form Data (POST):
-        timezone: 时区
-        language: 语言
-        bg_files: 逗号分隔的背景图文件名列表
-        bg_enabled_hidden: 背景图开关（"1" 或 "0"）
-    """
     token = request.args.get("token")
     if not token:
         token_missing_message = language_catalog("main.token_missing")
@@ -1203,12 +1148,6 @@ def _is_user_custom_bg(filename):
 
 
 def _get_user_bg_filter(user_id):
-    """
-    根据用户设置返回 compose_images 的 bg_filter 参数
-    - bg_enabled=False → []
-    - bg_enabled=True, bg_files 非空 → bg_files
-    - bg_enabled=True, bg_files 为空 → None (全部随机)
-    """
     udata = get_user(user_id) or {}
     if not udata.get('bg_enabled', False):
         return None
@@ -1231,13 +1170,6 @@ def _get_user_bg_filter(user_id):
 @app.route("/linebot/perms/revoke", methods=["POST"])
 @csrf.exempt
 def linebot_perms_revoke():
-    """
-    用户通过 bind_form 权限管理面板撤销某 token 的访问权限
-
-    请求体 (JSON):
-    - perm_token: 权限管理 Token（页面加载时生成，10分钟有效）
-    - token_id: 要撤销的 token ID
-    """
     data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
     perm_token = data.get('perm_token', '')
     token_id_to_revoke = data.get('token_id', '')
@@ -1916,16 +1848,6 @@ async def maimai_update(user_id, ver="jp"):
     return messages
 
 def handle_export_command(user_id: str, fmt: str):
-    """
-    处理成绩导出命令（export json / export xml）
-
-    Args:
-        user_id: 用户ID
-        fmt: 导出格式 ('json' 或 'xml')
-
-    Returns:
-        FlexMessage（成功，带下载按钮）/ TextMessage（无数据 / 失败）
-    """
     try:
         meta = export_records(user_id, fmt)
     except Exception as e:
@@ -1944,16 +1866,6 @@ def handle_export_command(user_id: str, fmt: str):
 
 
 def handle_rc_command(msg: str, user_id: str):
-    """
-    处理 RC 命令，验证输入并生成 Rating 对照表
-
-    Args:
-        msg: 用户输入的消息（如 "rc 13.2"）
-        user_id: 用户ID
-
-    Returns:
-        FlexMessage 或 TextMessage（错误消息）
-    """
     # 提取数字
     level_str = re.sub(r"^rc\b[ 　]*", "", msg, flags=re.IGNORECASE).strip()
 
@@ -1981,16 +1893,6 @@ def handle_rc_command(msg: str, user_id: str):
 
 
 def get_rc(level: float, user_id=None):
-    """
-    生成指定难度的Rating对照表 FlexMessage
-
-    Args:
-        level: 谱面定数 (如 14.5)
-        user_id: 用户ID（用于多语言）
-
-    Returns:
-        FlexMessage: Rating对照表
-    """
     rc_data = []
     last_ra = 0
 
@@ -2032,17 +1934,6 @@ async def random_song(user_id, key="", ver="jp"):
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='info')
 
 async def search_song(user_id, acronym, ver="jp"):
-    """
-    搜索歌曲并返回歌曲信息图片
-
-    Args:
-        user_id: 用户ID
-        acronym: 搜索关键词
-        ver: 服务器版本 (jp/intl)
-
-    Returns:
-        搜索结果消息列表 或搜索结果flex message 或错误消息
-    """
     songs, _ = read_dxdata(ver)
 
     # 使用优化的歌曲匹配函数
@@ -2063,17 +1954,6 @@ async def search_song(user_id, acronym, ver="jp"):
 
 
 async def search_song_by_id(user_id, song_id, ver="jp"):
-    """
-    通过歌曲ID搜索歌曲并返回歌曲信息图片
-
-    Args:
-        user_id: 用户ID
-        song_id: 歌曲唯一ID (6个字符)
-        ver: 服务器版本 (jp/intl)
-
-    Returns:
-        歌曲信息图片消息 或错误消息
-    """
     songs, _ = read_dxdata(ver)
 
     matching_song = None
@@ -2097,17 +1977,6 @@ def _ranking_enabled(data, field):
 
 
 def get_ranking(user_id, id_use, ver=None, source_type="user", group_key=None):
-    """
-    生成 Rating 排行榜（按版本 jp/intl 分开）
-
-    Args:
-        user_id: 当前用户ID
-        id_use: 使用的用户ID
-        ver: 指定版本 "jp"/"intl"，None 则使用用户自身版本
-
-    Returns:
-        FlexMessage: 排行榜
-    """
     user_ver = ver or (get_user(id_use) or {}).get('version', 'jp')
     is_group_ranking = source_type in ('group', 'room') and bool(group_key)
     ranking_field = "participate_group_ranking" if is_group_ranking else "participate_global_ranking"
@@ -2200,19 +2069,6 @@ def get_ranking(user_id, id_use, ver=None, source_type="user", group_key=None):
 
 
 def search_by_artist(user_id, artist_query, ver="jp", page=1, source_type="user"):
-    """
-    通过艺术家名搜索歌曲
-
-    Args:
-        user_id: 用户ID
-        artist_query: 艺术家名关键词
-        ver: 服务器版本 (jp/intl)
-        page: 页码
-        source_type: 来源类型 (user/group/room)
-
-    Returns:
-        FlexMessage 歌曲列表 或错误消息
-    """
     if source_type != 'user':
         return generate_status_flex(
             language_catalog("main.private_chat_title"),
@@ -2237,19 +2093,6 @@ def search_by_artist(user_id, artist_query, ver="jp", page=1, source_type="user"
     return generate_song_list_flex(user_id, title, matching_songs, page, "artist", artist_query)
 
 def search_by_designer(user_id, designer_query, ver="jp", page=1, source_type="user"):
-    """
-    通过谱面设计师搜索歌曲
-
-    Args:
-        user_id: 用户ID
-        designer_query: 谱面设计师名关键词
-        ver: 服务器版本 (jp/intl)
-        page: 页码
-        source_type: 来源类型 (user/group/room)
-
-    Returns:
-        FlexMessage 歌曲列表 或错误消息
-    """
     if source_type != 'user':
         return generate_status_flex(
             language_catalog("main.private_chat_title"),
@@ -2281,20 +2124,6 @@ def search_by_designer(user_id, designer_query, ver="jp", page=1, source_type="u
     return generate_song_list_flex(user_id, title, matching_songs, page, "designer", designer_query, matched_sheets_map)
 
 def search_by_bpm(user_id, bpm_min, bpm_max=None, ver="jp", page=1, source_type="user"):
-    """
-    通过 BPM 或 BPM 范围搜索歌曲
-
-    Args:
-        user_id: 用户ID
-        bpm_min: BPM 下限
-        bpm_max: BPM 上限；为空时精确查询 bpm_min
-        ver: 服务器版本 (jp/intl)
-        page: 页码
-        source_type: 来源类型 (user/group/room)
-
-    Returns:
-        FlexMessage 歌曲列表 或错误消息
-    """
     if source_type != 'user':
         return generate_status_flex(
             language_catalog("main.private_chat_title"),
@@ -2336,17 +2165,6 @@ def search_by_bpm(user_id, bpm_min, bpm_max=None, ver="jp", page=1, source_type=
     return generate_song_list_flex(user_id, title, matching_songs, page, "bpm", query)
 
 def calc_by_id(user_id, song_id, ver="jp"):
-    """
-    通过歌曲ID搜索歌曲并返回歌曲calc结果
-
-    Args:
-        user_id: 用户ID
-        song_id: 歌曲唯一ID (6个字符)
-        ver: 服务器版本 (jp/intl)
-
-    Returns:
-        歌曲信息图片消息和calc结果列表 或错误消息
-    """
     songs, _ = read_dxdata(ver)
 
     matching_song = None
@@ -2397,15 +2215,6 @@ def get_user_info(user_id, source_type):
     return generate_user_info_flex(user_id)
 
 def get_bot_status(user_id):
-    """
-    获取 Bot 状态信息
-
-    Args:
-        user_id: 用户ID（用于多语言）
-
-    Returns:
-        FlexMessage: Bot 状态信息
-    """
     # 运行时长
     uptime = datetime.now() - SERVICE_START_TIME
     days = uptime.days
@@ -2442,18 +2251,6 @@ def get_bot_status(user_id):
     )
 
 async def get_song_record(user_id, id_use, acronym, ver="jp"):
-    """
-    查询用户在特定歌曲上的游玩记录
-
-    Args:
-        user_id: 用户ID
-        id_use: 使用的ID
-        acronym: 歌曲搜索关键词
-        ver: 服务器版本 (jp/intl)
-
-    Returns:
-        包含用户成绩的歌曲信息图片消息列表 或搜索结果flex message 或错误消息
-    """
     _id_use_data = get_user(id_use)
     if not _id_use_data:
         return mention_error(user_id) if id_use != user_id else segaid_error(user_id)
@@ -2498,18 +2295,6 @@ async def get_song_record(user_id, id_use, acronym, ver="jp"):
     return await get_song_record_by_id(user_id, id_use, song_id, ver)
 
 async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
-    """
-    通过歌曲ID查询用户在特定歌曲上的游玩记录
-
-    Args:
-        user_id: 用户ID
-        id_use: 使用的ID
-        song_id: 歌曲唯一ID (6个字符)
-        ver: 服务器版本 (jp/intl)
-
-    Returns:
-        包含用户成绩的歌曲信息图片消息 或错误消息
-    """
     _id_use_data = get_user(id_use)
     if not _id_use_data:
         return mention_error(user_id) if id_use != user_id else segaid_error(user_id)
@@ -2786,17 +2571,6 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None)
 
 
 async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="jp", filter_mode=None):
-    """
-    生成指定难度和评级的达成情况图片（定数列表+统计卡片）
-
-    参数:
-        user_id: 请求用户ID
-        id_use: 目标用户ID
-        level: 难度等级或分类关键词（如 "13", "14+", "vocaloid"）
-        rank: 评级（如 "s", "s+", "ss", "ss+", "sss", "sss+", "ap", "ap+", "fdx", "fdx+"），可选
-        ver: 服务器版本（"jp" 或 "intl"）
-        filter_mode: 过滤模式（"uncleared"=只显示未完成, "unplayed"=只显示未游玩, "cleared"=只显示已完成）
-    """
 
     _id_use_data = get_user(id_use)
     if not _id_use_data:
@@ -3010,17 +2784,6 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
 
 
 def generate_profile(user_info, scale=1, user_id=None):
-    """
-    创建用户信息图片
-
-    Args:
-        user_info: 用户个人信息字典（包含 name, rating, icon_url 等）
-        scale: 图片缩放比例
-        user_id: LINE用户ID（可选，用于获取LINE头像作为默认图标）
-
-    Returns:
-        PIL.Image: 用户信息图片
-    """
 
     img_width = 1363
     img_height = 218
@@ -3652,16 +3415,6 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
 
 # Web任务路由规则 (需要网络请求的耗时任务)
 def handle_accept_perm_request(user_id: str, request_id: str) -> TextMessage:
-    """
-    处理接受权限请求的命令
-
-    Args:
-        user_id: 用户ID
-        request_id: 请求ID
-
-    Returns:
-        TextMessage对象
-    """
 
     result = accept_perm_request(user_id, request_id)
 
@@ -3688,16 +3441,6 @@ def handle_accept_perm_request(user_id: str, request_id: str) -> TextMessage:
 
 
 def handle_reject_perm_request(user_id: str, request_id: str) -> TextMessage:
-    """
-    处理拒绝权限请求的命令
-
-    Args:
-        user_id: 用户ID
-        request_id: 请求ID
-
-    Returns:
-        TextMessage对象
-    """
 
     result = reject_perm_request(user_id, request_id)
 
@@ -3724,13 +3467,6 @@ def handle_reject_perm_request(user_id: str, request_id: str) -> TextMessage:
 
 
 def mark_message_as_read(mark_as_read_token: str, user_id: str = None):
-    """
-    标记用户消息为已读
-
-    Args:
-        mark_as_read_token: 消息的已读标记 token
-        user_id: LINE用户ID (仅用于日志)
-    """
     if not mark_as_read_token:
         logger.debug(f"[MarkAsRead] ⊘ No token provided: user_id={user_id}")
         return
@@ -4641,11 +4377,6 @@ COMMANDS = [
 
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_text_message(event):
-    """文本消息入口：mention 清洗 → 构建 CommandContext → dispatch_command。
-
-    所有匹配/拦截/queue 路由逻辑都收敛到 dispatch_command（见 COMMANDS 表 +
-    modules/command_router.py）。
-    """
     mark_message_as_read(getattr(event.message, 'mark_as_read_token', None),
                          event.source.user_id)
     _remember_ranking_group_member(event)
@@ -4710,16 +4441,6 @@ def handle_location_message(event):
 # Postback 事件处理
 @handler.add(PostbackEvent)
 def handle_postback(event):
-    """
-    处理 Postback 事件
-
-    支持：
-    - 公告投票 (action=vote_notice)
-    - 其他 Postback 事件（作为文本消息处理）
-
-    注意：PostbackEvent 不包含 message 属性和 mark_as_read_token，
-    因为它是按钮点击事件，不是用户发送的消息事件。
-    """
     user_id = event.source.user_id
     postback_data = event.postback.data
 
@@ -4879,11 +4600,6 @@ def _is_line_nickname_error(nickname):
 
 
 def get_user_nickname_wrapper(user_id, use_cache=True):
-    """
-    获取用户昵称的wrapper函数
-    在main.py中使用,自动传递line_bot_api
-    若无法通过LINE API获取昵称,则从用户数据中获取nickname字段
-    """
     stored_nick = get_user_field(user_id, 'nickname')
     if use_cache and stored_nick:
         return stored_nick
