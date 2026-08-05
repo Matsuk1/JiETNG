@@ -29,7 +29,6 @@ from io import BytesIO
 
 from flask import (
     Flask,
-    Response,
     request,
     render_template,
     redirect,
@@ -37,7 +36,6 @@ from flask import (
     jsonify,
     send_file,
     send_from_directory,
-    stream_with_context,
 )
 from flask_wtf.csrf import CSRFProtect
 
@@ -74,7 +72,7 @@ from modules.record_generator import *
 from modules.user_manager import *
 from modules.user_db import (
     save_user, get_user, user_exists,
-    get_user_field, update_user_field, load_all_users, get_all_user_ids,
+    get_user_field, update_user_field, load_all_users,
 )
 from modules.bindtoken_manager import (
     generate_bind_token, get_user_id_from_token,
@@ -84,39 +82,21 @@ from modules.bindtoken_manager import (
 )
 from modules.notice_manager import *
 from modules.notice_stats import *
-from modules.tip_ad_manager import (
-    load_tip_ad_data,
-    get_all_tip_ads,
-    create_tip_ad,
-    update_tip_ad,
-    delete_tip_ad,
-    get_tip_ad_by_id
-)
+from modules.tip_ad_manager import load_tip_ad_data
 from modules.maimai_manager import *
 from modules.score_calculator import get_note_score
-from modules.dxdata_manager import update_dxdata_with_comparison, start_weekly_update_scheduler as start_dxdata_weekly_update
+from modules.dxdata_manager import start_weekly_update_scheduler as start_dxdata_weekly_update
 from modules.record_manager import *
 from modules.devtoken_manager import (
     load_dev_tokens,
-    create_dev_token,
     save_dev_tokens,
-    list_dev_tokens,
-    revoke_dev_token,
     flush_dev_tokens
 )
 
-from modules.perm_request_handler import (
-    send_perm_request,
-    accept_perm_request,
-    reject_perm_request,
-    get_pending_perm_requests
-)
+from modules.perm_request_handler import accept_perm_request, reject_perm_request
 
 # Config loader
 from modules.config_loader import *
-
-# Backup manager
-from modules.backup_manager import create_backup
 
 # UI and message modules
 from modules.message_manager import *
@@ -135,16 +115,11 @@ from modules.import_token_manager import (
     revoke_import_token,
 )
 from modules.api_auth import (
-    check_user_permission,
     maimai_session_cors as _maimai_session_cors,
-    require_dev_token,
-    require_owner_permission,
-    require_user_permission,
 )
 from modules.logging_config import configure_logging
 from modules.web_i18n import (
     error_page as _error_page,
-    localized_payload as _localized_payload,
     register_web_i18n,
 )
 from modules.command_router import (
@@ -169,7 +144,6 @@ from modules.image_manager import *
 from modules.system_checker import run_system_check, clean_unbound_users
 from modules.event_tracker import (
     get_business_stats,
-    get_hourly_stats,
     shutdown_event_tracker,
     track_event,
 )
@@ -180,13 +154,6 @@ from modules.rich_menu_manager import (
     link_rich_menu_for_state,
     link_unbound_rich_menu,
     unlink_rich_menu,
-)
-from modules.perm_request_generator import generate_perm_request_message
-from modules.notification_manager import (
-    get_notifications,
-    clear_notifications,
-    add_push_subscription,
-    remove_push_subscription
 )
 from modules.song_matcher import find_matching_songs, normalize_text
 from modules.memory_manager import memory_manager, cleanup_user_caches, cleanup_rate_limiter_tracking
@@ -200,7 +167,6 @@ from modules.i18n import (
 )
 from modules.score_result_recognizer import (
     InvalidScoreImageError,
-    UnsupportedScoreImageError,
     build_score_crop_preview_image,
     expand_score_recognition_calc_variants,
     initialize_score_recognizer,
@@ -208,10 +174,6 @@ from modules.score_result_recognizer import (
     recognize_score_image_bytes,
     score_recognition_needs_manual_fix,
     validate_recognized_judgement,
-)
-from modules.score_recognition_api import (
-    ScoreRecognitionResultError,
-    build_score_recognition_response,
 )
 from modules.command_config import (
     MAX_SEARCH_RESULTS,
