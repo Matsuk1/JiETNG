@@ -2298,6 +2298,20 @@
         flex-direction: row;
       }
 
+      .monitor-segments {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
+      }
+
+      .monitor-segment {
+        overflow: hidden;
+        padding: 3px 10px;
+      }
+
+      .monitor-segment:first-child {
+        padding-left: 0;
+      }
+
       .monitor-mini-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
         border-top: 1px solid var(--admin-divider);
@@ -3256,10 +3270,15 @@
       const sidebar = document.querySelector('.sidebar');
       const brand = document.querySelector('.brand-block');
       const collapsed = document.body.classList.contains('admin-mobile-nav-collapsed');
+      const sidebarStyle = sidebar ? getComputedStyle(sidebar) : null;
+      const sidebarChrome = sidebarStyle
+        ? ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth']
+            .reduce((total, property) => total + parseFloat(sidebarStyle[property] || 0), 0)
+        : 0;
       const height = collapsed
-        ? (brand ? Math.ceil(brand.getBoundingClientRect().height) + 28 : 62)
-        : (sidebar ? Math.ceil(sidebar.getBoundingClientRect().height) : 64);
-      document.body.style.setProperty('--mobile-nav-offset', (height + 16) + 'px');
+        ? (brand ? brand.getBoundingClientRect().height + sidebarChrome : 62)
+        : (sidebar ? sidebar.getBoundingClientRect().height : 64);
+      document.body.style.setProperty('--mobile-nav-offset', height + 'px');
     }
 
     function setMobileNavCollapsed(collapsed) {
@@ -3340,6 +3359,7 @@
     window.addEventListener('DOMContentLoaded', function() {
       setMobileNavCollapsed(isMobileAdminLayout());
       updateMobileTopbarOffset();
+      document.getElementById('mobile-nav-content')?.addEventListener('transitionend', updateMobileTopbarOffset);
 
       // 从通知点击进入时，hash 为 #notifications，跳转到 Operations
       if (window.location.hash === '#notifications') {
