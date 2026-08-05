@@ -89,6 +89,11 @@ def language_options() -> tuple[dict[str, str], ...]:
     )
 
 
+def language_label(language: Any) -> str:
+    code = normalize_language(language)
+    return LANGUAGES[code].label
+
+
 def language_catalog(path: str) -> dict[str, Any]:
     """Return one catalog entry keyed by every plugin's language code."""
     keys = path.split(".") if path else ()

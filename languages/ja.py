@@ -47,6 +47,115 @@ TEXTS = {
     }
 }
 
+# BEGIN MESSAGE MANAGER TEXTS
+TEXTS["message_manager"] = {'help_ui': {'b_subtitle': 'Best / All Best / 特殊成績画像とフィルター',
+             'b_title': 'B 系スコア画像',
+             'catalog_subtitle': 'command-help で詳細を表示',
+             'catalog_title': 'コマンド一覧',
+             'categories': 'カテゴリ',
+             'command': 'コマンド',
+             'default_purpose': 'このコマンドの説明を表示します。',
+             'detail_hint': '詳細ヘルプ',
+             'examples': '例',
+             'function': '説明',
+             'help_title': 'コマンドヘルプ',
+             'modes': 'モード',
+             'none': 'なし',
+             'notes': '注意',
+             'params': '引数',
+             'usage': '使い方'},
+ 'score_recognition': {'break_detail': 'BREAK 詳細判定',
+                       'break_detail_source_multiple': 'Calc 推定：{count} 件の候補から最も可能性の高い組み合わせ',
+                       'break_detail_source_single': 'Calc 推定：一致する組み合わせは 1 件です',
+                       'break_row_source_multiple': 'BREAK 行には Calc 候補が {count} '
+                                                    '件あります。以上は現在の候補の内訳です',
+                       'breakdown': '判定データ',
+                       'calc_corrected': 'Calc で判定を自動補正しました',
+                       'calc_incomplete': 'Calc の達成率は一致しますが、判定行が不足しています。-? は欠損項目です',
+                       'calc_inferred': 'BREAK をノーツ数と Calc から推定しました',
+                       'calc_mismatch': 'Calc が不一致を検出しましたが、1 項目には特定できません',
+                       'calc_uncertain': 'Calc が不一致を検出しました。? は認識候補です',
+                       'calc_validated': 'Calc で達成率と判定データを確認済み',
+                       'compact_fix': 'BREAK を修正',
+                       'constant': '定数',
+                       'copy_fix': '修正コマンドをコピー',
+                       'empty': '判定詳細を認識できませんでした。',
+                       'loss_detail': '詳細判定',
+                       'manual_fix': '手動修正',
+                       'manual_fix_hint': 'コマンドをコピーし、達成率または誤った数値を修正して送信してください。行順は '
+                                          'TAP、HOLD、SLIDE、TOUCH、BREAK です。全て 0 '
+                                          'の行は欠損データのプレースホルダーなので、送信前に入力してください。',
+                       'status': 'ステータス',
+                       'title': '判定詳細',
+                       'validated': 'MISS を譜面ノーツ数で検証済み'},
+ 'service_status': {'queue': 'キュー状況',
+                    'songs': '楽曲データ',
+                    'summary': '概要',
+                    'tasks_today': '本日のタスク',
+                    'title': 'JiETNG 稼働状態',
+                    'uptime': '稼働時間'}}
+# END MESSAGE MANAGER TEXTS
+
+# BEGIN HELP DETAILS
+TEXTS["message_manager"]["help_details"] = {'ab50_allb50_ab35_allb35': 'ab50 / allb50, ab35 / allb35',
+ 'account_and_system': 'アカウントとシステム',
+ 'achievement_one_value_is_a_lower_bound_two_values_are_a_range': '達成率。1 つは下限、2 つは範囲です。',
+ 'ap50_fdx50_r50_rct50_idlb50_s50_sun50': 'ap50, fdx50, r50 / rct50, idlb50, s50 / sun50',
+ 'b50_best50_b40_best40_b35_best35_b15_best15': 'b50 / best50, b40 / best40, b35 / best35, b15 / '
+                                                'best15',
+ 'best_all_best_recent_and_special_score_images': 'Best、All Best、Recent、特殊成績画像。',
+ 'binding_settings_profile_sync_export_and_status': '連携、設定、プロフィール、同期、エクスポート、状態確認。',
+ 'chart_rating_one_value_is_exact_two_values_are_a_range': '単曲 Rating。1 つは完全一致、2 つは範囲です。',
+ 'chart_type_supports_dx_and_std_multiple_values_are_allowed': '譜面種別。dx、std を複数指定できます。',
+ 'commands_that_need_arguments_also_show_help_when_sent_without_ar': '引数が必要なコマンドを引数なしで送ると説明を表示します。',
+ 'data_required': 'データ要件',
+ 'difficulty_supports_bas_adv_exp_mas_rem_or_full_names_multiple_v': '難易度。bas、adv、exp、mas、rem '
+                                                                     'または正式名を複数指定できます。',
+ 'display_multiplier_capped_at_2_5': '表示件数の倍率。最大 2.5 です。',
+ 'dx_stars_one_value_is_exact_two_values_are_a_range': 'DX 星数。1 つは完全一致、2 つは範囲です。',
+ 'friend_list_and_friend_record_lookup': 'フレンド一覧とフレンド成績検索。',
+ 'generate_best_all_best_special_score_images_with_optional_filter': 'Best / All Best / '
+                                                                     '特殊成績画像を生成し、フィルターを追加できます。',
+ 'level_lists_constant_lists_plate_completion_and_target_progress': 'レベルリスト、定数リスト、プレート達成状況、目標進捗。',
+ 'level_or_constant_one_value_is_exact_two_values_are_a_range': 'レベルまたは定数。1 つは完全一致、2 つは範囲です。',
+ 'line_mentions_can_query_registered_users_self_only_commands_do_n': 'LINE '
+                                                                     'メンションで登録済みユーザーを検索できます。本人専用コマンドはメンション不可です。',
+ 'lists_and_progress': 'リストと進捗',
+ 'missing_arguments': '引数不足',
+ 'next_version_preview_using_the_next_rating_structure': '次バージョンプレビュー。次の Rating 構成で成績画像を表示します。',
+ 'page_number_starting_from_1': 'ページ番号。1 から始まります。',
+ 'querying_others': '他ユーザー検索',
+ 'ranking_rating_breakdown_note_scoring_and_utility_commands': 'ランキング、レート内訳、ノーツ点数計算、補助コマンド。',
+ 'requires_a_linked_account_with_maimai_update_completed_or_data_i': 'maimai update 済みの連携アカウント、または '
+                                                                     'Import Token / Developer API '
+                                                                     'で取り込んだデータが必要です。',
+ 'score_images': '成績画像',
+ 'search': '検索',
+ 'search_by_artist_designer_bpm_or_random_conditions': 'アーティスト、譜面制作者、BPM、ランダム条件で検索。',
+ 'send_b50_help_artist_help_bpm_help_and_similar_forms_for_full_us': 'b50-help、artist-help、bpm-help '
+                                                                     'のように送信すると詳しい使い方を表示します。',
+ 'single_command': '単体説明',
+ 'social': 'フレンド',
+ 'song_details_score_image_recognition_single_song_records_and_son': '楽曲情報、リザルト画像認識、単曲成績、楽曲 ID 検索。',
+ 'songs_and_records': '楽曲と成績',
+ 'tools': 'ツール',
+ 'version_names_multiple_values_are_allowed_is_treated_as_plus_and': 'バージョン名。複数指定可。+ は PLUS、dx / '
+                                                                     'deluxe は正規化されます。',
+ 'without_values_sort_by_dx_score_with_values_filter_dx_score_perc': '値なしでは DX スコア順、値ありでは DX '
+                                                                     'スコア割合で絞り込みます。'}
+# END HELP DETAILS
+
+TEXTS["message_manager"].update({
+    "button_labels": {"uri": "詳細を見る", "message": "試してみる"},
+    "vote_labels": {"support": "支持", "oppose": "反対"},
+    "search_titles": {
+        "song": "楽曲検索結果 ({count}件)",
+        "record": "レコード検索結果 ({count}件)",
+    },
+    "rating_chart_title": "定数 {level} のRating対照表",
+    "song_unit": "曲",
+})
+
 # BEGIN MAIN TEXTS
 TEXTS["main"] = {'account_already_bound': 'すでに SEGA アカウントが連携されています。再度連携する場合は、先に unbind コマンドで連携を解除してください。',
  'account_not_linked': 'アカウントが連携されていません。',

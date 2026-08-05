@@ -47,6 +47,147 @@ TEXTS = {
     }
 }
 
+# BEGIN MESSAGE MANAGER TEXTS
+TEXTS["message_manager"] = {'help_ui': {'b_subtitle': 'Best / All Best / special score images and filters',
+             'b_title': 'B-Series Score Images',
+             'catalog_subtitle': 'Send command-help for detailed usage',
+             'catalog_title': 'Command Directory',
+             'categories': 'Categories',
+             'command': 'Command',
+             'default_purpose': 'Show help for this command.',
+             'detail_hint': 'Detailed Help',
+             'examples': 'Examples',
+             'function': 'Description',
+             'help_title': 'Command Help',
+             'modes': 'Modes',
+             'none': 'None',
+             'notes': 'Notes',
+             'params': 'Parameters',
+             'usage': 'Usage'},
+ 'score_recognition': {'break_detail': 'BREAK Details',
+                       'break_detail_source_multiple': 'Calc inference: most likely of {count} '
+                                                       'candidates',
+                       'break_detail_source_single': 'Calc inference: unique matching combination',
+                       'break_row_source_multiple': 'The BREAK row has {count} Calc candidates; '
+                                                    'details above are for the current candidate',
+                       'breakdown': 'Judgements',
+                       'calc_corrected': 'Calc automatically resolved the judgements',
+                       'calc_incomplete': 'Calc score matches, but judgement rows are incomplete; '
+                                          '-? marks missing data',
+                       'calc_inferred': 'BREAK was inferred from chart notes and Calc',
+                       'calc_mismatch': 'Calc found a mismatch that cannot be isolated to one OCR '
+                                        'cell',
+                       'calc_uncertain': 'Calc found a mismatch; ? marks suspected OCR cells',
+                       'calc_validated': 'Calc confirmed the achievement and judgements',
+                       'compact_fix': 'Fix BREAK',
+                       'constant': 'Level',
+                       'copy_fix': 'Copy Fix Command',
+                       'empty': 'No judgement details were recognized.',
+                       'loss_detail': 'Detailed Judgements',
+                       'manual_fix': 'Manual Correction',
+                       'manual_fix_hint': 'Copy the command and correct the achievement or values '
+                                          'before sending. Rows are TAP, HOLD, SLIDE, TOUCH, and '
+                                          'BREAK; an all-zero row is a missing-data placeholder '
+                                          'and must be filled in.',
+                       'status': 'Status',
+                       'title': 'Judgement Details',
+                       'validated': 'MISS validated against chart note counts'},
+ 'service_status': {'queue': 'Queue Status',
+                    'songs': 'Songs DB',
+                    'summary': 'Summary',
+                    'tasks_today': 'Tasks Today',
+                    'title': 'JiETNG Service Status',
+                    'uptime': 'Uptime'}}
+# END MESSAGE MANAGER TEXTS
+
+# BEGIN HELP DETAILS
+TEXTS["message_manager"]["help_details"] = {'ab50_allb50_ab35_allb35': 'ab50 / allb50, ab35 / allb35',
+ 'account_and_system': 'Account and System',
+ 'achievement_one_value_is_a_lower_bound_two_values_are_a_range': 'Achievement. One value is a '
+                                                                  'lower bound; two values are a '
+                                                                  'range.',
+ 'ap50_fdx50_r50_rct50_idlb50_s50_sun50': 'ap50, fdx50, r50 / rct50, idlb50, s50 / sun50',
+ 'b50_best50_b40_best40_b35_best35_b15_best15': 'b50 / best50, b40 / best40, b35 / best35, b15 / '
+                                                'best15',
+ 'best_all_best_recent_and_special_score_images': 'Best, All Best, Recent, and special score '
+                                                  'images.',
+ 'binding_settings_profile_sync_export_and_status': 'Binding, settings, profile, sync, export, and '
+                                                    'status.',
+ 'chart_rating_one_value_is_exact_two_values_are_a_range': 'Chart rating. One value is exact; two '
+                                                           'values are a range.',
+ 'chart_type_supports_dx_and_std_multiple_values_are_allowed': 'Chart type. Supports dx and std; '
+                                                               'multiple values are allowed.',
+ 'commands_that_need_arguments_also_show_help_when_sent_without_ar': 'Commands that need arguments '
+                                                                     'also show help when sent '
+                                                                     'without arguments.',
+ 'data_required': 'Data required',
+ 'difficulty_supports_bas_adv_exp_mas_rem_or_full_names_multiple_v': 'Difficulty. Supports bas, '
+                                                                     'adv, exp, mas, rem, or full '
+                                                                     'names; multiple values are '
+                                                                     'allowed.',
+ 'display_multiplier_capped_at_2_5': 'Display multiplier, capped at 2.5.',
+ 'dx_stars_one_value_is_exact_two_values_are_a_range': 'DX stars. One value is exact; two values '
+                                                       'are a range.',
+ 'friend_list_and_friend_record_lookup': 'Friend list and friend record lookup.',
+ 'generate_best_all_best_special_score_images_with_optional_filter': 'Generate Best / All Best / '
+                                                                     'special score images with '
+                                                                     'optional filters.',
+ 'level_lists_constant_lists_plate_completion_and_target_progress': 'Level lists, constant lists, '
+                                                                    'plate completion, and target '
+                                                                    'progress.',
+ 'level_or_constant_one_value_is_exact_two_values_are_a_range': 'Level or constant. One value is '
+                                                                'exact; two values are a range.',
+ 'line_mentions_can_query_registered_users_self_only_commands_do_n': 'LINE mentions can query '
+                                                                     'registered users; self-only '
+                                                                     'commands do not accept '
+                                                                     'mentions.',
+ 'lists_and_progress': 'Lists and Progress',
+ 'missing_arguments': 'Missing arguments',
+ 'next_version_preview_using_the_next_rating_structure': 'Next-version preview using the next '
+                                                         'rating structure.',
+ 'page_number_starting_from_1': 'Page number, starting from 1.',
+ 'querying_others': 'Querying others',
+ 'ranking_rating_breakdown_note_scoring_and_utility_commands': 'Ranking, rating breakdown, note '
+                                                               'scoring, and utility commands.',
+ 'requires_a_linked_account_with_maimai_update_completed_or_data_i': 'Requires a linked account '
+                                                                     'with maimai update '
+                                                                     'completed, or data imported '
+                                                                     'through Import Token / '
+                                                                     'Developer API.',
+ 'score_images': 'Score Images',
+ 'search': 'Search',
+ 'search_by_artist_designer_bpm_or_random_conditions': 'Search by artist, designer, BPM, or random '
+                                                       'conditions.',
+ 'send_b50_help_artist_help_bpm_help_and_similar_forms_for_full_us': 'Send b50-help, artist-help, '
+                                                                     'bpm-help, and similar forms '
+                                                                     'for full usage.',
+ 'single_command': 'Single command',
+ 'social': 'Social',
+ 'song_details_score_image_recognition_single_song_records_and_son': 'Song details, score-image '
+                                                                     'recognition, single-song '
+                                                                     'records, and song IDs.',
+ 'songs_and_records': 'Songs and Records',
+ 'tools': 'Tools',
+ 'version_names_multiple_values_are_allowed_is_treated_as_plus_and': 'Version names. Multiple '
+                                                                     'values are allowed; + is '
+                                                                     'treated as PLUS, and '
+                                                                     'dx/deluxe are normalized.',
+ 'without_values_sort_by_dx_score_with_values_filter_dx_score_perc': 'Without values, sort by DX '
+                                                                     'score; with values, filter '
+                                                                     'DX score percentage.'}
+# END HELP DETAILS
+
+TEXTS["message_manager"].update({
+    "button_labels": {"uri": "View Details", "message": "Try it"},
+    "vote_labels": {"support": "Support", "oppose": "Oppose"},
+    "search_titles": {
+        "song": "Song Search Results ({count})",
+        "record": "Record Search Results ({count})",
+    },
+    "rating_chart_title": "Rating Chart for {level}",
+    "song_unit": "songs",
+})
+
 # BEGIN MAIN TEXTS
 TEXTS["main"] = {'account_already_bound': 'A SEGA account is already linked. To rebind, please use the unbind '
                           'command first to unlink your account.',

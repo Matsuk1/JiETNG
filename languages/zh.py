@@ -48,6 +48,114 @@ TEXTS = {
     }
 }
 
+# BEGIN MESSAGE MANAGER TEXTS
+TEXTS["message_manager"] = {'help_ui': {'b_subtitle': 'Best / All Best / 特殊成绩图与筛选参数',
+             'b_title': 'B 系列成绩图',
+             'catalog_subtitle': '发送 命令-help 查看单项说明',
+             'catalog_title': '命令目录',
+             'categories': '分类',
+             'command': '命令',
+             'default_purpose': '查看该命令的说明。',
+             'detail_hint': '详细说明',
+             'examples': '示例',
+             'function': '说明',
+             'help_title': '命令帮助',
+             'modes': '可用模式',
+             'none': '无',
+             'notes': '注意',
+             'params': '参数',
+             'usage': '用法'},
+ 'score_recognition': {'break_detail': 'BREAK 详细判定',
+                       'break_detail_source_multiple': 'Calc 推算：从 {count} 个候选中选择最可能组合',
+                       'break_detail_source_single': 'Calc 推算：唯一匹配组合',
+                       'break_row_source_multiple': 'BREAK 整行有 {count} 个 Calc 候选；上方为当前候选的细分',
+                       'breakdown': '判定数据',
+                       'calc_corrected': 'Calc 已自动配平',
+                       'calc_incomplete': 'Calc 达成率一致，但判定明细不完整；-? 表示缺失项',
+                       'calc_inferred': 'BREAK 未识别，已根据物量和 Calc 推算',
+                       'calc_mismatch': 'Calc 检测到不一致，但无法定位到单个识别项',
+                       'calc_uncertain': 'Calc 检测到不一致，? 表示疑似识别项',
+                       'calc_validated': 'Calc 已确认达成率与判定数据一致',
+                       'compact_fix': '修正 BREAK',
+                       'constant': '定数',
+                       'copy_fix': '复制修正命令',
+                       'empty': '未能识别判定明细。',
+                       'loss_detail': '详细判定',
+                       'manual_fix': '手动修正',
+                       'manual_fix_hint': '复制命令，修改达成率或错误数字后发送。五行依次为 TAP、HOLD、SLIDE、TOUCH、BREAK；全 0 '
+                                          '行是缺失占位，发送前必须填写。',
+                       'status': '状态',
+                       'title': '判定明细',
+                       'validated': 'MISS 已根据谱面物量校验'},
+ 'service_status': {'queue': '队列状态',
+                    'songs': '歌曲数据',
+                    'summary': '概要',
+                    'tasks_today': '今日任务',
+                    'title': 'JiETNG 运行状态',
+                    'uptime': '运行时长'}}
+# END MESSAGE MANAGER TEXTS
+
+# BEGIN HELP DETAILS
+TEXTS["message_manager"]["help_details"] = {'ab50_allb50_ab35_allb35': 'ab50 / allb50, ab35 / allb35',
+ 'account_and_system': '账号与系统',
+ 'achievement_one_value_is_a_lower_bound_two_values_are_a_range': '达成率。1 个值为下限，2 个值为范围。',
+ 'ap50_fdx50_r50_rct50_idlb50_s50_sun50': 'ap50, fdx50, r50 / rct50, idlb50, s50 / sun50',
+ 'b50_best50_b40_best40_b35_best35_b15_best15': 'b50 / best50, b40 / best40, b35 / best35, b15 / '
+                                                'best15',
+ 'best_all_best_recent_and_special_score_images': 'Best、All Best、Recent 与特殊成绩图。',
+ 'binding_settings_profile_sync_export_and_status': '绑定、设置、资料、同步、导出与状态。',
+ 'chart_rating_one_value_is_exact_two_values_are_a_range': '单谱 Rating。1 个值精确匹配，2 个值范围。',
+ 'chart_type_supports_dx_and_std_multiple_values_are_allowed': '谱面类型。支持 dx、std，可多个。',
+ 'commands_that_need_arguments_also_show_help_when_sent_without_ar': '需要参数的命令只发送命令名时，也会显示对应说明。',
+ 'data_required': '数据要求',
+ 'difficulty_supports_bas_adv_exp_mas_rem_or_full_names_multiple_v': '难度。支持 bas、adv、exp、mas、rem '
+                                                                     '或完整名，可多个。',
+ 'display_multiplier_capped_at_2_5': '扩大输出数量倍率，最大 2.5。',
+ 'dx_stars_one_value_is_exact_two_values_are_a_range': 'DX 星数。1 个值精确匹配，2 个值范围。',
+ 'friend_list_and_friend_record_lookup': '好友列表和好友成绩查询。',
+ 'generate_best_all_best_special_score_images_with_optional_filter': '生成 Best / All Best / '
+                                                                     '特殊成绩图，可追加筛选参数。',
+ 'level_lists_constant_lists_plate_completion_and_target_progress': '等级列表、定数列表、牌子完成度和目标进度。',
+ 'level_or_constant_one_value_is_exact_two_values_are_a_range': '等级或定数。1 个值精确匹配，2 个值范围。',
+ 'line_mentions_can_query_registered_users_self_only_commands_do_n': '支持 LINE mention '
+                                                                     '查询已注册用户；仅限本人命令不会接受 mention。',
+ 'lists_and_progress': '列表与进度',
+ 'missing_arguments': '参数缺失',
+ 'next_version_preview_using_the_next_rating_structure': '下版本预览。按下一版本 Rating 结构预览成绩图。',
+ 'page_number_starting_from_1': '页码，从 1 开始。',
+ 'querying_others': '查询他人',
+ 'ranking_rating_breakdown_note_scoring_and_utility_commands': '排行榜、Rating 内訳、分值计算和辅助命令。',
+ 'requires_a_linked_account_with_maimai_update_completed_or_data_i': '需要已绑定账号并完成 maimai update，或已有 '
+                                                                     'Import Token / 开发者 API '
+                                                                     '导入的数据。',
+ 'score_images': '成绩图',
+ 'search': '搜索',
+ 'search_by_artist_designer_bpm_or_random_conditions': '按艺术家、谱师、BPM 或条件随机选曲。',
+ 'send_b50_help_artist_help_bpm_help_and_similar_forms_for_full_us': '发送 '
+                                                                     'b50-help、artist-help、bpm-help '
+                                                                     '这类格式查看完整用法。',
+ 'single_command': '单项说明',
+ 'social': '社交',
+ 'song_details_score_image_recognition_single_song_records_and_son': '查歌曲信息、识别成绩图、单曲成绩和歌曲 ID。',
+ 'songs_and_records': '歌曲与成绩',
+ 'tools': '工具',
+ 'version_names_multiple_values_are_allowed_is_treated_as_plus_and': '版本名，可多个。+ 会识别为 PLUS，dx / '
+                                                                     'deluxe 会归一。',
+ 'without_values_sort_by_dx_score_with_values_filter_dx_score_perc': '无参数时按 DX 分排序；带值时筛 DX Score '
+                                                                     '百分比。'}
+# END HELP DETAILS
+
+TEXTS["message_manager"].update({
+    "button_labels": {"uri": "查看详情", "message": "尝试一下"},
+    "vote_labels": {"support": "支持", "oppose": "反对"},
+    "search_titles": {
+        "song": "歌曲搜索结果 ({count}条)",
+        "record": "成绩搜索结果 ({count}条)",
+    },
+    "rating_chart_title": "定数 {level} Rating 对照表",
+    "song_unit": "首",
+})
+
 # BEGIN MAIN TEXTS
 TEXTS["main"] = {'account_already_bound': '已绑定 SEGA 账号。如需重新绑定，请先使用 unbind 命令解除绑定。',
  'account_not_linked': '未绑定账号。',

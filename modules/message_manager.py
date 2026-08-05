@@ -2,7 +2,14 @@ import re
 
 from urllib.parse import quote
 from modules.config_loader import SUPPORT_PAGE, LINE_ACCOUNT_ID
-from modules.i18n import get_user_language, select_text
+from modules.i18n import (
+    format_catalog,
+    get_user_language,
+    language_catalog,
+    language_label,
+    localized_catalog,
+    select_text,
+)
 from modules.user_db import get_user
 from modules.user_manager import get_user_timezone
 from modules.tip_ad_manager import get_random_tip, get_random_ad
@@ -45,36 +52,7 @@ COLOR_TIP = "#5856D6"
 COLOR_TIP_BG = "#F0EFFF"
 COLOR_AD_BG = "#FFF4E6"
 
-HELP_UI_TEXT = {
-    "help_title": {"zh": "命令帮助", "en": "Command Help", "ja": "コマンドヘルプ"},
-    "usage": {"zh": "用法", "en": "Usage", "ja": "使い方"},
-    "function": {"zh": "说明", "en": "Description", "ja": "説明"},
-    "params": {"zh": "参数", "en": "Parameters", "ja": "引数"},
-    "examples": {"zh": "示例", "en": "Examples", "ja": "例"},
-    "notes": {"zh": "注意", "en": "Notes", "ja": "注意"},
-    "command": {"zh": "命令", "en": "Command", "ja": "コマンド"},
-    "none": {"zh": "无", "en": "None", "ja": "なし"},
-    "default_purpose": {
-        "zh": "查看该命令的说明。",
-        "en": "Show help for this command.",
-        "ja": "このコマンドの説明を表示します。",
-    },
-    "b_title": {"zh": "B 系列成绩图", "en": "B-Series Score Images", "ja": "B 系スコア画像"},
-    "b_subtitle": {
-        "zh": "Best / All Best / 特殊成绩图与筛选参数",
-        "en": "Best / All Best / special score images and filters",
-        "ja": "Best / All Best / 特殊成績画像とフィルター",
-    },
-    "modes": {"zh": "可用模式", "en": "Modes", "ja": "モード"},
-    "catalog_title": {"zh": "命令目录", "en": "Command Directory", "ja": "コマンド一覧"},
-    "catalog_subtitle": {
-        "zh": "发送 命令-help 查看单项说明",
-        "en": "Send command-help for detailed usage",
-        "ja": "command-help で詳細を表示",
-    },
-    "categories": {"zh": "分类", "en": "Categories", "ja": "カテゴリ"},
-    "detail_hint": {"zh": "详细说明", "en": "Detailed Help", "ja": "詳細ヘルプ"},
-}
+HELP_UI_TEXT = localized_catalog("message_manager.help_ui")
 
 HELP_NOTE_DETAIL_LABELS = {
     "限制", "Restriction", "制限",
@@ -88,8 +66,11 @@ def _help_ui(key, user_id=None):
     return get_multilingual_text(HELP_UI_TEXT[key], user_id)
 
 
-def _help_i18n(user_id, zh, en, ja):
-    return get_multilingual_text({"zh": zh, "en": en, "ja": ja}, user_id)
+def _help_i18n(user_id, key):
+    return get_multilingual_text(
+        language_catalog(f"message_manager.help_details.{key}"),
+        user_id,
+    )
 
 
 def _help_flex_text(text, size="sm", color="#222222", weight=None, wrap=True, margin=None, align=None):
@@ -687,49 +668,29 @@ def generate_standard_help_flex(help_data, user_id=None):
 
 def generate_b_records_help_flex(user_id=None):
     modes = [
-        ("Best", _help_i18n(
-            user_id,
-            "b50 / best50, b40 / best40, b35 / best35, b15 / best15",
-            "b50 / best50, b40 / best40, b35 / best35, b15 / best15",
-            "b50 / best50, b40 / best40, b35 / best35, b15 / best15",
-        ), "#E85D75"),
-        ("All Best", _help_i18n(
-            user_id,
-            "ab50 / allb50, ab35 / allb35",
-            "ab50 / allb50, ab35 / allb35",
-            "ab50 / allb50, ab35 / allb35",
-        ), "#8A63D2"),
-        ("Special", _help_i18n(
-            user_id,
-            "ap50, fdx50, r50 / rct50, idlb50, s50 / sun50",
-            "ap50, fdx50, r50 / rct50, idlb50, s50 / sun50",
-            "ap50, fdx50, r50 / rct50, idlb50, s50 / sun50",
-        ), "#267D8B"),
+        ("Best", _help_i18n(user_id, 'b50_best50_b40_best40_b35_best35_b15_best15'), "#E85D75"),
+        ("All Best", _help_i18n(user_id, 'ab50_allb50_ab35_allb35'), "#8A63D2"),
+        ("Special", _help_i18n(user_id, 'ap50_fdx50_r50_rct50_idlb50_s50_sun50'), "#267D8B"),
     ]
     filters = [
-        ("-lv / -level", _help_i18n(user_id, "等级或定数。1 个值精确匹配，2 个值范围。", "Level or constant. One value is exact; two values are a range.", "レベルまたは定数。1 つは完全一致、2 つは範囲です。"), "-lv 13.6   /   -lv 14 14.9"),
-        ("-diff / -difficulty", _help_i18n(user_id, "难度。支持 bas、adv、exp、mas、rem 或完整名，可多个。", "Difficulty. Supports bas, adv, exp, mas, rem, or full names; multiple values are allowed.", "難易度。bas、adv、exp、mas、rem または正式名を複数指定できます。"), "-diff mas rem"),
-        ("-ra / -rating", _help_i18n(user_id, "单谱 Rating。1 个值精确匹配，2 个值范围。", "Chart rating. One value is exact; two values are a range.", "単曲 Rating。1 つは完全一致、2 つは範囲です。"), "-ra 320 360"),
-        ("-scr / -score", _help_i18n(user_id, "达成率。1 个值为下限，2 个值为范围。", "Achievement. One value is a lower bound; two values are a range.", "達成率。1 つは下限、2 つは範囲です。"), "-scr 100.5   /   -scr 100 100.5"),
-        ("-dx / -dxscore", _help_i18n(user_id, "无参数时按 DX 分排序；带值时筛 DX Score 百分比。", "Without values, sort by DX score; with values, filter DX score percentage.", "値なしでは DX スコア順、値ありでは DX スコア割合で絞り込みます。"), "-dx   /   -dx 95 100"),
-        ("-star / -dxstar", _help_i18n(user_id, "DX 星数。1 个值精确匹配，2 个值范围。", "DX stars. One value is exact; two values are a range.", "DX 星数。1 つは完全一致、2 つは範囲です。"), "-star 5"),
-        ("-ver / -version", _help_i18n(user_id, "版本名，可多个。+ 会识别为 PLUS，dx / deluxe 会归一。", "Version names. Multiple values are allowed; + is treated as PLUS, and dx/deluxe are normalized.", "バージョン名。複数指定可。+ は PLUS、dx / deluxe は正規化されます。"), "-ver buddies prism+"),
-        ("-type / -tp", _help_i18n(user_id, "谱面类型。支持 dx、std，可多个。", "Chart type. Supports dx and std; multiple values are allowed.", "譜面種別。dx、std を複数指定できます。"), "-type dx"),
-        ("-next / -nxt", _help_i18n(user_id, "下版本预览。按下一版本 Rating 结构预览成绩图。", "Next-version preview using the next rating structure.", "次バージョンプレビュー。次の Rating 構成で成績画像を表示します。"), "-nxt"),
-        ("-page / -pg", _help_i18n(user_id, "页码，从 1 开始。", "Page number, starting from 1.", "ページ番号。1 から始まります。"), "-page 2"),
-        ("-times / -tm", _help_i18n(user_id, "扩大输出数量倍率，最大 2.5。", "Display multiplier, capped at 2.5.", "表示件数の倍率。最大 2.5 です。"), "-times 2"),
+        ("-lv / -level", _help_i18n(user_id, 'level_or_constant_one_value_is_exact_two_values_are_a_range'), "-lv 13.6   /   -lv 14 14.9"),
+        ("-diff / -difficulty", _help_i18n(user_id, 'difficulty_supports_bas_adv_exp_mas_rem_or_full_names_multiple_v'), "-diff mas rem"),
+        ("-ra / -rating", _help_i18n(user_id, 'chart_rating_one_value_is_exact_two_values_are_a_range'), "-ra 320 360"),
+        ("-scr / -score", _help_i18n(user_id, 'achievement_one_value_is_a_lower_bound_two_values_are_a_range'), "-scr 100.5   /   -scr 100 100.5"),
+        ("-dx / -dxscore", _help_i18n(user_id, 'without_values_sort_by_dx_score_with_values_filter_dx_score_perc'), "-dx   /   -dx 95 100"),
+        ("-star / -dxstar", _help_i18n(user_id, 'dx_stars_one_value_is_exact_two_values_are_a_range'), "-star 5"),
+        ("-ver / -version", _help_i18n(user_id, 'version_names_multiple_values_are_allowed_is_treated_as_plus_and'), "-ver buddies prism+"),
+        ("-type / -tp", _help_i18n(user_id, 'chart_type_supports_dx_and_std_multiple_values_are_allowed'), "-type dx"),
+        ("-next / -nxt", _help_i18n(user_id, 'next_version_preview_using_the_next_rating_structure'), "-nxt"),
+        ("-page / -pg", _help_i18n(user_id, 'page_number_starting_from_1'), "-page 2"),
+        ("-times / -tm", _help_i18n(user_id, 'display_multiplier_capped_at_2_5'), "-times 2"),
     ]
     sections = [
         (_help_ui("usage", user_id), [
             _help_filter_row(_help_ui("command", user_id), "b50 / b40 / b35 / b15 / ab50 / ap50 / fdx50 / r50 / idlb50 / s50"),
         ]),
         (_help_ui("function", user_id), [
-            _help_body_row(_help_i18n(
-                user_id,
-                "生成 Best / All Best / 特殊成绩图，可追加筛选参数。",
-                "Generate Best / All Best / special score images with optional filters.",
-                "Best / All Best / 特殊成績画像を生成し、フィルターを追加できます。",
-            )),
+            _help_body_row(_help_i18n(user_id, 'generate_best_all_best_special_score_images_with_optional_filter')),
         ]),
         (_help_ui("modes", user_id), [
             _help_mode_card(title, body, color)
@@ -755,18 +716,8 @@ def generate_b_records_help_flex(user_id=None):
             },
         ]),
         (_help_ui("notes", user_id), [
-            _help_note_row(_help_i18n(user_id, "数据要求", "Data required", "データ要件"), _help_i18n(
-                user_id,
-                "需要已绑定账号并完成 maimai update，或已有 Import Token / 开发者 API 导入的数据。",
-                "Requires a linked account with maimai update completed, or data imported through Import Token / Developer API.",
-                "maimai update 済みの連携アカウント、または Import Token / Developer API で取り込んだデータが必要です。",
-            )),
-            _help_note_row(_help_i18n(user_id, "查询他人", "Querying others", "他ユーザー検索"), _help_i18n(
-                user_id,
-                "支持 LINE mention 查询已注册用户；仅限本人命令不会接受 mention。",
-                "LINE mentions can query registered users; self-only commands do not accept mentions.",
-                "LINE メンションで登録済みユーザーを検索できます。本人専用コマンドはメンション不可です。",
-            )),
+            _help_note_row(_help_i18n(user_id, 'data_required'), _help_i18n(user_id, 'requires_a_linked_account_with_maimai_update_completed_or_data_i')),
+            _help_note_row(_help_i18n(user_id, 'querying_others'), _help_i18n(user_id, 'line_mentions_can_query_registered_users_self_only_commands_do_n')),
         ]),
     ]
     return _standard_help_bubble(
@@ -780,45 +731,45 @@ def generate_b_records_help_flex(user_id=None):
 def generate_help_index_flex(user_id=None):
     groups = [
         (
-            _help_i18n(user_id, "账号与系统", "Account and System", "アカウントとシステム"),
+            _help_i18n(user_id, 'account_and_system'),
             "bind / rebind / settings / profile / update / export / status",
-            _help_i18n(user_id, "绑定、设置、资料、同步、导出与状态。", "Binding, settings, profile, sync, export, and status.", "連携、設定、プロフィール、同期、エクスポート、状態確認。"),
+            _help_i18n(user_id, 'binding_settings_profile_sync_export_and_status'),
             "#E85D75",
         ),
         (
-            _help_i18n(user_id, "成绩图", "Score Images", "成績画像"),
+            _help_i18n(user_id, 'score_images'),
             "b50 / b40 / ab50 / ap50 / fdx50 / r50 / idlb50 / s50",
-            _help_i18n(user_id, "Best、All Best、Recent 与特殊成绩图。", "Best, All Best, Recent, and special score images.", "Best、All Best、Recent、特殊成績画像。"),
+            _help_i18n(user_id, 'best_all_best_recent_and_special_score_images'),
             "#8A63D2",
         ),
         (
-            _help_i18n(user_id, "歌曲与成绩", "Songs and Records", "楽曲と成績"),
+            _help_i18n(user_id, 'songs_and_records'),
             "info / rec / record / search / search-record / calc-song",
-            _help_i18n(user_id, "查歌曲信息、识别成绩图、单曲成绩和歌曲 ID。", "Song details, score-image recognition, single-song records, and song IDs.", "楽曲情報、リザルト画像認識、単曲成績、楽曲 ID 検索。"),
+            _help_i18n(user_id, 'song_details_score_image_recognition_single_song_records_and_son'),
             "#267D8B",
         ),
         (
-            _help_i18n(user_id, "搜索", "Search", "検索"),
+            _help_i18n(user_id, 'search'),
             "artist / designer / bpm / random",
-            _help_i18n(user_id, "按艺术家、谱师、BPM 或条件随机选曲。", "Search by artist, designer, BPM, or random conditions.", "アーティスト、譜面制作者、BPM、ランダム条件で検索。"),
+            _help_i18n(user_id, 'search_by_artist_designer_bpm_or_random_conditions'),
             "#2F7D51",
         ),
         (
-            _help_i18n(user_id, "列表与进度", "Lists and Progress", "リストと進捗"),
+            _help_i18n(user_id, 'lists_and_progress'),
             "records / record-list / level-list / achievement / progress",
-            _help_i18n(user_id, "等级列表、定数列表、牌子完成度和目标进度。", "Level lists, constant lists, plate completion, and target progress.", "レベルリスト、定数リスト、プレート達成状況、目標進捗。"),
+            _help_i18n(user_id, 'level_lists_constant_lists_plate_completion_and_target_progress'),
             "#B86E19",
         ),
         (
-            _help_i18n(user_id, "社交", "Social", "フレンド"),
+            _help_i18n(user_id, 'social'),
             "friends / friend-rcd",
-            _help_i18n(user_id, "好友列表和好友成绩查询。", "Friend list and friend record lookup.", "フレンド一覧とフレンド成績検索。"),
+            _help_i18n(user_id, 'friend_list_and_friend_record_lookup'),
             "#315B7D",
         ),
         (
-            _help_i18n(user_id, "工具", "Tools", "ツール"),
+            _help_i18n(user_id, 'tools'),
             "rank / rc / calc / refreshmenu",
-            _help_i18n(user_id, "排行榜、Rating 内訳、分值计算和辅助命令。", "Ranking, rating breakdown, note scoring, and utility commands.", "ランキング、レート内訳、ノーツ点数計算、補助コマンド。"),
+            _help_i18n(user_id, 'ranking_rating_breakdown_note_scoring_and_utility_commands'),
             "#6B7280",
         ),
     ]
@@ -832,18 +783,8 @@ def generate_help_index_flex(user_id=None):
             for title, _commands, desc, _color in groups
         ]),
         (_help_ui("detail_hint", user_id), [
-            _help_filter_row(_help_i18n(user_id, "单项说明", "Single command", "単体説明"), _help_i18n(
-                user_id,
-                "发送 b50-help、artist-help、bpm-help 这类格式查看完整用法。",
-                "Send b50-help, artist-help, bpm-help, and similar forms for full usage.",
-                "b50-help、artist-help、bpm-help のように送信すると詳しい使い方を表示します。",
-            )),
-            _help_filter_row(_help_i18n(user_id, "参数缺失", "Missing arguments", "引数不足"), _help_i18n(
-                user_id,
-                "需要参数的命令只发送命令名时，也会显示对应说明。",
-                "Commands that need arguments also show help when sent without arguments.",
-                "引数が必要なコマンドを引数なしで送ると説明を表示します。",
-            )),
+            _help_filter_row(_help_i18n(user_id, 'single_command'), _help_i18n(user_id, 'send_b50_help_artist_help_bpm_help_and_similar_forms_for_full_us')),
+            _help_filter_row(_help_i18n(user_id, 'missing_arguments'), _help_i18n(user_id, 'commands_that_need_arguments_also_show_help_when_sent_without_ar')),
         ]),
     ]
     return _standard_help_bubble(
@@ -1018,10 +959,7 @@ def generate_notice_flex(notice_json, user_id=None):
 
         # 如果label为空，使用默认值
         if not button_label:
-            default_labels = {
-                'uri': {'ja': '詳細を見る', 'en': 'View Details', 'zh': '查看详情'},
-                'message': {'ja': '試してみる', 'en': 'Try it', 'zh': '尝试一下'}
-            }
+            default_labels = localized_catalog("message_manager.button_labels")
             button_label = select_text(default_labels.get(button_type, {}), language=lang, default_language='ja') or 'Go'
 
         # 添加箭头到按钮标签
@@ -1085,10 +1023,7 @@ def generate_notice_flex(notice_json, user_id=None):
     # 如果启用投票，添加投票按钮
     if voting_enabled and user_id:
         # 投票按钮文本
-        vote_labels = {
-            'support': {'ja': '支持', 'en': 'Support', 'zh': '支持'},
-            'oppose': {'ja': '反対', 'en': 'Oppose', 'zh': '反对'}
-        }
+        vote_labels = localized_catalog("message_manager.vote_labels")
 
         support_label = select_text(vote_labels['support'], language=lang, default_language='ja')
         oppose_label = select_text(vote_labels['oppose'], language=lang, default_language='ja')
@@ -1279,85 +1214,7 @@ def generate_score_recognition_flex(results, user_id=None):
 def _generate_score_recognition_single_flex(result, user_id=None):
     """Generate the judgement details shown after score-image recognition."""
     lang = get_user_language(user_id)
-    texts = {
-        "title": {"zh": "判定明细", "en": "Judgement Details", "ja": "判定詳細"},
-        "status": {"zh": "状态", "en": "Status", "ja": "ステータス"},
-        "constant": {"zh": "定数", "en": "Level", "ja": "定数"},
-        "breakdown": {"zh": "判定数据", "en": "Judgements", "ja": "判定データ"},
-        "loss_detail": {"zh": "详细判定", "en": "Detailed Judgements", "ja": "詳細判定"},
-        "break_detail": {"zh": "BREAK 详细判定", "en": "BREAK Details", "ja": "BREAK 詳細判定"},
-        "break_detail_source_single": {
-            "zh": "Calc 推算：唯一匹配组合",
-            "en": "Calc inference: unique matching combination",
-            "ja": "Calc 推定：一致する組み合わせは 1 件です",
-        },
-        "break_detail_source_multiple": {
-            "zh": "Calc 推算：从 {count} 个候选中选择最可能组合",
-            "en": "Calc inference: most likely of {count} candidates",
-            "ja": "Calc 推定：{count} 件の候補から最も可能性の高い組み合わせ",
-        },
-        "break_row_source_multiple": {
-            "zh": "BREAK 整行有 {count} 个 Calc 候选；上方为当前候选的细分",
-            "en": "The BREAK row has {count} Calc candidates; details above are for the current candidate",
-            "ja": "BREAK 行には Calc 候補が {count} 件あります。以上は現在の候補の内訳です",
-        },
-        "empty": {
-            "zh": "未能识别判定明细。",
-            "en": "No judgement details were recognized.",
-            "ja": "判定詳細を認識できませんでした。",
-        },
-        "validated": {
-            "zh": "MISS 已根据谱面物量校验",
-            "en": "MISS validated against chart note counts",
-            "ja": "MISS を譜面ノーツ数で検証済み",
-        },
-        "calc_validated": {
-            "zh": "Calc 已确认达成率与判定数据一致",
-            "en": "Calc confirmed the achievement and judgements",
-            "ja": "Calc で達成率と判定データを確認済み",
-        },
-        "calc_uncertain": {
-            "zh": "Calc 检测到不一致，? 表示疑似识别项",
-            "en": "Calc found a mismatch; ? marks suspected OCR cells",
-            "ja": "Calc が不一致を検出しました。? は認識候補です",
-        },
-        "calc_mismatch": {
-            "zh": "Calc 检测到不一致，但无法定位到单个识别项",
-            "en": "Calc found a mismatch that cannot be isolated to one OCR cell",
-            "ja": "Calc が不一致を検出しましたが、1 項目には特定できません",
-        },
-        "calc_incomplete": {
-            "zh": "Calc 达成率一致，但判定明细不完整；-? 表示缺失项",
-            "en": "Calc score matches, but judgement rows are incomplete; -? marks missing data",
-            "ja": "Calc の達成率は一致しますが、判定行が不足しています。-? は欠損項目です",
-        },
-        "calc_corrected": {
-            "zh": "Calc 已自动配平",
-            "en": "Calc automatically resolved the judgements",
-            "ja": "Calc で判定を自動補正しました",
-        },
-        "calc_inferred": {
-            "zh": "BREAK 未识别，已根据物量和 Calc 推算",
-            "en": "BREAK was inferred from chart notes and Calc",
-            "ja": "BREAK をノーツ数と Calc から推定しました",
-        },
-        "manual_fix": {"zh": "手动修正", "en": "Manual Correction", "ja": "手動修正"},
-        "manual_fix_hint": {
-            "zh": "复制命令，修改达成率或错误数字后发送。五行依次为 TAP、HOLD、SLIDE、TOUCH、BREAK；全 0 行是缺失占位，发送前必须填写。",
-            "en": "Copy the command and correct the achievement or values before sending. Rows are TAP, HOLD, SLIDE, TOUCH, and BREAK; an all-zero row is a missing-data placeholder and must be filled in.",
-            "ja": "コマンドをコピーし、達成率または誤った数値を修正して送信してください。行順は TAP、HOLD、SLIDE、TOUCH、BREAK です。全て 0 の行は欠損データのプレースホルダーなので、送信前に入力してください。",
-        },
-        "copy_fix": {
-            "zh": "复制修正命令",
-            "en": "Copy Fix Command",
-            "ja": "修正コマンドをコピー",
-        },
-        "compact_fix": {
-            "zh": "修正 BREAK",
-            "en": "Fix BREAK",
-            "ja": "BREAK を修正",
-        },
-    }
+    texts = localized_catalog("message_manager.score_recognition")
 
     def tr(key):
         return select_text(texts[key], language=lang)
@@ -2421,15 +2278,9 @@ def generate_user_info_flex(user_id):
                 get_multilingual_text(server_text, language=lang),
             ))
 
-        lang_display = {
-            'ja': texts['lang_ja'],
-            'en': texts['lang_en'],
-            'zh': texts['lang_zh'],
-            'zh-tw': {'zh-tw': '繁體中文'}
-        }.get(lang, texts['lang_ja'])
         settings_rows.append(_info_row(
             get_multilingual_text(texts['language_label'], language=lang),
-            get_multilingual_text(lang_display, language=lang),
+            language_label(lang),
         ))
     else:
         account_rows.append(_info_row(
@@ -2629,10 +2480,7 @@ def generate_tip_ad_box(tip_ad, lang):
 
         # 如果label为空，使用默认值
         if not button_label:
-            default_labels = {
-                'uri': {'ja': '詳細を見る', 'en': 'View Details', 'zh': '查看详情'},
-                'message': {'ja': '試してみる', 'en': 'Try it', 'zh': '尝试一下'}
-            }
+            default_labels = localized_catalog("message_manager.button_labels")
             button_label = select_text(default_labels.get(button_type, {}), language=lang, default_language='ja') or 'Go'
 
         # 添加箭头到按钮标签
@@ -2993,26 +2841,13 @@ def generate_search_results_flex(user_id, matching_songs, search_type='song', id
     if id_use:
         id_use_text = f"&id_use={id_use}"
 
-    search_config = {
-        'song': {
-            'command': 'search',
-            'title': {
-                'ja': f'楽曲検索結果 ({len(matching_songs)}件)',
-                'en': f'Song Search Results ({len(matching_songs)})',
-                'zh': f'歌曲搜索结果 ({len(matching_songs)}条)'
-            }
-        },
-        'record': {
-            'command': 'search-record',
-            'title': {
-                'ja': f'レコード検索結果 ({len(matching_songs)}件)',
-                'en': f'Record Search Results ({len(matching_songs)})',
-                'zh': f'成绩搜索结果 ({len(matching_songs)}条)'
-            }
-        }
+    config = {
+        'command': 'search' if search_type == 'song' else 'search-record',
+        'title': format_catalog(
+            f"message_manager.search_titles.{search_type}",
+            count=len(matching_songs),
+        ),
     }
-
-    config = search_config[search_type]
     display_songs = matching_songs[:20]
 
     song_rows = []
@@ -3534,11 +3369,7 @@ def generate_rc_flex(level: float, rc_data: list, user_id=None):
     language = get_user_language(user_id)
 
     # 标题文本
-    title_texts = {
-        'ja': f'定数 {level} のRating対照表',
-        'en': f'Rating Chart for {level}',
-        'zh': f'定数 {level} Rating 对照表'
-    }
+    title_texts = format_catalog("message_manager.rating_chart_title", level=level)
     title_text = select_text(title_texts, language=language, default_language='ja')
 
     # 按达成率整数部分分组（100.xxxx、99.xxxx、98.xxxx...）
@@ -3641,16 +3472,9 @@ def generate_bot_status_flex(uptime_str, image_queue_size, web_queue_size,
     """
     lang = get_user_language(user_id)
 
-    texts = {
-        'title':       {'ja': 'JiETNG 稼働状態', 'en': 'JiETNG Service Status', 'zh': 'JiETNG 运行状态'},
-        'uptime':      {'ja': '稼働時間',      'en': 'Uptime',          'zh': '运行时长'},
-        'queue':       {'ja': 'キュー状況',    'en': 'Queue Status',    'zh': '队列状态'},
-        'tasks_today': {'ja': '本日のタスク',  'en': 'Tasks Today',     'zh': '今日任务'},
-        'songs':       {'ja': '楽曲データ',    'en': 'Songs DB',        'zh': '歌曲数据'},
-        'summary':     {'ja': '概要',          'en': 'Summary',         'zh': '概要'},
-    }
+    texts = localized_catalog("message_manager.service_status")
     # "曲" / songs / 首
-    song_unit = select_text({'ja': '曲', 'en': 'songs', 'zh': '首'}, language=lang)
+    song_unit = select_text(language_catalog("message_manager.song_unit"), language=lang)
 
     queue_text = f"Image {image_queue_size}\nWeb {web_queue_size}"
     songs_text = f"{song_count} {song_unit}\n{dxdata_date}"
