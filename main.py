@@ -98,7 +98,6 @@ from modules.score_calculator import get_note_score
 from modules.dxdata_manager import update_dxdata_with_comparison, start_weekly_update_scheduler as start_dxdata_weekly_update
 from modules.record_manager import *
 from modules.devtoken_manager import (
-    verify_dev_token,
     load_dev_tokens,
     create_dev_token,
     save_dev_tokens,
@@ -140,7 +139,6 @@ from modules.import_token_manager import (
     delete_revoked_import_token,
     list_import_tokens,
     revoke_import_token,
-    verify_import_token,
 )
 from modules.api_auth import (
     check_user_permission,
@@ -204,8 +202,6 @@ from modules.i18n import (
     DEFAULT_WEB_LANGUAGE,
     format_catalog,
     language_catalog,
-    language_codes,
-    language_options,
     normalize_language,
     select_text,
 )
@@ -242,6 +238,7 @@ from modules.progress_parser import (
     parse_level_rank_progress as _parse_level_rank_progress_text,
     resolve_progress_category as _resolve_progress_category,
 )
+from modules.task_runtime import discard_queued, execute_task, queue_worker, track_queued
 from modules.mention_parser import (
     clean_message_text,
     has_non_bot_mention,
@@ -329,173 +326,78 @@ webtask_queue = queue.Queue(maxsize=MAX_QUEUE_SIZE)
 webtask_concurrency_limit = threading.Semaphore(WEB_MAX_CONCURRENT_TASKS)
 
 
-def run_task_with_limit(func: callable, args: tuple, sem: threading.Semaphore,
-                        q: queue.Queue, task_id: str = None, is_web_task: bool = False) -> None:
-    """
-    在并发限制下运行任务
+def _handle_task_error(func, error, context, traceback_text):
+    notify_admins_error(
+        error_title=f"Task Execution Failed: {func.__name__}",
+        error_details=f"{type(error).__name__}: {error}\n\n{traceback_text}",
+        context={"Task": func.__name__, "Error Type": type(error).__name__},
+        user_id=context.user_id,
+    )
+    if context.user_id and context.reply_token:
+        try:
+            smart_reply(
+                context.user_id,
+                context.reply_token,
+                system_error(context.user_id),
+                configuration,
+                source_type=context.source_type,
+            )
+        except Exception:
+            pass
 
-    Args:
-        func: 要执行的函数
-        args: 函数参数元组
-        sem: 信号量,用于控制并发数
-        q: 任务队列
-        task_id: 任务 ID
-        is_web_task: 是否是 web 任务
-    """
-    # 添加到运行中的任务
-    if task_id:
-        with task_tracking_lock:
-            # 从排队中移除
-            task_tracking['queued'] = [t for t in task_tracking['queued'] if t.get('id') != task_id]
-            # 添加到运行中
-            # 智能提取 user_id：尝试多种方式
-            user_id_for_tracking = 'Unknown'
-            if args:
-                if hasattr(args[0], 'source'):  # Event 对象
-                    user_id_for_tracking = args[0].source.user_id
-                elif isinstance(args[0], str) and args[0].startswith('U'):  # 直接传入的 user_id 字符串
-                    user_id_for_tracking = args[0]
 
-            task_info = {
-                'id': task_id,
-                'function': func.__name__,
-                'user_id': user_id_for_tracking,
-            }
-            task_tracking['running'].append(task_info)
+def _complete_task(func):
+    with stats_lock:
+        STATS["tasks_processed"] += 1
+        logger.info(
+            "[Task] Completed: function=%s, total=%s",
+            func.__name__,
+            STATS["tasks_processed"],
+        )
 
-    with sem:
-        task_done = threading.Event()
 
-        def target():
-            try:
-                func(*args)
-            except Exception as e:
-                logger.error(f"[Task] ✗ Execution error: function={func.__name__}, error={e}", exc_info=True)
-
-                # 尝试获取用户信息以便回复
-                user_id = None
-                reply_token = None
-                source_type = "user"
-                if args:
-                    if hasattr(args[0], 'source') and hasattr(args[0], 'reply_token'):
-                        # Event 对象
-                        user_id = args[0].source.user_id
-                        reply_token = args[0].reply_token
-                        source_type = getattr(args[0].source, 'type', 'user')
-                    elif isinstance(args[0], str) and args[0].startswith('U'):
-                        # 直接传入的 user_id 字符串
-                        user_id = args[0]
-                        source_type = "user"
-                        # reply_token 可能在 args[1]
-                        if len(args) > 1 and isinstance(args[1], str):
-                            reply_token = args[1]
-
-                # 通知管理员
-                notify_admins_error(
-                    error_title=f"Task Execution Failed: {func.__name__}",
-                    error_details=f"{type(e).__name__}: {str(e)}\n\n{traceback.format_exc()}",
-                    context={
-                        "Task": func.__name__,
-                        "Error Type": type(e).__name__,
-                    },
-                    user_id=user_id
-                )
-
-                # 回复用户
-                if user_id and reply_token:
-                    try:
-                        smart_reply(user_id, reply_token, system_error(user_id), configuration, source_type=source_type)
-                    except Exception:
-                        pass
-            finally:
-                task_done.set()
-
-        thread = threading.Thread(target=target)
-        thread.start()
-
-        timer = threading.Timer(TASK_TIMEOUT_SECONDS, cancel_if_timeout, args=(task_done,))
-        timer.start()
-
-        thread.join()
-        timer.cancel()
-
-        # 从运行中的任务移除，并添加到已完成列表
-        if task_id:
-            with task_tracking_lock:
-                task_info = None
-                for t in task_tracking['running']:
-                    if t.get('id') == task_id:
-                        task_info = t.copy()
-                        break
-                task_tracking['running'] = [t for t in task_tracking['running'] if t.get('id') != task_id]
-                if task_info:
-                    task_tracking['completed'].insert(0, task_info)
-                    if len(task_tracking['completed']) > MAX_COMPLETED_TASKS:
-                        task_tracking['completed'] = task_tracking['completed'][:MAX_COMPLETED_TASKS]
-
-        with stats_lock:
-            STATS['tasks_processed'] += 1
-            logger.info(f"[Task] ✓ Completed: function={func.__name__}, total={STATS['tasks_processed']}")
+def _execute_queued_task(item, semaphore):
+    func, args, task_id = item if len(item) == 3 else (*item, None)
+    execute_task(
+        func,
+        args,
+        semaphore,
+        task_id=task_id,
+        tracking=task_tracking,
+        tracking_lock=task_tracking_lock,
+        max_completed=MAX_COMPLETED_TASKS,
+        timeout=TASK_TIMEOUT_SECONDS,
+        logger=logger,
+        on_error=_handle_task_error,
+        on_complete=_complete_task,
+    )
 
 
 @notify_on_error("Image Task Worker Error", context={"Worker": "image_worker"}, reraise=False)
 def _run_image_task(item):
-    func, args, task_id = (item if len(item) == 3 else (*item, None))
-    run_task_with_limit(func, args, image_concurrency_limit, image_queue, task_id, False)
+    _execute_queued_task(item, image_concurrency_limit)
 
 
 def image_worker() -> None:
-    """图片生成任务队列的工作线程"""
-    while True:
-        item = image_queue.get()
-        try:
-            _run_image_task(item)
-        finally:
-            image_queue.task_done()
+    queue_worker(image_queue, _run_image_task)
 
 
 @notify_on_error("Image Query Worker Error", context={"Worker": "image_query_worker"}, reraise=False)
 def _run_image_query_task(item):
-    func, args, task_id = (item if len(item) == 3 else (*item, None))
-    run_task_with_limit(func, args, image_query_concurrency_limit, image_query_queue, task_id, False)
+    _execute_queued_task(item, image_query_concurrency_limit)
 
 
 def image_query_worker() -> None:
-    """图片查询任务队列的工作线程"""
-    while True:
-        item = image_query_queue.get()
-        try:
-            _run_image_query_task(item)
-        finally:
-            image_query_queue.task_done()
+    queue_worker(image_query_queue, _run_image_query_task)
 
 
 @notify_on_error("Web Task Worker Error", context={"Worker": "webtask_worker"}, reraise=False)
 def _run_webtask(item):
-    func, args, task_id = (item if len(item) == 3 else (*item, None))
-    run_task_with_limit(func, args, webtask_concurrency_limit, webtask_queue, task_id, True)
+    _execute_queued_task(item, webtask_concurrency_limit)
 
 
 def webtask_worker() -> None:
-    """Web任务队列的工作线程"""
-    while True:
-        item = webtask_queue.get()
-        try:
-            _run_webtask(item)
-        finally:
-            webtask_queue.task_done()
-
-
-
-def cancel_if_timeout(task_done: threading.Event) -> None:
-    """
-    检查任务是否超时
-
-    Args:
-        task_done: 任务完成事件
-    """
-    if not task_done.is_set():
-        logger.warning(f"[Task] ⚠ Execution timeout: timeout={TASK_TIMEOUT_SECONDS}s")
+    queue_worker(webtask_queue, _run_webtask)
 
 configuration = Configuration(access_token=LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
@@ -4098,14 +4000,13 @@ def _enqueue_score_recognition_task(event, command: str, quoted_message_id: str,
     source_type = getattr(event.source, 'type', 'user')
     task_id = f"image_query_{user_id}_{datetime.now().timestamp()}"
     nickname = get_user_nickname_wrapper(user_id, use_cache=True)
-    with task_tracking_lock:
-        task_tracking['queued'].append({
-            'id': task_id,
-            'function': f"score_{command}",
-            'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'user_id': user_id,
-            'nickname': nickname,
-        })
+    track_queued(task_tracking, task_tracking_lock, {
+        'id': task_id,
+        'function': f"score_{command}",
+        'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'user_id': user_id,
+        'nickname': nickname,
+    })
     try:
         show_loading(user_id)
         image_query_queue.put_nowait((
@@ -4114,11 +4015,7 @@ def _enqueue_score_recognition_task(event, command: str, quoted_message_id: str,
             task_id,
         ))
     except queue.Full:
-        with task_tracking_lock:
-            task_tracking['queued'] = [
-                t for t in task_tracking['queued']
-                if t.get('id') != task_id
-            ]
+        discard_queued(task_tracking, task_tracking_lock, task_id)
         smart_reply(
             user_id,
             event.reply_token,
@@ -4216,22 +4113,17 @@ def _enqueue_task(cmd, ctx, target_queue, lane_name, payload):
     try:
         task_id = f"{lane_name}_{ctx.user_id}_{datetime.now().timestamp()}"
         nickname = get_user_nickname_wrapper(ctx.user_id, use_cache=True)
-        with task_tracking_lock:
-            task_tracking['queued'].append({
-                'id': task_id,
-                'function': cmd.name or cmd.handler.__name__,
-                'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'user_id': ctx.user_id,
-                'nickname': nickname,
-            })
+        track_queued(task_tracking, task_tracking_lock, {
+            'id': task_id,
+            'function': cmd.name or cmd.handler.__name__,
+            'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'user_id': ctx.user_id,
+            'nickname': nickname,
+        })
         show_loading(ctx.user_id)
         target_queue.put_nowait((*payload, task_id))
     except queue.Full:
-        with task_tracking_lock:
-            task_tracking['queued'] = [
-                t for t in task_tracking['queued']
-                if t.get('id') != task_id
-            ]
+        discard_queued(task_tracking, task_tracking_lock, task_id)
         smart_reply(
             ctx.user_id,
             ctx.reply_token,
@@ -5104,14 +4996,13 @@ def admin_trigger_update():
         nickname = get_user_nickname_wrapper(user_id, use_cache=True)
 
         # 添加到任务追踪（在入队之前）
-        with task_tracking_lock:
-            task_tracking['queued'].append({
-                'id': task_id,
-                'function': 'async_admin_maimai_update_task',
-                'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'user_id': user_id,
-                'nickname': nickname
-            })
+        track_queued(task_tracking, task_tracking_lock, {
+            'id': task_id,
+            'function': 'async_admin_maimai_update_task',
+            'queue_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'user_id': user_id,
+            'nickname': nickname
+        })
 
         # 添加到webtask队列（使用3元组格式）
         webtask_queue.put_nowait((async_admin_maimai_update_task, (mock_event,), task_id))
@@ -5121,11 +5012,7 @@ def admin_trigger_update():
             'message': f'Update task queued for user {user_id}'
         })
     except queue.Full:
-        with task_tracking_lock:
-            task_tracking['queued'] = [
-                t for t in task_tracking['queued']
-                if t.get('id') != task_id
-            ]
+        discard_queued(task_tracking, task_tracking_lock, task_id)
         return jsonify({
             'success': False,
             'message': 'Task queue is full'
