@@ -178,6 +178,14 @@ class AsyncImportsResource(_BaseAsyncResource):
 class AsyncScoreRecognitionResource(_BaseAsyncResource):
     """maimai result-photo recognition."""
 
+    @staticmethod
+    def _upload(image: bytes, filename: str) -> dict:
+        if not isinstance(image, (bytes, bytearray, memoryview)) or not image:
+            raise ValueError("image must be non-empty bytes")
+        return {
+            "image": (filename, bytes(image), "application/octet-stream"),
+        }
+
     async def recognize(
         self,
         image: bytes,
@@ -185,17 +193,29 @@ class AsyncScoreRecognitionResource(_BaseAsyncResource):
         filename: str = "score.jpg",
         timeout: float = 180.0,
     ) -> dict:
-        if not isinstance(image, (bytes, bytearray, memoryview)) or not image:
-            raise ValueError("image must be non-empty bytes")
-        files = {
-            "image": (filename, bytes(image), "application/octet-stream"),
-        }
         return await self._client._request(
             "POST",
             "/score-recognition",
             data={"ver": ver},
-            files=files,
+            files=self._upload(image, filename),
             timeout=timeout,
+        )
+
+    async def recognize_image(
+        self,
+        image: bytes,
+        ver: str = "jp",
+        filename: str = "score.jpg",
+        timeout: float = 180.0,
+    ) -> bytes:
+        """``POST /score-recognition/image`` and return the OCR result PNG."""
+        return await self._client._request(
+            "POST",
+            "/score-recognition/image",
+            data={"ver": ver},
+            files=self._upload(image, filename),
+            timeout=timeout,
+            binary=True,
         )
 
 

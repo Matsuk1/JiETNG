@@ -38,7 +38,6 @@ SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-
 _ENGINE: Any | None = None
 _ENGINE_LOCK = threading.Lock()
 _OCR_LOCK = threading.Lock()
@@ -51,6 +50,7 @@ _TITLE_OCR_CONFUSABLES = str.maketrans({
     "极": "極",
     "圈": "圏",
     "園": "圏",
+    "雜": "雑",
 })
 
 
@@ -304,25 +304,26 @@ def _match_recognized_song_title(title, songs, max_results=12):
         match_kind = None
         # OCR may read only the visible prefix of a scrolling long title:
         # "AAABBBCCC" can appear as "CCC AAA" or be cut as "AAABBB".
-        if len(normalized_ocr) >= 4 and normalized_song_title.startswith(normalized_ocr):
+        if len(normalized_ocr) >= 3 and normalized_song_title.startswith(normalized_ocr):
             score = len(normalized_ocr) / max(1, len(normalized_song_title))
             match_kind = "prefix"
-        elif len(normalized_song_title) >= 4 and normalized_song_title in normalized_ocr:
+        elif len(normalized_song_title) >= 3 and normalized_song_title in normalized_ocr:
             score = len(normalized_song_title) / max(1, len(normalized_ocr))
             match_kind = "embedded"
         elif (
-            min(len(normalized_ocr), len(normalized_song_title)) >= 4
+            min(len(normalized_ocr), len(normalized_song_title)) >= 2
             and _edit_distance_at_most_one(normalized_ocr, normalized_song_title)
         ):
             score = 0.93
             match_kind = "edit_fuzzy"
-        elif len(normalized_ocr) >= 6:
+        elif len(normalized_ocr) >= 3:
             similarity = difflib.SequenceMatcher(
                 None,
                 normalized_ocr,
                 normalized_song_title,
             ).ratio()
-            if similarity >= 0.76:
+            threshold = 0.65 if len(normalized_ocr) <= 4 else 0.60
+            if similarity >= threshold:
                 score = similarity
                 match_kind = "fuzzy"
 
@@ -1177,6 +1178,9 @@ def validate_recognized_judgement(
     parsed = result.get("parsed") or {}
     title = str(parsed.get("title") or "").strip()
     judgement = parsed.get("sub_judgement") or {}
+    source_layout = str(
+        (result.get("crop_metadata") or {}).get("layout") or ""
+    ).lower()
     if not judgement:
         return result
 
@@ -1402,10 +1406,44 @@ def validate_recognized_judgement(
         "edit_fuzzy",
         "ocr_embedded",
     }
+
+    def fixed_dxnet_note_counts(chart_note_counts):
+        if (
+            source_layout != "dxnet"
+            or title_match_type not in trusted_title_match_types
+            or not all(isinstance(judgement.get(row_name), dict) for row_name in row_names)
+        ):
+            return chart_note_counts, False
+        try:
+            expected = {
+                row_name: max(0, int(chart_note_counts.get(row_name, 0) or 0))
+                for row_name in row_names
+            }
+            observed = {
+                row_name: sum(
+                    max(0, int(judgement[row_name].get(field_name, 0) or 0))
+                    for field_name in all_value_names
+                )
+                for row_name in row_names
+            }
+        except (TypeError, ValueError):
+            return chart_note_counts, False
+
+        deltas = [observed[row_name] - expected[row_name] for row_name in row_names]
+        if sum(observed.values()) != sum(expected.values()) or max(map(abs, deltas)) > 2:
+            return chart_note_counts, False
+        if not any(deltas):
+            return chart_note_counts, False
+        return {
+            **chart_note_counts,
+            **observed,
+            "total": sum(observed.values()),
+        }, True
+
     candidates = []
     for song in matching_songs:
         for sheet in song.get("sheets", []):
-            note_counts = sheet.get("noteCounts") or {}
+            chart_note_counts = sheet.get("noteCounts") or {}
             raw_overfull_rows = 0
             raw_matching_rows = 0
             for row_name in row_names:
@@ -1413,7 +1451,7 @@ def validate_recognized_judgement(
                 if not isinstance(row, dict):
                     continue
                 try:
-                    expected = max(0, int(note_counts.get(row_name, 0) or 0))
+                    expected = max(0, int(chart_note_counts.get(row_name, 0) or 0))
                     observed = sum(
                         max(0, int(row.get(name, 0) or 0))
                         for name in all_value_names
@@ -1424,8 +1462,12 @@ def validate_recognized_judgement(
                     raw_overfull_rows += 1
                 elif observed == expected:
                     raw_matching_rows += 1
-            row_offsets = range(-2, 3) if allow_ocr_alignment else (0,)
-            column_offsets = (-1, 0, 1) if allow_ocr_alignment else (0,)
+            note_counts, dxnet_fixed_note_counts = fixed_dxnet_note_counts(
+                chart_note_counts,
+            )
+            alignment_enabled = allow_ocr_alignment and source_layout != "dxnet"
+            row_offsets = range(-2, 3) if alignment_enabled else (0,)
+            column_offsets = (-1, 0, 1) if alignment_enabled else (0,)
             for row_offset in row_offsets:
                 row_aligned = {}
                 for source_index, source_name in enumerate(row_names):
@@ -1628,6 +1670,7 @@ def validate_recognized_judgement(
                             "achievement_distance": achievement_distance,
                             "raw_overfull_rows": raw_overfull_rows,
                             "raw_matching_rows": raw_matching_rows,
+                            "dxnet_fixed_note_counts": dxnet_fixed_note_counts,
                             "title_candidate_rank": title_candidate_ranks.get(
                                 _song_identity_key(song),
                                 len(title_candidate_ranks),
@@ -1821,6 +1864,7 @@ def validate_recognized_judgement(
         "matching_rows": best["matching_rows"],
         "row_offset": best["row_offset"],
         "column_offset": best["column_offset"],
+        "dxnet_fixed_note_counts": best.get("dxnet_fixed_note_counts", False),
         "miss_corrections": corrections,
         "unmatched_notes": unmatched_notes,
         "achievement_calc": {
@@ -1986,6 +2030,15 @@ def _engine() -> Any:
 
 def initialize_score_recognizer() -> None:
     _engine()
+    try:
+        from score_result_ocr import warm_table_model
+
+        warm_table_model()
+    except Exception as exc:
+        logger.warning(
+            "Table OCR warmup failed; column OCR fallback remains available: %s",
+            exc,
+        )
 
 
 def build_score_crop_preview_image(image_bytes: bytes) -> Image.Image:

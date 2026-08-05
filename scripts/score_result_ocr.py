@@ -3,18 +3,27 @@
 from __future__ import annotations
 
 import argparse
+import atexit
+import base64
 import inspect
 import itertools
 import json
 import logging
 import os
 import re
+import selectors
+import subprocess
+import sys
+import threading
 import time
 import unicodedata
+import uuid
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Iterable
 
 import numpy as np
+import psutil
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 from score_result_cropper import (
@@ -27,6 +36,7 @@ from score_result_cropper import (
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 logger = logging.getLogger(__name__)
 os.environ.setdefault("PADDLE_PDX_CACHE_HOME", str(PROJECT_ROOT / ".paddle-home" / "paddlex"))
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/jietng-matplotlib")
 os.environ.setdefault("PADDLE_PDX_MODEL_SOURCE", "huggingface")
 os.environ.setdefault("PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT", "0")
 os.environ.setdefault("FLAGS_use_onednn", "0")
@@ -42,6 +52,227 @@ OCR_FIELDS = (
 OCR_MODEL_NAMES = ("PP-OCRv6_small_det", "PP-OCRv6_small_rec")
 FIXED_TABLE_LAYOUT_HINTS = {"dxnet", "cropper_pt_pose_warp"}
 SUB_JUDGEMENT_COLUMN_OCR_SCALE = 5
+JUDGEMENT_ROW_NAMES = ("tap", "hold", "slide", "touch", "break")
+JUDGEMENT_VALUE_NAMES = ("critical_perfect", "perfect", "great", "good", "miss")
+TABLE_MODEL_RESULT_MARKER = "JIETNG_TABLE_RESULT="
+TABLE_MODEL_READY_MARKER = "JIETNG_TABLE_READY"
+TABLE_MODEL_START_TIMEOUT_SECONDS = 180
+TABLE_MODEL_REQUEST_TIMEOUT_SECONDS = 60
+TABLE_MODEL_MAX_RSS_MB = int(os.getenv("JIETNG_TABLE_OCR_MAX_RSS_MB", "4096"))
+TABLE_MODEL_MAX_REQUESTS = int(os.getenv("JIETNG_TABLE_OCR_MAX_REQUESTS", "100"))
+_TABLE_MODEL_PROCESS: subprocess.Popen[str] | None = None
+_TABLE_MODEL_LOCK = threading.Lock()
+_TABLE_MODEL_REQUEST_COUNT = 0
+_TABLE_MODEL_HELPER_MTIME_NS: int | None = None
+
+
+def _stop_table_model_process() -> None:
+    global _TABLE_MODEL_PROCESS, _TABLE_MODEL_REQUEST_COUNT
+    global _TABLE_MODEL_HELPER_MTIME_NS
+    process = _TABLE_MODEL_PROCESS
+    _TABLE_MODEL_PROCESS = None
+    _TABLE_MODEL_REQUEST_COUNT = 0
+    _TABLE_MODEL_HELPER_MTIME_NS = None
+    if process is None or process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)
+
+
+def _read_table_model_line(
+    process: subprocess.Popen[str],
+    timeout: float,
+) -> str:
+    if process.stdout is None:
+        raise RuntimeError("table model stdout is unavailable")
+    selector = selectors.DefaultSelector()
+    try:
+        selector.register(process.stdout, selectors.EVENT_READ)
+        if not selector.select(timeout):
+            raise subprocess.TimeoutExpired(process.args, timeout)
+        line = process.stdout.readline()
+    finally:
+        selector.close()
+    if not line:
+        raise RuntimeError(
+            f"table model stopped unexpectedly (exit={process.poll()})"
+        )
+    return line.rstrip("\r\n")
+
+
+def _start_table_model_process() -> subprocess.Popen[str]:
+    global _TABLE_MODEL_PROCESS, _TABLE_MODEL_HELPER_MTIME_NS
+    helper = Path(__file__).with_name("score_result_table_model.py")
+    helper_mtime_ns = helper.stat().st_mtime_ns
+    process = _TABLE_MODEL_PROCESS
+    if process is not None and process.poll() is None:
+        if _TABLE_MODEL_HELPER_MTIME_NS == helper_mtime_ns:
+            return process
+        logger.info("Restarting table OCR worker after helper file update")
+        _stop_table_model_process()
+
+    env = os.environ.copy()
+    env.setdefault("MPLCONFIGDIR", "/tmp/jietng-matplotlib")
+    env.setdefault(
+        "PADDLE_PDX_CACHE_HOME",
+        str(PROJECT_ROOT / ".paddle-home" / "paddlex"),
+    )
+    cpu_threads = min(8, os.cpu_count() or 1)
+    env.setdefault("JIETNG_TABLE_OCR_CPU_THREADS", str(cpu_threads))
+    env.setdefault("PADDLE_PDX_CPU_NUM_THREADS", str(cpu_threads))
+    env.setdefault("OMP_NUM_THREADS", str(cpu_threads))
+    env.setdefault("MKL_NUM_THREADS", str(cpu_threads))
+    use_onednn = env.get("JIETNG_TABLE_OCR_ENABLE_MKLDNN", "0") == "1"
+    if use_onednn:
+        env["PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT"] = "1"
+        env["FLAGS_use_onednn"] = "1"
+        env["FLAGS_use_mkldnn"] = "1"
+    else:
+        env["PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT"] = "0"
+        env["FLAGS_use_onednn"] = "0"
+        env["FLAGS_use_mkldnn"] = "0"
+    started_at = time.perf_counter()
+    process = subprocess.Popen(
+        [sys.executable, str(helper), "--serve"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        bufsize=1,
+        env=env,
+    )
+    _TABLE_MODEL_PROCESS = process
+    ready = _read_table_model_line(process, TABLE_MODEL_START_TIMEOUT_SECONDS)
+    if ready != TABLE_MODEL_READY_MARKER:
+        _stop_table_model_process()
+        raise RuntimeError(f"unexpected table model startup response: {ready}")
+    _TABLE_MODEL_HELPER_MTIME_NS = helper_mtime_ns
+    try:
+        rss_mb = psutil.Process(process.pid).memory_info().rss / (1024**2)
+    except psutil.Error:
+        rss_mb = 0.0
+    logger.info(
+        "Table OCR worker ready: startup=%.3fs pid=%s rss=%.1fMB "
+        "threads=%s onednn=%s",
+        time.perf_counter() - started_at,
+        process.pid,
+        rss_mb,
+        cpu_threads,
+        use_onednn,
+    )
+    return process
+
+
+def warm_table_model() -> None:
+    """Load the table model during service startup instead of the first request."""
+    with _TABLE_MODEL_LOCK:
+        _start_table_model_process()
+
+
+def recognize_judgement_with_table_model(
+    image: Image.Image,
+    partial_out: dict[str, dict[str, int]] | None = None,
+) -> dict[str, dict[str, int]] | None:
+    global _TABLE_MODEL_REQUEST_COUNT
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    request_id = uuid.uuid4().hex
+    request = json.dumps({
+        "id": request_id,
+        "image": base64.b64encode(buffer.getvalue()).decode("ascii"),
+    }, separators=(",", ":"))
+
+    with _TABLE_MODEL_LOCK:
+        try:
+            previous_pid = (
+                _TABLE_MODEL_PROCESS.pid
+                if _TABLE_MODEL_PROCESS is not None
+                and _TABLE_MODEL_PROCESS.poll() is None
+                else None
+            )
+            started_at = time.perf_counter()
+            process = _start_table_model_process()
+            reused_worker = previous_pid == process.pid
+            startup_seconds = time.perf_counter() - started_at
+            if process.stdin is None:
+                raise RuntimeError("table model stdin is unavailable")
+            process.stdin.write(request + "\n")
+            process.stdin.flush()
+            line = _read_table_model_line(
+                process,
+                TABLE_MODEL_REQUEST_TIMEOUT_SECONDS,
+            )
+            if not line.startswith(TABLE_MODEL_RESULT_MARKER):
+                raise RuntimeError(f"unexpected table model response: {line}")
+            payload = json.loads(line[len(TABLE_MODEL_RESULT_MARKER):])
+            if payload.get("id") != request_id:
+                raise RuntimeError("table model response id does not match request")
+            result = payload.get("result")
+            partial_result = payload.get("partial_result")
+            if partial_out is not None:
+                partial_out.clear()
+                if isinstance(partial_result, dict):
+                    partial_out.update({
+                        str(row_name): {
+                            str(column_name): max(0, int(value))
+                            for column_name, value in row.items()
+                            if column_name in JUDGEMENT_VALUE_NAMES
+                        }
+                        for row_name, row in partial_result.items()
+                        if row_name in JUDGEMENT_ROW_NAMES and isinstance(row, dict)
+                    })
+            _TABLE_MODEL_REQUEST_COUNT += 1
+
+            try:
+                rss_mb = psutil.Process(process.pid).memory_info().rss / (1024**2)
+            except psutil.Error:
+                rss_mb = 0.0
+            logger.info(
+                "Table OCR request: reused=%s startup=%.3fs inference=%.3fs "
+                "pid=%s rss=%.1fMB requests=%s mode=%s",
+                reused_worker,
+                startup_seconds,
+                time.perf_counter() - started_at - startup_seconds,
+                process.pid,
+                rss_mb,
+                _TABLE_MODEL_REQUEST_COUNT,
+                payload.get("mode") or "unknown",
+            )
+            if (
+                rss_mb >= TABLE_MODEL_MAX_RSS_MB
+                or _TABLE_MODEL_REQUEST_COUNT >= TABLE_MODEL_MAX_REQUESTS
+            ):
+                logger.info(
+                    "Restarting table model worker: rss=%.1fMB requests=%s",
+                    rss_mb,
+                    _TABLE_MODEL_REQUEST_COUNT,
+                )
+                _stop_table_model_process()
+
+            if isinstance(result, dict) and len(result) == 5:
+                return result
+            logger.warning(
+                "Table model returned no complete result: partial_rows=%s error=%s",
+                sorted(partial_out) if partial_out else [],
+                payload.get("error") or "incomplete table",
+            )
+        except (
+            OSError,
+            RuntimeError,
+            ValueError,
+            json.JSONDecodeError,
+            subprocess.TimeoutExpired,
+        ) as exc:
+            _stop_table_model_process()
+            logger.warning("Table model failed; using column OCR: %s", exc)
+    return None
+
+
+atexit.register(_stop_table_model_process)
 
 
 def is_table_blue_pixel(red: int, green: int, blue: int) -> bool:
@@ -1949,6 +2180,7 @@ def recognize_judgement_by_columns(
     engine: PaddleOcrEngine,
     layout_hint: str | None = None,
     confidence_out: dict[str, dict[str, float]] | None = None,
+    target_rows: Iterable[str] | None = None,
 ) -> dict[str, dict[str, int]] | None:
     if isinstance(table_image_source, Image.Image):
         image = table_image_source.convert("RGB")
@@ -2025,6 +2257,11 @@ def recognize_judgement_by_columns(
 
     row_names = ("tap", "hold", "slide", "touch", "break")
     column_names = ("critical_perfect", "perfect", "great", "good", "miss")
+    target_row_set = (
+        {row_name for row_name in target_rows if row_name in row_names}
+        if target_rows is not None
+        else set(row_names)
+    )
     output = Path(output_dir) if output_dir is not None else None
     if output is not None:
         output.mkdir(parents=True, exist_ok=True)
@@ -2096,7 +2333,7 @@ def recognize_judgement_by_columns(
                 result[row_name][column_name] = value
                 confidences[row_name][column_name] = item_score
 
-    if prefer_isolated_cells:
+    if prefer_isolated_cells and target_rows is None:
         isolated = recognize_judgement_cells_raw(
             image,
             row_centers,
@@ -2113,7 +2350,7 @@ def recognize_judgement_by_columns(
                         isolated_confidences[row_name][column_name]
                     )
 
-    if layout_hint not in FIXED_TABLE_LAYOUT_HINTS:
+    if layout_hint not in FIXED_TABLE_LAYOUT_HINTS and target_rows is None:
         direct_values = recognize_judgement_cells_direct(
             image,
             row_centers,
@@ -2132,6 +2369,8 @@ def recognize_judgement_by_columns(
                         confidences[row_name][column_name] = 0.70
 
     for row_name, center_y in zip(row_names, row_centers):
+        if row_name not in target_row_set:
+            continue
         cell_top = max(0, int(round(center_y - row_gap * 0.32)))
         cell_bottom = min(height, int(round(center_y + row_gap * 0.32)))
         for index, column_name in enumerate(column_names):
@@ -2252,6 +2491,7 @@ def recognize_judgement_by_columns(
     result = {
         row: values
         for row, values in result.items()
+        if row in target_row_set
         if values and any(int(value or 0) != 0 for value in values.values())
     }
     if confidence_out is not None:
@@ -2323,6 +2563,42 @@ def parse_sub_judgement_items(items: list[dict[str, Any]]) -> dict[str, dict[str
     return result or None
 
 
+def normalize_judgement_table_values(
+    values: dict[str, dict[str, int]] | None,
+) -> dict[str, dict[str, int]] | None:
+    if not values:
+        return values
+    normalized = {
+        row_name: dict(row_values)
+        for row_name, row_values in values.items()
+    }
+    break_values = normalized.get("break")
+    if isinstance(break_values, dict):
+        try:
+            critical_perfect = int(break_values.get("critical_perfect", 0) or 0)
+            perfect = int(break_values.get("perfect", 0) or 0)
+            great = int(break_values.get("great", 0) or 0)
+            good = int(break_values.get("good", 0) or 0)
+            miss = int(break_values.get("miss", 0) or 0)
+        except (TypeError, ValueError):
+            return normalized
+        if (
+            critical_perfect == 0
+            and perfect > 0
+            and great > 0
+            and good == 0
+            and miss == 0
+        ):
+            normalized["break"] = {
+                "critical_perfect": perfect,
+                "perfect": great,
+                "great": 0,
+                "good": 0,
+                "miss": 0,
+            }
+    return normalized
+
+
 def parse_sub_judgement(text: str) -> dict[str, dict[str, int]] | None:
     normalized = unicodedata.normalize("NFKC", text or "").upper()
     normalized = re.sub(r"\s+", " ", normalized).strip()
@@ -2380,15 +2656,52 @@ def process_image_data(
             continue
         if field == "sub_judgement_table":
             table_image = field_meta["image"]
-            if field_meta.get("layout_hint") not in FIXED_TABLE_LAYOUT_HINTS:
-                table_image = prepare_ocr_image_data(table_image, field)
             column_confidences: dict[str, dict[str, float]] = {}
-            column_values = recognize_judgement_by_columns(
+            table_partial_values: dict[str, dict[str, int]] = {}
+            column_values = recognize_judgement_with_table_model(
                 table_image,
-                None,
-                engine,
-                layout_hint=field_meta.get("layout_hint"),
-                confidence_out=column_confidences,
+                partial_out=table_partial_values,
+            )
+            table_backend = "table_model"
+            if column_values is None:
+                table_backend = "column_fallback"
+                fallback_image = table_image
+                if field_meta.get("layout_hint") not in FIXED_TABLE_LAYOUT_HINTS:
+                    fallback_image = prepare_ocr_image_data(table_image, field)
+                fallback_target_rows = (
+                    tuple(
+                        row_name
+                        for row_name in JUDGEMENT_ROW_NAMES
+                        if row_name not in table_partial_values
+                    )
+                    if table_partial_values
+                    else None
+                )
+                column_values = recognize_judgement_by_columns(
+                    fallback_image,
+                    None,
+                    engine,
+                    layout_hint=field_meta.get("layout_hint"),
+                    confidence_out=column_confidences,
+                    target_rows=fallback_target_rows,
+                )
+                if table_partial_values:
+                    column_values = column_values or {}
+                    column_values = {
+                        **column_values,
+                        **table_partial_values,
+                    }
+                    for row_name, row_values in table_partial_values.items():
+                        column_confidences[row_name] = {
+                            column_name: 1.0
+                            for column_name in row_values
+                        }
+                    table_backend = "hybrid_table_column_fallback"
+            column_values = normalize_judgement_table_values(column_values)
+            logger.info(
+                "Judgement OCR result: backend=%s values=%s",
+                table_backend,
+                column_values,
             )
             ocr_fields[field] = {
                 "items": [],
@@ -2449,20 +2762,59 @@ def process_image(
         field_meta = metadata["fields"].get(field)
         if not field_meta:
             continue
-        prepared = prepare_ocr_image(field_meta["path"], output_base / f"{field}.png", field)
         if field == "sub_judgement_table":
-            table_source = (
-                field_meta["path"]
-                if field_meta.get("layout_hint") in FIXED_TABLE_LAYOUT_HINTS
-                else prepared
-            )
+            table_source = field_meta["path"]
+            prepared = Path(table_source)
             column_confidences: dict[str, dict[str, float]] = {}
-            column_values = recognize_judgement_by_columns(
-                table_source,
-                output_base / "sub_judgement_columns",
-                engine,
-                layout_hint=field_meta.get("layout_hint"),
-                confidence_out=column_confidences,
+            table_partial_values: dict[str, dict[str, int]] = {}
+            with Image.open(table_source) as table_image:
+                column_values = recognize_judgement_with_table_model(
+                    table_image,
+                    partial_out=table_partial_values,
+                )
+            table_backend = "table_model"
+            if column_values is None:
+                table_backend = "column_fallback"
+                if field_meta.get("layout_hint") not in FIXED_TABLE_LAYOUT_HINTS:
+                    prepared = prepare_ocr_image(
+                        field_meta["path"],
+                        output_base / f"{field}.png",
+                        field,
+                    )
+                fallback_target_rows = (
+                    tuple(
+                        row_name
+                        for row_name in JUDGEMENT_ROW_NAMES
+                        if row_name not in table_partial_values
+                    )
+                    if table_partial_values
+                    else None
+                )
+                column_values = recognize_judgement_by_columns(
+                    prepared,
+                    output_base / "sub_judgement_columns",
+                    engine,
+                    layout_hint=field_meta.get("layout_hint"),
+                    confidence_out=column_confidences,
+                    target_rows=fallback_target_rows,
+                )
+                if table_partial_values:
+                    column_values = column_values or {}
+                    column_values = {
+                        **column_values,
+                        **table_partial_values,
+                    }
+                    for row_name, row_values in table_partial_values.items():
+                        column_confidences[row_name] = {
+                            column_name: 1.0
+                            for column_name in row_values
+                        }
+                    table_backend = "hybrid_table_column_fallback"
+            column_values = normalize_judgement_table_values(column_values)
+            logger.info(
+                "Judgement OCR result: backend=%s values=%s",
+                table_backend,
+                column_values,
             )
             ocr_fields[field] = {
                 "crop": field_meta["path"],
@@ -2474,6 +2826,11 @@ def process_image(
             }
             continue
 
+        prepared = prepare_ocr_image(
+            field_meta["path"],
+            output_base / f"{field}.png",
+            field,
+        )
         items = engine.read(prepared)
         field_result = {
             "crop": field_meta["path"],

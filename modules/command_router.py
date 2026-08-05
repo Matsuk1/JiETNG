@@ -14,7 +14,11 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Literal, Optional, Pattern, Union
+
+
+MatchResult = Union[str, re.Match[str]]
+QueueLane = Literal["sync", "image", "web"]
 
 
 # ============================================================
@@ -23,7 +27,9 @@ from typing import Any, Callable, Optional
 
 class Matcher:
     """匹配成功返回 truthy 值（赋给 ctx.match，handler 可复用）；失败返回 None。"""
-    def match(self, text: str):  # pragma: no cover - 抽象方法
+    __slots__ = ()
+
+    def match(self, text: str) -> Optional[MatchResult]:  # pragma: no cover - 抽象方法
         raise NotImplementedError
 
 
@@ -35,7 +41,7 @@ class Exact(Matcher):
         self._case_sensitive = case_sensitive
         self._keywords = tuple(keywords) if case_sensitive else tuple(k.lower() for k in keywords)
 
-    def match(self, text: str):
+    def match(self, text: str) -> Optional[str]:
         s = text if self._case_sensitive else text.lower()
         return text if s in self._keywords else None
 
@@ -48,7 +54,7 @@ class Prefix(Matcher):
         self._case_sensitive = case_sensitive
         self._prefixes = tuple(prefixes) if case_sensitive else tuple(p.lower() for p in prefixes)
 
-    def match(self, text: str):
+    def match(self, text: str) -> Optional[str]:
         s = text if self._case_sensitive else text.lower()
         for p in self._prefixes:
             if s.startswith(p):
@@ -63,7 +69,7 @@ class Suffix(Matcher):
     def __init__(self, *suffixes: str):
         self._suffixes = tuple(suffixes)
 
-    def match(self, text: str):
+    def match(self, text: str) -> Optional[str]:
         for s in self._suffixes:
             if text.endswith(s):
                 return text
@@ -74,10 +80,10 @@ class Regex(Matcher):
     """正则匹配，返回 Match 对象（handler 可用 ctx.match.group(N) 取分组）。"""
     __slots__ = ("_pattern",)
 
-    def __init__(self, pattern, flags: int = 0):
+    def __init__(self, pattern: Union[str, Pattern[str]], flags: int = 0):
         self._pattern = pattern if hasattr(pattern, "match") else re.compile(pattern, flags)
 
-    def match(self, text: str):
+    def match(self, text: str) -> Optional[re.Match[str]]:
         return self._pattern.match(text)
 
 
@@ -89,7 +95,7 @@ class FirstWord(Matcher):
     def __init__(self, *keywords: str):
         self._keywords = tuple(k.lower() for k in keywords)
 
-    def match(self, text: str):
+    def match(self, text: str) -> Optional[str]:
         first = self._SPLIT.split(text.lower(), 1)[0]
         return text if first in self._keywords else None
 
@@ -101,13 +107,14 @@ class FirstWord(Matcher):
 QUEUE_SYNC = "sync"     # 主线程同步执行
 QUEUE_IMAGE = "image"   # 图片 worker（CPU 重，限并发）
 QUEUE_WEB = "web"       # web worker（要联网，限速）
+QUEUE_LANES = frozenset({QUEUE_SYNC, QUEUE_IMAGE, QUEUE_WEB})
 
 
 # ============================================================
 # Command
 # ============================================================
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Command:
     """一条命令。
 
@@ -127,14 +134,18 @@ class Command:
     """
     matcher: Matcher
     handler: Callable
-    queue: str = QUEUE_SYNC
+    queue: QueueLane = QUEUE_SYNC
     self_only: bool = False
     mention_queryable: bool = False
     addition: bool = True
     rate_limit_key: Optional[str] = None
     name: str = ""
 
-    def try_match(self, text: str):
+    def __post_init__(self) -> None:
+        if self.queue not in QUEUE_LANES:
+            raise ValueError(f"Unsupported command queue: {self.queue}")
+
+    def try_match(self, text: str) -> Optional[MatchResult]:
         return self.matcher.match(text)
 
 
@@ -142,7 +153,7 @@ class Command:
 # Context
 # ============================================================
 
-@dataclass
+@dataclass(slots=True)
 class CommandContext:
     """单次消息派发的上下文。"""
     event: Any

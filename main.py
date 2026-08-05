@@ -148,6 +148,16 @@ from modules.command_router import (
     Command, CommandContext,
     QUEUE_SYNC, QUEUE_IMAGE, QUEUE_WEB,
 )
+from modules.command_parsers import (
+    format_bpm_number,
+    parse_bpm_number,
+    parse_bpm_query,
+    parse_filter_mode,
+    parse_level_records_query,
+    parse_note_counts,
+    parse_paginated_keyword,
+    parse_plate_query,
+)
 from modules.image_manager import *
 
 # System utilities
@@ -2646,20 +2656,6 @@ def search_by_designer(user_id, designer_query, ver="jp", page=1, source_type="u
     title = f"Designer: {designer_query}"
     return generate_song_list_flex(user_id, title, matching_songs, page, "designer", designer_query, matched_sheets_map)
 
-def _parse_bpm_number(value):
-    try:
-        bpm = float(value)
-    except (TypeError, ValueError):
-        return None
-    if bpm < 0:
-        return None
-    return bpm
-
-def _format_bpm_number(value):
-    if float(value).is_integer():
-        return str(int(value))
-    return f"{value:g}"
-
 def search_by_bpm(user_id, bpm_min, bpm_max=None, ver="jp", page=1, source_type="user"):
     """
     通过 BPM 或 BPM 范围搜索歌曲
@@ -2691,7 +2687,7 @@ def search_by_bpm(user_id, bpm_min, bpm_max=None, ver="jp", page=1, source_type=
 
     matching_songs = []
     for song in songs:
-        song_bpm = _parse_bpm_number(song.get('bpm'))
+        song_bpm = parse_bpm_number(song.get('bpm'))
         if song_bpm is None:
             continue
         if bpm_min <= song_bpm <= bpm_max:
@@ -2701,16 +2697,16 @@ def search_by_bpm(user_id, bpm_min, bpm_max=None, ver="jp", page=1, source_type=
         return song_error(user_id)
 
     matching_songs.sort(key=lambda song: (
-        _parse_bpm_number(song.get('bpm')) or 0,
+        parse_bpm_number(song.get('bpm')) or 0,
         song.get('title') or '',
         song.get('type') or ''
     ))
 
     if exact_match:
-        query = _format_bpm_number(bpm_min)
+        query = format_bpm_number(bpm_min)
         title = f"BPM: {query}"
     else:
-        query = f"{_format_bpm_number(bpm_min)}-{_format_bpm_number(bpm_max)}"
+        query = f"{format_bpm_number(bpm_min)}-{format_bpm_number(bpm_max)}"
         title = f"BPM: {query}"
 
     return generate_song_list_flex(user_id, title, matching_songs, page, "bpm", query)
@@ -5164,53 +5160,25 @@ def cmd_calc_song(ctx):
     return calc_by_id(ctx.user_id, ctx.match.group(1), ctx.mai_ver)
 
 def cmd_artist(ctx):
-    parts = ctx.text.split()
-    if parts[-1].isdigit() and len(parts) >= 3:
-        keyword = ' '.join(parts[1:-1]); page = int(parts[-1])
-    else:
-        keyword = ' '.join(parts[1:]); page = 1
+    keyword, page = parse_paginated_keyword(ctx.text)
     return search_by_artist(ctx.user_id, keyword, ctx.mai_ver, page, ctx.source_type)
 
 def cmd_designer(ctx):
-    parts = ctx.text.split()
-    if parts[-1].isdigit() and len(parts) >= 3:
-        keyword = ' '.join(parts[1:-1]); page = int(parts[-1])
-    else:
-        keyword = ' '.join(parts[1:]); page = 1
+    keyword, page = parse_paginated_keyword(ctx.text)
     return search_by_designer(ctx.user_id, keyword, ctx.mai_ver, page, ctx.source_type)
 
 def cmd_bpm(ctx):
-    raw = re.sub(r"^bpm\s+", "", ctx.text, flags=re.IGNORECASE).strip()
-    tokens = raw.split()
-    page = 1
-    bpm_min = None
-    bpm_max = None
-
-    range_match = re.match(r"^(\d+(?:\.\d+)?)\s*[-~〜]\s*(\d+(?:\.\d+)?)(?:\s+(\d+))?$", raw)
-    if range_match:
-        bpm_min = _parse_bpm_number(range_match.group(1))
-        bpm_max = _parse_bpm_number(range_match.group(2))
-        if range_match.group(3):
-            page = int(range_match.group(3))
-    elif len(tokens) == 1:
-        bpm_min = _parse_bpm_number(tokens[0])
-    elif len(tokens) == 2:
-        first = _parse_bpm_number(tokens[0])
-        second = _parse_bpm_number(tokens[1])
-        if first is not None and second is not None and second > first:
-            bpm_min, bpm_max = first, second
-        elif first is not None and tokens[1].isdigit():
-            bpm_min = first
-            page = int(tokens[1])
-    elif len(tokens) == 3 and tokens[2].isdigit():
-        bpm_min = _parse_bpm_number(tokens[0])
-        bpm_max = _parse_bpm_number(tokens[1])
-        page = int(tokens[2])
-
-    if bpm_min is None or (bpm_max is not None and bpm_max < 0):
+    query = parse_bpm_query(ctx.text)
+    if query is None:
         return input_error(ctx.user_id)
-
-    return search_by_bpm(ctx.user_id, bpm_min, bpm_max, ctx.mai_ver, page, ctx.source_type)
+    return search_by_bpm(
+        ctx.user_id,
+        query.minimum,
+        query.maximum,
+        ctx.mai_ver,
+        query.page,
+        ctx.source_type,
+    )
 
 def cmd_song_info(ctx):
     keyword = re.sub(r"\s*(ってどんな曲|info|song-info)$", "", ctx.text).strip()
@@ -5250,20 +5218,12 @@ def cmd_export(ctx):
     return handle_export_command(ctx.user_id, fmt)
 
 def cmd_plate(ctx):
-    msg = ctx.text
-    title = re.sub(r"\s*(の達成状況|achievement)$", "",
-                   re.sub(r"\s*-(uc|up|c)\s*$", "", msg)).strip()
-    filter_mode = ("uncleared" if re.search(r"-uc\s*$", msg) else
-                   "unplayed" if re.search(r"-up\s*$", msg) else
-                   "cleared" if re.search(r"-c\s*$", msg) else None)
+    title, filter_mode = parse_plate_query(ctx.text)
     return asyncio.run(generate_plate_rcd(
         ctx.user_id, ctx.id_use, title, ctx.mai_ver_use, filter_mode=filter_mode))
 
 def cmd_level_records(ctx):
-    msg = ctx.text
-    level = re.sub(r"\s*(のレコードリスト|record-list|records)[ 　]*\d*$", "", msg).strip()
-    pm = re.search(r"(\d+)$", msg)
-    page = int(pm.group(1)) if pm else 1
+    level, page = parse_level_records_query(ctx.text)
     return asyncio.run(generate_level_records(
         ctx.user_id, ctx.id_use, level, ctx.mai_ver_use, page))
 
@@ -5286,9 +5246,7 @@ def cmd_level_rank_progress(ctx):
     level, rank = _parse_level_rank_progress_text(msg_lower)
     if not level or not rank:
         return input_error(ctx.user_id)
-    filter_mode = ("uncleared" if re.search(r"-uc\s*$", msg_lower) else
-                   "unplayed" if re.search(r"-up\s*$", msg_lower) else
-                   "cleared" if re.search(r"-c\s*$", msg_lower) else None)
+    filter_mode = parse_filter_mode(msg_lower)
     return asyncio.run(generate_level_rank_progress(
         ctx.user_id, ctx.id_use, level, rank, ctx.mai_ver_use,
         filter_mode=filter_mode))
@@ -5319,16 +5277,14 @@ def cmd_reject_perm(ctx):
 
 def cmd_calc_notes(ctx):
     """calc <tap> <hold> <slide> [touch] <break>"""
-    try:
-        num = list(map(int, ctx.text[5:].split()))
-        if len(num) == 4:
-            num = [num[0], num[1], num[2], 0, num[3]]
-        if len(num) != 5:
-            raise ValueError
-        notes = dict(zip(['tap', 'hold', 'slide', 'touch', 'break'], num))
-        return generate_calc_result_flex(notes, get_note_score(notes), user_id=ctx.user_id)
-    except Exception:
+    notes = parse_note_counts(ctx.text)
+    if notes is None:
         return input_error(ctx.user_id)
+    return generate_calc_result_flex(
+        notes,
+        get_note_score(notes),
+        user_id=ctx.user_id,
+    )
 
 
 # ---- bind / rebind / settings 共用小工具 ----
@@ -7987,12 +7943,14 @@ def api_revoke_user_permission(user_id, token_id):
 # ==================== Score Recognition API ====================
 
 @app.route("/api/v2/score-recognition", methods=["POST"])
+@app.route("/api/v2/score-recognition/image", methods=["POST"])
 @csrf.exempt
 @require_dev_token
 def api_v2_score_recognition():
-    """Recognize and validate a complete maimai result photo."""
+    """Recognize a complete maimai result photo as JSON or a PNG card."""
     token_info = request.token_info
     token_id = token_info["token_id"]
+    image_output = request.path.rstrip("/").endswith("/image")
     if check_rate_limit(token_id, "api_score_recognition"):
         return jsonify({
             "error": "Rate limited",
@@ -8046,6 +8004,46 @@ def api_v2_score_recognition():
     try:
         result = recognize_score_image_bytes(image_bytes)
         result = validate_recognized_judgement(result, ver=ver)
+        if image_output:
+            variants = expand_score_recognition_calc_variants(result)
+            selected_result = variants[0]
+            public_result = build_score_recognition_response(selected_result)
+            result_img = generate_score_recognition_picture(
+                selected_result,
+                ver=ver,
+            )
+            try:
+                buf = BytesIO()
+                result_img.save(buf, "PNG")
+                buf.seek(0)
+            finally:
+                result_img.close()
+
+            validation = selected_result.get("validation") or {}
+            candidate_count = max(
+                1,
+                int(validation.get("calc_completion_candidate_count", 0) or 0),
+            )
+            song_id = str(public_result["song"]["id"])
+            response = send_file(
+                buf,
+                mimetype="image/png",
+                as_attachment=False,
+                download_name=f"jietng-ocr-{song_id}.png",
+            )
+            response.headers["X-JiETNG-OCR-Candidate-Index"] = "1"
+            response.headers["X-JiETNG-OCR-Candidate-Count"] = str(candidate_count)
+            logger.info(
+                "[API] Score recognition image completed: token_id=%s ver=%s "
+                "song_id=%s candidates=%s elapsed=%.3fs",
+                token_id,
+                ver,
+                song_id,
+                candidate_count,
+                time.perf_counter() - started_at,
+            )
+            return response
+
         response = build_score_recognition_response(result)
         logger.info(
             "[API] Score recognition completed: token_id=%s ver=%s song_id=%s elapsed=%.3fs",

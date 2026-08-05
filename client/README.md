@@ -42,8 +42,14 @@ with jietngClient(token="your_token") as client:
 
     # OCR 成绩图；只有完整成绩成功匹配、校验时才返回
     with open("result.jpg", "rb") as f:
-        result = client.score_recognition.recognize(f.read(), ver="jp")
+        image = f.read()
+    result = client.score_recognition.recognize(image, ver="jp")
     print(result["song"]["id"], result["score"]["achievement"])
+
+    # 也可以直接取得排版完成的 OCR 结果图片
+    png = client.score_recognition.recognize_image(image, ver="jp")
+    with open("ocr-result.png", "wb") as f:
+        f.write(png)
 ```
 
 ### 异步
@@ -63,8 +69,13 @@ async def main():
             f.write(png)
 
         with open("result.jpg", "rb") as f:
-            result = await client.score_recognition.recognize(f.read(), ver="jp")
+            image = f.read()
+        result = await client.score_recognition.recognize(image, ver="jp")
         print(result["song"]["title"])
+
+        png = await client.score_recognition.recognize_image(image, ver="jp")
+        with open("ocr-result.png", "wb") as f:
+            f.write(png)
 
 asyncio.run(main())
 ```
@@ -81,7 +92,7 @@ asyncio.run(main())
 | `client.images` | `user_song / records / plate / achievement` |
 | `client.exports` | `download / save` |
 | `client.imports` | `records` |
-| `client.score_recognition` | `recognize` |
+| `client.score_recognition` | `recognize / recognize_image` |
 
 所有方法的形参 / 返回结构与 [JiETNG API 文档](https://jietng.matsuk1.com/developer-api) 一一对应。
 

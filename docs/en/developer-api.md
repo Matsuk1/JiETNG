@@ -155,6 +155,20 @@ Example response:
 }
 ```
 
+### OCR result image
+
+`POST /api/v2/score-recognition/image` accepts the same multipart `image` and `ver` fields, limits, and authentication as the JSON endpoint. A successful request returns the rendered result as `image/png`:
+
+```bash
+curl -X POST https://jietng-endpoint.matsuk1.com/api/v2/score-recognition/image \
+  -H "Authorization: Bearer <developer_token>" \
+  -F "ver=jp" \
+  -F "image=@result.jpg" \
+  --output ocr-result.png
+```
+
+When Calc finds multiple valid results, the image endpoint renders the highest-ranked candidate. `X-JiETNG-OCR-Candidate-Index` and `X-JiETNG-OCR-Candidate-Count` report its index and the total candidate count.
+
 The server upload limit can be changed with `SCORE_RECOGNITION_API_MAX_IMAGE_BYTES`. Requests are rate-limited per developer token.
 
 `/songs/search` chooses the version in this order: explicit `ver`, then the version stored on `user_id`, then `jp`.

@@ -233,6 +233,14 @@ class ImportsResource(_BaseResource):
 class ScoreRecognitionResource(_BaseResource):
     """maimai result-photo recognition."""
 
+    @staticmethod
+    def _upload(image: bytes, filename: str) -> dict:
+        if not isinstance(image, (bytes, bytearray, memoryview)) or not image:
+            raise ValueError("image must be non-empty bytes")
+        return {
+            "image": (filename, bytes(image), "application/octet-stream"),
+        }
+
     def recognize(
         self,
         image: bytes,
@@ -241,17 +249,29 @@ class ScoreRecognitionResource(_BaseResource):
         timeout: float = 180.0,
     ) -> dict:
         """``POST /score-recognition`` with a JPEG, PNG, or WebP image."""
-        if not isinstance(image, (bytes, bytearray, memoryview)) or not image:
-            raise ValueError("image must be non-empty bytes")
-        files = {
-            "image": (filename, bytes(image), "application/octet-stream"),
-        }
         return self._client._request(
             "POST",
             "/score-recognition",
             data={"ver": ver},
-            files=files,
+            files=self._upload(image, filename),
             timeout=timeout,
+        )
+
+    def recognize_image(
+        self,
+        image: bytes,
+        ver: str = "jp",
+        filename: str = "score.jpg",
+        timeout: float = 180.0,
+    ) -> bytes:
+        """``POST /score-recognition/image`` and return the OCR result PNG."""
+        return self._client._request(
+            "POST",
+            "/score-recognition/image",
+            data={"ver": ver},
+            files=self._upload(image, filename),
+            timeout=timeout,
+            binary=True,
         )
 
 

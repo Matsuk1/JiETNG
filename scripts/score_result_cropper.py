@@ -1193,7 +1193,7 @@ def sharpen_for_ocr(image: Image.Image, field_name: str | None = None) -> Image.
 
 
 def is_dxnet_result_screenshot(image: Image.Image) -> bool:
-    """Detect the vivid cyan mobile play-history page used by maimaidx.jp."""
+    """Detect a DX NET page only when its judgement table is also present."""
     image = ImageOps.exif_transpose(image).convert("RGB")
     width, height = image.size
     if width <= 0 or height / width < 1.6:
@@ -1210,7 +1210,9 @@ def is_dxnet_result_screenshot(image: Image.Image) -> bool:
             and pixels[x, y][2] > 180
         )
     )
-    return vivid_cyan / (sample.width * sample.height) >= 0.08
+    if vivid_cyan / (sample.width * sample.height) < 0.08:
+        return False
+    return detect_dxnet_judgement_table(image) is not None
 
 
 def _dxnet_grid_line_pixel(pixel: tuple[int, int, int]) -> bool:

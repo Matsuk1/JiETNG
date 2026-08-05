@@ -3,13 +3,17 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 
-@dataclass(frozen=True)
+LinkMode = Literal["link", "bind"]
+LINK_MODES = frozenset({"link", "bind"})
+
+
+@dataclass(frozen=True, slots=True)
 class LinkRecord:
     jietng_user_id: str
-    mode: str
+    mode: LinkMode
 
 
 class LinkStore:
@@ -19,7 +23,7 @@ class LinkStore:
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.path)
+        conn = sqlite3.connect(self.path, timeout=10)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
@@ -52,8 +56,16 @@ class LinkStore:
                     """
                 )
 
-    def set_link(self, discord_user_id: int, jietng_user_id: str, mode: str = "link") -> None:
-        if mode not in {"link", "bind"}:
+    def set_link(
+        self,
+        discord_user_id: int,
+        jietng_user_id: str,
+        mode: LinkMode = "link",
+    ) -> None:
+        jietng_user_id = jietng_user_id.strip()
+        if not jietng_user_id:
+            raise ValueError("jietng_user_id must not be empty")
+        if mode not in LINK_MODES:
             raise ValueError("mode must be 'link' or 'bind'")
         with self._connect() as conn:
             conn.execute(

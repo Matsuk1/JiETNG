@@ -453,6 +453,106 @@ def _score_recognition_payload(result):
     }
 
 
+DX_STAR_THRESHOLDS = ((1, 85.0), (2, 90.0), (3, 93.0), (4, 95.0), (5, 97.0))
+DX_STAR_COLORS = {
+    1: (64, 157, 14),
+    2: (121, 193, 26),
+    3: (220, 73, 22),
+    4: (239, 111, 27),
+    5: (237, 154, 24),
+}
+
+
+def _score_dx_progress(judgement):
+    row_keys = ("tap", "hold", "slide", "touch", "break")
+    if not all(isinstance(judgement.get(key), dict) for key in row_keys):
+        return None
+
+    counts = {
+        "critical_perfect": 0,
+        "perfect": 0,
+        "great": 0,
+        "good": 0,
+        "miss": 0,
+    }
+    try:
+        for key in row_keys:
+            row = judgement[key]
+            for field_name in counts:
+                counts[field_name] += max(0, int(row.get(field_name, 0) or 0))
+    except (TypeError, ValueError):
+        return None
+
+    note_count = sum(counts.values())
+    if note_count <= 0:
+        return None
+
+    score = (
+        counts["critical_perfect"] * 3
+        + counts["perfect"] * 2
+        + counts["great"]
+    )
+    maximum = note_count * 3
+    percentage = score / maximum * 100
+    star = sum(percentage >= threshold for _, threshold in DX_STAR_THRESHOLDS)
+    return {
+        "score": score,
+        "maximum": maximum,
+        "percentage": percentage,
+        "star": star,
+        "start_percentage": min(percentage, 80.0),
+    }
+
+
+def _dx_progress_color(percentage):
+    color_stops = [
+        (threshold, DX_STAR_COLORS[star])
+        for star, threshold in DX_STAR_THRESHOLDS
+    ]
+    if percentage <= color_stops[0][0]:
+        return color_stops[0][1]
+    if percentage >= color_stops[-1][0]:
+        return color_stops[-1][1]
+
+    for (left_pct, left_color), (right_pct, right_color) in zip(color_stops, color_stops[1:]):
+        if percentage <= right_pct:
+            ratio = (percentage - left_pct) / (right_pct - left_pct)
+            return tuple(
+                round(left + (right - left) * ratio)
+                for left, right in zip(left_color, right_color)
+            )
+    return color_stops[-1][1]
+
+
+def _paste_dx_progress_gradient(img, box, current_x, start_percentage):
+    x1, y1, x2, y2 = (int(round(value)) for value in box)
+    track_w = max(1, x2 - x1)
+    track_h = max(1, y2 - y1)
+    fill_w = min(track_w, max(0, int(round(current_x - x1))))
+    if fill_w <= 0:
+        return
+
+    axis_span = max(0.0001, 100.0 - start_percentage)
+    gradient = Image.new("RGBA", (fill_w, track_h), (0, 0, 0, 0))
+    gradient_draw = ImageDraw.Draw(gradient)
+    for offset in range(fill_w):
+        percentage = start_percentage + offset / max(1, track_w - 1) * axis_span
+        gradient_draw.line(
+            (offset, 0, offset, track_h),
+            fill=(*_dx_progress_color(percentage), 255),
+        )
+
+    mask = Image.new("L", (fill_w, track_h), 0)
+    mask_draw = ImageDraw.Draw(mask)
+    mask_draw.rounded_rectangle(
+        (0, 0, fill_w, track_h),
+        radius=track_h // 2,
+        fill=255,
+    )
+    gradient.putalpha(mask)
+    img.alpha_composite(gradient, (x1, y1))
+
+
 def _draw_score_card(draw, box, radius=18, fill=(248, 250, 252), outline=None, width=1):
     draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
 
@@ -470,6 +570,23 @@ def _paste_local_icon(img, directory, name, size, position):
         return True
     except Exception as e:
         logger.error(f"[RecordGenerator] ✗ Failed to paste local icon: path={path}, error={e}")
+        return False
+
+
+def _paste_dx_star_status(img, star, size, position, achieved):
+    path = os.path.join(ICON_DX_STAR_DIR, f"{star}.png")
+    if not os.path.exists(path):
+        return False
+    try:
+        with Image.open(path) as icon:
+            icon_img = icon.convert("RGBA").resize(size, Image.Resampling.LANCZOS)
+        if not achieved:
+            alpha = icon_img.getchannel("A").point(lambda value: value * 72 // 255)
+            icon_img.putalpha(alpha)
+        img.alpha_composite(icon_img, position)
+        return True
+    except Exception as e:
+        logger.error(f"[RecordGenerator] ✗ Failed to paste DX star icon: path={path}, error={e}")
         return False
 
 
@@ -602,6 +719,7 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
     font_table_bold = ImageFont.truetype(FONT_FILE, 28)
     font_small_detail = ImageFont.truetype(FONT_FILE, 22)
     font_section = ImageFont.truetype(FONT_FILE, 34)
+    font_progress = ImageFont.truetype(FONT_FILE, 20)
 
     margin = 42
     content_w = img_width - margin * 2
@@ -621,6 +739,7 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
     judgement = payload.get("judgement") or {}
     row_order = (("tap", "TAP"), ("hold", "HOLD"), ("slide", "SLIDE"), ("touch", "TOUCH"), ("break", "BREAK"))
     visible_rows = [(key, label, judgement.get(key)) for key, label in row_order if isinstance(judgement.get(key), dict)]
+    dx_progress = _score_dx_progress(judgement)
 
     loss_rows = _score_loss_rows_from_internal(judgement, payload.get("loss_percentages") or {})
     break_detail = payload.get("break_detail") or {}
@@ -633,6 +752,8 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
 
     header_h = 150
     metric_h = 100
+    progress_h = 170 if dx_progress else 0
+    progress_gap = 28 if dx_progress else 0
     table_h = 64 + max(1, len(visible_rows)) * 58
     loss_h = 0
     if loss_rows:
@@ -645,7 +766,11 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
         break_total = break_detail.get("total_loss")
         if _has_score_loss(break_total) or break_total is None:
             break_h += 74
-    img_height = margin + 24 + header_h + 28 + metric_h + 42 + 58 + table_h + loss_h + break_h + margin + 80
+    img_height = (
+        margin + 24 + header_h + 28 + metric_h + 30
+        + progress_h + progress_gap + 58 + table_h
+        + loss_h + break_h + margin + 80
+    )
 
     img = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
@@ -746,10 +871,109 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
 
     constant = payload.get("internal_level")
     combo_icon_name = str(combo_icon or "")
-    rcd_rating = get_single_ra(constant, achievement, "ap" in combo_icon_name)
-    constant_text = f"{constant:.1f} → {rcd_rating}" if isinstance(constant, (int, float)) else "-"
+    if isinstance(constant, (int, float)):
+        rcd_rating = get_single_ra(constant, achievement, "ap" in combo_icon_name)
+        constant_text = f"{constant:.1f} → {rcd_rating}"
+    else:
+        constant_text = "-"
     draw.text((metric_boxes[2][1] + 28, y + 18), constant_text, font=font_value, fill=metric_color)
-    y += metric_h + 42
+    y += metric_h + 30
+
+    if dx_progress:
+        progress_x = margin + 22
+        progress_w = content_w - 44
+        _draw_score_card(
+            draw,
+            (progress_x, y, progress_x + progress_w, y + progress_h),
+            radius=14,
+            fill=(248, 250, 252),
+        )
+        draw.text(
+            (progress_x + 24, y + 36),
+            "DX SCORE",
+            font=font_table_bold,
+            fill=(20, 24, 32),
+            anchor="lm",
+        )
+        percentage_tenths = dx_progress["score"] * 1000 // dx_progress["maximum"]
+        progress_value = (
+            f"{dx_progress['score']} / {dx_progress['maximum']}"
+            f"  {percentage_tenths // 10}.{percentage_tenths % 10}%"
+        )
+        draw.text(
+            (progress_x + progress_w - 24, y + 36),
+            progress_value,
+            font=font_table_bold,
+            fill=(184, 110, 25),
+            anchor="rm",
+        )
+
+        track_x1 = progress_x + 30
+        track_x2 = progress_x + progress_w - 30
+        track_y1 = y + 96
+        track_y2 = track_y1 + 18
+        start_percentage = dx_progress["start_percentage"]
+        axis_span = max(0.0001, 100.0 - start_percentage)
+
+        def progress_position(percentage):
+            bounded = min(100.0, max(start_percentage, percentage))
+            return track_x1 + (bounded - start_percentage) / axis_span * (track_x2 - track_x1)
+
+        _draw_score_card(
+            draw,
+            (track_x1, track_y1, track_x2, track_y2),
+            radius=9,
+            fill=(226, 230, 236),
+        )
+        current_x = progress_position(dx_progress["percentage"])
+        _paste_dx_progress_gradient(
+            img,
+            (track_x1, track_y1, track_x2, track_y2),
+            current_x,
+            start_percentage,
+        )
+
+        for star, threshold in DX_STAR_THRESHOLDS:
+            marker_x = progress_position(threshold)
+            achieved = dx_progress["star"] >= star
+            marker_color = DX_STAR_COLORS[star] if achieved else (160, 165, 174)
+            draw.line((marker_x, track_y1 - 7, marker_x, track_y2 + 7), fill=marker_color, width=3)
+            _paste_dx_star_status(
+                img,
+                star,
+                size=(84, 16),
+                position=(int(marker_x - 42), y + 70),
+                achieved=achieved,
+            )
+            draw.text(
+                (marker_x, y + 136),
+                f"{threshold:.0f}%",
+                font=font_progress,
+                fill=marker_color,
+                anchor="mm",
+            )
+
+        draw.ellipse(
+            (current_x - 7, track_y1 + 2, current_x + 7, track_y2 - 2),
+            fill=(255, 255, 255),
+            outline=_dx_progress_color(dx_progress["percentage"]),
+            width=3,
+        )
+        draw.text(
+            (track_x1, y + 136),
+            f"{start_percentage:.1f}%",
+            font=font_progress,
+            fill=(105, 110, 120),
+            anchor="lm",
+        )
+        draw.text(
+            (track_x2, y + 136),
+            "100%",
+            font=font_progress,
+            fill=(105, 110, 120),
+            anchor="rm",
+        )
+        y += progress_h + progress_gap
 
     _draw_score_section_title(draw, margin + 22, y, texts["judgement"], (38, 125, 139), font_section)
     y += 58

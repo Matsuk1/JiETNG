@@ -253,6 +253,26 @@ curl -X POST https://jietng-endpoint.matsuk1.com/api/v2/score-recognition \
 - `calc_corrections` 记录 Calc 自动配平或推算的单元格；无修正时为空数组。
 - `uncertain_cells` 记录无法唯一修正的疑似 OCR 单元格；完全确定时为空数组。
 
+### OCR 结果图片
+
+```http
+POST /api/v2/score-recognition/image
+Authorization: Bearer <developer_token>
+Content-Type: multipart/form-data
+```
+
+请求字段、限制和错误响应与 JSON OCR 接口完全相同。成功时直接返回排版完成的 `image/png`：
+
+```bash
+curl -X POST https://jietng-endpoint.matsuk1.com/api/v2/score-recognition/image \
+  -H "Authorization: Bearer <developer_token>" \
+  -F "ver=jp" \
+  -F "image=@result.jpg" \
+  --output ocr-result.png
+```
+
+存在多个 Calc 有效解时，图片接口返回按 OCR 置信度排序后的第一项。响应头 `X-JiETNG-OCR-Candidate-Index` 和 `X-JiETNG-OCR-Candidate-Count` 分别表示当前候选序号和候选总数。
+
 识别失败：
 
 ```json

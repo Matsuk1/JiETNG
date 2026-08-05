@@ -153,6 +153,20 @@ curl -X POST https://jietng-endpoint.matsuk1.com/api/v2/score-recognition \
 }
 ```
 
+### OCR 結果画像
+
+`POST /api/v2/score-recognition/image` は JSON エンドポイントと同じ multipart の `image`、`ver`、アップロード制限、認証方式を使用します。成功時は生成済みの `image/png` を返します。
+
+```bash
+curl -X POST https://jietng-endpoint.matsuk1.com/api/v2/score-recognition/image \
+  -H "Authorization: Bearer <developer_token>" \
+  -F "ver=jp" \
+  -F "image=@result.jpg" \
+  --output ocr-result.png
+```
+
+Calc に複数の有効解がある場合、画像エンドポイントは順位が最も高い候補を描画します。レスポンスヘッダー `X-JiETNG-OCR-Candidate-Index` と `X-JiETNG-OCR-Candidate-Count` で候補番号と候補総数を確認できます。
+
 アップロード上限は `SCORE_RECOGNITION_API_MAX_IMAGE_BYTES` で変更できます。開発者 Token ごとにレート制限されます。
 
 `/songs/search` のバージョン選択は、明示された `ver`、`user_id` に保存されたサーバー、既定の `jp` の順です。
