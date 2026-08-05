@@ -237,6 +237,17 @@ from modules.command_help import (
     detect_command_help_key,
     detect_missing_param_help_key as _detect_missing_param_help_key,
 )
+from modules.progress_parser import (
+    PROGRESS_RANK_PATTERN,
+    parse_level_rank_progress as _parse_level_rank_progress_text,
+    resolve_progress_category as _resolve_progress_category,
+)
+from modules.mention_parser import (
+    clean_message_text,
+    has_non_bot_mention,
+    registered_mentioned_user_id as extract_single_mention,
+    should_ignore_mentions as check_mention_filter,
+)
 
 # Module aliases for specific use cases
 import modules.user_manager as user_manager_module
@@ -2796,39 +2807,6 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None)
     return message
 
 
-PROGRESS_RANK_PATTERN = r"(sss\+|ss\+|s\+|ap\+|fc\+|fdx\+|sss|ss|ap|fc|fdx|s)"
-PROGRESS_CATEGORY_ALIASES = {
-    "vocaloid": "niconico＆ボーカロイド",
-    "popani": "POPS＆アニメ",
-    "touhou": "東方Project",
-    "gekichu": "オンゲキ＆CHUNITHM",
-    "game": "ゲーム＆バラエティ",
-    "maimai": "maimai",
-}
-
-
-def _resolve_progress_category(target):
-    key = str(target or "").strip().lower()
-    if not key:
-        return None
-    alias = PROGRESS_CATEGORY_ALIASES.get(key)
-    if alias:
-        return alias
-    return None
-
-
-def _parse_level_rank_progress_text(text):
-    lowered = re.sub(r"\s+", " ", text.strip().lower())
-    body = re.sub(r"\s*-(uc|up|c)\s*$", "", lowered).strip()
-    body = re.sub(r"\s*(progress|進捗|进度)\s*$", "", body).strip()
-    match = re.search(fr"{PROGRESS_RANK_PATTERN}\s*$", body)
-    if not match:
-        return None, None
-    target = body[:match.start()].strip()
-    rank = match.group(1)
-    return target, rank
-
-
 async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="jp", filter_mode=None):
     """
     生成指定难度和评级的达成情况图片（定数列表+统计卡片）
@@ -3791,114 +3769,6 @@ def mark_message_as_read(mark_as_read_token: str, user_id: str = None):
         logger.error(f"[MarkAsRead] ✗ Failed to mark as read: user_id={user_id}, error={e}")
 
 
-# ==================== Mention 处理函数 ====================
-
-def check_mention_filter(event):
-    """检查是否应该过滤消息（@ALL 或多个 mention）
-
-    逻辑：
-    - @ALL → 过滤
-    - 总 mention 数 >= 3 → 过滤（假设其中一个是 bot）
-    - 总 mention 数 <= 2 → 允许（可能是 @bot + @user）
-
-    Args:
-        event: LINE 消息事件
-
-    Returns:
-        bool: True 表示应该忽略此消息，False 表示可以处理
-    """
-    if not hasattr(event.message, 'mention') or not event.message.mention:
-        return False
-
-    mentionees = event.message.mention.mentionees
-    if not mentionees:
-        return False
-
-    user_id = event.source.user_id
-
-    # 检查 @ALL
-    for mentionee in mentionees:
-        mention_type = getattr(mentionee, 'type', None)
-        if mention_type == 'all':
-            logger.info(f"[Mention] @ALL detected, ignoring message: user_id={user_id}, text='{event.message.text}'")
-            return True
-
-    # 统计非 bot 的用户 mention 数量
-    user_mention_count = 0
-    for mentionee in mentionees:
-        is_self = getattr(mentionee, 'is_self', False)
-        if not is_self:
-            user_mention_count += 1
-
-    # 如果有 2 个或以上的用户 mention（不包括 bot），则过滤
-    # 允许的情况:
-    # - @user → 1 个用户 mention → 允许
-    # - @bot @user → 1 个用户 mention（跳过 bot）→ 允许
-    # 过滤的情况:
-    # - @user1 @user2 → 2 个用户 mentions → 过滤
-    # - @bot @user1 @user2 → 2 个用户 mentions → 过滤
-    if user_mention_count >= 2:
-        logger.info(f"[Mention] Multiple user mentions ({user_mention_count}) detected, ignoring message: user_id={user_id}, text='{event.message.text}'")
-        return True
-
-    return False
-
-
-def extract_single_mention(event, user_id):
-    """提取单个 mention 的用户 ID
-
-    注意：@bot 会被自动跳过
-
-    Args:
-        event: LINE 消息事件
-        user_id: 发送消息的用户 ID
-
-    Returns:
-        str or None: 被提及的用户 ID，如果没有 mention 或用户未注册则返回 None
-    """
-    if not hasattr(event.message, 'mention') or not event.message.mention:
-        return None
-
-    mentionees = event.message.mention.mentionees
-    if not mentionees or len(mentionees) == 0:
-        return None
-
-    # 跳过 @bot，查找第一个非 bot 的 mention
-    for mentionee in mentionees:
-        # 跳过 bot 自己
-        is_self = getattr(mentionee, 'is_self', False)
-        if is_self:
-            continue
-
-        mentioned_user_id = getattr(mentionee, 'user_id', None)
-        if mentioned_user_id:
-            if user_exists(mentioned_user_id):
-                logger.info(f"[Mention] User mentioned: user_id={user_id}, mentioned_user_id={mentioned_user_id}")
-                return mentioned_user_id
-            else:
-                logger.debug(f"[Mention] Mentioned user not registered: mentioned_user_id={mentioned_user_id}")
-
-    return None
-
-
-def has_non_bot_mention(event) -> bool:
-    """是否 @ 了至少一个非 bot 用户（不论该用户是否已注册）。
-
-    与 extract_single_mention 不同：这里只关心"有没有 @ 别人"，
-    不要求被 @ 的人在我们系统里注册过。用于拒绝"@ 别人但用了
-    仅限本人命令"的场景。
-    """
-    if not hasattr(event.message, 'mention') or not event.message.mention:
-        return False
-    mentionees = event.message.mention.mentionees
-    if not mentionees:
-        return False
-    for m in mentionees:
-        if not getattr(m, 'is_self', False):
-            return True
-    return False
-
-
 # ============================================================
 # 命令派发 / Command Dispatch
 # 替代散落在 main.py 的 6 个分发表：WEB_TASK_ROUTES / IMAGE_TASK_ROUTES /
@@ -4815,19 +4685,8 @@ def handle_text_message(event):
     # @ALL / 3+ mention → 忽略
     if check_mention_filter(event):
         return
-    # 清洗 mention 文本（按 mentionee.index/length 精确删除）+ 归一空白
     original_text = event.message.text
-    cleaned_text = original_text
-    if hasattr(event.message, 'mention') and event.message.mention and event.message.mention.mentionees:
-        for mentionee in reversed(event.message.mention.mentionees):
-            if hasattr(mentionee, 'index') and hasattr(mentionee, 'length'):
-                start = mentionee.index
-                end = start + mentionee.length
-                cleaned_text = cleaned_text[:start] + cleaned_text[end:]
-    cleaned_text = re.sub(r'[\ufffd]', '', cleaned_text)
-    cleaned_multiline_text = re.sub(r'[ \t]+', ' ', cleaned_text)
-    cleaned_multiline_text = re.sub(r' *\r?\n *', '\n', cleaned_multiline_text).strip()
-    cleaned_text = re.sub(r'\s+', ' ', cleaned_multiline_text).strip()
+    cleaned_text, cleaned_multiline_text = clean_message_text(event)
     event.message.text = cleaned_text  # 兼容下游 async_*_task 读 event.message.text
 
     if original_text != cleaned_text:
