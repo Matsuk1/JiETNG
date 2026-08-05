@@ -6,17 +6,72 @@
 
 import logging
 import re
-from typing import List, Dict, Any, Optional
-from modules.config_loader import (
-    MAIMAI_VERSION,
-    read_dxdata
-)
+from typing import Any, Optional
+
+from modules.config_loader import MAIMAI_VERSION, read_dxdata
 from modules.user_db import get_user_field
-from modules.dbpool_manager import get_connection
+from modules.dbpool_manager import database_cursor
 
 logger = logging.getLogger(__name__)
 
-def get_single_ra(level: float, score: float, ap_clear: bool = False, recent_type: bool = False) -> int:
+CURRENT_RA_COEFFICIENTS = (
+    (100.5000, 0.224),
+    (100.4999, 0.222),
+    (100.0000, 0.216),
+    (99.9999, 0.214),
+    (99.5000, 0.211),
+    (99.0000, 0.208),
+    (98.9999, 0.206),
+    (98.0000, 0.203),
+    (97.0000, 0.200),
+    (96.9999, 0.176),
+    (94.0000, 0.168),
+    (90.0000, 0.152),
+    (80.0000, 0.136),
+    (79.9999, 0.128),
+    (75.0000, 0.120),
+    (70.0000, 0.112),
+    (60.0000, 0.096),
+    (50.0000, 0.080),
+    (40.0000, 0.064),
+    (30.0000, 0.048),
+    (20.0000, 0.032),
+    (10.0000, 0.016),
+)
+RECENT_RA_COEFFICIENTS = (
+    (100.5000, 0.140),
+    (100.0000, 0.135),
+    (99.5000, 0.132),
+    (99.0000, 0.130),
+    (98.0000, 0.127),
+    (97.0000, 0.125),
+    (94.0000, 0.105),
+    (90.0000, 0.095),
+    (80.0000, 0.085),
+    (75.0000, 0.075),
+    (70.0000, 0.070),
+    (60.0000, 0.060),
+    (50.0000, 0.050),
+    (40.0000, 0.040),
+    (30.0000, 0.030),
+    (20.0000, 0.020),
+    (10.0000, 0.010),
+)
+DX_STAR_THRESHOLDS = (0.85, 0.90, 0.93, 0.95, 0.97)
+
+
+def _rating_coefficient(
+    score: float, coefficients: tuple[tuple[float, float], ...]
+) -> float:
+    return next(
+        (coefficient for threshold, coefficient in coefficients if score >= threshold),
+        0.0,
+    )
+
+
+def get_single_ra(
+    level: float, score: float, ap_clear: bool = False, recent_type: bool = False
+) -> int:
     """
     计算单曲Rating值
 
@@ -34,65 +89,12 @@ def get_single_ra(level: float, score: float, ap_clear: bool = False, recent_typ
     if recent_type:
         return get_single_ra_recent(level, score)
 
-    # Rating系数映射表
-    if score >= 100.5000:
-        ra_kake = 0.224
-    elif score >= 100.4999:
-        ra_kake = 0.222
-    elif score >= 100.0000:
-        ra_kake = 0.216
-    elif score >= 99.9999:
-        ra_kake = 0.214
-    elif score >= 99.5000:
-        ra_kake = 0.211
-    elif score >= 99.0000:
-        ra_kake = 0.208
-    elif score >= 98.9999:
-        ra_kake = 0.206
-    elif score >= 98.0000:
-        ra_kake = 0.203
-    elif score >= 97.0000:
-        ra_kake = 0.200
-    elif score >= 96.9999:
-        ra_kake = 0.176
-    elif score >= 94.0000:
-        ra_kake = 0.168
-    elif score >= 90.0000:
-        ra_kake = 0.152
-    elif score >= 80.0000:
-        ra_kake = 0.136
-    elif score >= 79.9999:
-        ra_kake = 0.128
-    elif score >= 75.0000:
-        ra_kake = 0.120
-    elif score >= 70.0000:
-        ra_kake = 0.112
-    elif score >= 60.0000:
-        ra_kake = 0.096
-    elif score >= 50.0000:
-        ra_kake = 0.080
-    elif score >= 40.0000:
-        ra_kake = 0.064
-    elif score >= 30.0000:
-        ra_kake = 0.048
-    elif score >= 20.0000:
-        ra_kake = 0.032
-    elif score >= 10.0000:
-        ra_kake = 0.016
-    else:
-        ra_kake = 0
-
-    # 计算基础Rating
-    if score <= 100.5:
-        ra = int(level * score * ra_kake)
-    else:
-        ra = int(level * 100.5 * ra_kake)
-
-    # AP加成
+    coefficient = _rating_coefficient(score, CURRENT_RA_COEFFICIENTS)
+    ra = int(level * min(score, 100.5) * coefficient)
     if ap_clear:
         ra += 1
-
     return ra
+
 
 def get_single_ra_recent(level: float, score: float) -> int:
     """
@@ -107,52 +109,11 @@ def get_single_ra_recent(level: float, score: float) -> int:
     Returns:
         计算得到的Rating整数值
     """
-    # Rating 系数映射表
-    if score >= 100.5000:
-        ra_kake = 0.14
-    elif score >= 100.0000:
-        ra_kake = 0.135
-    elif score >= 99.5000:
-        ra_kake = 0.132
-    elif score >= 99.0000:
-        ra_kake = 0.13
-    elif score >= 98.0000:
-        ra_kake = 0.127
-    elif score >= 97.0000:
-        ra_kake = 0.125
-    elif score >= 94.0000:
-        ra_kake = 0.105
-    elif score >= 90.0000:
-        ra_kake = 0.095
-    elif score >= 80.0000:
-        ra_kake = 0.085
-    elif score >= 75.0000:
-        ra_kake = 0.075
-    elif score >= 70.0000:
-        ra_kake = 0.07
-    elif score >= 60.0000:
-        ra_kake = 0.06
-    elif score >= 50.0000:
-        ra_kake = 0.05
-    elif score >= 40.0000:
-        ra_kake = 0.04
-    elif score >= 30.0000:
-        ra_kake = 0.03
-    elif score >= 20.0000:
-        ra_kake = 0.02
-    elif score >= 10.0000:
-        ra_kake = 0.01
-    else:
-        ra_kake = 0
+    coefficient = _rating_coefficient(score, RECENT_RA_COEFFICIENTS)
+    return int(level * min(score, 100.5) * coefficient)
 
-    if score <= 100.5:
-        ra = int(level * score * ra_kake)
-    else:
-        ra = int(level * 100.5 * ra_kake)
 
-    return ra
-
-def get_ideal_score(score: float) -> float:
+def get_ideal_score(score: float) -> tuple[float, Optional[str]]:
     if 99.0000 <= score < 99.5000:
         return 99.5000, "ssp"
     elif 99.5000 <= score < 100.0000:
@@ -164,10 +125,11 @@ def get_ideal_score(score: float) -> float:
     else:
         return score, None
 
-def parse_dx_score(dx_score_str):
+
+def parse_dx_score(dx_score_str: Any) -> float:
     """解析 dx_score 字符串 (如 '613 / 666') 为浮点数"""
     try:
-        match = re.match(r'^\s*(\d+)\s*/\s*(\d+)\s*$', str(dx_score_str))
+        match = re.match(r"^\s*(\d+)\s*/\s*(\d+)\s*$", str(dx_score_str))
         if match:
             numerator = int(match.group(1))
             denominator = int(match.group(2))
@@ -178,24 +140,19 @@ def parse_dx_score(dx_score_str):
     except (ValueError, TypeError):
         return 0.0
 
-def calc_dx_star(dx_percentage):
-    star_num = 0
-    if 0 <= dx_percentage < 0.85:
-        star_num = 0
-    elif 0.85 <= dx_percentage < 0.9:
-        star_num = 1
-    elif 0.9 <= dx_percentage < 0.93:
-        star_num = 2
-    elif 0.93 <= dx_percentage < 0.95:
-        star_num = 3
-    elif 0.95 <= dx_percentage < 0.97:
-        star_num = 4
-    elif 0.97 <= dx_percentage <= 1:
-        star_num = 5
 
-    return star_num
+def calc_dx_star(dx_percentage: float) -> int:
+    if not 0 <= dx_percentage <= 1:
+        return 0
+    return sum(dx_percentage >= threshold for threshold in DX_STAR_THRESHOLDS)
 
-def read_record(user_id: str, recent: bool = False, recent_type: bool = False, ver: Optional[str] = None) -> List[Dict[str, Any]]:
+
+def read_record(
+    user_id: str,
+    recent: bool = False,
+    recent_type: bool = False,
+    ver: Optional[str] = None,
+) -> list[dict[str, Any]]:
     """
     从数据库读取用户成绩记录
 
@@ -207,129 +164,131 @@ def read_record(user_id: str, recent: bool = False, recent_type: bool = False, v
         成绩记录列表,每条记录为字典,包含详细信息
     """
     table = "recent_records" if recent else "best_records"
-    logger = logging.getLogger(__name__)
-    logger.info(f"[Record] → Reading records: table={table}, user_id={user_id}")
+    logger.info("[Record] Reading records: table=%s user_id=%s", table, user_id)
 
-    conn = get_connection()
+    with database_cursor() as (_, cursor):
+        cursor.execute(f"SELECT * FROM {table} WHERE user_id = %s", (user_id,))
+        rows = cursor.fetchall()
+        columns = [description[0] for description in cursor.description]
 
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM {table} WHERE user_id = %s", (user_id,))
-            rows = cursor.fetchall()
-            columns = [desc[0] for desc in cursor.description]
+    records = []
+    for row in rows:
+        item = dict(zip(columns, row))
+        item.pop("id", None)
+        item.pop("user_id", None)
+        records.append(item)
 
-        records = []
-        for row in rows:
-            item = dict(zip(columns, row))
-            item.pop("id", None)
-            item.pop("user_id", None)
-            records.append(item)
+    if ver is None:
+        ver = get_user_field(user_id, "version", "jp")
 
-        if ver is None:
-            ver = get_user_field(user_id, 'version', "jp")
+    return get_detailed_info(records, ver, recent_type)
 
-        return get_detailed_info(records, ver, recent_type)
 
-    finally:
-        conn.close()
-
-def write_record(user_id, record_json, recent=False):
+def _write_record(cursor: Any, user_id: str, record_json: list, recent: bool) -> None:
     table = "recent_records" if recent else "best_records"
-    logger.info(f"[Record] → Writing records: table={table}, user_id={user_id}")
+    cursor.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
 
-    conn = get_connection()
-
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
-
-            sql = f"""
+    sql = f"""
             INSERT INTO {table} (
                 user_id, name, difficulty, type, score, dx_score,
                 score_icon, combo_icon, sync_icon
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
+    """
 
-            # 优化：批量插入数据，减少数据库往返次数
-            batch_data = [
-                (
-                    user_id,
-                    song.get("name"),
-                    song.get("difficulty"),
-                    song.get("type"),
-                    song.get("score"),
-                    song.get("dx_score"),
-                    song.get("score_icon"),
-                    song.get("combo_icon"),
-                    song.get("sync_icon"),
-                )
-                for song in record_json
-            ]
+    batch_data = [
+        (
+            user_id,
+            song.get("name"),
+            song.get("difficulty"),
+            song.get("type"),
+            song.get("score"),
+            song.get("dx_score"),
+            song.get("score_icon"),
+            song.get("combo_icon"),
+            song.get("sync_icon"),
+        )
+        for song in record_json
+    ]
 
-            if batch_data:
-                cursor.executemany(sql, batch_data)
+    if batch_data:
+        cursor.executemany(sql, batch_data)
 
-        conn.commit()
-    finally:
-        conn.close()
+
+def write_record(
+    user_id: str,
+    record_json: list,
+    recent: bool = False,
+    *,
+    cursor: Any = None,
+) -> None:
+    table = "recent_records" if recent else "best_records"
+    logger.info("[Record] Writing records: table=%s user_id=%s", table, user_id)
+    if cursor is not None:
+        _write_record(cursor, user_id, record_json, recent)
+        return
+    with database_cursor(write=True) as (_, own_cursor):
+        _write_record(own_cursor, user_id, record_json, recent)
+
 
 def delete_record(user_id, recent=False):
     table = "recent_records" if recent else "best_records"
-    logger.info(f"[Record] → Deleting records: table={table}, user_id={user_id}")
+    logger.info("[Record] Deleting records: table=%s user_id=%s", table, user_id)
+    with database_cursor(write=True) as (_, cursor):
+        cursor.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
 
-    conn = get_connection()
-
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
-        conn.commit()
-    finally:
-        conn.close()
 
 def filter_highest_achievement(data: list) -> list:
     result = {}
     for entry in data:
         key = (entry.get("name"), entry.get("difficulty"), entry.get("type"))
-        if key not in result or float(entry.get("score", "0")[:-1]) > float(result[key].get("score", "0")[:-1]):
+        if key not in result or _achievement_value(
+            entry.get("score")
+        ) > _achievement_value(result[key].get("score")):
             result[key] = entry
     return list(result.values())
+
+
+def _achievement_value(value: Any) -> float:
+    try:
+        return float(str(value or 0).rstrip("%"))
+    except (TypeError, ValueError):
+        return 0.0
+
 
 def get_detailed_info(song_record, ver="jp", recent_type=False):
     songs, _ = read_dxdata(ver)
 
-    # 构建哈希表加速查找 O(1)
-    song_map = {}
+    chart_map = {}
     for song in songs:
-        key = (song['title'], song['type'])
-        if key not in song_map:
-            song_map[key] = song
+        for sheet in song.get("sheets", []):
+            key = (song.get("title"), song.get("type"), sheet.get("difficulty"))
+            chart_map.setdefault(key, (song, sheet))
 
     for record in song_record:
-        found = False
-        key = (record['name'], record['type'])
+        key = (record.get("name"), record.get("type"), record.get("difficulty"))
+        chart = chart_map.get(key)
+        if chart is None:
+            record["internalLevelValue"] = 0
+            record["new_song"] = True
+            record["version"] = "UNKNOWN"
+            record["ra"] = 0
+            record["cover_url"] = None
+            record["cover_name"] = "UNKNOWN"
+            continue
 
-        if key in song_map:
-            song = song_map[key]
-            for sheet in song['sheets']:
-                if record['difficulty'] == sheet['difficulty']:
-                    found = True
-                    record['internalLevelValue'] = sheet['internalLevelValue']
-                    record['new_song'] = True if song['version'] in MAIMAI_VERSION[ver] else False
-                    record['version'] = song['version']
-                    ap_clear = "ap" in record['combo_icon']
-                    record['ra'] = get_single_ra(float(record['internalLevelValue']), float(record['score'][:-1]), ap_clear, recent_type)
-                    record['cover_url'] = song['cover_url']
-                    record['cover_name'] = song['cover_name']
-                    record['dx_percentage'] = parse_dx_score(record['dx_score'])
-                    record['dx_star'] = calc_dx_star(record['dx_percentage'])
-                    break
-
-        if not found:
-            record['internalLevelValue'] = 0
-            record['new_song'] = True
-            record['version'] = "UNKNOWN"
-            record['ra'] = 0
-            record['cover_url'] = None
-            record['cover_name'] = "UNKNOWN"
+        song, sheet = chart
+        record["internalLevelValue"] = sheet["internalLevelValue"]
+        record["new_song"] = song["version"] in MAIMAI_VERSION[ver]
+        record["version"] = song["version"]
+        record["ra"] = get_single_ra(
+            float(record["internalLevelValue"]),
+            _achievement_value(record.get("score")),
+            "ap" in str(record.get("combo_icon") or ""),
+            recent_type,
+        )
+        record["cover_url"] = song["cover_url"]
+        record["cover_name"] = song["cover_name"]
+        record["dx_percentage"] = parse_dx_score(record.get("dx_score"))
+        record["dx_star"] = calc_dx_star(record["dx_percentage"])
 
     return song_record

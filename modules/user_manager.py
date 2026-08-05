@@ -1,324 +1,215 @@
-"""
-用户管理模块
+"""User lifecycle, preferences, nickname caching, and notice interactions."""
 
-提供用户的增删改查功能,包括用户状态管理
-"""
+from __future__ import annotations
 
-from typing import Any, Optional, Dict
-import os
 import logging
+import os
 import threading
+import time
 from datetime import datetime
-from modules.record_manager import delete_record
+from typing import Any, Optional
+
 from modules.config_loader import BG_DIR
+from modules.record_manager import delete_record
 from modules.user_db import (
-    save_user, delete_user_from_db, get_user, user_exists,
-    get_user_field, update_user_field, remove_user_field,
-    get_all_user_ids, increment_user_field
+    create_user_if_missing,
+    delete_user_from_db,
+    get_all_user_ids,
+    get_user,
+    get_user_field,
+    increment_user_field,
+    remove_user_field,
+    update_user_field,
 )
 
 logger = logging.getLogger(__name__)
 
-# 用户昵称缓存
-nickname_cache = {}
+SET_VALUE = 0
+INCREMENT_VALUE = 1
+DECREMENT_VALUE = 2
+REMOVE_VALUE = 4
+VALID_OPERATIONS = {SET_VALUE, INCREMENT_VALUE, DECREMENT_VALUE, REMOVE_VALUE}
+
+NICKNAME_CACHE_TIMEOUT = 12 * 60 * 60
+nickname_cache: dict[str, dict[str, Any]] = {}
 nickname_cache_lock = threading.Lock()
-NICKNAME_CACHE_TIMEOUT = 43200  # 12小时缓存
+
+NOTICE_VOTE_TYPES = {"support", "oppose"}
+EMPTY_NOTICE_INTERACTION = {
+    "read": False,
+    "read_at": None,
+    "vote": None,
+    "voted_at": None,
+}
+
+
+def _now_string() -> str:
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def add_user(user_id: str) -> None:
-    """
-    添加新用户
-
-    Args:
-        user_id: LINE用户ID或代理用户ID
-    """
-    if user_exists(user_id):
-        return
-
-    user_data = {"created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-    save_user(user_id, user_data)
+    """Create a minimal user document without replacing an existing user."""
+    create_user_if_missing(user_id, {"created_at": _now_string()})
 
 
 def delete_user(user_id: str) -> None:
-    """
-    删除用户及其所有相关数据
-
-    Args:
-        user_id: 要删除的用户ID
-    """
+    """Delete a user, score records, cached nickname, and custom background."""
     delete_user_from_db(user_id)
-
-    # 删除数据库中的记录
     delete_record(user_id, recent=True)
     delete_record(user_id, recent=False)
+    with nickname_cache_lock:
+        nickname_cache.pop(user_id, None)
 
-    # 删除用户上传的背景图
-    user_bg_path = os.path.join(BG_DIR, f"jietnguser_{user_id}.webp")
-    if os.path.exists(user_bg_path):
-        try:
-            os.remove(user_bg_path)
-            logger.info(f"[UserManager] ✓ Deleted custom bg: user_id={user_id}")
-        except Exception as e:
-            logger.error(f"[UserManager] ✗ Failed to delete custom bg: user_id={user_id}, error={e}")
+    background_path = os.path.join(BG_DIR, f"jietnguser_{user_id}.webp")
+    try:
+        os.remove(background_path)
+    except FileNotFoundError:
+        pass
+    except OSError:
+        logger.exception(
+            "[UserManager] Failed to delete custom bg: user_id=%s", user_id
+        )
 
 
-def edit_user_value(user_id: str, key: str, word: Any, operation: int = 0) -> None:
-    """
-    编辑用户状态
+def edit_user_value(
+    user_id: str,
+    key: str,
+    word: Any,
+    operation: int = SET_VALUE,
+) -> None:
+    """Set, increment, decrement, or remove one top-level user field."""
+    if operation not in VALID_OPERATIONS:
+        raise ValueError(f"Unsupported user edit operation: {operation}")
+    add_user(user_id)
 
-    Args:
-        user_id: 用户ID
-        key: 状态键名
-        word: 要设置/增加/减少的值
-        operation: 操作类型
-            0 - 设置值 (默认)
-            1 - 增加值
-            2 - 减少值
-            4 - 删除键
-    """
-    if not user_exists(user_id):
-        add_user(user_id)
-
-    if operation == 0:
+    if operation == SET_VALUE:
         update_user_field(user_id, key, word)
-
-    elif operation == 1:
+    elif operation == INCREMENT_VALUE:
         increment_user_field(user_id, key, word)
-
-    elif operation == 2:
+    elif operation == DECREMENT_VALUE:
         increment_user_field(user_id, key, -word)
-
-    elif operation == 4:
+    else:
         remove_user_field(user_id, key)
 
 
 def get_user_timezone(user_id: str) -> int:
-    """
-    获取用户的时区设置（UTC偏移小时数）
-
-    Args:
-        user_id: 用户ID
-
-    Returns:
-        int: 时区偏移（小时数），默认 9（UTC+9）
-    """
-    return get_user_field(user_id, 'timezone', 9)
+    """Return the user's UTC offset, defaulting to UTC+9."""
+    return get_user_field(user_id, "timezone", 9)
 
 
-def clear_user_value(key: str, word: Any, operation: int = 0) -> None:
-    """
-    批量编辑所有用户的状态
-
-    Args:
-        key: 状态键名
-        word: 要设置/增加/减少的值
-        operation: 操作类型 (同 edit_user_value)
-    """
+def clear_user_value(key: str, word: Any, operation: int = SET_VALUE) -> None:
+    """Apply one field operation to every user."""
     for user_id in get_all_user_ids():
         edit_user_value(user_id, key, word, operation)
 
 
-def get_user_nickname(user_id: str, line_bot_api, use_cache: bool = True) -> str:
-    """
-    通过LINE SDK获取用户昵称
-
-    Args:
-        user_id: LINE用户ID
-        line_bot_api: MessagingApi实例
-        use_cache: 是否使用缓存 (默认True)
-
-    Returns:
-        用户昵称字符串
-    """
-    # 检查缓存
-    if use_cache:
-        with nickname_cache_lock:
-            if user_id in nickname_cache:
-                cached_data = nickname_cache[user_id]
-                # 检查缓存是否过期
-                if (datetime.now() - cached_data['time']).total_seconds() < NICKNAME_CACHE_TIMEOUT:
-                    return cached_data['nickname']
-
-    # 缓存未命中或已过期
-    try:
-        profile = line_bot_api.get_profile(user_id)
-        nickname = profile.display_name
-
-        # 更新缓存
-        with nickname_cache_lock:
-            nickname_cache[user_id] = {
-                'nickname': nickname,
-                'time': datetime.now()
-            }
-
-        return nickname
-    except Exception as e:
-        # 404错误是正常的(用户可能删除了Bot),使用debug级别记录
-        if "404" in str(e):
-            logger.warning(f"[User] ⚠ User not found: user_id={user_id}, reason=may_have_blocked_bot")
-            nickname = "Unknown (Blocked/Deleted)"
-        else:
-            logger.error(f"[User] ✗ Failed to get nickname: user_id={user_id}, error={e}")
-            nickname = "Unknown (API Error)"
-
-        # 缓存错误结果
-        with nickname_cache_lock:
-            nickname_cache[user_id] = {
-                'nickname': nickname,
-                'time': datetime.now()
-            }
-
-        return nickname
+def _get_cached_nickname(user_id: str) -> Optional[str]:
+    with nickname_cache_lock:
+        cached = nickname_cache.get(user_id)
+        if cached is None:
+            return None
+        if time.monotonic() - cached["cached_at"] < NICKNAME_CACHE_TIMEOUT:
+            return cached["nickname"]
+        nickname_cache.pop(user_id, None)
+    return None
 
 
-# ==================== 公告交互追踪功能 ====================
-def record_notice_read(user_id: str, notice_id: str) -> None:
-    """
-    记录用户阅读公告
-
-    Args:
-        user_id: 用户ID
-        notice_id: 公告ID
-    """
-    if not user_exists(user_id):
-        add_user(user_id)
-
-    user_data = get_user(user_id)
-    if not user_data:
-        return
-
-    if 'notice_interactions' not in user_data:
-        user_data['notice_interactions'] = {}
-
-    if notice_id not in user_data['notice_interactions']:
-        user_data['notice_interactions'][notice_id] = {
-            'read': False,
-            'read_at': None,
-            'vote': None,
-            'voted_at': None
+def _cache_nickname(user_id: str, nickname: str) -> None:
+    with nickname_cache_lock:
+        nickname_cache[user_id] = {
+            "nickname": nickname,
+            "cached_at": time.monotonic(),
         }
 
-    user_data['notice_interactions'][notice_id]['read'] = True
-    user_data['notice_interactions'][notice_id]['read_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    save_user(user_id, user_data)
+def get_user_nickname(user_id: str, line_bot_api, use_cache: bool = True) -> str:
+    """Fetch a LINE display name, with a twelve-hour in-process cache."""
+    if use_cache:
+        cached = _get_cached_nickname(user_id)
+        if cached is not None:
+            return cached
+
+    try:
+        nickname = line_bot_api.get_profile(user_id).display_name
+    except Exception as exc:
+        if "404" in str(exc):
+            logger.warning("[User] User not found or blocked bot: user_id=%s", user_id)
+            nickname = "Unknown (Blocked/Deleted)"
+        else:
+            logger.error(
+                "[User] Failed to get nickname: user_id=%s error=%s", user_id, exc
+            )
+            nickname = "Unknown (API Error)"
+
+    _cache_nickname(user_id, nickname)
+    return nickname
+
+
+def _notice_interactions(user_id: str) -> dict:
+    interactions = get_user_field(user_id, "notice_interactions", {})
+    return interactions if isinstance(interactions, dict) else {}
+
+
+def _notice_interaction(interactions: dict, notice_id: str) -> dict:
+    interaction = interactions.get(notice_id)
+    if not isinstance(interaction, dict):
+        interaction = dict(EMPTY_NOTICE_INTERACTION)
+        interactions[notice_id] = interaction
+    return interaction
+
+
+def record_notice_read(user_id: str, notice_id: str) -> None:
+    """Mark one notice as read without replacing unrelated user fields."""
+    add_user(user_id)
+    interactions = _notice_interactions(user_id)
+    interaction = _notice_interaction(interactions, notice_id)
+    interaction["read"] = True
+    interaction["read_at"] = _now_string()
+    update_user_field(user_id, "notice_interactions", interactions)
 
 
 def record_notice_vote(user_id: str, notice_id: str, vote_type: str) -> bool:
-    """
-    记录用户投票
-
-    Args:
-        user_id: 用户ID
-        notice_id: 公告ID
-        vote_type: 'support' 或 'oppose'
-
-    Returns:
-        bool: 是否成功
-    """
-    user_data = get_user(user_id)
-    if not user_data:
+    """Record a support/oppose vote and mark the notice as read."""
+    if vote_type not in NOTICE_VOTE_TYPES or get_user(user_id) is None:
         return False
 
-    if 'notice_interactions' not in user_data:
-        user_data['notice_interactions'] = {}
-
-    if notice_id not in user_data['notice_interactions']:
-        user_data['notice_interactions'][notice_id] = {
-            'read': True,
-            'read_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'vote': None,
-            'voted_at': None
-        }
-
-    user_data['notice_interactions'][notice_id]['vote'] = vote_type
-    user_data['notice_interactions'][notice_id]['voted_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-    # 确保投票时也标记为已读
-    if not user_data['notice_interactions'][notice_id]['read']:
-        user_data['notice_interactions'][notice_id]['read'] = True
-        user_data['notice_interactions'][notice_id]['read_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-    save_user(user_id, user_data)
-
+    now = _now_string()
+    interactions = _notice_interactions(user_id)
+    interaction = _notice_interaction(interactions, notice_id)
+    interaction["vote"] = vote_type
+    interaction["voted_at"] = now
+    if not interaction.get("read"):
+        interaction["read"] = True
+        interaction["read_at"] = now
+    update_user_field(user_id, "notice_interactions", interactions)
     return True
 
 
-def get_notice_interaction(user_id: str, notice_id: str) -> Optional[Dict]:
-    """
-    获取用户与公告的交互状态
-
-    Args:
-        user_id: 用户ID
-        notice_id: 公告ID
-
-    Returns:
-        交互状态字典或None
-    """
-    user_data = get_user(user_id)
-    if not user_data:
-        return None
-
-    interactions = user_data.get('notice_interactions', {})
-    return interactions.get(notice_id)
+def get_notice_interaction(user_id: str, notice_id: str) -> Optional[dict]:
+    """Return one user's interaction state for a notice."""
+    interaction = _notice_interactions(user_id).get(notice_id)
+    return interaction if isinstance(interaction, dict) else None
 
 
 def has_user_read_notice(user_id: str, notice_id: str) -> bool:
-    """
-    检查用户是否已阅读指定公告
-
-    Args:
-        user_id: 用户ID
-        notice_id: 公告ID
-
-    Returns:
-        bool: 是否已阅读
-    """
-    if not user_exists(user_id):
+    """Return true for missing users, otherwise the notice read state."""
+    if get_user(user_id) is None:
         return True
-
     interaction = get_notice_interaction(user_id, notice_id)
-    return interaction.get('read', False) if interaction else False
+    return bool(interaction and interaction.get("read"))
 
 
 def clear_notice_read_status(notice_id: str) -> None:
-    """
-    清除所有用户对指定公告的阅读状态 (发布新公告时使用)
-
-    Args:
-        notice_id: 公告ID
-    """
+    """Reset one notice's interaction state for every user."""
     for user_id in get_all_user_ids():
-        user_data = get_user(user_id)
-        if not user_data:
-            continue
-
-        if 'notice_interactions' not in user_data:
-            user_data['notice_interactions'] = {}
-
-        user_data['notice_interactions'][notice_id] = {
-            'read': False,
-            'read_at': None,
-            'vote': None,
-            'voted_at': None
-        }
-        save_user(user_id, user_data)
+        interactions = _notice_interactions(user_id)
+        interactions[notice_id] = dict(EMPTY_NOTICE_INTERACTION)
+        update_user_field(user_id, "notice_interactions", interactions)
 
 
 def clear_notice_record(notice_id: str) -> None:
-    """
-    清除所有用户对指定公告的记录 (删除公告时使用)
-
-    Args:
-        notice_id: 公告ID
-    """
+    """Remove one notice's interaction state from every user."""
     for user_id in get_all_user_ids():
-        user_data = get_user(user_id)
-        if not user_data:
-            continue
-
-        if 'notice_interactions' not in user_data:
-            continue
-
-        user_data['notice_interactions'].pop(notice_id, None)
-        save_user(user_id, user_data)
+        interactions = _notice_interactions(user_id)
+        if interactions.pop(notice_id, None) is not None:
+            update_user_field(user_id, "notice_interactions", interactions)

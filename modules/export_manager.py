@@ -24,15 +24,16 @@ from urllib.parse import quote
 
 from modules.config_loader import EXPORT_DIR, DOMAIN
 from modules.record_manager import read_record
-from modules.user_db import get_user_field
+from modules.user_db import get_user
 
 logger = logging.getLogger(__name__)
 
-_EXPORT_TTL_SECONDS = 1800           # 30 min
+_EXPORT_TTL_SECONDS = 1800  # 30 min
 _MAX_PAYLOAD_BYTES = 20 * 1024 * 1024  # 20 MB 保险阀
 
 _periodic_cleanup_thread: Optional[threading.Thread] = None
 _periodic_cleanup_lock = threading.Lock()
+_cleanup_stop_event = threading.Event()
 
 
 def _ensure_dir():
@@ -71,39 +72,57 @@ def _build_friendly_name(profile: dict, fmt: str) -> str:
 
 # 谱面排名图标 → 人话
 _RANK_MAP = {
-    "sssp": "SSS+", "sss": "SSS",
-    "ssp":  "SS+",  "ss":  "SS",
-    "sp":   "S+",   "s":   "S",
-    "aaa":  "AAA",  "aa":  "AA",  "a": "A",
-    "bbb":  "BBB",  "bb":  "BB",  "b": "B",
-    "c":    "C",    "d":   "D",
+    "sssp": "SSS+",
+    "sss": "SSS",
+    "ssp": "SS+",
+    "ss": "SS",
+    "sp": "S+",
+    "s": "S",
+    "aaa": "AAA",
+    "aa": "AA",
+    "a": "A",
+    "bbb": "BBB",
+    "bb": "BB",
+    "b": "B",
+    "c": "C",
+    "d": "D",
 }
 
 # Combo 图标；"back" = 该项无成就，导出时省略
 _COMBO_MAP = {"app": "AP+", "ap": "AP", "fcp": "FC+", "fc": "FC", "back": None}
 
 # Sync 图标；"back" = 该项无成就，导出时省略
-_SYNC_MAP = {"fdxp": "FDX+", "fdx": "FDX", "fsp": "FS+", "fs": "FS",
-             "sync": "Sync", "back": None}
+_SYNC_MAP = {
+    "fdxp": "FDX+",
+    "fdx": "FDX",
+    "fsp": "FS+",
+    "fs": "FS",
+    "sync": "Sync",
+    "back": None,
+}
 
 _TYPE_MAP = {"dx": "DX", "std": "Standard", "utage": "Utage"}
 
 _DIFF_MAP = {
-    "basic":    "Basic",    "advanced": "Advanced",  "expert": "Expert",
-    "master":   "Master",   "remaster": "Re:Master", "utage":  "Utage",
+    "basic": "Basic",
+    "advanced": "Advanced",
+    "expert": "Expert",
+    "master": "Master",
+    "remaster": "Re:Master",
+    "utage": "Utage",
 }
 
 _DX_SCORE_RE = re.compile(r"^\s*(\d+)\s*/\s*(\d+)\s*$")
 
 
 def _parse_dx_score_pair(s):
-    """ '2950 / 3000' -> (2950, 3000)；解析失败 (None, None) """
+    """'2950 / 3000' -> (2950, 3000)；解析失败 (None, None)"""
     m = _DX_SCORE_RE.match(str(s or ""))
     return (int(m.group(1)), int(m.group(2))) if m else (None, None)
 
 
 def _parse_achievement(s):
-    """ '100.5000%' -> 100.5000 """
+    """'100.5000%' -> 100.5000"""
     try:
         return float(str(s).rstrip("%").strip())
     except (ValueError, AttributeError, TypeError):
@@ -113,16 +132,16 @@ def _parse_achievement(s):
 def _transform_record(r: dict) -> dict:
     """单条原始 DB 记录 → 阅读友好版本。None 字段会被剔除。"""
     out: dict = {
-        "title":          r.get("name"),
-        "type":           _TYPE_MAP.get(r.get("type"), r.get("type")),
-        "difficulty":     _DIFF_MAP.get(r.get("difficulty"), r.get("difficulty")),
+        "title": r.get("name"),
+        "type": _TYPE_MAP.get(r.get("type"), r.get("type")),
+        "difficulty": _DIFF_MAP.get(r.get("difficulty"), r.get("difficulty")),
         "internal_level": r.get("internalLevelValue"),
-        "version":        r.get("version"),
-        "is_new_song":    bool(r.get("new_song", False)),
-        "achievement":    _parse_achievement(r.get("score")),
-        "rank":           _RANK_MAP.get(r.get("score_icon"), r.get("score_icon")),
-        "song_rating":    r.get("ra"),
-        "dx_star":        r.get("dx_star"),
+        "version": r.get("version"),
+        "is_new_song": bool(r.get("new_song", False)),
+        "achievement": _parse_achievement(r.get("score")),
+        "rank": _RANK_MAP.get(r.get("score_icon"), r.get("score_icon")),
+        "song_rating": r.get("ra"),
+        "dx_star": r.get("dx_star"),
     }
 
     # dx_score 拆成当前/上限两个 int
@@ -150,11 +169,11 @@ def _transform_record(r: dict) -> dict:
     return {k: v for k, v in out.items() if v is not None}
 
 
-def _transform_profile(p: dict, user_id: str) -> dict:
+def _transform_profile(p: dict, user_data: dict) -> dict:
     """personal_info → 阅读友好版本（剔除空 / N/A / 内部路径）。"""
     p = p or {}
     out: dict = {
-        "name":   p.get("name"),
+        "name": p.get("name"),
         "trophy": p.get("trophy_content"),
     }
 
@@ -168,9 +187,9 @@ def _transform_profile(p: dict, user_id: str) -> dict:
 
     # 选择性带 URL（用户外部渲染时有用）；顺手把官方拼写错误 cource→course 修掉
     url_map = {
-        "nameplate_url":   "nameplate_url",
-        "icon_url":        "icon_url",
-        "class_rank_url":  "class_rank_url",
+        "nameplate_url": "nameplate_url",
+        "icon_url": "icon_url",
+        "class_rank_url": "class_rank_url",
         "cource_rank_url": "course_rank_url",
     }
     for src, dst in url_map.items():
@@ -178,10 +197,10 @@ def _transform_profile(p: dict, user_id: str) -> dict:
         if v and v != "N/A":
             out[dst] = v
 
-    nickname = get_user_field(user_id, "nickname")
+    nickname = user_data.get("nickname")
     if nickname:
         out["line_nickname"] = nickname
-    last_update = get_user_field(user_id, "last_update")
+    last_update = user_data.get("last_update")
     if last_update:
         out["last_update"] = last_update
 
@@ -190,19 +209,28 @@ def _transform_profile(p: dict, user_id: str) -> dict:
 
 def build_payload(user_id: str) -> dict:
     """读 DB → 加工 → 拼出待序列化的纯 dict 结构。"""
-    ver = get_user_field(user_id, "version", "jp")
-    best   = [_transform_record(r) for r in (read_record(user_id, recent=False) or [])]
-    recent = [_transform_record(r) for r in (read_record(user_id, recent=True, recent_type=True) or [])]
-    profile = _transform_profile(get_user_field(user_id, "personal_info", {}), user_id)
+    user_data = get_user(user_id) or {}
+    ver = user_data.get("version", "jp")
+    best = [
+        _transform_record(record)
+        for record in (read_record(user_id, recent=False, ver=ver) or [])
+    ]
+    recent = [
+        _transform_record(record)
+        for record in (
+            read_record(user_id, recent=True, recent_type=True, ver=ver) or []
+        )
+    ]
+    profile = _transform_profile(user_data.get("personal_info", {}), user_data)
     return {
-        "format":         "JiETNGExport",
+        "format": "JiETNGExport",
         "schema_version": 2,
-        "generated_at":   datetime.now().isoformat(timespec="seconds"),
-        "user_id":        user_id,
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "user_id": user_id,
         "maimai_version": ver,
-        "profile":        profile,
+        "profile": profile,
         "records": {
-            "best":   best,
+            "best": best,
             "recent": recent,
         },
     }
@@ -211,6 +239,7 @@ def build_payload(user_id: str) -> dict:
 # ----------------------------------------------------------------------------
 # 序列化 / Serializers
 # ----------------------------------------------------------------------------
+
 
 def to_json_bytes(payload: dict) -> bytes:
     return json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
@@ -224,7 +253,10 @@ def _xml_text(v) -> str:
 
 def _dict_to_xml(parent: ET.Element, data: dict):
     for k, v in data.items():
-        tag = "".join(ch if (ch.isalnum() or ch in "_-.") else "_" for ch in str(k)) or "field"
+        tag = (
+            "".join(ch if (ch.isalnum() or ch in "_-.") else "_" for ch in str(k))
+            or "field"
+        )
         if not (tag[0].isalpha() or tag[0] == "_"):
             tag = f"_{tag}"
         if isinstance(v, dict):
@@ -244,26 +276,33 @@ def _dict_to_xml(parent: ET.Element, data: dict):
 def to_xml_bytes(payload: dict) -> bytes:
     attribs = {
         "schema_version": str(payload.get("schema_version", 1)),
-        "generated_at":   str(payload.get("generated_at", "")),
-        "user_id":        str(payload.get("user_id", "")),
+        "generated_at": str(payload.get("generated_at", "")),
+        "user_id": str(payload.get("user_id", "")),
         "maimai_version": str(payload.get("maimai_version", "")),
     }
     root = ET.Element(payload.get("format", "Export"), attrib=attribs)
-    body = {k: v for k, v in payload.items()
-            if k not in ("format", "schema_version", "generated_at", "user_id", "maimai_version")}
+    body = {
+        k: v
+        for k, v in payload.items()
+        if k
+        not in ("format", "schema_version", "generated_at", "user_id", "maimai_version")
+    }
     _dict_to_xml(root, body)
     ET.indent(root, space="  ")
-    return b'<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(root, encoding="utf-8")
+    return b'<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(
+        root, encoding="utf-8"
+    )
 
 
 # ----------------------------------------------------------------------------
 # 文件生命周期 / File lifecycle
 # ----------------------------------------------------------------------------
 
-def cleanup_expired_exports(ttl_seconds: int = _EXPORT_TTL_SECONDS):
+
+def cleanup_expired_exports(ttl_seconds: int = _EXPORT_TTL_SECONDS) -> int:
     """扫描 EXPORT_DIR，删除 mtime 超过 ttl 的 .json/.xml。"""
     if not os.path.exists(EXPORT_DIR):
-        return
+        return 0
     now = time.time()
     deleted = 0
     try:
@@ -276,13 +315,16 @@ def cleanup_expired_exports(ttl_seconds: int = _EXPORT_TTL_SECONDS):
                 if age > ttl_seconds:
                     os.remove(path)
                     deleted += 1
-                    logger.info(f"[Export] ✓ Deleted expired: file={filename}, age={int(age)}s")
-            except Exception as e:
-                logger.error(f"[Export] ✗ Cleanup file failed: file={filename}, error={e}")
+                    logger.info(
+                        "[Export] Deleted expired file=%s age=%ss", filename, int(age)
+                    )
+            except OSError as exc:
+                logger.error("[Export] Cleanup failed: file=%s error=%s", filename, exc)
         if deleted:
-            logger.info(f"[Export] ✓ Periodic cleanup done: deleted={deleted}")
-    except Exception as e:
-        logger.error(f"[Export] ✗ Periodic cleanup failed: error={e}")
+            logger.info("[Export] Periodic cleanup done: deleted=%s", deleted)
+    except OSError as exc:
+        logger.error("[Export] Periodic cleanup failed: error=%s", exc)
+    return deleted
 
 
 def start_periodic_cleanup(interval_seconds: int = 300):
@@ -293,18 +335,27 @@ def start_periodic_cleanup(interval_seconds: int = 300):
             return
 
         def _loop():
-            while True:
+            while not _cleanup_stop_event.wait(interval_seconds):
                 try:
-                    time.sleep(interval_seconds)
                     cleanup_expired_exports()
                 except Exception as e:
-                    logger.error(f"[Export] ✗ Periodic loop error: error={e}", exc_info=True)
+                    logger.error("[Export] Periodic loop error: %s", e, exc_info=True)
 
         _periodic_cleanup_thread = threading.Thread(
             target=_loop, daemon=True, name="PeriodicExportCleanup"
         )
         _periodic_cleanup_thread.start()
-        logger.info("[Export] ✓ Periodic cleanup thread started")
+        logger.info("[Export] Periodic cleanup thread started")
+
+
+def shutdown_periodic_cleanup(timeout: float = 5.0) -> None:
+    """Stop the export cleanup thread."""
+    _cleanup_stop_event.set()
+    thread = _periodic_cleanup_thread
+    if thread is not None:
+        thread.join(timeout=timeout)
+        if thread.is_alive():
+            logger.warning("[Export] Cleanup thread did not stop within %.1fs", timeout)
 
 
 def _save_export(content: bytes, ext: str, friendly_name: str) -> Optional[str]:
@@ -315,7 +366,9 @@ def _save_export(content: bytes, ext: str, friendly_name: str) -> Optional[str]:
     文件清理由 start_periodic_cleanup 启动的全局线程按 mtime 统一处理。
     """
     if not content or len(content) > _MAX_PAYLOAD_BYTES:
-        logger.error(f"[Export] ✗ Payload size out of range: bytes={len(content) if content else 0}")
+        logger.error(
+            f"[Export] ✗ Payload size out of range: bytes={len(content) if content else 0}"
+        )
         return None
     try:
         _ensure_dir()
@@ -323,8 +376,12 @@ def _save_export(content: bytes, ext: str, friendly_name: str) -> Optional[str]:
         path = os.path.join(EXPORT_DIR, f"{file_id}.{ext}")
         with open(path, "wb") as f:
             f.write(content)
-        url = f"https://{DOMAIN}/linebot/export/{file_id}/{quote(friendly_name, safe='')}"
-        logger.info(f"[Export] ✓ Saved: id={file_id}.{ext} bytes={len(content)} name={friendly_name}")
+        url = (
+            f"https://{DOMAIN}/linebot/export/{file_id}/{quote(friendly_name, safe='')}"
+        )
+        logger.info(
+            f"[Export] ✓ Saved: id={file_id}.{ext} bytes={len(content)} name={friendly_name}"
+        )
         return url
     except Exception as e:
         logger.error(f"[Export] ✗ Save failed: error={e}")
@@ -334,6 +391,7 @@ def _save_export(content: bytes, ext: str, friendly_name: str) -> Optional[str]:
 # ----------------------------------------------------------------------------
 # Public entry / 对外入口
 # ----------------------------------------------------------------------------
+
 
 def export_records(user_id: str, fmt: str) -> dict:
     """读取用户成绩 → 序列化 → 落盘 → 返回元数据。
@@ -351,7 +409,10 @@ def export_records(user_id: str, fmt: str) -> dict:
     try:
         payload = build_payload(user_id)
     except Exception as e:
-        logger.error(f"[Export] ✗ Build payload failed: user_id={user_id}, error={e}", exc_info=True)
+        logger.error(
+            f"[Export] ✗ Build payload failed: user_id={user_id}, error={e}",
+            exc_info=True,
+        )
         return {"status": "error", "message": str(e)}
 
     recs = payload.get("records", {})
@@ -367,12 +428,12 @@ def export_records(user_id: str, fmt: str) -> dict:
         return {"status": "error", "message": "save failed"}
 
     return {
-        "status":        "ok",
-        "url":           url,
+        "status": "ok",
+        "url": url,
         "friendly_name": friendly_name,
-        "size":          len(content),
-        "fmt":           fmt,
-        "best_count":    best_count,
-        "recent_count":  recent_count,
-        "ttl_minutes":   _EXPORT_TTL_SECONDS // 60,
+        "size": len(content),
+        "fmt": fmt,
+        "best_count": best_count,
+        "recent_count": recent_count,
+        "ttl_minutes": _EXPORT_TTL_SECONDS // 60,
     }

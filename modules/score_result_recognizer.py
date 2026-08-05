@@ -23,7 +23,7 @@ from PIL import Image, ImageDraw
 from PIL import UnidentifiedImageError
 
 from modules.config_loader import read_dxdata
-from modules.maimai_manager import (
+from modules.score_calculator import (
     calc_judgement_achievement_range,
     calc_score,
     calc_score_precise,

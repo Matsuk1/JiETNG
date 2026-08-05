@@ -1,12 +1,4 @@
-"""
-User-scoped import token manager.
-
-Import tokens are generated for one JiETNG user and can only upload processed
-record payloads for that same user. Raw tokens are shown once; only SHA-256
-hashes are stored in the user JSON document.
-"""
-
-from __future__ import annotations
+"""Create and verify user-scoped import tokens without storing raw secrets."""
 
 import hashlib
 import hmac
@@ -15,96 +7,100 @@ import os
 import secrets
 import threading
 from datetime import datetime
-from typing import Optional
 
 from modules.user_db import get_user, save_user
 
-_TOKEN_PREFIX = "jit_"
-_TOKEN_BYTES = 32
-_MAX_TOKENS_PER_USER = 5
-_INDEX_FILE = "./data/import_tokens.json"
-_index_lock = threading.Lock()
+
+TOKEN_PREFIX = "jit_"
+TOKEN_BYTES = 32
+MAX_TOKENS_PER_USER = 5
+INDEX_FILE = "./data/import_tokens.json"
+_token_lock = threading.RLock()
 
 
-def _now() -> str:
+def _now():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def _hash_token(token: str) -> str:
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+def _hash_token(token):
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
-def _load_index() -> dict:
-    if not os.path.exists(_INDEX_FILE):
+def _user_tokens(user_data):
+    tokens = user_data.get("import_tokens", [])
+    return (
+        [item for item in tokens if isinstance(item, dict)]
+        if isinstance(tokens, list)
+        else []
+    )
+
+
+def _load_index():
+    if not os.path.exists(INDEX_FILE):
         return {}
     try:
-        with open(_INDEX_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, dict) else {}
-    except Exception:
+        with open(INDEX_FILE, encoding="utf-8") as file:
+            index = json.load(file)
+        return index if isinstance(index, dict) else {}
+    except (OSError, json.JSONDecodeError):
         return {}
 
 
-def _save_index(index: dict) -> None:
-    os.makedirs(os.path.dirname(_INDEX_FILE), exist_ok=True)
-    with open(_INDEX_FILE, "w", encoding="utf-8") as f:
-        json.dump(index, f, ensure_ascii=False, indent=2)
+def _save_index(index):
+    directory = os.path.dirname(INDEX_FILE)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    temporary_file = f"{INDEX_FILE}.tmp"
+    with open(temporary_file, "w", encoding="utf-8") as file:
+        json.dump(index, file, ensure_ascii=False, indent=2)
+    os.replace(temporary_file, INDEX_FILE)
 
 
-def _active_tokens(user_data: dict) -> list[dict]:
-    tokens = user_data.get("import_tokens", [])
-    if not isinstance(tokens, list):
-        return []
-    return [item for item in tokens if isinstance(item, dict) and not item.get("revoked")]
-
-
-def create_import_token(user_id: str, note: str = "") -> Optional[dict]:
-    user_data = get_user(user_id)
-    if not user_data:
-        return None
-
-    tokens = user_data.get("import_tokens", [])
-    if not isinstance(tokens, list):
-        tokens = []
-
-    token_id = f"it_{secrets.token_hex(8)}"
-    existing_ids = {item.get("token_id") for item in tokens if isinstance(item, dict)}
-    while token_id in existing_ids:
+def _new_token_id(tokens):
+    existing_ids = {item.get("token_id") for item in tokens}
+    while True:
         token_id = f"it_{secrets.token_hex(8)}"
+        if token_id not in existing_ids:
+            return token_id
 
-    secret = secrets.token_urlsafe(_TOKEN_BYTES)
-    token = f"{_TOKEN_PREFIX}{token_id}.{secret}"
-    token_hash = _hash_token(token)
 
-    revoked_token_ids = []
-    active = _active_tokens({"import_tokens": tokens})
-    if len(active) >= _MAX_TOKENS_PER_USER:
-        oldest_active_id = active[0].get("token_id")
-        for item in tokens:
-            if item.get("token_id") == oldest_active_id:
-                item["revoked"] = True
-                item["revoked_at"] = _now()
-                revoked_token_ids.append(oldest_active_id)
-                break
+def create_import_token(user_id, note=""):
+    with _token_lock:
+        user_data = get_user(user_id)
+        if not user_data:
+            return None
 
-    created_at = _now()
-    tokens.append({
-        "token_id": token_id,
-        "token_hash": token_hash,
-        "note": str(note or "")[:120],
-        "created_at": created_at,
-        "last_used": None,
-        "revoked": False,
-    })
-    user_data["import_tokens"] = tokens
-    save_user(user_id, user_data)
+        tokens = _user_tokens(user_data)
+        token_id = _new_token_id(tokens)
+        token = f"{TOKEN_PREFIX}{token_id}.{secrets.token_urlsafe(TOKEN_BYTES)}"
+        token_hash = _hash_token(token)
+        created_at = _now()
+        note = str(note or "")[:120]
 
-    with _index_lock:
+        active_tokens = [item for item in tokens if not item.get("revoked")]
+        revoked_id = None
+        if len(active_tokens) >= MAX_TOKENS_PER_USER:
+            oldest = active_tokens[0]
+            oldest.update(revoked=True, revoked_at=created_at)
+            revoked_id = oldest.get("token_id")
+
+        tokens.append(
+            {
+                "token_id": token_id,
+                "token_hash": token_hash,
+                "note": note,
+                "created_at": created_at,
+                "last_used": None,
+                "revoked": False,
+            }
+        )
+        user_data["import_tokens"] = tokens
+        if not save_user(user_id, user_data):
+            return None
+
         index = _load_index()
-        for revoked_id in revoked_token_ids:
-            if revoked_id in index:
-                index[revoked_id]["revoked"] = True
-                index[revoked_id]["revoked_at"] = created_at
+        if revoked_id in index:
+            index[revoked_id].update(revoked=True, revoked_at=created_at)
         index[token_id] = {
             "user_id": user_id,
             "token_hash": token_hash,
@@ -112,146 +108,117 @@ def create_import_token(user_id: str, note: str = "") -> Optional[dict]:
             "revoked": False,
         }
         _save_index(index)
-
-    return {
-        "token_id": token_id,
-        "token": token,
-        "note": str(note or "")[:120],
-        "created_at": created_at,
-    }
-
-
-def list_import_tokens(user_id: str) -> Optional[list[dict]]:
-    user_data = get_user(user_id)
-    if not user_data:
-        return None
-
-    tokens = user_data.get("import_tokens", [])
-    if not isinstance(tokens, list):
-        return []
-
-    result = []
-    for item in tokens:
-        if not isinstance(item, dict):
-            continue
-        result.append({
-            "token_id": item.get("token_id"),
-            "note": item.get("note", ""),
-            "created_at": item.get("created_at"),
-            "last_used": item.get("last_used"),
-            "revoked": bool(item.get("revoked")),
-        })
-    return result
+        return {
+            "token_id": token_id,
+            "token": token,
+            "note": note,
+            "created_at": created_at,
+        }
 
 
-def revoke_import_token(user_id: str, token_id: str | None = None) -> int:
-    user_data = get_user(user_id)
-    if not user_data:
-        return 0
+def list_import_tokens(user_id):
+    with _token_lock:
+        user_data = get_user(user_id)
+        if not user_data:
+            return None
+        return [
+            {
+                "token_id": item.get("token_id"),
+                "note": item.get("note", ""),
+                "created_at": item.get("created_at"),
+                "last_used": item.get("last_used"),
+                "revoked": bool(item.get("revoked")),
+            }
+            for item in _user_tokens(user_data)
+        ]
 
-    tokens = user_data.get("import_tokens", [])
-    if not isinstance(tokens, list):
-        return 0
 
-    revoked = 0
-    for item in tokens:
-        if not isinstance(item, dict) or item.get("revoked"):
-            continue
-        if token_id and item.get("token_id") != token_id:
-            continue
-        item["revoked"] = True
-        item["revoked_at"] = _now()
-        revoked += 1
+def revoke_import_token(user_id, token_id=None):
+    with _token_lock:
+        user_data = get_user(user_id)
+        if not user_data:
+            return 0
 
-    if revoked:
+        tokens = _user_tokens(user_data)
+        revoked_at = _now()
+        changed = [
+            item
+            for item in tokens
+            if not item.get("revoked")
+            and (token_id is None or item.get("token_id") == token_id)
+        ]
+        if not changed:
+            return 0
+        for item in changed:
+            item.update(revoked=True, revoked_at=revoked_at)
+
         user_data["import_tokens"] = tokens
-        save_user(user_id, user_data)
-        with _index_lock:
-            index = _load_index()
-            for item in tokens:
-                if not isinstance(item, dict):
-                    continue
-                tid = item.get("token_id")
-                if tid in index and (not token_id or tid == token_id):
-                    index[tid]["revoked"] = bool(item.get("revoked"))
-                    index[tid]["revoked_at"] = item.get("revoked_at")
-            _save_index(index)
-    return revoked
-
-
-def delete_revoked_import_token(user_id: str, token_id: str) -> bool:
-    user_data = get_user(user_id)
-    if not user_data:
-        return False
-
-    tokens = user_data.get("import_tokens", [])
-    if not isinstance(tokens, list):
-        return False
-
-    kept_tokens = []
-    deleted = False
-    for item in tokens:
-        if (
-            isinstance(item, dict)
-            and item.get("token_id") == token_id
-            and item.get("revoked")
-        ):
-            deleted = True
-            continue
-        kept_tokens.append(item)
-
-    if not deleted:
-        return False
-
-    user_data["import_tokens"] = kept_tokens
-    save_user(user_id, user_data)
-
-    with _index_lock:
+        if not save_user(user_id, user_data):
+            return 0
         index = _load_index()
-        if token_id in index:
-            del index[token_id]
-            _save_index(index)
+        for item in changed:
+            if item.get("token_id") in index:
+                index[item["token_id"]].update(revoked=True, revoked_at=revoked_at)
+        _save_index(index)
+        return len(changed)
 
-    return True
+
+def delete_revoked_import_token(user_id, token_id):
+    with _token_lock:
+        user_data = get_user(user_id)
+        if not user_data:
+            return False
+        tokens = _user_tokens(user_data)
+        target = next(
+            (
+                item
+                for item in tokens
+                if item.get("token_id") == token_id and item.get("revoked")
+            ),
+            None,
+        )
+        if not target:
+            return False
+
+        user_data["import_tokens"] = [item for item in tokens if item is not target]
+        if not save_user(user_id, user_data):
+            return False
+        index = _load_index()
+        index.pop(token_id, None)
+        _save_index(index)
+        return True
 
 
-def verify_import_token(token: str) -> Optional[dict]:
-    if not token or not token.startswith(_TOKEN_PREFIX):
+def verify_import_token(token):
+    if not token or not token.startswith(TOKEN_PREFIX):
         return None
-
-    try:
-        token_body = token[len(_TOKEN_PREFIX):]
-        token_id, _secret = token_body.split(".", 1)
-    except Exception:
+    token_id, separator, secret = token[len(TOKEN_PREFIX) :].partition(".")
+    if not separator or not token_id or not secret:
         return None
 
     token_hash = _hash_token(token)
-    with _index_lock:
+    with _token_lock:
         index_item = _load_index().get(token_id)
-    if not index_item or index_item.get("revoked"):
-        return None
-    if not hmac.compare_digest(str(index_item.get("token_hash", "")), token_hash):
-        return None
+        if not index_item or index_item.get("revoked"):
+            return None
+        if not hmac.compare_digest(str(index_item.get("token_hash", "")), token_hash):
+            return None
 
-    user_id = index_item.get("user_id")
-    user_data = get_user(user_id) or {}
-    tokens = user_data.get("import_tokens", [])
-    if not isinstance(tokens, list):
-        return None
+        user_id = index_item.get("user_id")
+        user_data = get_user(user_id) or {}
+        item = next(
+            (
+                item
+                for item in _user_tokens(user_data)
+                if item.get("token_id") == token_id and not item.get("revoked")
+            ),
+            None,
+        )
+        if not item or not hmac.compare_digest(
+            str(item.get("token_hash", "")), token_hash
+        ):
+            return None
 
-    for item in tokens:
-        if not isinstance(item, dict) or item.get("revoked"):
-            continue
-        if item.get("token_id") != token_id:
-            continue
-        if hmac.compare_digest(str(item.get("token_hash", "")), token_hash):
-            item["last_used"] = _now()
-            user_data["import_tokens"] = tokens
-            save_user(user_id, user_data)
-            return {
-                "user_id": user_id,
-                "token_id": item.get("token_id"),
-                "note": item.get("note", ""),
-            }
-
-    return None
+        item["last_used"] = _now()
+        save_user(user_id, user_data)
+        return {"user_id": user_id, "token_id": token_id, "note": item.get("note", "")}

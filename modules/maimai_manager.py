@@ -4,7 +4,6 @@ import asyncio
 import aiohttp
 import unicodedata
 import re
-from decimal import Decimal, ROUND_DOWN
 from urllib.parse import quote
 from lxml import etree
 import os
@@ -13,13 +12,15 @@ from modules.config_loader import DOMAIN, RATING_DIR
 logger = logging.getLogger(__name__)
 
 
-def _truncate_decimal(value, places):
-    quantum = Decimal("1").scaleb(-places)
-    return Decimal(str(value)).quantize(quantum, rounding=ROUND_DOWN)
+def _mobile_base(version):
+    host = "maimaidx-eng.com" if version == "intl" else "maimaidx.jp"
+    return f"https://{host}/maimai-mobile"
 
 
-def _truncate_float(value, places):
-    return float(_truncate_decimal(value, places))
+def _create_session(cookies=None, limit=10):
+    connector = aiohttp.TCPConnector(ssl=False, limit=limit, ttl_dns_cache=300)
+    return aiohttp.ClientSession(cookies=cookies, connector=connector)
+
 
 # Rating → 本地图片映射
 RATING_TIERS = [
@@ -135,250 +136,6 @@ def extract_onclick_url_from_button(li, keyword):
                 return onclick.split("'")[1]
     return ""
 
-def _get_note_achievement_score(notes, places=7):
-    """Calculate each judgement's per-note achievement value.
-
-    Args:
-        notes: note counts by type.
-        places: decimal places to truncate each value to. Use None to keep raw
-            Decimal values until the final displayed achievement truncation.
-    """
-    tap_num = notes['tap'] if notes['tap'] else 0
-    hold_num = notes['hold'] if notes['hold'] else 0
-    slide_num = notes['slide'] if notes['slide'] else 0
-    touch_num = notes['touch'] if notes['touch'] else 0
-    break_num = notes['break'] if notes['break'] else 0
-
-    tap_base = [500, 400, 250]
-    hold_base = [1000, 800, 500]
-    slide_base = [1500, 1200, 750]
-    touch_base = tap_base
-    break_base = [2500, 2500, 2500, 2000, 1500, 1250, 1000]
-    break_add = [100, 75, 50, 40, 40, 40, 30]
-
-    tap_base_total = tap_num * 500
-    hold_base_total = hold_num * 1000
-    slide_base_total = slide_num * 1500
-    touch_base_total = touch_num * 500
-    break_base_total = break_num * 2500
-    break_add_total = break_num * 100
-
-    total_base = tap_base_total + hold_base_total + slide_base_total + touch_base_total + break_base_total
-
-    if total_base == 0 or break_add_total == 0:
-        return {}
-
-    def maybe_truncate(value):
-        return _truncate_decimal(value, places) if places is not None else value
-
-    def base_score(value):
-        score = Decimal(value) * Decimal(100) / Decimal(total_base)
-        return maybe_truncate(score)
-
-    def break_score(base_value, add_value):
-        score = (
-            (Decimal(base_value) * Decimal(100) / Decimal(total_base))
-            + (Decimal(add_value) / Decimal(break_add_total))
-        )
-        return maybe_truncate(score)
-
-    return {
-        'tap_full': base_score(tap_base[0]),
-        'tap_great': base_score(tap_base[1]),
-        'tap_good': base_score(tap_base[2]),
-        'tap_miss': Decimal("0"),
-
-        'hold_full': base_score(hold_base[0]),
-        'hold_great': base_score(hold_base[1]),
-        'hold_good': base_score(hold_base[2]),
-        'hold_miss': Decimal("0"),
-
-        'slide_full': base_score(slide_base[0]),
-        'slide_great': base_score(slide_base[1]),
-        'slide_good': base_score(slide_base[2]),
-        'slide_miss': Decimal("0"),
-
-        'touch_full': base_score(touch_base[0]),
-        'touch_great': base_score(touch_base[1]),
-        'touch_good': base_score(touch_base[2]),
-        'touch_miss': Decimal("0"),
-
-        'break_critical': break_score(break_base[0], break_add[0]),
-        'break_high_perfect': break_score(break_base[1], break_add[1]),
-        'break_low_perfect': break_score(break_base[2], break_add[2]),
-        'break_high_great': break_score(break_base[3], break_add[3]),
-        'break_middle_great': break_score(break_base[4], break_add[4]),
-        'break_low_great': break_score(break_base[5], break_add[5]),
-        'break_good': break_score(break_base[6], break_add[6]),
-        'break_miss': Decimal("0"),
-    }
-
-
-def get_note_score(notes):
-    """计算每个 note 类型的扣分比例"""
-    achievement_scores = _get_note_achievement_score(notes, places=7)
-    if not achievement_scores:
-        return {}
-
-    def loss(max_key, score_key):
-        return _truncate_float(
-            Decimal(str(achievement_scores[max_key]))
-            - Decimal(str(achievement_scores[score_key])),
-            7,
-        )
-
-    return {
-        'tap_great': loss('tap_full', 'tap_great'),
-        'tap_good': loss('tap_full', 'tap_good'),
-        'tap_miss': loss('tap_full', 'tap_miss'),
-
-        'hold_great': loss('hold_full', 'hold_great'),
-        'hold_good': loss('hold_full', 'hold_good'),
-        'hold_miss': loss('hold_full', 'hold_miss'),
-
-        'slide_great': loss('slide_full', 'slide_great'),
-        'slide_good': loss('slide_full', 'slide_good'),
-        'slide_miss': loss('slide_full', 'slide_miss'),
-
-        'touch_great': loss('touch_full', 'touch_great'),
-        'touch_good': loss('touch_full', 'touch_good'),
-        'touch_miss': loss('touch_full', 'touch_miss'),
-
-        'break_high_perfect': loss('break_critical', 'break_high_perfect'),
-        'break_low_perfect': loss('break_critical', 'break_low_perfect'),
-        'break_high_great': loss('break_critical', 'break_high_great'),
-        'break_middle_great': loss('break_critical', 'break_middle_great'),
-        'break_low_great': loss('break_critical', 'break_low_great'),
-        'break_good': loss('break_critical', 'break_good'),
-        'break_miss': loss('break_critical', 'break_miss'),
-    }
-
-def calc_score_precise(notes, judgements):
-    """根据 note 数量和判定结果累加每个 note 的精确得分值
-
-    Args:
-        notes: 字典，包含各类 note 的数量
-        judgements: 字典，包含各类判定的数量
-
-    Returns:
-        Decimal: precise summed score before final 4-decimal display truncation.
-    """
-    scores = _get_note_achievement_score(notes, places=None)
-    if not scores:
-        return Decimal("0")
-
-    total_score = Decimal("0")
-    for note_type in ('tap', 'hold', 'slide', 'touch'):
-        note_count = int(notes.get(note_type, 0) or 0)
-        great = int(judgements.get(f'{note_type}_great', 0) or 0)
-        good = int(judgements.get(f'{note_type}_good', 0) or 0)
-        miss = int(judgements.get(f'{note_type}_miss', 0) or 0)
-        full = max(0, note_count - great - good - miss)
-        total_score += Decimal(str(scores[f'{note_type}_full'])) * Decimal(full)
-        total_score += Decimal(str(scores[f'{note_type}_great'])) * Decimal(great)
-        total_score += Decimal(str(scores[f'{note_type}_good'])) * Decimal(good)
-
-    break_count = int(notes.get('break', 0) or 0)
-    break_high_perfect = int(judgements.get('break_high_perfect', 0) or 0)
-    break_low_perfect = int(judgements.get('break_low_perfect', 0) or 0)
-    break_high_great = int(judgements.get('break_high_great', 0) or 0)
-    break_middle_great = int(judgements.get('break_middle_great', 0) or 0)
-    break_low_great = int(judgements.get('break_low_great', 0) or 0)
-    break_good = int(judgements.get('break_good', 0) or 0)
-    break_miss = int(judgements.get('break_miss', 0) or 0)
-    break_critical = max(
-        0,
-        break_count
-        - break_high_perfect
-        - break_low_perfect
-        - break_high_great
-        - break_middle_great
-        - break_low_great
-        - break_good
-        - break_miss,
-    )
-    for key, count in (
-        ('break_critical', break_critical),
-        ('break_high_perfect', break_high_perfect),
-        ('break_low_perfect', break_low_perfect),
-        ('break_high_great', break_high_great),
-        ('break_middle_great', break_middle_great),
-        ('break_low_great', break_low_great),
-        ('break_good', break_good),
-    ):
-        total_score += Decimal(str(scores[key])) * Decimal(count)
-
-    return total_score
-
-
-def calc_score(notes, judgements):
-    """根据 note 数量和判定结果计算游戏显示的达成率
-
-    Args:
-        notes: 字典，包含各类 note 的数量
-        judgements: 字典，包含各类判定的数量
-
-    Returns:
-        float: 游戏显示的达成率（精确得分值最终截断到 4 位）
-    """
-    return float(calc_score_precise(notes, judgements).quantize(
-        Decimal("0.0001"),
-        rounding=ROUND_DOWN,
-    ))
-
-
-def calc_judgement_achievement_range(notes, judgement_rows):
-    """Calculate the display achievement range represented by the result rows.
-
-    The table does not expose the two BREAK PERFECT grades or the three BREAK
-    GREAT grades, so those values produce a range instead of one exact score.
-    Range endpoints use maimai's displayed achievement precision.
-    """
-    if not isinstance(judgement_rows, dict):
-        return None
-
-    high_score_judgements = {}
-    low_score_judgements = {}
-    for note_type in ('tap', 'hold', 'slide', 'touch'):
-        row = judgement_rows.get(note_type) or {}
-        for judgement_name in ('great', 'good', 'miss'):
-            try:
-                count = max(0, int(row.get(judgement_name, 0)))
-            except (TypeError, ValueError):
-                return None
-            key = f'{note_type}_{judgement_name}'
-            high_score_judgements[key] = count
-            low_score_judgements[key] = count
-
-    break_row = judgement_rows.get('break') or {}
-    try:
-        break_perfect = max(0, int(break_row.get('perfect', 0)))
-        break_great = max(0, int(break_row.get('great', 0)))
-        break_good = max(0, int(break_row.get('good', 0)))
-        break_miss = max(0, int(break_row.get('miss', 0)))
-    except (TypeError, ValueError):
-        return None
-
-    high_score_judgements.update({
-        'break_high_perfect': break_perfect,
-        'break_high_great': break_great,
-        'break_good': break_good,
-        'break_miss': break_miss,
-    })
-    low_score_judgements.update({
-        'break_low_perfect': break_perfect,
-        'break_low_great': break_great,
-        'break_good': break_good,
-        'break_miss': break_miss,
-    })
-
-    maximum = calc_score(notes, high_score_judgements)
-    minimum = calc_score(notes, low_score_judgements)
-    return {
-        'minimum': min(minimum, maximum),
-        'maximum': max(minimum, maximum),
-    }
-
 # ==================== Maimai 函数 ====================
 
 async def fetch_dom(session: aiohttp.ClientSession, url: str, ver="jp") -> etree._Element:
@@ -431,11 +188,8 @@ async def login_to_maimai(sega_id: str, password: str, ver="jp", aime=0):
     # 随机 User-Agent
     user_agent = _get_random_user_agent()
 
-    # 优化：增加连接池大小
-    connector = aiohttp.TCPConnector(ssl=False, limit=10, ttl_dns_cache=300)
-
     if ver == "intl":
-        async with aiohttp.ClientSession(connector=connector) as session:
+        async with _create_session() as session:
             try:
                 async with session.get(
                     "https://lng-tgk-aime-gw.am-all.net/common_auth/login?site_id=maimaidxex&redirect_url=https://maimaidx-eng.com/maimai-mobile/&back_url=https://maimai.sega.com/"
@@ -475,13 +229,13 @@ async def login_to_maimai(sega_id: str, password: str, ver="jp", aime=0):
                     "Host": "maimaidx-eng.com"
                 },
                 allow_redirects=True
-            ) as final_resp:
+            ):
                 pass
 
             return session.cookie_jar.filter_cookies("https://maimaidx-eng.com")
 
     else:  # jp
-        async with aiohttp.ClientSession(connector=connector) as session:
+        async with _create_session() as session:
             # 偶发抖动重试（SEGA 偶尔返回不含 token 的页面 / 瞬时网络错）
             token = None
             last_status = None
@@ -535,11 +289,11 @@ async def login_to_maimai(sega_id: str, password: str, ver="jp", aime=0):
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
                 allow_redirects=True
-            ) as login_response:
+            ):
                 pass
 
             # 选择 AIME 卡
-            async with session.get(f"https://maimaidx.jp/maimai-mobile/aimeList/submit/?idx={aime}") as aime_choose:
+            async with session.get(f"https://maimaidx.jp/maimai-mobile/aimeList/submit/?idx={aime}"):
                 pass
 
             return session.cookie_jar.filter_cookies("https://maimaidx.jp")
@@ -659,9 +413,7 @@ async def get_aime_candidates(sega_id: str, password: str, ver="jp"):
         }]
 
     user_agent = _get_random_user_agent()
-    connector = aiohttp.TCPConnector(ssl=False, limit=10, ttl_dns_cache=300)
-
-    async with aiohttp.ClientSession(connector=connector) as session:
+    async with _create_session() as session:
         token = None
         for attempt in range(3):
             try:
@@ -735,11 +487,8 @@ async def get_maimai_info(cookies: dict, ver="jp"):
     Returns:
         dict: 用户信息
     """
-    base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
-
-    # 优化：增加连接池大小
-    connector = aiohttp.TCPConnector(ssl=False, limit=20, ttl_dns_cache=300)
-    async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
+    base = _mobile_base(ver)
+    async with _create_session(cookies, limit=20) as session:
         # 并发请求所有页面
         urls = [
             f"{base}/playerData/",
@@ -817,12 +566,10 @@ async def get_maimai_records(cookies: dict, ver="jp"):
     Returns:
         list: 成绩记录列表
     """
-    base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
+    base = _mobile_base(ver)
     difficulty = ['basic', 'advanced', 'expert', 'master', 'remaster']
 
-    # 优化：增加连接池大小
-    connector = aiohttp.TCPConnector(ssl=False, limit=20, ttl_dns_cache=300)
-    async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
+    async with _create_session(cookies, limit=20) as session:
         # 并发请求所有难度
         tasks = []
         for page_num in range(5):
@@ -904,11 +651,8 @@ async def get_recent_records(cookies: dict, ver="jp"):
     Returns:
         list: 最近游戏记录
     """
-    base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
-
-    # 优化：增加连接池大小
-    connector = aiohttp.TCPConnector(ssl=False, limit=10, ttl_dns_cache=300)
-    async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
+    base = _mobile_base(ver)
+    async with _create_session(cookies) as session:
         url = f"{base}/record/"
         dom = await fetch_dom(session, url, ver)
 
@@ -1008,11 +752,9 @@ async def get_single_record(title: str, type: str, cookies: dict, ver="jp"):
             - play_count: 游玩次数
         如果未找到返回空列表
     """
-    base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
-    difficulty = ['basic', 'advanced', 'expert', 'master', 'remaster']
+    base = _mobile_base(ver)
 
-    connector = aiohttp.TCPConnector(ssl=False, limit=10, ttl_dns_cache=300)
-    async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
+    async with _create_session(cookies) as session:
         search_url = f"{base}/record/musicGenre/search/?genre=99&diff=0"
         dom = await fetch_dom(session, search_url, ver)
 
@@ -1192,11 +934,8 @@ async def get_friends_list(cookies: dict, ver="jp"):
     Returns:
         list: 好友列表
     """
-    base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
-
-    # 优化：增加连接池大小
-    connector = aiohttp.TCPConnector(ssl=False, limit=10, ttl_dns_cache=300)
-    async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
+    base = _mobile_base(ver)
+    async with _create_session(cookies) as session:
         tasks = []
         url = f"{base}/friend/"
         tasks.append(fetch_dom(session, url, ver))
@@ -1263,10 +1002,8 @@ async def get_friend_info(cookies: dict, friend_id: str, ver="jp"):
     Returns:
         dict: 好友信息
     """
-    base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
-
-    connector = aiohttp.TCPConnector(ssl=False)
-    async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
+    base = _mobile_base(ver)
+    async with _create_session(cookies) as session:
         # 并发请求所有页面
         url = f"{base}/friend/search/searchUser/?friendCode={friend_id}"
         dom = await fetch_dom(session, url, ver)
@@ -1351,11 +1088,10 @@ async def get_friend_records(cookies: dict, friend_id: str, ver="jp"):
     Returns:
         list or str: 好友成绩列表，维护时返回 "MAINTENANCE"
     """
-    base = "https://maimaidx-eng.com/maimai-mobile" if ver == "intl" else "https://maimaidx.jp/maimai-mobile"
+    base = _mobile_base(ver)
     difficulty = ['basic', 'advanced', 'expert', 'master', 'remaster']
 
-    connector = aiohttp.TCPConnector(ssl=False)
-    async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
+    async with _create_session(cookies) as session:
         # 并发请求所有难度
         tasks = []
         for diff in range(5):
@@ -1449,8 +1185,7 @@ async def _fetch_stores_for_ver(lat, lng, ver):
     version_num = "98" if ver == "intl" else "96"
     url = f"https://location.am-all.net/alm/location?gm={version_num}&lat={lat}&lng={lng}"
 
-    connector = aiohttp.TCPConnector(ssl=False)
-    async with aiohttp.ClientSession(connector=connector) as session:
+    async with _create_session() as session:
         dom = await fetch_dom(session, url, ver)
 
         if dom is None:

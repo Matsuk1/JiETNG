@@ -97,6 +97,7 @@ from modules.tip_ad_manager import (
     get_tip_ad_by_id
 )
 from modules.maimai_manager import *
+from modules.score_calculator import get_note_score
 from modules.dxdata_manager import update_dxdata_with_comparison, start_weekly_update_scheduler as start_dxdata_weekly_update
 from modules.record_manager import *
 from modules.devtoken_manager import (
@@ -129,6 +130,7 @@ from modules.message_manager import *
 from modules.image_uploader import smart_upload, _start_periodic_cleanup
 from modules.export_manager import (
     export_records,
+    shutdown_periodic_cleanup as shutdown_export_cleanup,
     start_periodic_cleanup as start_export_cleanup,
     build_payload as _export_build_payload,
     to_json_bytes as _export_to_json,
@@ -158,11 +160,17 @@ from modules.command_parsers import (
     parse_paginated_keyword,
     parse_plate_query,
 )
+from modules.dbpool_manager import close_pool
 from modules.image_manager import *
 
 # System utilities
 from modules.system_checker import run_system_check, clean_unbound_users
-from modules.event_tracker import track_event, get_business_stats, get_hourly_stats
+from modules.event_tracker import (
+    get_business_stats,
+    get_hourly_stats,
+    shutdown_event_tracker,
+    track_event,
+)
 from modules.rate_limiter import check_rate_limit
 from modules.line_messenger import smart_reply, smart_push, notify_admins_error, notify_on_error
 from modules.rich_menu_manager import (
@@ -8893,8 +8901,11 @@ def _shutdown_runtime():
         _runtime_shutdown = True
 
     save_dev_tokens(force=True)
+    shutdown_event_tracker()
+    shutdown_export_cleanup()
     memory_manager.stop()
-    logger.info("[System] Memory manager stopped")
+    close_pool()
+    logger.info("[System] Runtime resources stopped")
 
 
 def start_runtime():

@@ -11,22 +11,44 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from modules.dbpool_manager import database_cursor
 from modules.maimai_manager import get_rating_image_path
 from modules.record_manager import write_record
 from modules.user_db import get_user, save_user
 
 _RANK_TO_ICON = {
-    "SSS+": "sssp", "SSS": "sss",
-    "SS+": "ssp", "SS": "ss",
-    "S+": "sp", "S": "s",
-    "AAA": "aaa", "AA": "aa", "A": "a",
-    "BBB": "bbb", "BB": "bb", "B": "b",
-    "C": "c", "D": "d",
+    "SSS+": "sssp",
+    "SSS": "sss",
+    "SS+": "ssp",
+    "SS": "ss",
+    "S+": "sp",
+    "S": "s",
+    "AAA": "aaa",
+    "AA": "aa",
+    "A": "a",
+    "BBB": "bbb",
+    "BB": "bb",
+    "B": "b",
+    "C": "c",
+    "D": "d",
 }
 
 _COMBO_TO_ICON = {"AP+": "app", "AP": "ap", "FC+": "fcp", "FC": "fc"}
-_SYNC_TO_ICON = {"FDX+": "fdxp", "FDX": "fdx", "FS+": "fsp", "FS": "fs", "SYNC": "sync", "Sync": "sync"}
-_TYPE_TO_INTERNAL = {"DX": "dx", "Standard": "std", "STD": "std", "Utage": "utage", "UTAGE": "utage"}
+_SYNC_TO_ICON = {
+    "FDX+": "fdxp",
+    "FDX": "fdx",
+    "FS+": "fsp",
+    "FS": "fs",
+    "SYNC": "sync",
+    "Sync": "sync",
+}
+_TYPE_TO_INTERNAL = {
+    "DX": "dx",
+    "Standard": "std",
+    "STD": "std",
+    "Utage": "utage",
+    "UTAGE": "utage",
+}
 _DIFF_TO_INTERNAL = {
     "Basic": "basic",
     "Advanced": "advanced",
@@ -102,17 +124,23 @@ def _transform_profile(profile: dict) -> dict:
         "name": profile.get("name") or "Imported",
         "rating": rating,
         "rating_block_path": get_rating_image_path(rating_int),
-        "trophy_content": profile.get("trophy") or profile.get("trophy_content") or "N/A",
+        "trophy_content": profile.get("trophy")
+        or profile.get("trophy_content")
+        or "N/A",
         "trophy_url": profile.get("trophy_url") or "N/A",
         "icon_url": profile.get("icon_url") or "N/A",
         "nameplate_url": profile.get("nameplate_url") or "N/A",
         "class_rank_url": profile.get("class_rank_url") or "N/A",
-        "cource_rank_url": profile.get("course_rank_url") or profile.get("cource_rank_url") or "N/A",
+        "cource_rank_url": profile.get("course_rank_url")
+        or profile.get("cource_rank_url")
+        or "N/A",
     }
     return {k: v for k, v in out.items() if v is not None}
 
 
-def import_processed_payload(user_id: str, payload: dict, source: str = "api_import") -> dict:
+def import_processed_payload(
+    user_id: str, payload: dict, source: str = "api_import"
+) -> dict:
     if not isinstance(payload, dict):
         raise ImportValidationError("request body must be a JSON object")
 
@@ -137,15 +165,21 @@ def import_processed_payload(user_id: str, payload: dict, source: str = "api_imp
     if has_best and has_recent and not best_source and not recent_source:
         raise ImportValidationError("payload contains no records")
 
-    best = [_transform_processed_record(item) for item in best_source] if has_best else []
-    recent = [_transform_processed_record(item) for item in recent_source] if has_recent else []
+    best = (
+        [_transform_processed_record(item) for item in best_source] if has_best else []
+    )
+    recent = (
+        [_transform_processed_record(item) for item in recent_source]
+        if has_recent
+        else []
+    )
 
-    if has_best:
-        write_record(user_id, best, recent=False)
-    if has_recent:
-        write_record(user_id, recent, recent=True)
-
-    version = str(payload.get("maimai_version") or payload.get("version") or user_data.get("version") or "jp").lower()
+    version = str(
+        payload.get("maimai_version")
+        or payload.get("version")
+        or user_data.get("version")
+        or "jp"
+    ).lower()
     if version not in ("jp", "intl"):
         version = "jp"
 
@@ -169,7 +203,12 @@ def import_processed_payload(user_id: str, payload: dict, source: str = "api_imp
         "best_count": len(best) if has_best else None,
         "recent_count": len(recent) if has_recent else None,
     }
-    save_user(user_id, user_data)
+    with database_cursor(write=True) as (_, cursor):
+        if has_best:
+            write_record(user_id, best, recent=False, cursor=cursor)
+        if has_recent:
+            write_record(user_id, recent, recent=True, cursor=cursor)
+        save_user(user_id, user_data, cursor=cursor, raise_on_error=True)
 
     return {
         "best_count": len(best) if has_best else None,
