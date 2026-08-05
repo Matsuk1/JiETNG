@@ -294,7 +294,13 @@ from modules.progress_parser import (
     parse_level_rank_progress as _parse_level_rank_progress_text,
     resolve_progress_category as _resolve_progress_category,
 )
-from modules.task_runtime import discard_queued, execute_task, queue_worker, track_queued
+from modules.task_runtime import (
+    TaskOutcome,
+    discard_queued,
+    execute_task,
+    queue_worker,
+    track_queued,
+)
 from modules.song_api import song_api
 from modules.image_api import configure_image_api, image_api
 from modules.record_transfer_api import record_transfer_api
@@ -384,6 +390,8 @@ SERVICE_START_TIME = datetime.now()
 # 使用字典存储统计数据,避免 global 变量问题
 STATS = {
     'tasks_processed': 0,
+    'tasks_failed': 0,
+    'tasks_timed_out': 0,
 }
 stats_lock = threading.Lock()  # 保护统计数据的线程锁
 
@@ -422,12 +430,18 @@ def _handle_task_error(func, error, context, traceback_text):
             pass
 
 
-def _complete_task(func):
+def _complete_task(func, outcome: TaskOutcome):
     with stats_lock:
         STATS["tasks_processed"] += 1
+        if outcome.status == "failed":
+            STATS["tasks_failed"] += 1
+        elif outcome.status == "timed_out":
+            STATS["tasks_timed_out"] += 1
         logger.info(
-            "[Task] Completed: function=%s, total=%s",
+            "[Task] Finished: function=%s, status=%s, duration=%.3fs, total=%s",
             func.__name__,
+            outcome.status,
+            outcome.duration,
             STATS["tasks_processed"],
         )
 
@@ -3888,18 +3902,17 @@ def _bump_stats():
         STATS['tasks_processed'] += 1
 
 
-def _run_sync_handler(cmd, ctx):
-    """同步执行 sync/image handler 并 reply（image worker 也会调到这里）"""
-    # 只为真正的 sync queue 命令打点；image queue 已在 _image_worker_task 里打过 image_gen
+def _run_sync_handler(cmd, ctx, *, count_completion=True):
     if cmd.queue == QUEUE_SYNC:
         try:
             track_event('sync_cmd', user_id=ctx.user_id,
                         metadata={'command': cmd.name, 'source': 'line'})
-        except Exception as e:
-            logger.debug(f"[EventTracker] sync_cmd track skipped: {e}")
+        except Exception as exc:
+            logger.debug("[EventTracker] sync_cmd tracking skipped: %s", exc)
     reply = cmd.handler(ctx)
     if reply is not None:
-        _bump_stats()
+        if count_completion:
+            _bump_stats()
         smart_reply(
             ctx.user_id,
             ctx.reply_token,
@@ -3911,13 +3924,12 @@ def _run_sync_handler(cmd, ctx):
 
 
 def _image_worker_task(cmd, ctx):
-    """image worker 真正执行的入口：track + 调 handler + reply"""
     try:
         track_event('image_gen', user_id=ctx.user_id,
                     metadata={'command': cmd.name, 'source': 'line'})
-    except Exception as e:
-        logger.debug(f"[EventTracker] image_gen track skipped: {e}")
-    _run_sync_handler(cmd, ctx)
+    except Exception as exc:
+        logger.debug("[EventTracker] image_gen tracking skipped: %s", exc)
+    _run_sync_handler(cmd, ctx, count_completion=False)
 
 
 def _enqueue_task(cmd, ctx, target_queue, lane_name, payload):
@@ -4648,7 +4660,7 @@ def _build_admin_overview_stats(force_refresh=False):
     process_memory_mb = round(process.memory_info().rss / (1024**2), 1)
 
     with stats_lock:
-        total_tasks = STATS['tasks_processed']
+        task_stats = dict(STATS)
 
     stats = {
         'total_users': total_users,
@@ -4674,7 +4686,9 @@ def _build_admin_overview_stats(force_refresh=False):
         'web_queue_size': webtask_queue.qsize(),
         'max_queue_size': MAX_QUEUE_SIZE,
         'thread_count': threading.active_count(),
-        'total_tasks_processed': total_tasks,
+        'total_tasks_processed': task_stats['tasks_processed'],
+        'total_tasks_failed': task_stats['tasks_failed'],
+        'total_tasks_timed_out': task_stats['tasks_timed_out'],
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     stats.update(get_business_stats(force_refresh=force_refresh))
