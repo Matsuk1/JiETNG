@@ -63,7 +63,6 @@ from modules.message_texts import (
     nearby_stores_alt_text,
     no_matching_data_text,
     notice_header_text,
-    perm_request_notification_alt_text,
     plate_error_text,
     quick_reply_labels,
     ranking_alt_text,
@@ -967,10 +966,6 @@ mention_record_error = _message_factory(mention_record_error_text)
 cannot_do_for_others = _message_factory(cannot_do_for_others_text)
 no_matching_data = _message_factory(no_matching_data_text)
 mention_no_matching_data = _message_factory(mention_no_matching_data_text)
-
-def get_perm_request_notification_alt_text(count, user_id=None):
-    """获取权限请求通知的 alt text"""
-    return get_multilingual_text(perm_request_notification_alt_text, user_id).format(count=count)
 
 def level_record_not_found(level, page, user_id=None):
     """生成指定等级记录未找到消息"""
