@@ -5,6 +5,7 @@ from io import BytesIO
 from flask import Blueprint, jsonify, request, send_file
 
 from modules.api_auth import require_dev_token
+from modules.i18n import normalize_language
 from modules.rate_limiter import check_rate_limit
 from modules.record_generator import generate_score_recognition_picture
 from modules.score_recognition_api import ScoreRecognitionResultError, build_score_recognition_response
@@ -41,6 +42,10 @@ def create_score_api(max_image_bytes):
         version = str(request.form.get("ver") or request.args.get("ver") or "jp").strip().lower()
         if version not in {"jp", "intl"}:
             return error("Invalid parameter", "Parameter 'ver' must be 'jp' or 'intl'", 400)
+        language = normalize_language(
+            request.form.get("language") or request.args.get("language"),
+            default="ja" if version == "jp" else "en",
+        )
 
         uploaded = request.files.get("image")
         if uploaded is None:
@@ -57,7 +62,11 @@ def create_score_api(max_image_bytes):
             if image_output:
                 selected = expand_score_recognition_calc_variants(result)[0]
                 public = build_score_recognition_response(selected)
-                image = generate_score_recognition_picture(selected, ver=version)
+                image = generate_score_recognition_picture(
+                    selected,
+                    ver=version,
+                    language=language,
+                )
                 try:
                     buffer = BytesIO()
                     image.save(buffer, "PNG")
