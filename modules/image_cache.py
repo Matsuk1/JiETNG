@@ -1,172 +1,162 @@
-"""
-图片缓存和下载工具模块
-统一管理图片的下载、缓存和加载
+"""Download and cache image assets used by generated cards."""
 
-使用全局共享 session：requests.Session 在常规使用方式（多线程并发 GET）
-下是线程安全的，比之前每线程一个 session 更省连接池/内存，
-避免长生命周期 worker 线程导致 session 永不释放。
-"""
-import os
-import requests
 import logging
-from PIL import Image
+import os
+import tempfile
 from io import BytesIO
+
+import requests
+from PIL import Image, UnidentifiedImageError
 from requests.adapters import HTTPAdapter
+
 from modules.config_loader import COVERS_DIR
 
 
 logger = logging.getLogger(__name__)
+DOWNLOAD_ATTEMPTS = 3
 
 
 def _build_session() -> requests.Session:
-    s = requests.Session()
-    s.verify = False
-    s.headers.update({
+    session = requests.Session()
+    session.verify = False
+    session.headers.update({
         "User-Agent": "Mozilla/5.0",
         "Referer": "https://maimaidx.jp",
     })
-    # 单 session 服务全部 worker，提高连接池上限
     adapter = HTTPAdapter(pool_connections=20, pool_maxsize=50)
-    s.mount("http://", adapter)
-    s.mount("https://", adapter)
-    return s
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
 
 
 _SESSION = _build_session()
 
 
 def _get_session():
-    """获取全局共享 session（线程安全）。"""
     return _SESSION
 
 
-def download_and_cache_icon(url, save_path):
-    """
-    下载图标并缓存到本地
+def _decode_rgba(content):
+    with Image.open(BytesIO(content)) as image:
+        return image.convert("RGBA")
 
-    Args:
-        url: 图标URL
-        save_path: 保存路径
 
-    Returns:
-        PIL.Image 或 None
-    """
+def _load_rgba(path):
+    with Image.open(path) as image:
+        return image.convert("RGBA")
+
+
+def _write_cache(path, content):
+    directory = os.path.dirname(path)
+    os.makedirs(directory, exist_ok=True)
+    temp_path = None
     try:
-        if os.path.exists(save_path):
-            with Image.open(save_path) as img:
-                return img.convert("RGBA")
+        with tempfile.NamedTemporaryFile(dir=directory, delete=False) as temp_file:
+            temp_file.write(content)
+            temp_path = temp_file.name
+        os.replace(temp_path, path)
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
 
-        session = _get_session()
-        response = session.get(url, timeout=10)
-        response.raise_for_status()
 
-        with open(save_path, "wb") as f:
-            f.write(response.content)
+def _download_rgba(url, *, timeout, label):
+    for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+        try:
+            response = _get_session().get(url, timeout=timeout)
+            response.raise_for_status()
+            return _decode_rgba(response.content), response.content
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            if status is not None and status < 500:
+                logger.warning("[ImageCache] Download rejected: asset=%s, status=%s", label, status)
+                return None, None
+            error = exc
+        except (requests.ConnectionError, requests.Timeout) as exc:
+            error = exc
+        except UnidentifiedImageError:
+            logger.warning("[ImageCache] Invalid image response: asset=%s", label)
+            return None, None
 
-        with Image.open(save_path) as img:
-            return img.convert("RGBA")
+        if attempt < DOWNLOAD_ATTEMPTS:
+            logger.warning(
+                "[ImageCache] Download retry: asset=%s, attempt=%s/%s, error=%s",
+                label,
+                attempt,
+                DOWNLOAD_ATTEMPTS,
+                error,
+            )
+        else:
+            logger.error("[ImageCache] Download failed: asset=%s, error=%s", label, error)
+    return None, None
 
-    except Exception as e:
-        logger.error(f"[ImageCache] ✗ Download failed: url={url}, error={e}")
+
+def _cached_or_downloaded_image(url, path, *, timeout, label):
+    if path and os.path.isfile(path):
+        try:
+            return _load_rgba(path)
+        except (OSError, UnidentifiedImageError) as exc:
+            logger.warning("[ImageCache] Replacing invalid cache: path=%s, error=%s", path, exc)
+
+    if not url:
+        return None
+    image, content = _download_rgba(url, timeout=timeout, label=label)
+    if image is None:
+        return None
+    if path:
+        try:
+            _write_cache(path, content)
+        except OSError:
+            logger.exception("[ImageCache] Failed to cache asset: path=%s", path)
+    return image
+
+
+def download_and_cache_icon(url, save_path):
+    try:
+        return _cached_or_downloaded_image(
+            url,
+            save_path,
+            timeout=10,
+            label=os.path.basename(save_path),
+        )
+    except (OSError, requests.RequestException) as exc:
+        logger.error("[ImageCache] Icon unavailable: url=%s, error=%s", url, exc)
         return None
 
 
-def paste_icon_optimized(img, song_data, key, size, position, save_dir, url_func):
-    """
-    优化版的贴图标函数
-
-    Args:
-        img: 目标图像
-        song_data: 歌曲数据字典
-        key: 数据中的键名
-        size: 图标尺寸 (width, height)
-        position: 粘贴位置 (x, y)
-        save_dir: 缓存目录
-        url_func: URL生成函数
-    """
-    if key not in song_data or not song_data[key]:
+def paste_icon_optimized(image, song_data, key, size, position, save_dir, url_func):
+    value = song_data.get(key)
+    if not value:
         return
 
     try:
-        file_path = os.path.join(save_dir, f"{song_data[key]}.png")
-        url = url_func(song_data[key])
-
-        icon_img = download_and_cache_icon(url, file_path)
-        if icon_img:
-            icon_img = icon_img.convert("RGBA")
-            icon_img = icon_img.resize(size, Image.Resampling.LANCZOS)
-            img.alpha_composite(icon_img, position)
-
-    except Exception as e:
-        logger.error(f"[ImageCache] ✗ Failed to paste icon: key={key}, error={e}")
+        path = os.path.join(save_dir, f"{value}.png")
+        icon = download_and_cache_icon(url_func(value), path)
+        if icon:
+            icon = icon.resize(size, Image.Resampling.LANCZOS)
+            image.alpha_composite(icon, position)
+    except (OSError, ValueError) as exc:
+        logger.error("[ImageCache] Failed to paste icon: key=%s, error=%s", key, exc)
 
 
 def get_cover_image(cover_url, cover_name=None):
-    """
-    获取封面图片（优先从本地加载，不存在则下载）
-
-    Args:
-        cover_url: 封面图片 URL（不带扩展名）
-        cover_name: 封面文件名（hash，不带扩展名）
-
-    Returns:
-        PIL.Image 或 None
-    """
+    path = None
+    if cover_name:
+        path = os.path.join(COVERS_DIR, os.path.basename(cover_name))
     try:
-        covers_dir = COVERS_DIR
-
-        local_path = covers_dir
-        if cover_name:
-            local_path = os.path.join(covers_dir, cover_name)
-
-        # 1. 首先尝试从本地加载
-        if os.path.exists(local_path) and cover_name:
-            try:
-                with Image.open(local_path) as img:
-                    return img.convert("RGBA")
-            except Exception as e:
-                logger.warning(f"[ImageCache] ⚠ Local file corrupted, re-downloading: path={local_path}, error={e}")
-                # 如果本地文件损坏，删除它并重新下载
-                os.remove(local_path)
-
-        # 2. 本地不存在，从 URL 下载
-        if not cover_url:
-            logger.warning(f"[ImageCache] ⚠ No cover URL provided: cover_name={cover_name}")
-            return None
-
-        session = _get_session()
-
-        download_url = cover_url
-
-        # 重试机制：最多尝试 3 次
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                response = session.get(download_url, timeout=30)
-                response.raise_for_status()
-
-                if cover_name:
-                    with open(local_path, "wb") as f:
-                        f.write(response.content)
-
-                with Image.open(BytesIO(response.content)) as img:
-                    return img.convert("RGBA")
-
-            except requests.exceptions.Timeout:
-                if attempt < max_retries - 1:
-                    logger.warning(f"[ImageCache] ⚠ Download timeout, retrying: cover_name={cover_name}, attempt={attempt + 1}/{max_retries}")
-                    continue
-                else:
-                    logger.error(f"[ImageCache] ✗ Download timeout after retries: cover_name={cover_name}, attempts={max_retries}")
-                    return None
-            except requests.exceptions.HTTPError as e:
-                # 403/404 等 HTTP 错误不重试
-                if e.response.status_code in [403, 404]:
-                    logger.warning(f"[ImageCache] ⚠ HTTP error (no retry): cover_name={cover_name}, status={e.response.status_code}")
-                    return None
-                logger.error(f"[ImageCache] ✗ HTTP error: cover_name={cover_name}, error={e}")
-                return None
-
-    except Exception as e:
-        logger.error(f"[ImageCache] ✗ Failed to download cover: cover_name={cover_name}, error={e}")
+        image = _cached_or_downloaded_image(
+            cover_url,
+            path,
+            timeout=30,
+            label=cover_name or cover_url,
+        )
+        if image is None and not cover_url:
+            logger.warning("[ImageCache] Missing cover URL: cover_name=%s", cover_name)
+        return image
+    except (OSError, requests.RequestException) as exc:
+        logger.error(
+            "[ImageCache] Cover unavailable: cover_name=%s, error=%s",
+            cover_name,
+            exc,
+        )
         return None
