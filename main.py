@@ -1294,6 +1294,10 @@ def _generate_session_image_from_payload(data: dict):
     ver = data.get("version", "jp")
     if ver not in ("jp", "intl"):
         raise ValueError("Invalid version")
+    language = normalize_language(
+        data.get("language"),
+        default="ja" if ver == "jp" else "en",
+    )
 
     cmd_type = str(data.get("cmd_type", data.get("type", "best50"))).strip().lower()
     valid_cmd_types = {"best50", "best40", "best35", "best15", "allb35", "allb50", "apb50", "fdxb50", "idlb50", "sun50"}
@@ -1332,7 +1336,14 @@ def _generate_session_image_from_payload(data: dict):
     )
 
     profile_img = generate_profile(user_info)
-    records_img = generate_records_picture(up_songs, down_songs, title=cmd_type.upper(), ver=ver, details=details)
+    records_img = generate_records_picture(
+        up_songs,
+        down_songs,
+        title=cmd_type.upper(),
+        ver=ver,
+        details=details,
+        language=language,
+    )
     result = compose_images([profile_img, records_img], timezone_offset=timezone_offset)
     filename = f"jietng_{ver}_{cmd_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
     return result, filename
@@ -1366,6 +1377,10 @@ def demo_page():
     segaid = request.form.get("segaid", "").strip()
     password = request.form.get("password", "").strip()
     ver = request.form.get("ver", "jp")
+    language = normalize_language(
+        request.form.get("language"),
+        default="ja" if ver == "jp" else "en",
+    )
     cmd_type = request.form.get("cmd_type", "best50").strip()
     params = request.form.get("params", "").strip()
     try:
@@ -1404,7 +1419,14 @@ def demo_page():
         if not up_songs and not down_songs:
             raise ValueError("No records matched the selected filters.")
         profile_img = generate_profile(user_info)
-        records_img = generate_records_picture(up_songs, down_songs, title=title, ver=ver, details=details)
+        records_img = generate_records_picture(
+            up_songs,
+            down_songs,
+            title=title,
+            ver=ver,
+            details=details,
+            language=language,
+        )
         if not records_img:
             raise ValueError("No records matched the selected filters.")
         return compose_images([profile_img, records_img], timezone_offset=tz)
@@ -2771,7 +2793,8 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
         rank_display,
         stats,
         group_by="internal_level" if is_level_target else "level",
-        show_progress_suffix=is_level_target
+        show_progress_suffix=is_level_target,
+        language=get_user_language(user_id),
     )
 
     # 清理 target_data 中的封面图片对象
@@ -3223,7 +3246,14 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
     if type == "unknown":
         type = "未だ知らず"
 
-    record_img = generate_records_picture(up_songs, down_songs, type.upper(), ver, details)
+    record_img = generate_records_picture(
+        up_songs,
+        down_songs,
+        type.upper(),
+        ver,
+        details,
+        language=get_user_language(user_id),
+    )
 
     # 获取用户信息并创建用户信息图片
     user_info = _id_use_data.get('personal_info')
@@ -3297,7 +3327,14 @@ async def generate_friend_record(user_id, friend_code, type="best50", cmd="", ve
         return song_error(user_id)
 
     user_info_img = generate_profile(friend_info)
-    rcd_img = generate_records_picture(up_songs, down_songs, type.upper(), ver, details)
+    rcd_img = generate_records_picture(
+        up_songs,
+        down_songs,
+        type.upper(),
+        ver,
+        details,
+        language=get_user_language(user_id),
+    )
     user_tz = get_user_timezone(user_id)
     img = compose_images([user_info_img, rcd_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
 
@@ -3345,7 +3382,13 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
 
     title = f"Lv {level}"
 
-    record_img = generate_records_picture(up_level_list, down_level_list, title.replace("+", "⁺"), ver)
+    record_img = generate_records_picture(
+        up_level_list,
+        down_level_list,
+        title.replace("+", "⁺"),
+        ver,
+        language=get_user_language(user_id),
+    )
 
     # 获取用户信息并创建用户信息图片
     user_info = _id_use_data.get('personal_info')
@@ -3669,6 +3712,7 @@ def _handle_fix_record_command(event, command_text: str) -> bool:
                 ver=ver,
                 timezone_offset=get_user_timezone(user_id),
                 bg_filter=_get_user_bg_filter(user_id),
+                language=get_user_language(user_id),
             )
             try:
                 original_url, preview_url = asyncio.run(smart_upload(result_img, user_id))
@@ -3755,6 +3799,7 @@ def _score_recognition_queue_task(event, command: str, quoted_message_id: str, f
                         ver=ver,
                         timezone_offset=get_user_timezone(user_id),
                         bg_filter=_get_user_bg_filter(user_id),
+                        language=get_user_language(user_id),
                     )
                     try:
                         original_url, preview_url = asyncio.run(smart_upload(result_img, user_id))
