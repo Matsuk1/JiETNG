@@ -235,6 +235,7 @@ from modules.song_api import song_api
 from modules.image_api import configure_image_api, image_api
 from modules.record_transfer_api import record_transfer_api
 from modules.developer_api import cleanup_api_sync_locks, configure_developer_api, developer_api
+from modules.score_api import create_score_api
 from modules.mention_parser import (
     clean_message_text,
     has_non_bot_mention,
@@ -279,6 +280,9 @@ csrf.exempt(record_transfer_api)
 app.register_blueprint(record_transfer_api)
 csrf.exempt(developer_api)
 app.register_blueprint(developer_api)
+score_api = create_score_api(SCORE_RECOGNITION_API_MAX_IMAGE_BYTES)
+csrf.exempt(score_api)
+app.register_blueprint(score_api)
 
 # 配置安全响应头
 @app.after_request
@@ -6097,157 +6101,6 @@ def admin_delete_devtoken(token_id):
     save_dev_tokens(tokens, force=True)
     return jsonify({'success': True})
 
-
-# ==================== Score Recognition API ====================
-
-@app.route("/api/v2/score-recognition", methods=["POST"])
-@app.route("/api/v2/score-recognition/image", methods=["POST"])
-@csrf.exempt
-@require_dev_token
-def api_v2_score_recognition():
-    """Recognize a complete maimai result photo as JSON or a PNG card."""
-    token_info = request.token_info
-    token_id = token_info["token_id"]
-    image_output = request.path.rstrip("/").endswith("/image")
-    if check_rate_limit(token_id, "api_score_recognition"):
-        return jsonify({
-            "error": "Rate limited",
-            "message": "Too many score recognition requests. Please retry later.",
-        }), 429
-
-    multipart_overhead = 1024 * 1024
-    if (
-        request.content_length is not None
-        and request.content_length
-        > SCORE_RECOGNITION_API_MAX_IMAGE_BYTES + multipart_overhead
-    ):
-        return jsonify({
-            "error": "Payload too large",
-            "message": (
-                "Image exceeds the configured upload limit of "
-                f"{SCORE_RECOGNITION_API_MAX_IMAGE_BYTES} bytes"
-            ),
-        }), 413
-
-    ver = str(request.form.get("ver") or request.args.get("ver") or "jp").strip().lower()
-    if ver not in {"jp", "intl"}:
-        return jsonify({
-            "error": "Invalid parameter",
-            "message": "Parameter 'ver' must be 'jp' or 'intl'",
-        }), 400
-
-    uploaded = request.files.get("image")
-    if uploaded is None:
-        return jsonify({
-            "error": "Missing parameter",
-            "message": "Multipart image field 'image' is required",
-        }), 400
-
-    image_bytes = uploaded.stream.read(SCORE_RECOGNITION_API_MAX_IMAGE_BYTES + 1)
-    if not image_bytes:
-        return jsonify({
-            "error": "Invalid image",
-            "message": "Uploaded image is empty",
-        }), 400
-    if len(image_bytes) > SCORE_RECOGNITION_API_MAX_IMAGE_BYTES:
-        return jsonify({
-            "error": "Payload too large",
-            "message": (
-                "Image exceeds the configured upload limit of "
-                f"{SCORE_RECOGNITION_API_MAX_IMAGE_BYTES} bytes"
-            ),
-        }), 413
-
-    started_at = time.perf_counter()
-    try:
-        result = recognize_score_image_bytes(image_bytes)
-        result = validate_recognized_judgement(result, ver=ver)
-        if image_output:
-            variants = expand_score_recognition_calc_variants(result)
-            selected_result = variants[0]
-            public_result = build_score_recognition_response(selected_result)
-            result_img = generate_score_recognition_picture(
-                selected_result,
-                ver=ver,
-            )
-            try:
-                buf = BytesIO()
-                result_img.save(buf, "PNG")
-                buf.seek(0)
-            finally:
-                result_img.close()
-
-            validation = selected_result.get("validation") or {}
-            candidate_count = max(
-                1,
-                int(validation.get("calc_completion_candidate_count", 0) or 0),
-            )
-            song_id = str(public_result["song"]["id"])
-            response = send_file(
-                buf,
-                mimetype="image/png",
-                as_attachment=False,
-                download_name=f"jietng-ocr-{song_id}.png",
-            )
-            response.headers["X-JiETNG-OCR-Candidate-Index"] = "1"
-            response.headers["X-JiETNG-OCR-Candidate-Count"] = str(candidate_count)
-            logger.info(
-                "[API] Score recognition image completed: token_id=%s ver=%s "
-                "song_id=%s candidates=%s elapsed=%.3fs",
-                token_id,
-                ver,
-                song_id,
-                candidate_count,
-                time.perf_counter() - started_at,
-            )
-            return response
-
-        response = build_score_recognition_response(result)
-        logger.info(
-            "[API] Score recognition completed: token_id=%s ver=%s song_id=%s elapsed=%.3fs",
-            token_id,
-            ver,
-            response["song"]["id"],
-            time.perf_counter() - started_at,
-        )
-        return jsonify(response)
-    except UnsupportedScoreImageError as exc:
-        return jsonify({
-            "error": "Unsupported media type",
-            "message": str(exc),
-        }), 415
-    except InvalidScoreImageError as exc:
-        return jsonify({
-            "error": "Invalid image",
-            "message": str(exc),
-        }), 400
-    except (ScoreRecognitionResultError, ValueError) as exc:
-        logger.info(
-            "[API] Score recognition rejected: token_id=%s ver=%s reason=%s elapsed=%.3fs",
-            token_id,
-            ver,
-            exc,
-            time.perf_counter() - started_at,
-        )
-        return jsonify({
-            "error": "Recognition failed",
-            "message": "The image could not be recognized as a complete score result.",
-        }), 422
-    except Exception:
-        logger.error(
-            "[API] Score recognition failed: token_id=%s ver=%s elapsed=%.3fs",
-            token_id,
-            ver,
-            time.perf_counter() - started_at,
-            exc_info=True,
-        )
-        return jsonify({
-            "error": "Internal server error",
-            "message": "Score recognition failed due to an internal error.",
-        }), 500
-
-
-# ==================== API v2 ====================
 
 configure_developer_api(
     configuration=configuration,
