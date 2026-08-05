@@ -13,6 +13,17 @@ from modules.i18n import (
 from modules.user_db import get_user
 from modules.user_manager import get_user_timezone
 from modules.tip_ad_manager import get_random_tip, get_random_ad
+from modules.score_recognition_presenter import (
+    COMBO_ICON_FILES,
+    JUDGEMENT_ROWS,
+    build_fix_command,
+    calc_status,
+    combo_status,
+    difficulty_presentation,
+    format_loss_percentage,
+    nonnegative_count,
+    score_rank,
+)
 from modules.message_texts import (
     access_error_text,
     calc_button_text,
@@ -1324,62 +1335,8 @@ def _generate_score_recognition_single_flex(result, user_id=None):
     achievement = parsed.get("achievement")
     achievement_text = f"{achievement:.4f}%" if isinstance(achievement, (int, float)) else "-"
 
-    def combo_status():
-        required_rows = ("tap", "hold", "slide", "touch", "break")
-        if any(not isinstance(judgement.get(row_name), dict) for row_name in required_rows):
-            return None
-        totals = {"great": 0, "good": 0, "miss": 0}
-        try:
-            for row_name in required_rows:
-                row = judgement[row_name]
-                for field_name in totals:
-                    totals[field_name] += max(0, int(row.get(field_name, 0) or 0))
-        except (TypeError, ValueError):
-            return None
-        if isinstance(achievement, (int, float)) and achievement >= 100.99995:
-            return "app"
-        if totals["great"] == 0 and totals["good"] == 0 and totals["miss"] == 0:
-            return "ap"
-        if totals["good"] == 0 and totals["miss"] == 0:
-            return "fcp"
-        if totals["miss"] == 0:
-            return "fc"
-        return "dummy"
-
-    combo_icon = combo_status()
-    combo_icon_files = {
-        "fc": "fc.png",
-        "fcp": "fcplus.png",
-        "ap": "ap.png",
-        "app": "applus.png",
-        "dummy": "fc_dummy.png",
-    }
-
-    def score_rank_icon():
-        if not isinstance(achievement, (int, float)):
-            return None
-        thresholds = (
-            (100.5, "sssp"),
-            (100.0, "sss"),
-            (99.5, "ssp"),
-            (99.0, "ss"),
-            (98.0, "sp"),
-            (97.0, "s"),
-            (94.0, "aaa"),
-            (90.0, "aa"),
-            (80.0, "a"),
-            (75.0, "bbb"),
-            (70.0, "bb"),
-            (60.0, "b"),
-            (50.0, "c"),
-            (0.0, "d"),
-        )
-        for threshold, icon_name in thresholds:
-            if achievement >= threshold:
-                return icon_name
-        return "d"
-
-    score_rank = score_rank_icon()
+    combo_icon = combo_status(judgement, achievement)
+    score_rank_name = score_rank(achievement)
 
     def playlog_icon_box(url, width, height, aspect_ratio, margin=None):
         icon_box = {
@@ -1432,8 +1389,8 @@ def _generate_score_recognition_single_flex(result, user_id=None):
                 ],
             }
         ]
-        if score_rank:
-            rank_file = f"{score_rank.replace('p', 'plus')}.png"
+        if score_rank_name:
+            rank_file = f"{score_rank_name.replace('p', 'plus')}.png"
             value_contents.append(playlog_inline_icon_box(
                 f"https://maimaidx.jp/maimai-mobile/img/playlog/{rank_file}",
                 "58px",
@@ -1444,7 +1401,7 @@ def _generate_score_recognition_single_flex(result, user_id=None):
             value_contents.append(playlog_inline_icon_box(
                 (
                     "https://maimaidx.jp/maimai-mobile/img/playlog/"
-                    f"{combo_icon_files[combo_icon]}"
+                    f"{COMBO_ICON_FILES[combo_icon]}"
                 ),
                 "59px",
                 "28px",
@@ -1480,26 +1437,7 @@ def _generate_score_recognition_single_flex(result, user_id=None):
     else:
         internal_level_label = str(internal_level or "")
     constant_text = internal_level_label or "-"
-    difficulty_style = {
-        "basic": {"bg": "#75B520", "text": "#FFFFFF", "metric": "#75B520"},
-        "advanced": {"bg": "#EFA508", "text": "#111111", "metric": "#B36F00"},
-        "expert": {"bg": "#CC4D59", "text": "#FFFFFF", "metric": "#CC4D59"},
-        "master": {"bg": "#9F51DC", "text": "#FFFFFF", "metric": "#8E44AD"},
-        "remaster": {"bg": "#E9D4F3", "text": "#72148D", "metric": "#B06FD3"},
-        "utage": {"bg": "#F52EDD", "text": "#FFFFFF", "metric": "#D10FBA"},
-    }.get(str(difficulty or "").lower(), {
-        "bg": "#315B7D",
-        "text": "#FFFFFF",
-        "metric": "#315B7D",
-    })
-    difficulty_label = {
-        "basic": "BASIC",
-        "advanced": "ADVANCED",
-        "expert": "EXPERT",
-        "master": "MASTER",
-        "remaster": "Re:MASTER",
-        "utage": "U·TA·GE",
-    }.get(str(difficulty or "").lower(), str(difficulty or "").strip() or "-")
+    difficulty_style, difficulty_label = difficulty_presentation(difficulty)
     type_icon = _song_type_icon(chart_type, width="50px", height="14px")
     subtitle_contents = [
         {
@@ -1641,14 +1579,6 @@ def _generate_score_recognition_single_flex(result, user_id=None):
 
     loss_percentages = validation.get("loss_percentages") or {}
 
-    def format_loss_percentage(value, count=1):
-        if not isinstance(value, (int, float)):
-            return "-"
-        loss = float(value) * max(0, int(count or 0))
-        if abs(loss) < 0.00005:
-            return "0.0000%"
-        return f"-{loss:.4f}%"
-
     def detail_value_box(label, value, text_color, background_color):
         return {
             "type": "box",
@@ -1767,21 +1697,15 @@ def _generate_score_recognition_single_flex(result, user_id=None):
             ],
         }
 
-    def loss_count(value):
-        try:
-            return max(0, int(value or 0))
-        except (TypeError, ValueError):
-            return 0
-
     loss_rows = []
     for key, label in (("tap", "TAP"), ("hold", "HOLD"), ("slide", "SLIDE"), ("touch", "TOUCH")):
         row = judgement.get(key)
         if not isinstance(row, dict):
             continue
         counts = {
-            "great": loss_count(row.get("great", 0)),
-            "good": loss_count(row.get("good", 0)),
-            "miss": loss_count(row.get("miss", 0)),
+            "great": nonnegative_count(row.get("great", 0)),
+            "good": nonnegative_count(row.get("good", 0)),
+            "miss": nonnegative_count(row.get("miss", 0)),
         }
         total_loss = sum(
             float(loss_percentages.get(f"{key}_{field}", 0) or 0) * count
@@ -1892,13 +1816,13 @@ def _generate_score_recognition_single_flex(result, user_id=None):
             return float(value) if isinstance(value, (int, float)) else 0.0
 
         break_total_loss = sum((
-            break_loss_value("perfect_high") * loss_count(break_detail.get("perfect_high")),
-            break_loss_value("perfect_low") * loss_count(break_detail.get("perfect_low")),
-            break_loss_value("great_high") * loss_count(break_detail.get("great_high")),
-            break_loss_value("great_middle") * loss_count(break_detail.get("great_middle")),
-            break_loss_value("great_low") * loss_count(break_detail.get("great_low")),
-            break_loss_value("good") * loss_count(break_detail.get("good")),
-            break_loss_value("miss") * loss_count(break_detail.get("miss")),
+            break_loss_value("perfect_high") * nonnegative_count(break_detail.get("perfect_high")),
+            break_loss_value("perfect_low") * nonnegative_count(break_detail.get("perfect_low")),
+            break_loss_value("great_high") * nonnegative_count(break_detail.get("great_high")),
+            break_loss_value("great_middle") * nonnegative_count(break_detail.get("great_middle")),
+            break_loss_value("great_low") * nonnegative_count(break_detail.get("great_low")),
+            break_loss_value("good") * nonnegative_count(break_detail.get("good")),
+            break_loss_value("miss") * nonnegative_count(break_detail.get("miss")),
         ))
 
         candidate_count = max(1, int(break_detail.get("candidate_count", 1) or 1))
@@ -1999,91 +1923,12 @@ def _generate_score_recognition_single_flex(result, user_id=None):
             "align": "end",
         })
 
-    def build_fix_command():
-        fix_rows = []
-        for row_name in ("tap", "hold", "slide", "touch", "break"):
-            row = judgement.get(row_name)
-            if not isinstance(row, dict):
-                row = {}
-            fix_rows.append("/".join(
-                str(max(0, int(row.get(field_name, 0) or 0)))
-                for field_name in (
-                    "critical_perfect",
-                    "perfect",
-                    "great",
-                    "good",
-                    "miss",
-                )
-            ))
-        command_title = re.sub(r"\s+", " ", song_title).strip() or '""'
-        command_achievement = (
-            achievement_text
-            if isinstance(achievement, (int, float))
-            else "0.0000%"
-        )
-        return "\n".join([
-            f"fix-rcd {command_title}",
-            command_achievement,
-            *fix_rows,
-        ])
-
     manual_fix_command = None
     compact_fix_command = None
     achievement_calc = validation.get("achievement_calc") or {}
-    calc_corrections = validation.get("calc_corrections") or []
-    break_row_inferred = any(
-        isinstance(correction, dict) and correction.get("inferred_row")
-        for correction in calc_corrections
-    )
-    if achievement_calc.get("consistent") is not None:
-        calc_consistent = achievement_calc.get("consistent")
-        if calc_corrections:
-            field_labels = {
-                "critical_perfect": "CP",
-                "perfect": "PF",
-                "great": "GR",
-                "good": "GD",
-            }
-            correction_lines = []
-            has_inferred_row = False
-            for correction in calc_corrections:
-                if correction.get("inferred_row"):
-                    has_inferred_row = True
-                    continue
-                row_label = str(correction.get("row") or "").upper()
-                field_label = field_labels.get(
-                    correction.get("field"),
-                    str(correction.get("field") or "").upper(),
-                )
-                if correction.get("calc_completion"):
-                    amount = correction.get("amount", correction.get("added", 0))
-                    sign = "+" if amount >= 0 else ""
-                    correction_lines.append(
-                        f"{row_label} {field_label} {sign}{amount}"
-                    )
-                else:
-                    correction_lines.append(
-                        f"{row_label} {field_label} "
-                        f"{correction.get('ocr')}→{correction.get('validated')} / "
-                        f"MS {correction.get('miss_ocr')}→{correction.get('miss_validated')}"
-                    )
-            calc_text = tr("calc_inferred" if has_inferred_row else "calc_corrected")
-            if correction_lines:
-                calc_text += "\n" + "\n".join(correction_lines)
-        elif calc_consistent and uncertain_cells:
-            calc_text = tr("calc_incomplete")
-        elif calc_consistent:
-            calc_text = tr("calc_validated")
-        else:
-            calc_text = tr("calc_uncertain") if uncertain_cells else tr("calc_mismatch")
-            minimum = achievement_calc.get("minimum")
-            maximum = achievement_calc.get("maximum")
-            observed = achievement_calc.get("observed")
-            if all(isinstance(value, (int, float)) for value in (minimum, maximum, observed)):
-                calc_text += (
-                    f"\nCalc {minimum:.4f}%-{maximum:.4f}%"
-                    f" / OCR {observed:.4f}%"
-                )
+    calc_result, break_row_inferred = calc_status(validation, uncertain_cells, tr)
+    if calc_result:
+        calc_text, calc_consistent = calc_result
         body_contents.append({
             "type": "text",
             "text": calc_text,
@@ -2101,9 +1946,12 @@ def _generate_score_recognition_single_flex(result, user_id=None):
     )
     has_judgement_data = any(
         isinstance(judgement.get(row_name), dict)
-        for row_name in ("tap", "hold", "slide", "touch", "break")
+        for row_name in JUDGEMENT_ROWS
     )
-    fix_command = build_fix_command() if has_judgement_data else None
+    fix_command = (
+        build_fix_command(judgement, song_title, achievement)
+        if has_judgement_data else None
+    )
     if break_row_inferred and fully_validated:
         compact_fix_command = fix_command
     elif not fully_validated and has_judgement_data:
