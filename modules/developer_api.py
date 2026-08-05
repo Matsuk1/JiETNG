@@ -61,24 +61,15 @@ def configure_developer_api(*, configuration, nickname, process_credentials, syn
 @developer_api.route("/api/v1/users", methods=["GET"])
 @require_dev_token
 def api_list_users():
-    """
-    获取所有用户列表 API
-
-    需要 Bearer Token 认证
-
-    返回该 token 有权限访问的所有用户（包括创建的用户和授权访问的用户）
-    """
     try:
         token_info = request.token_info
         token_id = token_info['token_id']
 
-        # 获取 token 的 allowed_users 列表
         dev_tokens = load_dev_tokens()
         allowed_users = dev_tokens.get(token_id, {}).get('allowed_users', [])
 
         users_list = []
         for user_id in get_all_user_ids():
-            # 检查是否有访问权限（创建的用户或授权访问的用户）
             has_access = False
             access_type = None
 
@@ -97,7 +88,6 @@ def api_list_users():
                     "access_type": access_type
                 })
 
-        # 记录 API 访问日志
         logger.info(f"[API] List users: token_id={token_id}, note={token_info['note']}, count={len(users_list)}")
 
         return jsonify({
@@ -118,59 +108,37 @@ def api_list_users():
 @developer_api.route("/api/v1/users", methods=["POST"])
 @require_dev_token
 def api_create_user():
-    """
-    创建用户 API (RESTful) - 生成绑定链接
-
-    需要 Bearer Token 认证
-
-    请求体 (JSON):
-    - user_id: 必需，用户ID
-    - nickname: 必需，用户昵称
-
-    返回:
-    - bind_url: 绑定页面链接
-    - token: 绑定 token（2分钟有效）
-    - expires_in: token 过期时间（秒）
-    """
     user_id = ''
     try:
-        # 获取请求数据（支持 JSON body 和 form data）
         data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
         user_id = data.get('user_id', '')
         nickname = data.get('nickname', '')
 
-        # user_id 是必需参数
         if not user_id:
             return jsonify({
                 "error": "Missing parameter",
                 "message": "Parameter 'user_id' is required"
             }), 400
 
-        # nickname 是必需参数
         if not nickname:
             return jsonify({
                 "error": "Missing parameter",
                 "message": "Parameter 'nickname' is required"
             }), 400
 
-        # 记录 API 访问日志
         token_info = request.token_info
         logger.info(f"[API] Create user: user_id={user_id}, nickname={nickname}, token_id={token_info['token_id']}, note={token_info['note']}")
 
-        # 读取用户数据
         if user_exists(user_id):
             return jsonify({
                 "error": "User already exists",
                 "message": f"User {user_id} was created already."
             }), 409
 
-        # 生成绑定 token
         bind_token = generate_bind_token(user_id)
 
-        # 构建绑定 URL
         bind_url = f"https://{DOMAIN}/linebot/sega_bind?token={bind_token}"
 
-        # 初始化用户数据
         add_user(user_id)
         edit_user_value(user_id, "nickname", nickname)
         edit_user_value(user_id, "registered_via_token", token_info['token_id'])
@@ -200,11 +168,6 @@ def api_create_user():
 @require_dev_token
 @require_user_permission
 def api_get_user(user_id):
-    """
-    获取用户信息 API
-
-    需要 Bearer Token 认证并拥有该用户的访问权限
-    """
     try:
         user_data = get_user(user_id)
         if not user_data:
@@ -212,11 +175,9 @@ def api_get_user(user_id):
 
         nickname = _services.nickname(user_id, use_cache=True)
 
-        # 记录 API 访问日志
         token_info = request.token_info
         logger.info(f"[API] Get user: user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
 
-        # 过滤敏感字段
         sensitive_keys = {'sega_id', 'sega_pwd', 'perm_requests', 'registered_via_token'}
         safe_data = {k: v for k, v in user_data.items() if k not in sensitive_keys}
 
@@ -240,20 +201,12 @@ def api_get_user(user_id):
 @require_dev_token
 @require_owner_permission
 def api_delete_user(user_id):
-    """
-    删除用户 API
-
-    需要 Bearer Token 认证（该 token 必须是用户的创建者）
-    """
     try:
-        # 获取用户信息用于日志
         nickname = _services.nickname(user_id, use_cache=True)
 
-        # 删除用户
         delete_user(user_id)
         link_unbound_rich_menu(user_id)
 
-        # 记录 API 访问日志
         token_info = request.token_info
         logger.info(f"[API] Delete user: user_id={user_id}, nickname={nickname}, token_id={token_info['token_id']}, note={token_info['note']}")
         track_event('user_unbind', user_id=user_id, metadata={'token_id': token_info['token_id']})
@@ -277,15 +230,6 @@ def api_delete_user(user_id):
 @require_dev_token
 @require_user_permission
 def api_create_bind_url(user_id):
-    """
-    生成绑定 URL API
-
-    需要 Bearer Token 认证并拥有该用户的访问权限
-
-    返回:
-    - bind_url: 绑定页面链接（2分钟有效）
-    - expires_in: token 过期时间（秒）
-    """
     try:
         token_info = request.token_info
         logger.info(f"[API] Create bind URL: user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
@@ -314,15 +258,6 @@ def api_create_bind_url(user_id):
 @require_dev_token
 @require_user_permission
 def api_create_rebind_url(user_id):
-    """
-    生成换绑 URL API
-
-    需要 Bearer Token 认证并拥有该用户的访问权限
-
-    返回:
-    - rebind_url: 绑定页面链接（2分钟有效）
-    - expires_in: token 过期时间（秒）
-    """
     try:
         token_info = request.token_info
         logger.info(f"[API] Create rebind URL: user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
@@ -351,15 +286,6 @@ def api_create_rebind_url(user_id):
 @require_dev_token
 @require_user_permission
 def api_create_settings_url(user_id):
-    """
-    生成设置 URL API
-
-    需要 Bearer Token 认证并拥有该用户的访问权限
-
-    返回:
-    - settings_url: 设置页面链接（30分钟有效）
-    - expires_in: token 过期时间（秒）
-    """
     try:
         token_info = request.token_info
         logger.info(f"[API] Create settings URL: user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
@@ -387,19 +313,6 @@ def api_create_settings_url(user_id):
 @require_dev_token
 @require_user_permission
 def api_bind_user(user_id):
-    """
-    绑定 SEGA 账号 API
-
-    需要 Bearer Token 认证并拥有该用户的访问权限
-
-    请求体 (JSON / form-data):
-    - sega_id: 必需，SEGA ID
-    - password: 必需，密码
-    - ver: 服务器版本 jp/intl（默认 jp）
-    - aime: Aime卡选择（默认 0，仅jp有效）
-    - timezone: 时区偏移（默认 9）
-    - language: 已注册的语言代码（默认使用系统语言）
-    """
     try:
         token_info = request.token_info
         data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
@@ -426,7 +339,6 @@ def api_bind_user(user_id):
         except (ValueError, TypeError):
             aime_int = 0
 
-        # 检查用户是否已绑定
         user_data = get_user(user_id) or {}
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
         if has_account:
@@ -452,17 +364,6 @@ def api_bind_user(user_id):
 @require_dev_token
 @require_user_permission
 def api_rebind_user(user_id):
-    """
-    换绑 SEGA 账号 API（更新密码/版本/Aime）
-
-    需要 Bearer Token 认证并拥有该用户的访问权限
-
-    请求体 (JSON / form-data):
-    - sega_id: 可选，SEGA ID（不提供则保持现有）
-    - password: 可选，新密码（不提供则保持现有）
-    - ver: 服务器版本 jp/intl（可选，保持现有）
-    - aime: Aime卡选择（可选，保持现有）
-    """
     try:
         token_info = request.token_info
         data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
@@ -581,13 +482,6 @@ def _get_sync_version(user_id):
 @require_dev_token
 @require_user_permission
 def api_sync_user_data_stream(user_id):
-    """
-    流式同步用户成绩 API。
-
-    返回 application/x-ndjson：
-    - 第一行: accepted / queued-like 即时反馈
-    - 最后一行: completed / failed
-    """
     if check_rate_limit(user_id, "api_sync_user_data_stream"):
         return jsonify({"error": "Rate limited", "message": "Too many sync requests. Please retry later."}), 429
 
@@ -634,42 +528,21 @@ def api_sync_user_data_stream(user_id):
 @developer_api.route("/api/v1/users/<user_id>/permissions", methods=["POST"])
 @require_dev_token
 def api_request_user_permission(user_id):
-    """
-    请求访问用户的权限 API (RESTful)
-
-    需要 Bearer Token 认证
-
-    类似好友请求机制，token 发送权限请求后，需要用户同意才能获取访问权限
-
-    请求体 (JSON):
-    - requester_name: 可选，请求者名称（用于在通知中显示）
-
-    返回:
-    - success: 是否成功发送请求
-    - request_id: 请求ID（用于后续接受/拒绝操作）
-    - message: 状态信息
-    """
     try:
-        # 获取 JSON 数据
         data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
         requester_name = data.get('requester_name', '')
 
-        # 获取 token 信息
         token_info = request.token_info
         token_id = token_info['token_id']
 
-        # 如果没有提供 requester_name，使用 token 的 note
         if not requester_name:
             requester_name = token_info.get('note', token_id)
 
-        # 记录 API 访问日志
         logger.info(f"[API] Request permission: target_user_id={user_id}, token_id={token_id}, note={token_info['note']}")
 
-        # 发送权限请求
         result = send_perm_request(token_id, user_id, requester_name)
 
         if result['success']:
-            # 通过 LINE 推送权限请求通知
             try:
                 perm_requests = get_pending_perm_requests(user_id)
                 perm_msg = generate_perm_request_message(perm_requests, user_id)
@@ -686,7 +559,6 @@ def api_request_user_permission(user_id):
             }), 201  # 201 Created for new permission request
 
         else:
-            # 根据错误类型返回不同的 HTTP 状态码
             status_code = 404 if result['error'] == "User not found" else 400
             return jsonify({
                 "error": result['error'],
@@ -706,19 +578,9 @@ def api_request_user_permission(user_id):
 @require_dev_token
 @require_owner_permission
 def api_get_user_permission_requests(user_id):
-    """
-    获取用户的待处理权限请求列表 API (RESTful)
-
-    需要 Bearer Token 认证（该 token 必须是用户的所有者）
-
-    返回:
-    - requests: 权限请求列表，包含 request_id, token_id, requester_name, timestamp
-    """
     try:
-        # 获取待处理的权限请求
         requests = get_pending_perm_requests(user_id)
 
-        # 记录 API 访问日志
         token_info = request.token_info
         logger.info(f"[API] Get permission requests: user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
 
@@ -742,57 +604,31 @@ def api_get_user_permission_requests(user_id):
 @require_dev_token
 @require_owner_permission
 def api_manage_user_permission(user_id, request_id):
-    """
-    管理用户权限请求 API (RESTful)
-
-    需要 Bearer Token 认证（该 token 必须是用户的所有者 token）
-
-    请求体 (JSON):
-    - action: 必需，操作类型 ("accept" 或 "reject")
-
-    返回:
-    - success: 是否成功处理
-    - token_id: 被授权的 token ID (仅在接受时返回)
-    - message: 状态信息
-    """
+    action = ""
     try:
-        # 获取 JSON 数据
         data = request.form.to_dict() or request.get_json(force=True, silent=True) or {}
         action = data.get('action', '')
 
-        if action not in ['accept', 'reject']:
+        if action not in ("accept", "reject"):
             return jsonify({
                 "error": "Invalid parameter",
                 "message": "Parameter 'action' must be 'accept' or 'reject'"
             }), 400
 
-        # 记录 API 访问日志
         token_info = request.token_info
         logger.info(f"[API] Manage permission: action={action}, request_id={request_id}, user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
 
-        # 根据action执行相应操作
-        if action == 'accept':
-            result = accept_perm_request(user_id, request_id)
-            if result['success']:
-                return jsonify({
-                    "success": True,
-                    "user_id": user_id,
-                    "token_id": result['token_id'],
-                    "token_note": result['token_note'],
-                    "message": result['message']
-                })
-        else:  # reject
-            result = reject_perm_request(user_id, request_id)
-            if result['success']:
-                return jsonify({
-                    "success": True,
-                    "user_id": user_id,
-                    "token_id": result['token_id'],
-                    "token_note": result['token_note'],
-                    "message": result['message']
-                })
+        handler = accept_perm_request if action == "accept" else reject_perm_request
+        result = handler(user_id, request_id)
+        if result["success"]:
+            return jsonify({
+                "success": True,
+                "user_id": user_id,
+                "token_id": result["token_id"],
+                "token_note": result["token_note"],
+                "message": result["message"],
+            })
 
-        # 处理错误
         status_code = 404 if result['error'] in ["User not found", "Request not found", "Invalid token"] else 400
         return jsonify({
             "error": result['error'],
@@ -811,12 +647,6 @@ def api_manage_user_permission(user_id, request_id):
 @developer_api.route("/api/v2/users/<user_id>/permissions/self", methods=["DELETE"])
 @require_dev_token
 def api_revoke_own_permission(user_id):
-    """
-    放弃自己对某用户的访问权限（自撤销）
-
-    需要 Bearer Token 认证，只能撤销已授权（allowed_users）的权限，
-    不能撤销 owner（创建者）权限。
-    """
     try:
         _udata = get_user(user_id)
         if not _udata:
@@ -850,21 +680,10 @@ def api_revoke_own_permission(user_id):
 @require_dev_token
 @require_owner_permission
 def api_revoke_user_permission(user_id, token_id):
-    """
-    撤销已授予的权限 API (RESTful)
-
-    需要 Bearer Token 认证（该 token 必须是用户的所有者）
-
-    返回:
-    - success: 是否成功撤销
-    - message: 状态信息
-    """
     try:
-        # 记录 API 访问日志
         token_info = request.token_info
         logger.info(f"[API] Revoke permission: target_token_id={token_id}, user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
 
-        # 加载 dev tokens
         dev_tokens = load_dev_tokens()
 
         if token_id not in dev_tokens:
@@ -873,7 +692,6 @@ def api_revoke_user_permission(user_id, token_id):
                 "message": f"Token {token_id} does not exist"
             }), 404
 
-        # 从 allowed_users 列表中移除该用户
         allowed_users = dev_tokens[token_id].get('allowed_users', [])
         if user_id in allowed_users:
             allowed_users.remove(user_id)
