@@ -221,7 +221,6 @@ from modules.score_recognition_api import (
     build_score_recognition_response,
 )
 from modules.command_config import (
-    API_MAX_SEARCH_RESULTS,
     MAX_SEARCH_RESULTS,
     RANK_COMMANDS,
     rank_command_words,
@@ -239,6 +238,7 @@ from modules.progress_parser import (
     resolve_progress_category as _resolve_progress_category,
 )
 from modules.task_runtime import discard_queued, execute_task, queue_worker, track_queued
+from modules.song_api import song_api
 from modules.mention_parser import (
     clean_message_text,
     has_non_bot_mention,
@@ -275,6 +275,8 @@ register_web_i18n(app)
 
 # 启用 CSRF 保护
 csrf = CSRFProtect(app)
+csrf.exempt(song_api)
+app.register_blueprint(song_api)
 
 # 配置安全响应头
 @app.after_request
@@ -7107,162 +7109,7 @@ def api_v2_score_recognition():
         }), 500
 
 
-# ==================== Song Search API (RESTful) ====================
-
-@app.route("/api/v2/songs/search", methods=["GET"])
-@csrf.exempt
-@require_dev_token
-def api_v2_search_songs():
-    """
-    搜索歌曲 API
-
-    需要 Bearer Token 认证
-
-    参数:
-    - q: 可选，搜索关键词，如果不提供或使用 __empty__ 则搜索空字符串
-    - ver: 可选，服务器版本 (jp/intl)，默认为 jp
-    - max_results: 可选，最大结果数，默认为 6
-
-    返回匹配歌曲的 id 和基本信息，调用方可使用 id 进一步查询 info 或 record 图片
-    """
-    try:
-        query = request.args.get('q', '')
-        requested_ver = request.args.get('ver')
-        user_id = request.args.get('user_id')
-        max_results = request.args.get('max_results', MAX_SEARCH_RESULTS, type=int)
-        if max_results < 1:
-            return jsonify({
-                "error": "Invalid parameter",
-                "message": "Parameter 'max_results' must be at least 1"
-            }), 400
-        if max_results > API_MAX_SEARCH_RESULTS:
-            return jsonify({
-                "error": "Invalid parameter",
-                "message": f"Parameter 'max_results' must be <= {API_MAX_SEARCH_RESULTS}"
-            }), 400
-
-        if requested_ver:
-            ver = requested_ver.strip().lower()
-        elif user_id:
-            token_info = request.token_info
-            has_permission, result = check_user_permission(user_id, token_info['token_id'])
-            if not has_permission:
-                return result
-            ver = (result or {}).get("version", "jp")
-        else:
-            ver = 'jp'
-
-        if query == '__empty__':
-            query = ''
-
-        if ver not in ['jp', 'intl']:
-            return jsonify({
-                "error": "Invalid parameter",
-                "message": "Parameter 'ver' must be 'jp' or 'intl'"
-            }), 400
-
-        token_info = request.token_info
-        logger.info(f"[API] Search songs: query='{query}', ver={ver}, user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
-
-        songs, _ = read_dxdata(ver)
-        matching_songs = find_matching_songs(query, songs, max_results=max_results)
-
-        if not matching_songs:
-            return jsonify({
-                "success": True,
-                "count": 0,
-                "songs": [],
-                "message": "No songs found"
-            })
-
-        if len(matching_songs) > max_results:
-            return jsonify({
-                "error": "Too many results",
-                "message": f"Found {len(matching_songs)} songs, please refine your search (max: {max_results})",
-                "count": len(matching_songs)
-            }), 400
-
-        # 只返回 id 和基本信息
-        result = []
-        for song in matching_songs:
-            result.append({
-                "id": song.get("id"),
-                "title": song.get("title"),
-                "artist": song.get("artist"),
-                "type": song.get("type"),
-                "version": song.get("version"),
-            })
-
-        return jsonify({
-            "success": True,
-            "count": len(result),
-            "query": query,
-            "ver": ver,
-            "songs": result
-        })
-
-    except Exception as e:
-        logger.error(f"[API] ✗ Search songs error: query='{query}', error={e}", exc_info=True)
-        return jsonify({
-            "error": "Internal server error",
-            "message": str(e)
-        }), 500
-
-
-@app.route("/api/v1/versions", methods=["GET"])
-@app.route("/api/v2/versions", methods=["GET"])
-@csrf.exempt
-@require_dev_token
-def api_get_versions():
-    """
-    获取版本信息 API
-
-    需要 Bearer Token 认证
-
-    返回 maimai DX 的版本信息
-
-    示例:
-    curl -H "Authorization: Bearer <your_token>" https://your-domain.com/api/v1/versions
-    """
-    try:
-        # 记录 API 访问日志
-        token_info = request.token_info
-        logger.info(f"[API] Get versions: token_id={token_info['token_id']}, note={token_info['note']}")
-
-        _, versions = read_dxdata()
-
-        return jsonify({
-            "success": True,
-            "versions": versions
-        })
-
-    except Exception as e:
-        logger.error(f"[API] ✗ Get versions error: error={e}", exc_info=True)
-        return jsonify({
-            "error": "Internal server error",
-            "message": str(e)
-        }), 500
-
-
 # ==================== API v2 ====================
-
-@app.route("/api/v2/dxdata", methods=["GET"])
-@csrf.exempt
-@require_dev_token
-def api_v2_dxdata():
-    """
-    下载 dxdata.json（已应用 override）
-
-    参数:
-    - ver: jp / intl (默认 jp)
-
-    返回: application/json
-    """
-    ver = request.args.get("ver", "jp").strip().lower()
-    if ver not in ("jp", "intl"):
-        return jsonify({"error": "Invalid ver, use jp or intl"}), 400
-    songs, versions = read_dxdata(ver)
-    return jsonify({"songs": songs, "versions": versions})
 
 def _send_image_response(buf):
     """根据 format 参数返回图片（png 或 base64 JSON）"""
