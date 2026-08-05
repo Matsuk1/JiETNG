@@ -12,7 +12,7 @@ from modules.api_auth import check_user_permission, require_dev_token
 from modules.command_config import RANK_COMMANDS
 from modules.config_loader import TEMP_VERSION, read_dxdata
 from modules.event_tracker import track_event
-from modules.image_manager import compose_images
+from modules.image_manager import compose_generated_images
 from modules.i18n import get_user_language
 from modules.rate_limiter import check_rate_limit
 from modules.record_generator import (
@@ -66,14 +66,6 @@ def _png_buffer(image):
     finally:
         image.close()
         gc.collect(0)
-
-
-def _compose_generated_images(images, **options):
-    try:
-        return compose_images(images, **options)
-    finally:
-        for image in images:
-            image.close()
 
 
 def _close_entry_images(entries):
@@ -232,7 +224,7 @@ def api_v2_generate_record_image(user_id):
         user_info = _udata.get('personal_info')
         profile_img = _services.generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = _compose_generated_images(
+        img = compose_generated_images(
             [profile_img, record_img],
             timezone_offset=user_tz,
             bg_filter=_services.background_filter(user_id),
@@ -367,7 +359,7 @@ def api_v2_generate_plate(user_id):
         user_info = _udata.get('personal_info')
         profile_img = _services.generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = _compose_generated_images(
+        img = compose_generated_images(
             [profile_img, plate_img],
             timezone_offset=user_tz,
             bg_filter=_services.background_filter(user_id),
@@ -530,7 +522,7 @@ def api_v2_generate_achievement(user_id):
         user_info = _udata.get('personal_info')
         profile_img = _services.generate_profile(user_info, scale=1.5, user_id=user_id)
         user_tz = get_user_timezone(user_id)
-        img = _compose_generated_images(
+        img = compose_generated_images(
             [profile_img, record_img],
             timezone_offset=user_tz,
             bg_filter=_services.background_filter(user_id),
