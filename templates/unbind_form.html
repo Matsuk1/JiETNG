@@ -1,19 +1,10 @@
 <!DOCTYPE html>
-<html lang="{{ language or 'ja' }}">
+{% set page_text = i18n_section('web.unbind') %}
+<html lang="{{ language or default_language }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-  <title>
-    {% if language == 'en' %}
-    Unlink Account | JiETNG
-    {% elif language == 'zh-tw' %}
-    解除帳號綁定 | JiETNG
-    {% elif language == 'zh' %}
-    解除账号绑定 | JiETNG
-    {% else %}
-    アカウント連携解除 | JiETNG
-    {% endif %}
-  </title>
+  <title>{{ i18n_select(page_text.title, language=language, default_language=default_language) }} | JiETNG</title>
   <link rel="icon" type="image/png" href="/static/pics/logo.png">
   {% include 'common_styles.html' %}
   <style>
@@ -145,52 +136,22 @@
 <body>
   <main class="panel">
     <div class="mark">!</div>
-    <h1>
-      {% if language == 'en' %}
-      Unlink Account
-      {% elif language == 'zh-tw' %}
-      解除帳號綁定
-      {% elif language == 'zh' %}
-      解除账号绑定
-      {% else %}
-      アカウント連携解除
-      {% endif %}
-    </h1>
-    <p class="lead">
-      {% if language == 'en' %}
-      Confirm in this browser to remove your linked account from JiETNG.
-      {% elif language == 'zh-tw' %}
-      請在此瀏覽器中確認，將已綁定帳號從 JiETNG 移除。
-      {% elif language == 'zh' %}
-      请在此浏览器中确认，将已绑定账号从 JiETNG 移除。
-      {% else %}
-      このブラウザで確認すると、連携済みアカウントを JiETNG から削除します。
-      {% endif %}
-    </p>
+    <h1>{{ i18n_select(page_text.title, language=language, default_language=default_language) }}</h1>
+    <p class="lead">{{ i18n_select(page_text.lead, language=language, default_language=default_language) }}</p>
 
     <div class="summary">
       <div class="row">
-        <span class="key">
-          {% if language == 'en' %}Type{% elif language == 'zh-tw' %}類型{% elif language == 'zh' %}类型{% else %}種類{% endif %}
-        </span>
+        <span class="key">{{ i18n_select(page_text.type, language=language, default_language=default_language) }}</span>
         <span class="value">
           {% if import_only %}
           Import Token
-          {% elif language == 'en' %}
-          SEGA Account
-          {% elif language == 'zh-tw' %}
-          SEGA 帳號
-          {% elif language == 'zh' %}
-          SEGA 账号
           {% else %}
-          SEGA アカウント
+          {{ i18n_select(page_text.account, language=language, default_language=default_language) }}
           {% endif %}
         </span>
       </div>
       <div class="row">
-        <span class="key">
-          {% if language == 'en' %}Server{% elif language == 'zh-tw' %}伺服器{% elif language == 'zh' %}服务器{% else %}サーバー{% endif %}
-        </span>
+        <span class="key">{{ i18n_select(page_text.server, language=language, default_language=default_language) }}</span>
         <span class="value">{{ version }}</span>
       </div>
       {% if segaid %}
@@ -201,31 +162,11 @@
       {% endif %}
     </div>
 
-    <div class="warning">
-      {% if language == 'en' %}
-      This will delete saved account credentials, related settings, records, and recent records. This action cannot be undone.
-      {% elif language == 'zh-tw' %}
-      這會刪除已保存的帳號憑證、相關設定、成績與最近成績。此操作無法復原。
-      {% elif language == 'zh' %}
-      这会删除已保存的账号凭证、相关设置、成绩和最近成绩。此操作无法撤销。
-      {% else %}
-      保存済みのアカウント情報、関連設定、成績、最近の成績を削除します。この操作は取り消せません。
-      {% endif %}
-    </div>
+    <div class="warning">{{ i18n_select(page_text.warning, language=language, default_language=default_language) }}</div>
 
     <form method="POST">
       <input type="hidden" name="token" value="{{ token }}">
-      <button type="submit">
-        {% if language == 'en' %}
-        Unlink Account
-        {% elif language == 'zh-tw' %}
-        解除綁定
-        {% elif language == 'zh' %}
-        确认解绑
-        {% else %}
-        連携を解除
-        {% endif %}
-      </button>
+      <button type="submit">{{ i18n_select(page_text.submit, language=language, default_language=default_language) }}</button>
     </form>
   </main>
 </body>

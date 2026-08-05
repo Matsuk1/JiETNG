@@ -11,7 +11,6 @@ from modules.config_loader import TIP_AD_FILE
 
 
 logger = logging.getLogger(__name__)
-LANGUAGES = ("zh", "zh-tw", "en", "ja")
 TIP_AD_DATA = []
 _enabled_items = {"tip": [], "ad": []}
 _data_lock = threading.RLock()
@@ -110,7 +109,7 @@ def _button(button_type, button_value, labels):
         return None
     return {
         "type": button_type,
-        "label": dict(zip(LANGUAGES, (label or "" for label in labels))),
+        "label": dict(labels or {}),
         "value": button_value,
     }
 
@@ -128,15 +127,9 @@ def _new_id():
 
 def create_tip_ad(
     tip_type,
-    text_zh,
-    text_en,
-    text_ja,
-    text_zh_tw=None,
+    text,
     button_type=None,
-    button_label_zh=None,
-    button_label_zh_tw=None,
-    button_label_en=None,
-    button_label_ja=None,
+    button_labels=None,
     button_value=None,
     enabled=True,
 ):
@@ -146,16 +139,12 @@ def create_tip_ad(
         item = {
             "id": _new_id(),
             "type": tip_type,
-            "text": dict(zip(LANGUAGES, (text_zh, text_zh_tw or "", text_en, text_ja))),
+            "text": dict(text),
             "enabled": enabled,
             "created_at": timestamp,
             "updated_at": timestamp,
         }
-        button = _button(
-            button_type,
-            button_value,
-            (button_label_zh, button_label_zh_tw, button_label_en, button_label_ja),
-        )
+        button = _button(button_type, button_value, button_labels)
         if button:
             item["button"] = button
         TIP_AD_DATA.append(item)
@@ -165,15 +154,9 @@ def create_tip_ad(
 def update_tip_ad(
     tip_ad_id,
     tip_type=None,
-    text_zh=None,
-    text_en=None,
-    text_ja=None,
-    text_zh_tw=None,
+    text=None,
     button_type=None,
-    button_label_zh=None,
-    button_label_zh_tw=None,
-    button_label_en=None,
-    button_label_ja=None,
+    button_labels=None,
     button_value=None,
     enabled=None,
     remove_button=False,
@@ -186,20 +169,14 @@ def update_tip_ad(
 
         if tip_type is not None:
             item["type"] = tip_type
-        text = item.setdefault("text", {})
-        for language, value in zip(LANGUAGES, (text_zh, text_zh_tw, text_en, text_ja)):
-            if value is not None:
-                text[language] = value
+        if text:
+            item.setdefault("text", {}).update(text)
         if enabled is not None:
             item["enabled"] = enabled
         if remove_button:
             item.pop("button", None)
         else:
-            button = _button(
-                button_type,
-                button_value,
-                (button_label_zh, button_label_zh_tw, button_label_en, button_label_ja),
-            )
+            button = _button(button_type, button_value, button_labels)
             if button:
                 item["button"] = button
         item["updated_at"] = _now()

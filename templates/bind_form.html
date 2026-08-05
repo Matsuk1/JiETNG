@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="{{ user_language or default_language }}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"/>
@@ -446,10 +446,9 @@
         <div class="list-item">
           <label for="language" id="label-language">言語</label>
           <select id="language" name="language" required>
-            <option value="ja" id="opt-lang-ja">日本語</option>
-            <option value="en" id="opt-lang-en">English</option>
-            <option value="zh" id="opt-lang-zh">简体中文</option>
-            <option value="zh-tw" id="opt-lang-zh-tw">繁體中文</option>
+            {% for option in language_options %}
+            <option value="{{ option.code }}">{{ option.label }}</option>
+            {% endfor %}
           </select>
         </div>
         <div class="list-item bind-type-help active" id="language-platform-hint">
@@ -493,25 +492,7 @@
 
     <div class="notice">
       <strong id="notice-title">ご利用に関するご注意</strong><br>
-      <div id="notice-ja" style="display: block;">
-        ご入力いただいた情報はすべて暗号化された形式で安全に保存され、第三者に提供されることはありません。<br><br>
-        ただし、本サービスは個人によって運営されており、公式な保証やサポートは提供されておりません。本サービスの性質上、セキュリティや運用方針に不安がある場合は、利用をお控えいただくようお願いいたします。情報提供はあくまでご自身の判断と責任にてお願いいたします。
-      </div>
-
-      <div id="notice-en" style="display: none;">
-        All information you provide will be securely stored in encrypted format and will not be shared with third parties.<br><br>
-        However, this service is operated by an individual and does not provide official guarantees or support. Given the nature of this service, if you have concerns about security or operational policies, please refrain from using it. You provide information at your own judgment and responsibility.
-      </div>
-
-      <div id="notice-zh" style="display: none;">
-        您输入的所有信息都将以加密形式安全保存，不会提供给第三方。<br><br>
-        但是，本服务由个人运营，不提供官方保证或支持。鉴于本服务的性质，如果您对安全性或运营政策有顾虑，请勿使用。信息提供完全基于您自己的判断和责任。
-      </div>
-
-      <div id="notice-zh-tw" style="display: none;">
-        您輸入的所有資訊都會以加密形式安全保存，不會提供給第三方。<br><br>
-        不過，本服務由個人營運，不提供官方保證或支援。基於本服務的性質，如果您對安全性或營運政策有疑慮，請勿使用。資訊提供完全基於您自己的判斷與責任。
-      </div>
+      <div id="notice-content"></div>
     </div>
   </div>
 
@@ -531,127 +512,17 @@
   </div>
 
   <script>
-    const translations = {
-      ja: {
-        pageTitle: 'SEGA アカウント連携 | JiETNG',
-        pageTitleRebind: 'アカウント設定の編集 | JiETNG',
-        heading: 'SEGA アカウント連携',
-        headingRebind: 'アカウント設定の編集',
-        labelSegaid: 'セガID',
-        labelPassword: 'セガパスワード',
-        labelVersion: 'バージョン',
-        optJp: '日本版',
-        optIntl: '海外版',
-        labelTimezone: 'タイムゾーン',
-        labelLanguage: '言語',
-        languagePlatformHint: '言語設定は LINE 以外の外部プラットフォームには反映されない場合があります。',
-        labelBindType: '連携方式',
-        optBindSega: 'SEGA アカウント',
-        optBindImport: 'Import Token のみ',
-        bindTypeImportHelp: 'SEGA ID を保存せず、書き出しツールから成績をアップロードします。',
-        submitBtn: '連携',
-        submitBtnImport: 'Tokenを生成',
-        submitBtnRebind: '更新',
-        noticeTitle: 'ご利用に関するご注意',
-        aimeModalTitle: 'Aime を選択',
-        aimeModalDescription: '連携するアカウントを選択してください。',
-        aimeConfirm: '確定',
-        aimeFallbackName: 'Aime アカウント',
-        ratingLabel: 'Rating',
-        trophyLabel: '称号',
-        accountListError: 'アカウント一覧を取得できませんでした。'
-      },
-      en: {
-        pageTitle: 'SEGA Account Binding | JiETNG',
-        pageTitleRebind: 'Edit Account Settings | JiETNG',
-        heading: 'SEGA Account Binding',
-        headingRebind: 'Edit Account Settings',
-        labelSegaid: 'SEGA ID',
-        labelPassword: 'SEGA Password',
-        labelVersion: 'Version',
-        optJp: 'JP Version',
-        optIntl: 'INTL Version',
-        labelTimezone: 'Timezone',
-        labelLanguage: 'Language',
-        languagePlatformHint: 'Language settings may not apply to third-party platforms outside LINE.',
-        labelBindType: 'Link Type',
-        optBindSega: 'SEGA Account',
-        optBindImport: 'Import Token Only',
-        bindTypeImportHelp: 'Do not save SEGA credentials. Upload records from an export tool instead.',
-        submitBtn: 'Bind',
-        submitBtnImport: 'Generate Token',
-        submitBtnRebind: 'Update',
-        noticeTitle: 'Notice',
-        aimeModalTitle: 'Select Aime',
-        aimeModalDescription: 'Choose the account to link.',
-        aimeConfirm: 'Confirm',
-        aimeFallbackName: 'Aime Account',
-        ratingLabel: 'Rating',
-        trophyLabel: 'Trophy',
-        accountListError: 'Could not fetch the account list.'
-      },
-      zh: {
-        pageTitle: 'SEGA 账号绑定 | JiETNG',
-        pageTitleRebind: '编辑账号设置 | JiETNG',
-        heading: 'SEGA 账号绑定',
-        headingRebind: '编辑账号设置',
-        labelSegaid: 'SEGA ID',
-        labelPassword: 'SEGA 密码',
-        labelVersion: '版本',
-        optJp: '日本版',
-        optIntl: '国际版',
-        labelTimezone: '时区',
-        labelLanguage: '语言',
-        languagePlatformHint: '语言设置可能不会作用于 LINE 以外的第三方平台。',
-        labelBindType: '绑定方式',
-        optBindSega: 'SEGA 账号',
-        optBindImport: '仅使用 Import Token',
-        bindTypeImportHelp: '不保存 SEGA 账号密码，之后通过导出工具上传成绩。',
-        submitBtn: '绑定',
-        submitBtnImport: '生成 Token',
-        submitBtnRebind: '更新',
-        noticeTitle: '使用须知',
-        aimeModalTitle: '选择 Aime',
-        aimeModalDescription: '请选择要绑定的账号。',
-        aimeConfirm: '确定',
-        aimeFallbackName: 'Aime 账号',
-        ratingLabel: 'Rating',
-        trophyLabel: '称号',
-        accountListError: '无法获取账号列表。'
-      },
-      'zh-tw': {
-        pageTitle: 'SEGA 帳號綁定 | JiETNG',
-        pageTitleRebind: '編輯帳號設定 | JiETNG',
-        heading: 'SEGA 帳號綁定',
-        headingRebind: '編輯帳號設定',
-        labelSegaid: 'SEGA ID',
-        labelPassword: 'SEGA 密碼',
-        labelVersion: '版本',
-        optJp: '日本版',
-        optIntl: '國際版',
-        labelTimezone: '時區',
-        labelLanguage: '語言',
-        languagePlatformHint: '語言設定可能不會套用到 LINE 以外的第三方平台。',
-        labelBindType: '綁定方式',
-        optBindSega: 'SEGA 帳號',
-        optBindImport: '僅使用 Import Token',
-        bindTypeImportHelp: '不保存 SEGA 帳號密碼，之後透過匯出工具上傳成績。',
-        submitBtn: '綁定',
-        submitBtnImport: '產生 Token',
-        submitBtnRebind: '更新',
-        noticeTitle: '使用須知',
-        aimeModalTitle: '選擇 Aime',
-        aimeModalDescription: '請選擇要綁定的帳號。',
-        aimeConfirm: '確定',
-        aimeFallbackName: 'Aime 帳號',
-        ratingLabel: 'Rating',
-        trophyLabel: '稱號',
-        accountListError: '無法取得帳號列表。'
-      }
-    };
+    const defaultLanguage = {{ default_language | tojson }};
+    const translations = {{ i18n_catalog('web.bind') | tojson }};
+
+    const noticeTranslations = {{ i18n_catalog('web.bind_notice_html') | tojson }};
+
+    function translationFor(catalog, lang) {
+      return catalog[lang] || catalog[defaultLanguage] || Object.values(catalog)[0];
+    }
 
     function updateLanguage(lang) {
-      const t = translations[lang] || translations.ja;
+      const t = translationFor(translations, lang);
       const mode = '{{ mode }}' || 'bind';
 
       // Update page title
@@ -690,11 +561,7 @@
       document.getElementById('aime-modal-description').textContent = t.aimeModalDescription;
       document.getElementById('aime-confirm-btn').textContent = t.aimeConfirm;
 
-      // Toggle notice content
-      document.getElementById('notice-ja').style.display = lang === 'ja' ? 'block' : 'none';
-      document.getElementById('notice-en').style.display = lang === 'en' ? 'block' : 'none';
-      document.getElementById('notice-zh').style.display = lang === 'zh' ? 'block' : 'none';
-      document.getElementById('notice-zh-tw').style.display = lang === 'zh-tw' ? 'block' : 'none';
+      document.getElementById('notice-content').innerHTML = translationFor(noticeTranslations, lang);
 
     }
 
@@ -713,8 +580,8 @@
     }
 
     function updateBindTypeUi() {
-      const lang = document.getElementById('language')?.value || '{{ user_language }}' || 'ja';
-      const t = translations[lang] || translations.ja;
+      const lang = document.getElementById('language')?.value || {{ (user_language or default_language) | tojson }};
+      const t = translationFor(translations, lang);
       const mode = '{{ mode }}' || 'bind';
       const bindType = document.getElementById('bind_type')?.value || 'sega';
       const importOnly = mode !== 'rebind' && bindType === 'import_token';
@@ -745,8 +612,8 @@
     }
 
     function getCurrentTranslations() {
-      const lang = document.getElementById('language')?.value || '{{ user_language }}' || 'ja';
-      return translations[lang] || translations.ja;
+      const lang = document.getElementById('language')?.value || {{ (user_language or default_language) | tojson }};
+      return translationFor(translations, lang);
     }
 
     let aimeRequestId = 0;
@@ -989,7 +856,7 @@
 
     // 页面加载时自动设置用户语言和预填充数据
     window.addEventListener('DOMContentLoaded', function() {
-      const userLanguage = '{{ user_language }}' || 'ja';
+      const userLanguage = {{ (user_language or default_language) | tojson }};
       const mode = '{{ mode }}' || 'bind';
       updateLanguage(userLanguage);
 

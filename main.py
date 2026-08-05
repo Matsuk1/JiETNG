@@ -188,7 +188,17 @@ from modules.notification_manager import (
 )
 from modules.song_matcher import find_matching_songs, normalize_text
 from modules.memory_manager import memory_manager, cleanup_user_caches, cleanup_rate_limiter_tracking
-from modules.i18n import normalize_language, select_text
+from modules.i18n import (
+    DEFAULT_LANGUAGE,
+    DEFAULT_WEB_LANGUAGE,
+    format_catalog,
+    language_catalog,
+    language_codes,
+    language_options,
+    localized_catalog,
+    normalize_language,
+    select_text,
+)
 from modules.score_result_recognizer import (
     InvalidScoreImageError,
     UnsupportedScoreImageError,
@@ -281,14 +291,40 @@ app = Flask(__name__, static_folder='assets', static_url_path='/static')
 app.secret_key = secrets.token_hex(32)  # 用于session加密
 
 
-def _error_page(message, language="ja", status=400):
+@app.context_processor
+def _inject_language_context():
+    return {
+        "default_language": DEFAULT_WEB_LANGUAGE,
+        "i18n_catalog": language_catalog,
+        "i18n_section": localized_catalog,
+        "language_options": language_options(),
+        "i18n_select": select_text,
+    }
+
+
+def _localized_payload(data, key):
+    values = data.get(key)
+    if isinstance(values, dict):
+        return {str(code): str(value or "").strip() for code, value in values.items()}
+    return {
+        code: str(data.get(f"{key}_{code.replace('-', '_')}", "") or "").strip()
+        for code in language_codes()
+    }
+
+
+def _error_page(message, language=DEFAULT_WEB_LANGUAGE, status=400):
     message_i18n = None
     if isinstance(message, dict):
         message_i18n = {
-            code: select_text(message, language=code, default_language="ja")
-            for code in ("ja", "en", "zh", "zh-tw")
+            code: select_text(message, language=code, default_language=DEFAULT_WEB_LANGUAGE)
+            for code in language_codes()
         }
-    message = select_text(message_i18n or message, language=language, default_language="ja")
+    language = normalize_language(language, DEFAULT_WEB_LANGUAGE)
+    message = select_text(
+        message_i18n or message,
+        language=language,
+        default_language=DEFAULT_WEB_LANGUAGE,
+    )
     return render_template("error.html", message=message, message_i18n=message_i18n, language=language), status
 
 # 配置成绩命令列表
@@ -950,30 +986,18 @@ def website_segaid_bind():
     mode = request.args.get("mode", "bind")
     if not token:
         # Token 未提供的错误消息（此时还没有 user_id，三语同时显示）
-        token_missing_message = {
-            "ja": "トークンが提供されていません。",
-            "en": "Token not provided.",
-            "zh": "未提供令牌。"
-        }
+        token_missing_message = language_catalog("main.token_missing")
         return _error_page(token_missing_message)
 
     try:
         user_id = get_user_id_from_token(token)
         if not user_exists(user_id):
-            token_invalid_message = {
-                "ja": "トークンが無効です。",
-                "en": "Invalid token.",
-                "zh": "令牌无效。"
-            }
+            token_invalid_message = language_catalog("main.token_invalid")
             return _error_page(token_invalid_message)
         
     except Exception as e:
         logger.error(f"[Auth] ✗ Token verification failed: error={e}")
-        token_invalid_message = {
-            "ja": "トークンが無効です。",
-            "en": "Invalid token.",
-            "zh": "令牌无效。"
-        }
+        token_invalid_message = language_catalog("main.token_invalid")
         return _error_page(token_invalid_message)
 
     if request.method == "POST":
@@ -991,20 +1015,19 @@ def website_segaid_bind():
         if mode == "rebind":
             # rebind 模式下保持现有 timezone 和 language 不变
             user_timezone = str(user_data.get("timezone", 9))
-            user_language = normalize_language(user_data.get("language"), "ja")
+            user_language = normalize_language(user_data.get("language"), DEFAULT_WEB_LANGUAGE)
         else:
             user_timezone = request.form.get("timezone", "9")
-            user_language = normalize_language(request.form.get("language", user_data.get("language", "ja")), "ja")
+            user_language = normalize_language(
+                request.form.get("language", user_data.get("language")),
+                DEFAULT_WEB_LANGUAGE,
+            )
 
         # 检查用户是否已经绑定账号（仅在 bind 模式下检查）
         has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
 
         if mode == "bind" and has_account:
-            error_messages = {
-                "ja": "すでに SEGA アカウントが連携されています。再度連携する場合は、先に unbind コマンドで連携を解除してください。",
-                "en": "A SEGA account is already linked. To rebind, please use the unbind command first to unlink your account.",
-                "zh": "已绑定 SEGA 账号。如需重新绑定，请先使用 unbind 命令解除绑定。"
-            }
+            error_messages = language_catalog("main.account_already_bound")
             return _error_page(error_messages, user_language)
 
         if mode == "bind" and bind_type == "import_token":
@@ -1045,28 +1068,15 @@ def website_segaid_bind():
         # 在 rebind 模式下，验证 segaid 必须与现有的一致
         if mode == "rebind":
             if not has_account:
-                error_messages = {
-                    "ja": "アカウントが連携されていません。",
-                    "en": "No account is linked.",
-                    "zh": "未绑定账号。"
-                }
+                error_messages = language_catalog("main.account_not_linked")
                 return _error_page(error_messages, user_language)
 
             if segaid != user_data.get('sega_id'):
-                error_messages = {
-                    "ja": "SEGA ID を変更することはできません。",
-                    "en": "You cannot change the SEGA ID.",
-                    "zh": "无法更改 SEGA ID。"
-                }
+                error_messages = language_catalog("main.sega_id_immutable")
                 return _error_page(error_messages, user_language)
 
         if not segaid or not password:
-            missing_fields_messages = {
-                "ja": "すべての項目を入力してください。",
-                "en": "Please fill in all fields.",
-                "zh": "请填写所有字段。",
-                "zh-tw": "請填寫所有欄位。"
-            }
+            missing_fields_messages = language_catalog("main.fields_required")
             return _error_page(missing_fields_messages, user_language)
 
         if request.form.get("aime_preview") == "1":
@@ -1105,31 +1115,16 @@ def website_segaid_bind():
                 candidates = asyncio.run(_fetch_all_aime_candidates())
             except Exception as e:
                 logger.error(f"[Auth] ✗ Failed to fetch Aime candidates: user_id={user_id}, error={e}", exc_info=True)
-                message = {
-                    "ja": "アカウント一覧の取得に失敗しました。しばらくしてからもう一度お試しください。",
-                    "en": "Failed to fetch the account list. Please try again later.",
-                    "zh": "获取账号列表失败。请稍后再试。",
-                    "zh-tw": "取得帳號列表失敗。請稍後再試。"
-                }
-                return jsonify({"success": False, "message": select_text(message, language=user_language, default_language="ja")}), 500
+                message = language_catalog("main.candidates_failed")
+                return jsonify({"success": False, "message": select_text(message, language=user_language, default_language=DEFAULT_WEB_LANGUAGE)}), 500
 
             if candidates == "MAINTENANCE":
-                message = {
-                    "ja": "公式サイトがメンテナンス中です。しばらくしてからもう一度お試しください。",
-                    "en": "The official website is under maintenance. Please try again later.",
-                    "zh": "官方网站正在维护中。请稍后再试。",
-                    "zh-tw": "官方網站正在維護中。請稍後再試。"
-                }
-                return jsonify({"success": False, "message": select_text(message, language=user_language, default_language="ja")}), 503
+                message = language_catalog("main.maintenance")
+                return jsonify({"success": False, "message": select_text(message, language=user_language, default_language=DEFAULT_WEB_LANGUAGE)}), 503
 
             if not candidates:
-                message = {
-                    "ja": "SEGA ID または パスワード が正しくありません。もう一度確認してください。",
-                    "en": "Invalid SEGA ID or password. Please check and try again.",
-                    "zh": "SEGA ID 或密码不正确。请检查后重试。",
-                    "zh-tw": "SEGA ID 或密碼不正確。請檢查後重試。"
-                }
-                return jsonify({"success": False, "message": select_text(message, language=user_language, default_language="ja")}), 401
+                message = language_catalog("main.invalid_credentials")
+                return jsonify({"success": False, "message": select_text(message, language=user_language, default_language=DEFAULT_WEB_LANGUAGE)}), 401
 
             return jsonify({"success": True, "candidates": candidates})
 
@@ -1147,11 +1142,7 @@ def website_segaid_bind():
 
         result = asyncio.run(process_sega_credentials(user_id, segaid, password, user_version, user_language, timezone_int, aime_int, (mode == "rebind")))
         if result == "MAINTENANCE":
-            maintenance_messages = {
-                "ja": "公式サイトがメンテナンス中です。しばらくしてからもう一度お試しください。",
-                "en": "The official website is under maintenance. Please try again later.",
-                "zh": "官方网站正在维护中。请稍后再试。"
-            }
+            maintenance_messages = language_catalog("main.maintenance")
             return _error_page(maintenance_messages, user_language, 503)
         elif result:
             via_token = "registered_via_token" in (get_user(user_id) or {})
@@ -1168,32 +1159,24 @@ def website_segaid_bind():
                         logger.error(f"[Rebind] ⚠ Failed to push: {e}")
             return render_template("success.html", language=user_language, mode=mode)
         else:
-            invalid_credentials_messages = {
-                "ja": "SEGA ID または パスワード が正しくありません。もう一度確認してください。",
-                "en": "Invalid SEGA ID or password. Please check and try again.",
-                "zh": "SEGA ID 或密码不正确。请检查后重试。"
-            }
+            invalid_credentials_messages = language_catalog("main.invalid_credentials")
             return _error_page(invalid_credentials_messages, user_language, 500)
 
     # GET 请求时，从用户数据中获取语言设置和其他信息
     user_data = get_user(user_id) or {}
-    user_language = normalize_language(user_data.get("language"), "") if user_data.get("language") else ""
-    if not user_language:
+    stored_language = user_data.get("language")
+    if stored_language:
+        user_language = normalize_language(stored_language, DEFAULT_LANGUAGE)
+    else:
         # 首次绑定时，尝试从 LINE profile 自动检测语言
         try:
             with ApiClient(configuration) as api_client:
                 profile = MessagingApi(api_client).get_profile(user_id)
-                profile_lang = getattr(profile, 'language', None) or ''
-                if profile_lang.lower().replace("_", "-") in ("zh-tw", "zh-hant", "zh-hk", "zh-mo"):
-                    user_language = 'zh-tw'
-                elif profile_lang.startswith('zh'):
-                    user_language = 'zh'
-                elif profile_lang.startswith('ja'):
-                    user_language = 'ja'
-                else:
-                    user_language = 'en'
+                user_language = normalize_language(
+                    getattr(profile, "language", None), DEFAULT_LANGUAGE
+                )
         except Exception:
-            user_language = 'en'
+            user_language = DEFAULT_LANGUAGE
 
     # 在 rebind 模式下，传递现有账号数据到模板（不含 timezone/language/权限）
     if mode == "rebind":
@@ -1215,30 +1198,18 @@ def website_segaid_bind():
 def website_unbind():
     token = request.args.get("token") or request.form.get("token")
     if not token:
-        return _error_page({
-            "ja": "トークンが提供されていません。",
-            "en": "Token not provided.",
-            "zh": "未提供令牌。"
-        })
+        return _error_page(language_catalog("main.token_missing"))
 
     try:
         user_id = get_user_id_from_unbind_token(token)
     except Exception as e:
         logger.error(f"[Unbind] ✗ Token verification failed: error={e}")
-        return _error_page({
-            "ja": "トークンが無効、または期限切れです。もう一度 unbind を送信してください。",
-            "en": "The token is invalid or expired. Send unbind again.",
-            "zh": "令牌无效或已过期。请重新发送 unbind。"
-        })
+        return _error_page(language_catalog("main.unbind_token_invalid"))
 
     user_data = get_user(user_id) or {}
-    user_language = normalize_language(user_data.get("language"), "ja")
+    user_language = normalize_language(user_data.get("language"), DEFAULT_WEB_LANGUAGE)
     if not _can_open_settings(user_data):
-        return _error_page({
-            "ja": "連携済みアカウントがありません。",
-            "en": "No account is linked.",
-            "zh": "当前没有已绑定账号。"
-        }, user_language)
+        return _error_page(language_catalog("main.no_linked_account"), user_language)
 
     if request.method == "POST":
         delete_user(user_id)
@@ -1275,29 +1246,17 @@ def website_settings():
     """
     token = request.args.get("token")
     if not token:
-        token_missing_message = {
-            "ja": "トークンが提供されていません。",
-            "en": "Token not provided.",
-            "zh": "未提供令牌。"
-        }
+        token_missing_message = language_catalog("main.token_missing")
         return _error_page(token_missing_message)
 
     try:
         user_id = get_user_id_from_settings_token(token)
         if not user_exists(user_id):
-            token_invalid_message = {
-                "ja": "トークンが無効です。",
-                "en": "Invalid token.",
-                "zh": "令牌无效。"
-            }
+            token_invalid_message = language_catalog("main.token_invalid")
             return _error_page(token_invalid_message)
     except Exception as e:
         logger.error(f"[Auth] ✗ Settings token verification failed: error={e}")
-        token_invalid_message = {
-            "ja": "トークンが無効です。",
-            "en": "Invalid token.",
-            "zh": "令牌无效。"
-        }
+        token_invalid_message = language_catalog("main.token_invalid")
         return _error_page(token_invalid_message)
 
     user_data = get_user(user_id) or {}
@@ -1306,18 +1265,17 @@ def website_settings():
     has_account = all(key in user_data for key in ['sega_id', 'sega_pwd', 'version'])
     has_import_only_access = bool(user_data.get("import_only") or user_data.get("auth_type") == "import_token" or user_data.get("import_tokens"))
     if not has_account and not has_import_only_access:
-        error_messages = {
-            "ja": "アカウントが連携されていません。",
-            "en": "No account is linked.",
-            "zh": "未绑定账号。"
-        }
-        user_language = normalize_language(user_data.get("language"), "ja")
+        error_messages = language_catalog("main.account_not_linked")
+        user_language = normalize_language(user_data.get("language"), DEFAULT_WEB_LANGUAGE)
         return _error_page(error_messages, user_language)
 
     custom_bg_filename = f"jietnguser_{user_id}.webp"
 
     if request.method == "POST":
-        user_language = normalize_language(request.form.get("language", user_data.get("language", "ja")), "ja")
+        user_language = normalize_language(
+            request.form.get("language", user_data.get("language")),
+            DEFAULT_WEB_LANGUAGE,
+        )
         user_timezone = request.form.get("timezone", "9")
         bg_files_str = request.form.get("bg_files", "")
         bg_blur_raw = request.form.get("bg_blur", user_data.get("bg_blur", 20))
@@ -1366,7 +1324,7 @@ def website_settings():
         return render_template("success.html", language=user_language, mode="settings")
 
     # GET: 准备数据
-    user_language = normalize_language(user_data.get("language"), "ja")
+    user_language = normalize_language(user_data.get("language"), DEFAULT_WEB_LANGUAGE)
 
     # 扫描背景图目录
     try:
@@ -1858,7 +1816,16 @@ def demo_page():
         return _demo_cors(jsonify({"error": "An error occurred while generating your score card."})), 500
 
 
-async def process_sega_credentials(user_id, segaid, password, ver="jp", language="ja", timezone=9, aime=0, rebind=False):
+async def process_sega_credentials(
+    user_id,
+    segaid,
+    password,
+    ver="jp",
+    language=DEFAULT_WEB_LANGUAGE,
+    timezone=9,
+    aime=0,
+    rebind=False,
+):
     base = (
         "https://maimaidx-eng.com/maimai-mobile"
         if ver == "intl"
@@ -1925,7 +1892,7 @@ def async_get_friend_list_task(event):
             user_id,
             reply_token,
             generate_status_flex(
-                {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+                language_catalog("main.private_chat_title"),
                 friend_rcd_group_warning_text,
                 user_id,
                 tone="warning",
@@ -1989,7 +1956,7 @@ def async_generate_friend_record_task(event):
     source_type = getattr(event.source, 'type', 'user')
     if source_type != 'user':
         reply_message = generate_status_flex(
-            {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+            language_catalog("main.private_chat_title"),
             friend_rcd_group_warning_text,
             user_id,
             tone="warning",
@@ -2331,32 +2298,20 @@ def handle_rc_command(msg: str, user_id: str):
         level = float(level_str)
     except ValueError:
         language = get_user_language(user_id)
-        error_texts = {
-            'ja': '無効な定数です。1.0～15.0の範囲で入力してください。',
-            'en': 'Invalid constant. Please enter a value between 1.0 and 15.0.',
-            'zh': '无效的定数。请输入 1.0~15.0 范围内的数值。'
-        }
-        return TextMessage(text=select_text(error_texts, language=language, default_language='ja'))
+        error_texts = language_catalog("main.invalid_constant")
+        return TextMessage(text=select_text(error_texts, language=language, default_language=DEFAULT_WEB_LANGUAGE))
 
     # 验证范围：1.0 到 15.0
     if level < 1.0 or level > 15.0:
         language = get_user_language(user_id)
-        error_texts = {
-            'ja': f'定数 {level} は範囲外です。1.0～15.0の範囲で入力してください。',
-            'en': f'Constant {level} is out of range. Please enter a value between 1.0 and 15.0.',
-            'zh': f'定数 {level} 超出范围。请输入 1.0~15.0 范围内的数值。'
-        }
-        return TextMessage(text=select_text(error_texts, language=language, default_language='ja'))
+        error_texts = format_catalog("main.constant_out_of_range", level=level)
+        return TextMessage(text=select_text(error_texts, language=language, default_language=DEFAULT_WEB_LANGUAGE))
 
     # 验证小数位数：最多一位
     if round(level, 1) != level:
         language = get_user_language(user_id)
-        error_texts = {
-            'ja': f'定数 {level} は無効です。小数点以下は1桁まで入力可能です（例：13.2）。',
-            'en': f'Constant {level} is invalid. Only one decimal place is allowed (e.g., 13.2).',
-            'zh': f'定数 {level} 无效。仅支持一位小数（例如：13.2）。'
-        }
-        return TextMessage(text=select_text(error_texts, language=language, default_language='ja'))
+        error_texts = format_catalog("main.constant_precision", level=level)
+        return TextMessage(text=select_text(error_texts, language=language, default_language=DEFAULT_WEB_LANGUAGE))
 
     return get_rc(level, user_id)
 
@@ -2596,7 +2551,7 @@ def search_by_artist(user_id, artist_query, ver="jp", page=1, source_type="user"
     """
     if source_type != 'user':
         return generate_status_flex(
-            {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+            language_catalog("main.private_chat_title"),
             search_group_warning_text,
             user_id,
             tone="warning",
@@ -2633,7 +2588,7 @@ def search_by_designer(user_id, designer_query, ver="jp", page=1, source_type="u
     """
     if source_type != 'user':
         return generate_status_flex(
-            {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+            language_catalog("main.private_chat_title"),
             search_group_warning_text,
             user_id,
             tone="warning",
@@ -2678,7 +2633,7 @@ def search_by_bpm(user_id, bpm_min, bpm_max=None, ver="jp", page=1, source_type=
     """
     if source_type != 'user':
         return generate_status_flex(
-            {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+            language_catalog("main.private_chat_title"),
             search_group_warning_text,
             user_id,
             tone="warning",
@@ -2769,7 +2724,7 @@ def calc_by_id(user_id, song_id, ver="jp"):
 def get_user_info(user_id, source_type):
     if source_type != 'user':
         return generate_status_flex(
-            {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+            language_catalog("main.private_chat_title"),
             private_info_group_warning_text,
             user_id,
             tone="warning",
@@ -4409,12 +4364,8 @@ def _handle_fix_record_command(event, command_text: str) -> bool:
     source_type = getattr(event.source, "type", "user")
     if parsed_command is False:
         message = generate_status_flex(
-            {"zh": "修正格式错误", "en": "Invalid Correction Format", "ja": "修正形式エラー"},
-            {
-                "zh": "请使用 7 行格式：fix-rcd 曲名、达成率，随后依次填写 TAP、HOLD、SLIDE、TOUCH、BREAK；每行格式为 CP/PF/GR/GD/MS。",
-                "en": "Use 7 lines: fix-rcd TITLE, achievement, then TAP, HOLD, SLIDE, TOUCH, and BREAK. Each row must be CP/PF/GR/GD/MS.",
-                "ja": "7 行で入力してください。fix-rcd 曲名、達成率、TAP、HOLD、SLIDE、TOUCH、BREAK の順で、各判定行を CP/PF/GR/GD/MS 形式にします。",
-            },
+            language_catalog("main.correction_format_title"),
+            language_catalog("main.correction_format_body"),
             user_id,
             tone="warning",
         )
@@ -4564,12 +4515,8 @@ def _score_recognition_queue_task(event, command: str, quoted_message_id: str, f
             user_id=user_id,
         )
         reply_messages = [generate_status_flex(
-            {"zh": "识别失败", "en": "Recognition Failed", "ja": "認識に失敗しました"},
-            {
-                "zh": "无法读取这张成绩图，请确认图片完整后重试。",
-                "en": "This score image could not be read. Check that the result screen is fully visible and try again.",
-                "ja": "このリザルト画像を読み取れませんでした。画面全体が写っているか確認して再試行してください。",
-            },
+            language_catalog("main.recognition_failed_title"),
+            language_catalog("main.recognition_failed_body"),
             user_id,
             tone="danger",
         )]
@@ -4655,12 +4602,11 @@ def _handle_recognize_command(event, cleaned_text: str) -> bool:
             user_id,
             event.reply_token,
             generate_status_flex(
-                {"zh": "缺少成绩图", "en": "Score Image Required", "ja": "リザルト画像が必要です"},
-                {
-                    "zh": f"请回复一张成绩图并发送 {command_text}。",
-                    "en": f"Reply to a score image with {command_text}.",
-                    "ja": f"リザルト画像に返信して {command_text} を送信してください。",
-                },
+                language_catalog("main.score_image_required_title"),
+                format_catalog(
+                    "main.score_image_required_body",
+                    command_text=command_text,
+                ),
                 user_id,
                 tone="warning",
             ),
@@ -4750,157 +4696,7 @@ def _enqueue_task(cmd, ctx, target_queue, lane_name, payload):
         )
 
 
-def _help_text(zh, en, ja):
-    return {"zh": zh, "en": en, "ja": ja}
-
-
-COMMAND_HELP = {
-    "maimai_update": _help_text(
-        "命令: maimai update / update\n说明: 从 maimai NET 获取并更新已游玩的歌曲成绩数据。\n参数: 无需参数: 直接发送命令即可开始同步。\n示例: maimai update\n注意: 需要先绑定 SEGA 账号。",
-        "命令: maimai update / update\n说明: Sync played song records from maimai NET.\n参数: No arguments: send maimai update or update as-is.\n示例: maimai update\n注意: A linked SEGA account is required.",
-        "命令: maimai update / update\n说明: maimai NET からプレイ済み楽曲成績を同期します。\n参数: 引数なし: maimai update または update をそのまま送信します。\n示例: maimai update\n注意: SEGA アカウント連携が必要です。",
-    ),
-    "friend_list": _help_text(
-        "命令: friend list / friends\n说明: 查看已添加的好友列表。\n参数: 无需参数: 直接发送命令，会从 maimai NET 读取好友列表。\n示例: friends",
-        "命令: friend list / friends\n说明: Show your saved friend list from maimai NET.\n参数: No arguments: send friend list or friends as-is.\n示例: friends",
-        "命令: friend list / friends\n说明: maimai NET から登録済みフレンド一覧を表示します。\n参数: 引数なし: friend list または friends をそのまま送信します。\n示例: friends",
-    ),
-    "friend_rcd": _help_text(
-        "命令: friend-rcd <好友编号或名称> [成绩图类型] [筛选参数]\n说明: 查看指定好友的成绩。\n参数: 必填: <好友编号或名称>，编号来自 friends 列表，也可以填写可匹配的好友名。\n可选: [成绩图类型]，默认 best50；支持 b50、b40、ab50、ap50、fdx50、r50 等 B 系列类型。\n可选: [筛选参数]，与 b50-help 中的筛选参数一致，例如 -lv、-diff、-scr、-page。\n示例: friend-rcd 1\nfriend-rcd 1 b50 -lv 14 14.9",
-        "命令: friend-rcd <friend number or name> [score image type] [filters]\n说明: Show records for a selected friend.\n参数: Required: <friend number or name>; use the number from friends or a matching friend name.\nOptional: [score image type], defaults to best50; supports b50, b40, ab50, ap50, fdx50, r50, and other B-series types.\nOptional: [filters], same filters as b50-help, such as -lv, -diff, -scr, and -page.\n示例: friend-rcd 1\nfriend-rcd 1 b50 -lv 14 14.9",
-        "命令: friend-rcd <フレンド番号または名前> [成績画像タイプ] [フィルター]\n说明: 指定したフレンドの成績を表示します。\n参数: 必須: <フレンド番号または名前>。friends の番号、または一致するフレンド名を指定します。\n任意: [成績画像タイプ]。既定は best50。b50、b40、ab50、ap50、fdx50、r50 などに対応します。\n任意: [フィルター]。b50-help と同じ -lv、-diff、-scr、-page などを使えます。\n示例: friend-rcd 1\nfriend-rcd 1 b50 -lv 14 14.9",
-    ),
-    "search_record": _help_text(
-        "命令: search-record <6位歌曲ID>\n说明: 用歌曲 ID 精确查询自己的单曲成绩。\n参数: 必填: <6位歌曲ID>，必须是完整歌曲 ID，不支持曲名。\n格式: 6 个字符，通常为数字；不足或过长都会视为无效。\n示例: search-record 114514",
-        "命令: search-record <6-character song ID>\n说明: Look up your record for one song by exact song ID.\n参数: Required: <6-character song ID>; use the exact song ID, not a title.\nFormat: exactly 6 characters, usually digits; shorter or longer values are invalid.\n示例: search-record 114514",
-        "命令: search-record <6桁楽曲ID>\n说明: 楽曲 ID で自分の単曲成績を検索します。\n参数: 必須: <6桁楽曲ID>。曲名ではなく正確な楽曲 ID を指定します。\n形式: 6 文字ちょうど。短すぎる/長すぎる値は無効です。\n示例: search-record 114514",
-    ),
-    "song_record": _help_text(
-        "命令: <曲名> record / <曲名> song-record / <曲名>のレコード\n说明: 按曲名或别名查询自己的单曲成绩。\n参数: 必填: <曲名>，写在 record / song-record 前面，可以是完整曲名、部分曲名或别名。\n匹配: 如果匹配到多首歌，会返回可选择的候选结果。\n示例: ヒバナ record\nヒバナ song-record",
-        "命令: <song> record / <song> song-record / <song>のレコード\n说明: Look up your record by title or alias.\n参数: Required: <song>, placed before record / song-record; accepts full title, partial title, or alias.\nMatching: if multiple songs match, the bot returns selectable candidates.\n示例: ヒバナ record\nヒバナ song-record",
-        "命令: <曲名> record / <曲名> song-record / <曲名>のレコード\n说明: 曲名または別名で自分の単曲成績を検索します。\n参数: 必須: <曲名>。record / song-record の前に置き、正式名・部分一致・別名を指定できます。\n検索: 複数候補がある場合は選択候補を返します。\n示例: ヒバナ record\nヒバナ song-record",
-    ),
-    "level_records": _help_text(
-        "命令: <等级或定数> records [页码] / <等级或定数> record-list [页码]\n说明: 查看指定等级或定数的成绩列表。\n参数: 必填: <等级或定数>，支持 13、13+、14、13.6 等格式。\n可选: [页码]，正整数，从 1 开始；省略时显示第 1 页。\n匹配: 整数/带 + 按等级匹配，小数按定数精确匹配。\n示例: 13.6 records\n14 records 2",
-        "命令: <level or constant> records [page] / <level or constant> record-list [page]\n说明: Show a record list for a level or constant.\n参数: Required: <level or constant>; supports 13, 13+, 14, 13.6, and similar formats.\nOptional: [page], positive integer starting from 1; defaults to page 1.\nMatching: integer/+ values match level; decimals match exact constant.\n示例: 13.6 records\n14 records 2",
-        "命令: <レベルまたは定数> records [ページ] / <レベルまたは定数> record-list [ページ]\n说明: 指定レベルまたは定数の成績リストを表示します。\n参数: 必須: <レベルまたは定数>。13、13+、14、13.6 などに対応します。\n任意: [ページ]。1 から始まる正整数。省略時は 1 ページ目です。\n検索: 整数/+ はレベル、小数は定数の完全一致です。\n示例: 13.6 records\n14 records 2",
-    ),
-    "level_rank_progress": _help_text(
-        "命令: <等级或分类><评价> progress [-uc|-up|-c]\n说明: 查看指定等级或分类中评价目标的达成进度。\n参数: 必填: <等级或分类>，等级支持 11-15；分类支持 vocaloid、touhou、popani、gekichu、game、maimai。\n必填: <评价>，紧跟等级/分类书写，支持 s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+。\n可选: -uc 仅看未完成目标，-up 仅看未游玩，-c 仅看已完成目标。\n格式: 等级可直接连写，例如 14sss+ progress；分类建议和评价之间加空格，例如 vocaloid sss+ progress。\n示例: 14sss+ progress\n13ap progress -uc\nvocaloid sss+ progress\npopani ss+ progress -up",
-        "命令: <level or category><rank> progress [-uc|-up|-c]\n说明: Show progress toward a rank target at a level or song category.\n参数: Required: <level or category>; levels support 11-15; categories support vocaloid, touhou, popani, gekichu, game, and maimai.\nRequired: <rank>, written after the level/category; supports s, s+, ss, ss+, sss, sss+, fc, fc+, ap, ap+, fdx, fdx+.\nOptional: -uc shows unfinished target charts, -up shows unplayed charts, -c shows completed target charts.\nFormat: levels may be joined directly, for example 14sss+ progress; put a space after category names, for example vocaloid sss+ progress.\n示例: 14sss+ progress\n13ap progress -uc\nvocaloid sss+ progress\npopani ss+ progress -up",
-        "命令: <レベルまたはカテゴリ><評価> progress [-uc|-up|-c]\n说明: 指定レベルまたはカテゴリ内の評価目標進捗を表示します。\n参数: 必須: <レベルまたはカテゴリ>。レベルは 11-15、カテゴリは vocaloid、touhou、popani、gekichu、game、maimai に対応します。\n必須: <評価>。レベル/カテゴリの後に書きます。s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+ に対応します。\n任意: -uc は目標未達成のみ、-up は未プレイのみ、-c は目標達成済みのみを表示します。\n形式: レベルは 14sss+ progress のように連結できます。カテゴリは vocaloid sss+ progress のように空白区切りを推奨します。\n示例: 14sss+ progress\n13ap progress -uc\nvocaloid sss+ progress\npopani ss+ progress -up",
-    ),
-    "song_info": _help_text(
-        "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 查询歌曲基本信息、谱面信息和 BPM；也可以回复成绩图片直接发送 info，自动识别曲名。\n参数: 文本查询时填写 <曲名>，可以是完整曲名、部分曲名或别名；图片查询时无需填写曲名。\n匹配: 如果匹配到多首歌，会返回可选择的候选结果。\n示例: ヒバナ info\nヒバナってどんな曲\n（回复图片）info",
-        "命令: <song> info / <song> song-info / <song>ってどんな曲\n说明: Show song details, chart data, and BPM; you can also reply to a result image with info to recognize its title.\n参数: For text search, provide a full title, partial title, or alias; no title is needed when replying to an image.\nMatching: if multiple songs match, the bot returns selectable candidates.\n示例: ヒバナ info\nヒバナってどんな曲\n(reply to image) info",
-        "命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n说明: 楽曲情報、譜面情報、BPM を表示します。リザルト画像に返信して info を送ると、曲名を自動認識できます。\n参数: テキスト検索では正式名・部分一致・別名を指定します。画像への返信時は曲名の入力は不要です。\n検索: 複数候補がある場合は選択候補を返します。\n示例: ヒバナ info\nヒバナってどんな曲\n（画像に返信）info",
-    ),
-    "score_recognition": _help_text(
-        "命令: rec\nrec-flex\ncrop\nfix-rcd <曲名>\n说明: rec 识别完整成绩；能完全校验时返回成绩图片，需要修正时返回可复制的修正卡片。rec-flex 是 rec 的 -flex 后缀形式，会强制返回 FlexMsg。crop 只返回裁切图，用于检查识别区域。\n参数: rec、rec-flex 和 crop 都必须回复一张成绩图，不接受其他参数。\nfix-rcd: 第一行填写不含 [DX]/[STD] 的曲名，第二行填写达成率，随后依次填写 TAP、HOLD、SLIDE、TOUCH、BREAK。\n格式: 达成率可带 %；判定行必须为 CP/PF/GR/GD/MS 五个非负整数。\n示例: rec-flex\nfix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
-        "命令: rec\nrec-flex\ncrop\nfix-rcd <title>\n说明: rec recognizes the full score; it returns a generated result image when validation is complete, or a correction card when manual fixes are needed. rec-flex is rec with the -flex suffix and always returns FlexMsg. crop returns only crop previews for checking detected regions.\n参数: rec, rec-flex, and crop must reply to a score image and accept no other arguments.\nfix-rcd: put the title without [DX]/[STD] on line 1, achievement on line 2, then TAP, HOLD, SLIDE, TOUCH, and BREAK.\nFormat: achievement may include %; judgement rows must contain five non-negative integers as CP/PF/GR/GD/MS.\n示例: rec-flex\nfix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
-        "命令: rec\nrec-flex\ncrop\nfix-rcd <曲名>\n说明: rec はリザルト全体を認識します。完全に検証できた場合は生成画像を返し、修正が必要な場合はコピー可能な修正カードを返します。rec-flex は rec の -flex 接尾辞で、常に FlexMsg を返します。crop は認識範囲確認用の裁切画像だけを返します。\n参数: rec、rec-flex、crop はリザルト画像への返信が必須で、追加引数は使用できません。\nfix-rcd: 1 行目に [DX]/[STD] を含まない曲名、2 行目に達成率、その後に TAP、HOLD、SLIDE、TOUCH、BREAK を記述します。\n形式: 達成率の % は任意です。判定行は CP/PF/GR/GD/MS の非負整数 5 個です。\n示例: rec-flex\nfix-rcd HECATONCHEIR\n98.4298%\n357/211/46/6/3\n58/15/3/0/1\n130/0/1/1/1\n93/1/0/0/0\n54/38/5/2/1",
-    ),
-    "plate": _help_text(
-        "命令: <牌子名> achievement [-uc|-up|-c] / <牌子名>の達成状況\n说明: 查看版本牌子或称号类目标的完成情况。\n参数: 必填: <牌子名>，写在 achievement 前面，例如 真極、檄将 等。\n可选: -uc 仅看未完成项目，-up 仅看未游玩项目，-c 仅看已完成项目。\n格式: 过滤项写在命令最后；不写过滤项时显示完整完成度。\n示例: 真極 achievement\n真極 achievement -uc",
-        "命令: <plate title> achievement [-uc|-up|-c] / <plate title>の達成状況\n说明: Show completion status for plate/title goals.\n参数: Required: <plate title>, placed before achievement, such as 真極 or 檄将.\nOptional: -uc shows unfinished items, -up shows unplayed items, -c shows completed items.\nFormat: put the filter at the end; omit it to show full completion.\n示例: 真極 achievement\n真極 achievement -uc",
-        "命令: <プレート名> achievement [-uc|-up|-c] / <プレート名>の達成状況\n说明: プレートや称号系目標の達成状況を表示します。\n参数: 必須: <プレート名>。achievement の前に置きます。例: 真極、檄将。\n任意: -uc は未完成項目のみ、-up は未プレイ項目のみ、-c は達成済み項目のみを表示します。\n形式: フィルターは末尾に置きます。省略時は全体の達成状況です。\n示例: 真極 achievement\n真極 achievement -uc",
-    ),
-    "version_songs": _help_text(
-        "命令: <版本名> version-list / <版本名>のバージョンリスト\n说明: 查看指定版本歌曲列表。\n参数: 必填: <版本名>，写在 version-list 前面，支持版本完整名或可识别简称。\n格式: 版本名可包含空格；整段 version-list 前的文本都会作为版本查询词。\n示例: BUDDiES version-list\nPRiSM PLUS version-list",
-        "命令: <version> version-list / <version>のバージョンリスト\n说明: Show the song list for a version.\n参数: Required: <version>, placed before version-list; accepts full version names or recognizable aliases.\nFormat: version names may contain spaces; all text before version-list is used as the query.\n示例: BUDDiES version-list\nPRiSM PLUS version-list",
-        "命令: <バージョン名> version-list / <バージョン名>のバージョンリスト\n说明: 指定バージョンの楽曲一覧を表示します。\n参数: 必須: <バージョン名>。version-list の前に置き、正式名または認識可能な略称を指定します。\n形式: バージョン名に空白を含められます。version-list より前の全体を検索語として扱います。\n示例: BUDDiES version-list\nPRiSM PLUS version-list",
-    ),
-    "level_rank_list": _help_text(
-        "命令: <等级或定数> level-list / <等级或定数>の定数リスト\n说明: 查看指定等级或定数相关歌曲列表。\n参数: 必填: <等级或定数>，支持 13、13+、14、13.6 等格式。\n匹配: 整数/带 + 按等级匹配，小数按定数精确匹配。\n示例: 13.6 level-list\n14+ level-list",
-        "命令: <level or constant> level-list / <level or constant>の定数リスト\n说明: Show songs for a level or constant.\n参数: Required: <level or constant>; supports 13, 13+, 14, 13.6, and similar formats.\nMatching: integer/+ values match level; decimals match exact constant.\n示例: 13.6 level-list\n14+ level-list",
-        "命令: <レベルまたは定数> level-list / <レベルまたは定数>の定数リスト\n说明: 指定レベルまたは定数の楽曲一覧を表示します。\n参数: 必須: <レベルまたは定数>。13、13+、14、13.6 などに対応します。\n検索: 整数/+ はレベル、小数は定数の完全一致です。\n示例: 13.6 level-list\n14+ level-list",
-    ),
-    "random_song": _help_text(
-        "命令: random [条件]\n说明: 随机推荐一首歌曲。\n参数: 可选: [条件]，可写等级、定数、谱面类型、难度等关键词。\n格式: 多个条件用空格分隔；省略条件时从全部歌曲中随机。\n示例: random\nrandom 13+ dx\nrandom 14 mas",
-        "命令: random [condition]\n说明: Recommend a random song.\n参数: Optional: [condition], such as level, constant, chart type, or difficulty keywords.\nFormat: separate multiple conditions with spaces; omit conditions to randomize from all songs.\n示例: random\nrandom 13+ dx\nrandom 14 mas",
-        "命令: random [条件]\n说明: ランダムに 1 曲おすすめします。\n参数: 任意: [条件]。レベル、定数、譜面種別、難易度などのキーワードを指定できます。\n形式: 複数条件は空白で区切ります。省略時は全曲からランダムです。\n示例: random\nrandom 13+ dx\nrandom 14 mas",
-    ),
-    "unbind_prompt": _help_text(
-        "命令: unbind\n说明: 返回一次性 SEGA 账号解绑链接，在浏览器内确认后才会删除账号数据。\n参数: 无需参数: 直接发送 unbind。\n要求: 必须已经绑定 SEGA 账号或已启用 Import Token 账号。\n限制: 只能在私聊使用。\n示例: unbind",
-        "命令: unbind\n说明: Return a one-time SEGA account unlink URL. Account data is removed only after browser confirmation.\n参数: No arguments: send unbind as-is.\nRequirement: a SEGA account or Import Token account must already be linked.\nRestriction: private chat only.\n示例: unbind",
-        "命令: unbind\n说明: 一回限りの SEGA アカウント連携解除 URL を返します。ブラウザで確認した後に削除されます。\n参数: 引数なし: unbind をそのまま送信します。\n条件: SEGA アカウント、または Import Token アカウント連携済みである必要があります。\n制限: 個人チャット専用です。\n示例: unbind",
-    ),
-    "bind": _help_text(
-        "命令: bind\n说明: 返回一次性 SEGA 账号绑定链接，用于首次绑定账号。\n参数: 无需参数: 直接发送 bind。\n限制: 只能在私聊使用，群聊会返回安全提示。\n示例: bind",
-        "命令: bind\n说明: Return a one-time SEGA account binding URL for first-time linking.\n参数: No arguments: send bind as-is.\nRestriction: private chat only; group chats receive a safety warning.\n示例: bind",
-        "命令: bind\n说明: 初回連携用の SEGA アカウント連携 URL を返します。\n参数: 引数なし: bind をそのまま送信します。\n制限: 個人チャット専用です。グループでは安全警告を返します。\n示例: bind",
-    ),
-    "rebind": _help_text(
-        "命令: rebind\n说明: 返回 SEGA 账号编辑链接，用于更新已绑定账号的信息。\n参数: 无需参数: 直接发送 rebind。\n要求: 必须已经绑定 SEGA 账号。\n限制: 只能在私聊使用。\n示例: rebind",
-        "命令: rebind\n说明: Return an account edit URL for updating an already linked SEGA account.\n参数: No arguments: send rebind as-is.\nRequirement: a SEGA account must already be linked.\nRestriction: private chat only.\n示例: rebind",
-        "命令: rebind\n说明: 連携済み SEGA アカウント情報を更新する編集 URL を返します。\n参数: 引数なし: rebind をそのまま送信します。\n条件: SEGA アカウント連携済みである必要があります。\n制限: 個人チャット専用です。\n示例: rebind",
-    ),
-    "settings": _help_text(
-        "命令: settings\n说明: 返回个人设置页面链接，用于修改时区、语言、背景图片、隐私等选项。\n参数: 无需参数: 直接发送 settings。\n限制: 只能在私聊使用。\n示例: settings",
-        "命令: settings\n说明: Return your settings page URL for timezone, language, background image, privacy, and other options.\n参数: No arguments: send settings as-is.\nRestriction: private chat only.\n示例: settings",
-        "命令: settings\n说明: タイムゾーン、言語、背景画像、プライバシーなどを変更する設定 URL を返します。\n参数: 引数なし: settings をそのまま送信します。\n制限: 個人チャット専用です。\n示例: settings",
-    ),
-    "profile": _help_text(
-        "命令: profile / getme\n说明: 查看自己的 JiETNG 账号信息，包括绑定状态、服务器和语言设置。\n参数: 无需参数: 直接发送 profile 或 getme。\n限制: 只能在私聊使用，避免公开个人信息。\n示例: profile\ngetme",
-        "命令: profile / getme\n说明: Show your JiETNG account profile, including binding status, server, and language settings.\n参数: No arguments: send profile or getme as-is.\nRestriction: private chat only to avoid exposing personal information.\n示例: profile\ngetme",
-        "命令: profile / getme\n说明: 連携状態、サーバー、言語設定などの JiETNG アカウント情報を表示します。\n参数: 引数なし: profile または getme をそのまま送信します。\n制限: 個人情報保護のため個人チャット専用です。\n示例: profile\ngetme",
-    ),
-    "status": _help_text(
-        "命令: status\n说明: 查看机器人服务状态，包括运行时间、任务队列和系统资源。\n参数: 无需参数: 直接发送 status。\n示例: status",
-        "命令: status\n说明: Show bot service status, including uptime, task queues, and system resources.\n参数: No arguments: send status as-is.\n示例: status",
-        "命令: status\n说明: 稼働時間、キュー、システムリソースなど Bot の状態を表示します。\n参数: 引数なし: status をそのまま送信します。\n示例: status",
-    ),
-    "refreshmenu": _help_text(
-        "命令: refreshmenu\n说明: 根据当前绑定状态重新关联发送者自己的 LINE Rich Menu。\n参数: 无需参数: 直接发送 refreshmenu。\n限制: 仅影响发送者自己的 Rich Menu。\n示例: refreshmenu",
-        "命令: refreshmenu\n说明: Re-link the sender's LINE Rich Menu based on current binding state.\n参数: No arguments: send refreshmenu as-is.\nRestriction: only affects the sender's Rich Menu.\n示例: refreshmenu",
-        "命令: refreshmenu\n说明: 現在の連携状態に応じて送信者本人の LINE リッチメニューを再連携します。\n参数: 引数なし: refreshmenu をそのまま送信します。\n制限: 送信者本人の Rich Menu のみに影響します。\n示例: refreshmenu",
-    ),
-    "ranking": _help_text(
-        "命令: rank [jp|intl] / ranking [jp|intl]\n说明: 查看 DX Rating 排行榜。私聊显示总体榜，群聊显示当前 LINE 群内榜。\n参数: 可选: [服务器]，支持 jp、intl；省略时使用当前用户绑定的服务器。\n格式: 服务器参数写在 rank / ranking 后面，用空格分隔。\n示例: rank\nranking intl",
-        "命令: rank [jp|intl] / ranking [jp|intl]\n说明: Show the DX Rating ranking. Private chat shows the global ranking; group chat shows the current LINE group ranking.\n参数: Optional: [server], supports jp and intl; omitted value uses your linked server.\nFormat: put the server after rank / ranking, separated by a space.\n示例: rank\nranking intl",
-        "命令: rank [jp|intl] / ranking [jp|intl]\n说明: DX Rating ランキングを表示します。個人チャットでは総合、グループでは現在の LINE グループ内ランキングを表示します。\n参数: 任意: [サーバー]。jp、intl に対応。省略時はユーザーの連携サーバーを使います。\n形式: rank / ranking の後ろに空白区切りで指定します。\n示例: rank\nranking intl",
-    ),
-    "search_by_id": _help_text(
-        "命令: search <6位歌曲ID>\n说明: 用歌曲 ID 精确查询歌曲信息。\n参数: 必填: <6位歌曲ID>，必须是完整歌曲 ID，不支持曲名。\n格式: search 后空一格再写 ID；ID 长度必须为 6。\n示例: search 114514",
-        "命令: search <6-character song ID>\n说明: Look up song details by exact song ID.\n参数: Required: <6-character song ID>; use the exact song ID, not a title.\nFormat: put one space after search, then the ID; ID length must be 6.\n示例: search 114514",
-        "命令: search <6桁楽曲ID>\n说明: 楽曲 ID で楽曲情報を検索します。\n参数: 必須: <6桁楽曲ID>。曲名ではなく正確な楽曲 ID を指定します。\n形式: search の後に空白を入れて ID を書きます。ID は 6 文字です。\n示例: search 114514",
-    ),
-    "calc_song": _help_text(
-        "命令: calc-song <6位歌曲ID>\n说明: 计算指定歌曲的达成率相关信息。\n参数: 必填: <6位歌曲ID>，必须是完整歌曲 ID，不支持曲名。\n格式: calc-song 后空一格再写 ID；ID 长度必须为 6。\n示例: calc-song 114514",
-        "命令: calc-song <6-character song ID>\n说明: Calculate achievement-related values for a song.\n参数: Required: <6-character song ID>; use the exact song ID, not a title.\nFormat: put one space after calc-song, then the ID; ID length must be 6.\n示例: calc-song 114514",
-        "命令: calc-song <6桁楽曲ID>\n说明: 指定楽曲の達成率関連情報を計算します。\n参数: 必須: <6桁楽曲ID>。曲名ではなく正確な楽曲 ID を指定します。\n形式: calc-song の後に空白を入れて ID を書きます。ID は 6 文字です。\n示例: calc-song 114514",
-    ),
-    "search_by_artist": _help_text(
-        "命令: artist <关键词> [页码]\n说明: 按艺术家名搜索歌曲。\n参数: 必填: <关键词>，artist 后面的文本会作为艺术家名进行不区分大小写的包含匹配。\n可选: [页码]，正整数，从 1 开始；写在关键词最后。\n限制: 仅限私聊使用，避免群聊刷屏。\n示例: artist Nanahira\nartist sasakure 2",
-        "命令: artist <keyword> [page]\n说明: Search songs by artist name.\n参数: Required: <keyword>; text after artist is matched against artist names, case-insensitively.\nOptional: [page], positive integer starting from 1; put it at the end.\nRestriction: private chat only to prevent group spam.\n示例: artist Nanahira\nartist sasakure 2",
-        "命令: artist <キーワード> [ページ]\n说明: アーティスト名で楽曲を検索します。\n参数: 必須: <キーワード>。artist 後の文字列をアーティスト名に部分一致で検索します。\n任意: [ページ]。1 から始まる正整数。末尾に指定します。\n制限: グループでの連投防止のため個人チャット専用です。\n示例: artist Nanahira\nartist sasakure 2",
-    ),
-    "search_by_designer": _help_text(
-        "命令: designer <关键词> [页码]\n说明: 按谱面设计师名搜索歌曲。\n参数: 必填: <关键词>，designer 后面的文本会匹配各难度谱面的 noteDesigner 字段。\n可选: [页码]，正整数，从 1 开始；写在关键词最后。\n限制: 仅限私聊使用，避免群聊刷屏。\n示例: designer Jack\ndesigner 譜面 2",
-        "命令: designer <keyword> [page]\n说明: Search songs by chart designer.\n参数: Required: <keyword>; text after designer is matched against each chart's noteDesigner field.\nOptional: [page], positive integer starting from 1; put it at the end.\nRestriction: private chat only to prevent group spam.\n示例: designer Jack\ndesigner chart 2",
-        "命令: designer <キーワード> [ページ]\n说明: 譜面制作者名で楽曲を検索します。\n参数: 必須: <キーワード>。designer 後の文字列を各譜面の noteDesigner に対して検索します。\n任意: [ページ]。1 から始まる正整数。末尾に指定します。\n制限: グループでの連投防止のため個人チャット専用です。\n示例: designer Jack\ndesigner 譜面 2",
-    ),
-    "search_by_bpm": _help_text(
-        "命令: bpm <BPM或范围> [页码]\n说明: 按 BPM 精确值或范围搜索歌曲。\n参数: 必填: <BPM或范围>，支持单值、连字符范围、空格范围。\n单值: bpm 180 表示精确匹配 BPM 180。\n范围: bpm 0-120 或 bpm 120 180 表示闭区间，端点可为 0。\n可选: [页码]，正整数，从 1 开始；写在最后。\n限制: 仅限私聊使用。\n示例: bpm 180\nbpm 0-120\nbpm 120 180 2",
-        "命令: bpm <BPM or range> [page]\n说明: Search songs by exact BPM or BPM range.\n参数: Required: <BPM or range>; supports a single value, hyphen range, or space-separated range.\nSingle value: bpm 180 matches BPM 180 exactly.\nRange: bpm 0-120 or bpm 120 180 searches an inclusive range; 0 is allowed as an endpoint.\nOptional: [page], positive integer starting from 1; put it at the end.\nRestriction: private chat only.\n示例: bpm 180\nbpm 0-120\nbpm 120 180 2",
-        "命令: bpm <BPMまたは範囲> [ページ]\n说明: BPM の完全一致または範囲で楽曲を検索します。\n参数: 必須: <BPMまたは範囲>。単一値、ハイフン範囲、空白区切り範囲に対応します。\n単一値: bpm 180 は BPM 180 の完全一致です。\n範囲: bpm 0-120 または bpm 120 180 は両端を含む範囲検索です。端点 0 も使用できます。\n任意: [ページ]。1 から始まる正整数。末尾に指定します。\n制限: 個人チャット専用です。\n示例: bpm 180\nbpm 0-120\nbpm 120 180 2",
-    ),
-    "rc": _help_text(
-        "命令: rc <定数>\n说明: 查询 Rating Composition / レート内訳相关信息。\n参数: 必填: <定数>，支持 1.0 到 15.0 之间的数字。\n格式: 可写整数或小数，例如 13、13.6、14.9。\n限制: 超出 1.0-15.0 或无法转成数字会返回输入错误。\n示例: rc 14\nrc 13.6",
-        "命令: rc <constant>\n说明: Query Rating Composition / rating breakdown information.\n参数: Required: <constant>, a number between 1.0 and 15.0.\nFormat: integers and decimals are accepted, such as 13, 13.6, and 14.9.\nRestriction: values outside 1.0-15.0 or non-numeric input return an input error.\n示例: rc 14\nrc 13.6",
-        "命令: rc <定数>\n说明: Rating Composition / レート内訳の情報を検索します。\n参数: 必須: <定数>。1.0 から 15.0 までの数値です。\n形式: 13、13.6、14.9 のような整数または小数に対応します。\n制限: 1.0-15.0 の範囲外、または数値化できない入力はエラーです。\n示例: rc 14\nrc 13.6",
-    ),
-    "export": _help_text(
-        "命令: export <json|xml> / 成绩导出 <json|xml>\n说明: 将自己的成绩数据导出为指定格式。\n参数: 必填: <格式>，只能填写 json 或 xml。\n输出: 成功后返回临时下载链接和复制链接按钮。\n要求: 需要已有成绩数据；如果没有数据会返回空数据提示。\n示例: export json\n成绩导出 xml",
-        "命令: export <json|xml>\n说明: Export your score data in the selected format.\n参数: Required: <format>, must be json or xml.\nOutput: returns a temporary download URL and a copy-link button on success.\nRequirement: score data must exist; empty data returns an empty-data message.\n示例: export json\nexport xml",
-        "命令: export <json|xml> / 成績エクスポート <json|xml>\n说明: 自分の成績データを指定形式で書き出します。\n参数: 必須: <形式>。json または xml のみ指定できます。\n出力: 成功時は一時ダウンロード URL とコピー用ボタンを返します。\n条件: 成績データが必要です。空の場合は空データの案内を返します。\n示例: export json\n成績エクスポート xml",
-    ),
-    "calc_notes": _help_text(
-        "命令: calc <tap> <hold> <slide> [touch] <break>\n说明: 根据谱面物量计算单个 Note 分值。\n参数: 必填: <tap> <hold> <slide> <break>，当只给 4 个数字时按 TAP/HOLD/SLIDE/BREAK 解析。\n可选: [touch]，当给 5 个数字时第 4 个为 TOUCH，第 5 个为 BREAK。\n格式: 所有参数必须是非负整数，用空格分隔。\n示例: calc 500 50 80 30\ncalc 500 50 80 20 30",
-        "命令: calc <tap> <hold> <slide> [touch] <break>\n说明: Calculate per-note score values from note counts.\n参数: Required: <tap> <hold> <slide> <break>; with 4 numbers, they are parsed as TAP/HOLD/SLIDE/BREAK.\nOptional: [touch]; with 5 numbers, the 4th is TOUCH and the 5th is BREAK.\nFormat: all values must be non-negative integers separated by spaces.\n示例: calc 500 50 80 30\ncalc 500 50 80 20 30",
-        "命令: calc <tap> <hold> <slide> [touch] <break>\n说明: ノーツ数から 1 ノーツあたりの点数を計算します。\n参数: 必須: <tap> <hold> <slide> <break>。4 数値の場合は TAP/HOLD/SLIDE/BREAK として解析します。\n任意: [touch]。5 数値の場合は 4 番目が TOUCH、5 番目が BREAK です。\n形式: すべて非負整数で、空白区切りです。\n示例: calc 500 50 80 30\ncalc 500 50 80 20 30",
-    ),
-}
+COMMAND_HELP = localized_catalog("command_help")
 
 EXACT_HELP_ALIASES = {
     "maimai update": "maimai_update",
@@ -5140,7 +4936,7 @@ def cmd_unbind_prompt(ctx):
     user_data = get_user(ctx.user_id) or {}
     if not _can_open_settings(user_data):
         return generate_status_flex(
-            {"ja": "未連携", "en": "Not Linked", "zh": "未绑定"},
+            language_catalog("main.not_linked_title"),
             rebind_not_bound_text,
             ctx.user_id,
             tone="warning",
@@ -5297,7 +5093,7 @@ def cmd_calc_notes(ctx):
 def _check_private_or_warn(ctx, warn_text_dict):
     if ctx.source_type != 'user':
         return generate_status_flex(
-            {"ja": "個人チャットで使用してください", "en": "Use Private Chat", "zh": "请在私聊使用"},
+            language_catalog("main.private_chat_title"),
             warn_text_dict,
             ctx.user_id,
             tone="warning",
@@ -5321,7 +5117,7 @@ def cmd_bind(ctx):
     add_user(ctx.user_id)
     if _has_full_account(get_user(ctx.user_id) or {}):
         return generate_status_flex(
-            {"ja": "連携済み", "en": "Already Linked", "zh": "已绑定"},
+            language_catalog("main.already_linked_title"),
             already_bound_text,
             ctx.user_id,
             tone="warning",
@@ -5335,7 +5131,7 @@ def cmd_rebind(ctx):
         return warn
     if not _has_full_account(get_user(ctx.user_id) or {}):
         return generate_status_flex(
-            {"ja": "未連携", "en": "Not Linked", "zh": "未绑定"},
+            language_catalog("main.not_linked_title"),
             rebind_not_bound_text,
             ctx.user_id,
             tone="warning",
@@ -5349,7 +5145,7 @@ def cmd_settings(ctx):
         return warn
     if not _can_open_settings(get_user(ctx.user_id) or {}):
         return generate_status_flex(
-            {"ja": "未連携", "en": "Not Linked", "zh": "未绑定"},
+            language_catalog("main.not_linked_title"),
             rebind_not_bound_text,
             ctx.user_id,
             tone="warning",
@@ -5586,15 +5382,16 @@ def handle_postback(event):
                     # 获取用户语言
                     lang = get_user_language(user_id)
 
-                    # 构建反馈消息（多语言）
-                    vote_success_text = {
-                        'ja': f"投票ありがとうございます！\n\n支持: {stats['support_count']}人 ({stats['support_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)\n反対: {stats['oppose_count']}人 ({stats['oppose_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)",
-                        'en': f"Thank you for voting!\n\nSupport: {stats['support_count']} ({stats['support_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)\nOppose: {stats['oppose_count']} ({stats['oppose_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)",
-                        'zh': f"感谢您的投票！\n\n支持: {stats['support_count']}人 ({stats['support_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)\n反对: {stats['oppose_count']}人 ({stats['oppose_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)",
-                        'zh-tw': f"感謝您的投票！\n\n支持: {stats['support_count']}人 ({stats['support_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)\n反對: {stats['oppose_count']}人 ({stats['oppose_count']/(stats['support_count']+stats['oppose_count'])*100 if stats['support_count']+stats['oppose_count'] > 0 else 0:.1f}%)"
-                    }
+                    total_votes = stats['support_count'] + stats['oppose_count']
+                    vote_success_text = format_catalog(
+                        "main.vote_success",
+                        support_count=stats['support_count'],
+                        support_percent=stats['support_count'] / total_votes * 100 if total_votes else 0,
+                        oppose_count=stats['oppose_count'],
+                        oppose_percent=stats['oppose_count'] / total_votes * 100 if total_votes else 0,
+                    )
 
-                    reply_message = TextMessage(text=select_text(vote_success_text, language=lang, default_language='ja'))
+                    reply_message = TextMessage(text=select_text(vote_success_text, language=lang, default_language=DEFAULT_WEB_LANGUAGE))
 
                     # 发送回复
                     smart_reply(user_id, event.reply_token, reply_message, configuration, addition=False)
@@ -5970,23 +5767,9 @@ def admin_create_notice():
 
     data = request.get_json()
 
-    # 多语言内容
-    content_zh = data.get('content_zh', '').strip()
-    content_zh_tw = data.get('content_zh_tw', '').strip()
-    content_ja = data.get('content_ja', '').strip()
-    content_en = data.get('content_en', '').strip()
-
-    # 验证至少填写一种语言
-    if not any([content_ja, content_en, content_zh, content_zh_tw]):
+    content = _localized_payload(data, "content")
+    if not any(content.values()):
         return jsonify({'success': False, 'message': 'At least one language content is required'}), 400
-
-    # 构建多语言内容对象
-    content_dict = {
-        'zh': content_zh,
-        'zh-tw': content_zh_tw,
-        'ja': content_ja,
-        'en': content_en,
-    }
 
     # 获取其他参数
     status = data.get('status', 'published')  # 'draft' | 'published'
@@ -5995,30 +5778,17 @@ def admin_create_notice():
 
     # 按钮参数
     button_type = data.get('button_type')
-    button_label_zh = data.get('button_label_zh', '').strip()
-    button_label_zh_tw = data.get('button_label_zh_tw', '').strip()
-    button_label_ja = data.get('button_label_ja', '').strip()
-    button_label_en = data.get('button_label_en', '').strip()
     button_value = data.get('button_value', '').strip()
-
-    # 构建按钮标签字典
-    button_label = None
-    if button_type and button_value:
-        button_label = {
-            'zh': button_label_zh,
-            'zh-tw': button_label_zh_tw,
-            'ja': button_label_ja,
-            'en': button_label_en
-        }
+    button_labels = _localized_payload(data, "button_label")
 
     try:
         notice_id = upload_notice(
-            content=content_dict,
+            content=content,
             status=status,
             voting_enabled=voting_enabled,
             created_by=created_by,
             button_type=button_type,
-            button_label=button_label,
+            button_label=button_labels if button_type and button_value else None,
             button_value=button_value
         )
 
@@ -6048,40 +5818,15 @@ def admin_update_notice():
     data = request.get_json()
     notice_id = data.get('notice_id')
 
-    # 多语言内容
-    content_zh = data.get('content_zh', '').strip()
-    content_zh_tw = data.get('content_zh_tw', '').strip()
-    content_ja = data.get('content_ja', '').strip()
-    content_en = data.get('content_en', '').strip()
-
-    if not notice_id or not any([content_ja, content_en, content_zh, content_zh_tw]):
+    content = _localized_payload(data, "content")
+    if not notice_id or not any(content.values()):
         return jsonify({'success': False, 'message': 'Notice ID and at least one language content are required'}), 400
-
-    content_dict = {
-        'zh': content_zh,
-        'zh-tw': content_zh_tw,
-        'ja': content_ja,
-        'en': content_en,
-    }
 
     # 按钮参数
     button_type = data.get('button_type')
-    button_label_zh = data.get('button_label_zh', '').strip()
-    button_label_zh_tw = data.get('button_label_zh_tw', '').strip()
-    button_label_ja = data.get('button_label_ja', '').strip()
-    button_label_en = data.get('button_label_en', '').strip()
     button_value = data.get('button_value', '').strip()
     remove_button = data.get('remove_button', False)
-
-    # 构建按钮标签字典
-    button_label = None
-    if button_type and button_value:
-        button_label = {
-            'zh': button_label_zh,
-            'zh-tw': button_label_zh_tw,
-            'ja': button_label_ja,
-            'en': button_label_en
-        }
+    button_labels = _localized_payload(data, "button_label")
 
     try:
         # 检查是否为最新已发布公告
@@ -6090,9 +5835,9 @@ def admin_update_notice():
 
         success = update_notice(
             notice_id,
-            content_dict,
+            content,
             button_type=button_type,
-            button_label=button_label,
+            button_label=button_labels if button_type and button_value else None,
             button_value=button_value,
             remove_button=remove_button
         )
@@ -6276,19 +6021,13 @@ def admin_create_tip_ads():
 
     data = request.get_json()
     tip_type = data.get('type')
-    text_zh = data.get('text_zh')
-    text_zh_tw = data.get('text_zh_tw')
-    text_en = data.get('text_en')
-    text_ja = data.get('text_ja')
+    text = _localized_payload(data, "text")
     button_type = data.get('button_type')
-    button_label_zh = data.get('button_label_zh')
-    button_label_zh_tw = data.get('button_label_zh_tw')
-    button_label_en = data.get('button_label_en')
-    button_label_ja = data.get('button_label_ja')
+    button_labels = _localized_payload(data, "button_label")
     button_value = data.get('button_value')
     enabled = data.get('enabled', True)
 
-    if not all([tip_type, text_zh, text_en, text_ja]):
+    if not tip_type or not any(text.values()):
         return jsonify({'success': False, 'message': 'Missing required fields'}), 400
 
     if tip_type not in ['tip', 'ad']:
@@ -6297,15 +6036,9 @@ def admin_create_tip_ads():
     try:
         tip_ad = create_tip_ad(
             tip_type=tip_type,
-            text_zh=text_zh,
-            text_zh_tw=text_zh_tw,
-            text_en=text_en,
-            text_ja=text_ja,
+            text=text,
             button_type=button_type,
-            button_label_zh=button_label_zh,
-            button_label_zh_tw=button_label_zh_tw,
-            button_label_en=button_label_en,
-            button_label_ja=button_label_ja,
+            button_labels=button_labels,
             button_value=button_value,
             enabled=enabled
         )
@@ -6328,15 +6061,9 @@ def admin_put_tip_ads(tip_ad_id):
         return jsonify({'success': False, 'message': 'Missing id'}), 400
 
     tip_type = data.get('type')
-    text_zh = data.get('text_zh')
-    text_zh_tw = data.get('text_zh_tw')
-    text_en = data.get('text_en')
-    text_ja = data.get('text_ja')
+    text = _localized_payload(data, "text")
     button_type = data.get('button_type')
-    button_label_zh = data.get('button_label_zh')
-    button_label_zh_tw = data.get('button_label_zh_tw')
-    button_label_en = data.get('button_label_en')
-    button_label_ja = data.get('button_label_ja')
+    button_labels = _localized_payload(data, "button_label")
     button_value = data.get('button_value')
     enabled = data.get('enabled')
     remove_button = data.get('remove_button', False)
@@ -6345,15 +6072,9 @@ def admin_put_tip_ads(tip_ad_id):
         tip_ad = update_tip_ad(
             tip_ad_id=tip_ad_id,
             tip_type=tip_type,
-            text_zh=text_zh,
-            text_zh_tw=text_zh_tw,
-            text_en=text_en,
-            text_ja=text_ja,
+            text=text,
             button_type=button_type,
-            button_label_zh=button_label_zh,
-            button_label_zh_tw=button_label_zh_tw,
-            button_label_en=button_label_en,
-            button_label_ja=button_label_ja,
+            button_labels=button_labels,
             button_value=button_value,
             enabled=enabled,
             remove_button=remove_button
@@ -7436,7 +7157,7 @@ def api_bind_user(user_id):
     - ver: 服务器版本 jp/intl（默认 jp）
     - aime: Aime卡选择（默认 0，仅jp有效）
     - timezone: 时区偏移（默认 9）
-    - language: 语言 ja/en/zh/zh-tw（默认 en）
+    - language: 已注册的语言代码（默认使用系统语言）
     """
     try:
         token_info = request.token_info
@@ -7447,7 +7168,7 @@ def api_bind_user(user_id):
         ver = data.get('ver', 'jp').strip().lower()
         aime = data.get('aime', '0')
         timezone = data.get('timezone', '9')
-        language = normalize_language(data.get('language'), 'en')
+        language = normalize_language(data.get('language'), DEFAULT_LANGUAGE)
 
         if not sega_id:
             return jsonify({"error": "Missing parameter", "message": "Parameter 'sega_id' is required"}), 400
@@ -7516,7 +7237,7 @@ def api_rebind_user(user_id):
 
         ver = data.get('ver', user_data.get('version', 'jp')).strip().lower()
         aime = data.get('aime', str(user_data.get('aime', 0)))
-        language = normalize_language(user_data.get('language'), 'en')
+        language = normalize_language(user_data.get('language'), DEFAULT_LANGUAGE)
         timezone_int = user_data.get('timezone', 9)
 
         if ver not in ('jp', 'intl'):

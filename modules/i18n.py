@@ -3,31 +3,25 @@
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping
 
-from modules.zh_tw import to_traditional
+from languages import iter_language_plugins
 
 
 TextTransform = Callable[[str], str]
 DEFAULT_LANGUAGE = "en"
+DEFAULT_WEB_LANGUAGE = "ja"
 
 
 @dataclass(frozen=True, slots=True)
 class Language:
+    label: str
     aliases: tuple[str, ...] = ()
     fallbacks: tuple[str, ...] = ()
     transforms: Mapping[str, TextTransform] = field(default_factory=dict)
+    texts: Mapping[str, Any] = field(default_factory=dict)
 
 
-LANGUAGES: dict[str, Language] = {
-    "en": Language(aliases=("en-us", "en-gb")),
-    "ja": Language(aliases=("jp", "jpn", "ja-jp")),
-    "zh": Language(aliases=("zh-cn", "zh-hans"), fallbacks=("zh-tw",)),
-    "zh-tw": Language(
-        aliases=("zh-hant", "zh-hk", "zh-mo"),
-        fallbacks=("zh",),
-        transforms={"zh": to_traditional, "*": to_traditional},
-    ),
-}
-SUPPORTED_LANGUAGES = tuple(LANGUAGES)
+LANGUAGES: dict[str, Language] = {}
+SUPPORTED_LANGUAGES: tuple[str, ...] = ()
 
 
 def _clean_code(language: Any) -> str:
@@ -49,9 +43,11 @@ def _resolve_registered_language(code: str) -> str | None:
 def register_language(
     code: str,
     *,
+    label: str | None = None,
     aliases=(),
     fallbacks=(),
     transforms: Mapping[str, TextTransform] | None = None,
+    texts: Mapping[str, Any] | None = None,
 ):
     """Register a language without changing normalization or selection code."""
     global SUPPORTED_LANGUAGES
@@ -59,12 +55,82 @@ def register_language(
     if not code:
         raise ValueError("Language code must not be empty")
     LANGUAGES[code] = Language(
+        label=label or code,
         aliases=tuple(_clean_code(alias) for alias in aliases),
         fallbacks=tuple(_clean_code(item) for item in fallbacks),
         transforms=dict(transforms or {}),
+        texts=dict(texts or {}),
     )
     SUPPORTED_LANGUAGES = tuple(LANGUAGES)
     return code
+
+
+def _load_language_plugins():
+    for plugin in iter_language_plugins():
+        definition = dict(plugin.LANGUAGE)
+        definition["texts"] = getattr(plugin, "TEXTS", {})
+        register_language(**definition)
+
+
+_load_language_plugins()
+
+if DEFAULT_LANGUAGE not in LANGUAGES or DEFAULT_WEB_LANGUAGE not in LANGUAGES:
+    raise RuntimeError("Default language plugins are missing")
+
+
+def language_codes() -> tuple[str, ...]:
+    return tuple(LANGUAGES)
+
+
+def language_options() -> tuple[dict[str, str], ...]:
+    return tuple(
+        {"code": code, "label": definition.label}
+        for code, definition in LANGUAGES.items()
+    )
+
+
+def language_catalog(path: str) -> dict[str, Any]:
+    """Return one catalog entry keyed by every plugin's language code."""
+    keys = path.split(".") if path else ()
+    catalog = {}
+    for code, definition in LANGUAGES.items():
+        value: Any = definition.texts
+        for key in keys:
+            if not isinstance(value, Mapping) or key not in value:
+                break
+            value = value[key]
+        else:
+            catalog[code] = value
+    return catalog
+
+
+def localized_catalog(path: str) -> dict[str, Any]:
+    """Return a catalog section transposed to key -> language -> value."""
+    def transpose(catalogs):
+        values = list(catalogs.values())
+        if values and all(isinstance(value, Mapping) for value in values):
+            keys = dict.fromkeys(key for value in values for key in value)
+            return {
+                key: transpose(
+                    {
+                        language: value[key]
+                        for language, value in catalogs.items()
+                        if key in value
+                    }
+                )
+                for key in keys
+            }
+        return dict(catalogs)
+
+    return transpose(language_catalog(path))
+
+
+def format_catalog(path: str, **values) -> dict[str, str]:
+    """Format one text entry for every language plugin."""
+    return {
+        language: str(text).format(**values)
+        for language, text in language_catalog(path).items()
+    }
 
 
 def normalize_language(language: Any, default=DEFAULT_LANGUAGE) -> str:

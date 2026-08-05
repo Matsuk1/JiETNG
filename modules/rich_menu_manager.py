@@ -18,6 +18,7 @@ from modules.config_loader import (
     RICH_MENU_MENUS,
     RICH_MENU_UNBOUND_ID,
 )
+from modules.i18n import normalize_language
 
 logger = logging.getLogger(__name__)
 
@@ -32,16 +33,10 @@ def is_rich_menu_ready() -> bool:
 
 
 def normalize_rich_menu_language(language: Optional[str]) -> str:
-    value = (language or RICH_MENU_DEFAULT_LANGUAGE or "zh").lower().replace("_", "-")
-    if value in ("zh-tw", "zh-hk", "zh-mo", "tw"):
-        return "zh-tw"
-    if value.startswith("zh"):
-        return "zh"
-    if value.startswith("ja"):
-        return "ja"
-    if value.startswith("en"):
-        return "en"
-    return normalize_rich_menu_language(RICH_MENU_DEFAULT_LANGUAGE if value != RICH_MENU_DEFAULT_LANGUAGE else "zh")
+    menus = RICH_MENU_MENUS or {}
+    default = normalize_language(RICH_MENU_DEFAULT_LANGUAGE)
+    requested = normalize_language(language, default)
+    return next((code for code in (requested, default, *menus) if code in menus), requested)
 
 
 def get_rich_menu_language(user_data: Optional[dict]) -> str:
@@ -51,16 +46,15 @@ def get_rich_menu_language(user_data: Optional[dict]) -> str:
 def _get_menu_id(page: str, language: Optional[str]) -> str:
     lang = normalize_rich_menu_language(language)
     menus = RICH_MENU_MENUS or {}
-    return (
-        menus.get(lang, {}).get(page)
-        or menus.get(RICH_MENU_DEFAULT_LANGUAGE, {}).get(page)
-        or menus.get("zh", {}).get(page)
-        or ""
+    default = normalize_rich_menu_language(RICH_MENU_DEFAULT_LANGUAGE)
+    return next(
+        (menus.get(code, {}).get(page) for code in (lang, default, *menus) if menus.get(code, {}).get(page)),
+        "",
     )
 
 
 def get_start_menu_id(language: Optional[str] = None) -> str:
-    return (RICH_MENU_MENUS or {}).get("en", {}).get("start") or RICH_MENU_UNBOUND_ID
+    return _get_menu_id("start", language) or RICH_MENU_UNBOUND_ID
 
 
 def get_main_menu_id(language: Optional[str] = None) -> str:

@@ -1,14 +1,10 @@
 <!DOCTYPE html>
-<html lang="{{ language or 'ja' }}">
+{% set loading_text = i18n_catalog('web.loading') %}
+<html lang="{{ language or default_language }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-  <title>
-    {% if language == 'en' %}Loading | JiETNG
-    {% elif language == 'zh-tw' %}載入中 | JiETNG
-    {% elif language == 'zh' %}加载中 | JiETNG
-    {% else %}読み込み中 | JiETNG{% endif %}
-  </title>
+  <title>{{ i18n_select(loading_text, language=language, default_language=default_language) }} | JiETNG</title>
   <link rel="icon" type="image/png" href="/static/pics/logo.png">
   {% include 'common_styles.html' %}
 

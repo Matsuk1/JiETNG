@@ -4,9 +4,9 @@ import threading
 from datetime import datetime
 
 from modules.config_loader import NOTICE_FILE
+from modules.i18n import language_codes
 
 
-LANGUAGES = ("ja", "en", "zh", "zh-tw")
 _notice_lock = threading.RLock()
 
 
@@ -16,14 +16,14 @@ def _now():
 
 def _normalize_content(content):
     if isinstance(content, str):
-        return {language: content for language in LANGUAGES}
+        return {language: content for language in language_codes()}
     if not isinstance(content, dict):
         raise ValueError("Content must be a string or dict")
 
     fallback = next((value for value in content.values() if value), "")
     if not fallback:
         raise ValueError("At least one language content is required")
-    return {language: content.get(language) or fallback for language in LANGUAGES}
+    return {language: content.get(language) or fallback for language in language_codes()}
 
 
 def _normalize_notice(notice, index):

@@ -1,61 +1,15 @@
 <!DOCTYPE html>
-<html lang="{{ language or 'ja' }}">
+{% set mode_key = mode if mode in ('settings', 'import_token', 'unbind', 'rebind') else 'bind' %}
+{% set success_text = i18n_section('web.success') %}
+{% set titles = success_text.titles %}
+{% set descriptions = success_text.descriptions %}
+{% set token_labels = success_text.token %}
+{% set notice_text = i18n_catalog('web.notice_html') %}
+<html lang="{{ language or default_language }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-  <title>
-    {% if mode == 'settings' %}
-      {% if language == 'en' %}
-      Settings Saved | JiETNG
-      {% elif language == 'zh-tw' %}
-      設定已保存 | JiETNG
-      {% elif language == 'zh' %}
-      设置已保存 | JiETNG
-      {% else %}
-      設定保存完了 | JiETNG
-      {% endif %}
-    {% elif mode == 'import_token' %}
-      {% if language == 'en' %}
-      Import Token Created | JiETNG
-      {% elif language == 'zh-tw' %}
-      Import Token 已產生 | JiETNG
-      {% elif language == 'zh' %}
-      Import Token 已生成 | JiETNG
-      {% else %}
-      Import Token 作成完了 | JiETNG
-      {% endif %}
-    {% elif mode == 'unbind' %}
-      {% if language == 'en' %}
-      Account Unlinked | JiETNG
-      {% elif language == 'zh-tw' %}
-      已解除綁定 | JiETNG
-      {% elif language == 'zh' %}
-      已解除绑定 | JiETNG
-      {% else %}
-      連携解除完了 | JiETNG
-      {% endif %}
-    {% elif mode == 'rebind' %}
-      {% if language == 'en' %}
-      Update Successful | JiETNG
-      {% elif language == 'zh-tw' %}
-      更新成功 | JiETNG
-      {% elif language == 'zh' %}
-      更新成功 | JiETNG
-      {% else %}
-      更新成功 | JiETNG
-      {% endif %}
-    {% else %}
-      {% if language == 'en' %}
-      Binding Successful | JiETNG
-      {% elif language == 'zh-tw' %}
-      綁定成功 | JiETNG
-      {% elif language == 'zh' %}
-      绑定成功 | JiETNG
-      {% else %}
-      連携成功 | JiETNG
-      {% endif %}
-    {% endif %}
-  </title>
+  <title>{{ i18n_select(titles[mode_key], language=language, default_language=default_language) }} | JiETNG</title>
   <link rel="icon" type="image/png" href="/static/pics/logo.png">
   {% include 'common_styles.html' %}
 
@@ -190,169 +144,24 @@
   <div class="success-box">
     <div class="success-icon">✓</div>
 
-    <h1>
-      {% if mode == 'settings' %}
-        {% if language == 'en' %}
-        Settings Saved
-        {% elif language == 'zh-tw' %}
-        設定已保存
-        {% elif language == 'zh' %}
-        设置已保存
-        {% else %}
-        設定保存完了
-        {% endif %}
-      {% elif mode == 'import_token' %}
-        {% if language == 'en' %}
-        Import Token Created
-        {% elif language == 'zh-tw' %}
-        Import Token 已產生
-        {% elif language == 'zh' %}
-        Import Token 已生成
-        {% else %}
-        Import Token 作成完了
-        {% endif %}
-      {% elif mode == 'unbind' %}
-        {% if language == 'en' %}
-        Account Unlinked
-        {% elif language == 'zh-tw' %}
-        已解除綁定
-        {% elif language == 'zh' %}
-        已解除绑定
-        {% else %}
-        連携解除完了
-        {% endif %}
-      {% elif mode == 'rebind' %}
-        {% if language == 'en' %}
-        Update Successful
-        {% elif language == 'zh-tw' %}
-        更新成功
-        {% elif language == 'zh' %}
-        更新成功
-        {% else %}
-        更新成功
-        {% endif %}
-      {% else %}
-        {% if language == 'en' %}
-        Binding Successful
-        {% elif language == 'zh-tw' %}
-        綁定成功
-        {% elif language == 'zh' %}
-        绑定成功
-        {% else %}
-        バインド成功
-        {% endif %}
-      {% endif %}
-    </h1>
-
-    <p>
-      {% if mode == 'settings' %}
-        {% if language == 'en' %}
-        Your settings have been saved successfully.
-        {% elif language == 'zh-tw' %}
-        您的設定已成功保存。
-        {% elif language == 'zh' %}
-        您的设置已成功保存。
-        {% else %}
-        設定が正常に保存されました。
-        {% endif %}
-      {% elif mode == 'import_token' %}
-        {% if language == 'en' %}
-        Save this token in the bookmarklet. Your JiETNG profile will be initialized after the first record upload.
-        {% elif language == 'zh-tw' %}
-        請將此 Token 儲存至書籤工具中。首次上傳成績後，JiETNG 會初始化您的使用者資料。
-        {% elif language == 'zh' %}
-        请把这个 Token 保存到书签工具里。第一次上传成绩后，JiETNG 会初始化你的用户资料。
-        {% else %}
-        この Token をブックマークレットに保存してください。初回の成績アップロード後、JiETNG のユーザーデータが初期化されます。
-        {% endif %}
-      {% elif mode == 'unbind' %}
-        {% if language == 'en' %}
-        Your linked account and saved records have been removed from JiETNG.
-        {% elif language == 'zh-tw' %}
-        您的已綁定帳號與已保存成績已從 JiETNG 移除。
-        {% elif language == 'zh' %}
-        你的已绑定账号和已保存成绩已从 JiETNG 移除。
-        {% else %}
-        連携済みアカウントと保存済み成績を JiETNG から削除しました。
-        {% endif %}
-      {% elif mode == 'rebind' %}
-        {% if language == 'en' %}
-        Your account settings have been successfully updated.
-        {% elif language == 'zh-tw' %}
-        您的帳號設定已成功更新。
-        {% elif language == 'zh' %}
-        您的账号设置已成功更新。
-        {% else %}
-        アカウント設定が正常に更新されました。
-        {% endif %}
-      {% else %}
-        {% if language == 'en' %}
-        Successfully linked with JiETNG.
-        {% elif language == 'zh-tw' %}
-        已成功與 JiETNG 連結。
-        {% elif language == 'zh' %}
-        已成功与 JiETNG 连携。
-        {% else %}
-        JiETNGとの連携が成功しました。
-        {% endif %}
-      {% endif %}
-    </p>
+    <h1>{{ i18n_select(titles[mode_key], language=language, default_language=default_language) }}</h1>
+    <p>{{ i18n_select(descriptions[mode_key], language=language, default_language=default_language) }}</p>
 
     {% if mode == 'import_token' and import_token %}
     <div class="token-result">
       <div class="token-label">
-        {% if language == 'en' %}
-        Token shown only once
-        {% elif language == 'zh-tw' %}
-        Token 僅顯示這一次
-        {% elif language == 'zh' %}
-        Token 只显示这一次
-        {% else %}
-        Token は今回のみ表示されます
-        {% endif %}
+        {{ i18n_select(token_labels.shown_once, language=language, default_language=default_language) }}
       </div>
       <div class="token-value" id="import-token-value">{{ import_token }}</div>
       <button type="button" class="copy-btn" id="copy-token-btn">
-        {% if language == 'en' %}
-        Copy Token
-        {% elif language == 'zh-tw' %}
-        複製 Token
-        {% elif language == 'zh' %}
-        复制 Token
-        {% else %}
-        Tokenをコピー
-        {% endif %}
+        {{ i18n_select(token_labels.copy, language=language, default_language=default_language) }}
       </button>
     </div>
     {% endif %}
 
     {% if mode != 'unbind' %}
     <div class="notice" style="text-align: left;">
-      {% if language == 'en' %}
-      <strong>Notice</strong><br>
-      All information you provide will be securely stored in encrypted format and will not be shared with third parties.<br><br>
-      However, this service is operated by an individual and does not provide official guarantees or support.<br>
-      Given the nature of this service, if you have concerns about security or operational policies, please refrain from using it.<br>
-      You provide information at your own judgment and responsibility.
-      {% elif language == 'zh-tw' %}
-      <strong>使用須知</strong><br>
-      您輸入的所有資訊都會以加密形式安全保存，不會提供給第三方。<br><br>
-      不過,本服務由個人營運,不提供官方保證或支援。<br>
-      基於本服務的性質,如果您對安全性或營運政策有疑慮,請勿使用。<br>
-      資訊提供完全基於您自己的判斷與責任。
-      {% elif language == 'zh' %}
-      <strong>使用须知</strong><br>
-      您输入的所有信息都将以加密形式安全保存,不会提供给第三方。<br><br>
-      但是,本服务由个人运营,不提供官方保证或支持。<br>
-      鉴于本服务的性质,如果您对安全性或运营政策有顾虑,请勿使用。<br>
-      信息提供完全基于您自己的判断和责任。
-      {% else %}
-      <strong>ご利用に関するご注意</strong><br>
-      ご入力いただいた情報はすべて暗号化された形式で安全に保存され,第三者に提供されることはありません。<br><br>
-      ただし,本サービスは個人によって運営されており,公式な保証やサポートは提供されておりません。<br>
-      本サービスの性質上,セキュリティや運用方針に不安がある場合は,利用をお控えいただくようお願いいたします。<br>
-      情報提供はあくまでご自身の判断と責任にてお願いいたします。
-      {% endif %}
+      {{ i18n_select(notice_text, language=language, default_language=default_language) | safe }}
     </div>
     {% endif %}
   </div>
@@ -362,7 +171,7 @@
       const value = document.getElementById('import-token-value')?.textContent || '';
       if (!value) return;
       await navigator.clipboard.writeText(value);
-      this.textContent = {% if language == 'en' %}'Copied'{% elif language == 'zh-tw' %}'已複製'{% elif language == 'zh' %}'已复制'{% else %}'コピーしました'{% endif %};
+      this.textContent = {{ i18n_select(token_labels.copied, language=language, default_language=default_language) | tojson }};
     });
   </script>
   {% endif %}

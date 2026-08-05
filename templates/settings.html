@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="{{ user_language or default_language }}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"/>
@@ -484,10 +484,9 @@
         <div class="list-item">
           <label for="language" id="label-language">言語</label>
           <select id="language" name="language" required>
-            <option value="ja" id="opt-lang-ja">日本語</option>
-            <option value="en" id="opt-lang-en">English</option>
-            <option value="zh" id="opt-lang-zh">简体中文</option>
-            <option value="zh-tw" id="opt-lang-zh-tw">繁體中文</option>
+            {% for option in language_options %}
+            <option value="{{ option.code }}">{{ option.label }}</option>
+            {% endfor %}
           </select>
         </div>
         <div class="list-item bind-type-help active" id="language-platform-hint">
@@ -700,223 +699,14 @@
   </div>
 
   <script>
-    const translations = {
-      ja: {
-        pageTitle: '設定 | JiETNG',
-        heading: '設定',
-        labelLanguage: '言語',
-        languagePlatformHint: '言語設定は LINE 以外の外部プラットフォームには反映されない場合があります。',
-        labelTimezone: 'タイムゾーン',
-        labelBgEnabled: '背景画像',
-        rankingPanelTitle: 'ランキング設定',
-        labelGlobalRanking: '総合ランキングに参加',
-        metaGlobalRanking: '個人チャットの rank / ranking に表示されます。',
-        labelGroupRanking: 'グループ内ランキングに参加',
-        metaGroupRanking: '同じ LINE グループ内の rank / ranking に表示されます。',
-        labelBgBlur: '背景ぼかし',
-        labelBgOverlay: '背景フェード',
-        bgHint: '選択しない場合、すべての背景からランダムに選ばれます。',
-        sectionCustomBg: 'カスタム背景',
-        customBgHint: '自分だけの背景画像をアップロードできます（1枚まで、5MB以下）。',
-        customBgUploaded: 'アップロード済み',
-        labelCustomBg: '画像を選択',
-        uploadSub: 'PNG / JPG / JPEG / WebP（5MB以下）',
-        uploadBtn: 'アップロード',
-        uploadFailed: 'アップロードに失敗しました。',
-        deleteCustomBgBtn: '削除',
-        deleteCustomBgConfirm: 'カスタム背景を削除しますか？',
-        submitBtn: '保存',
-        importTokenTitle: '成績インポートToken',
-        importTokenHelp: '外部ツールから加工済みの成績JSONをJiETNGへアップロードするためのTokenです。',
-        importTokenCreate: 'Tokenを生成',
-        importTokenNoteLabel: 'Token名',
-        importTokenNotePlaceholder: '例：Bookmarklet / 外部ツール名',
-        importTokenNoteRequired: 'Token名を入力してください。',
-        importTokenCreateLabel: '新しいToken',
-        importTokenCreateMeta: '生成後、Tokenは一度だけ表示されます。',
-        importTokenResultTitle: 'Token（今回のみ表示）',
-        importTokenCopy: 'コピー',
-        importTokenCopied: 'コピーしました',
-        importTokenEmpty: 'まだTokenはありません。',
-        importTokenRevoke: '撤廃',
-        importTokenRevoked: 'Revoked',
-        importTokenDelete: '削除',
-        importTokenCreateError: 'Tokenの生成に失敗しました。',
-        importTokenRevokeConfirm: 'このインポートTokenを撤廃しますか？',
-        importTokenRevokeError: '撤廃に失敗しました。',
-        importTokenDeleteConfirm: 'この撤廃済みTokenを削除しますか？',
-        importTokenDeleteError: '削除に失敗しました。',
-      },
-      en: {
-        pageTitle: 'Settings | JiETNG',
-        heading: 'Settings',
-        labelLanguage: 'Language',
-        languagePlatformHint: 'Language settings may not apply to third-party platforms outside LINE.',
-        labelTimezone: 'Timezone',
-        labelBgEnabled: 'Background Image',
-        rankingPanelTitle: 'Ranking Settings',
-        labelGlobalRanking: 'Join Global Ranking',
-        metaGlobalRanking: 'Shown in rank / ranking from private chat.',
-        labelGroupRanking: 'Join Group Ranking',
-        metaGroupRanking: 'Shown in rank / ranking inside the same LINE group.',
-        labelBgBlur: 'Background Blur',
-        labelBgOverlay: 'Background Fade',
-        bgHint: 'If none selected, a random background will be used.',
-        sectionCustomBg: 'Custom Background',
-        customBgHint: 'Upload your own background image (1 image, max 5MB).',
-        customBgUploaded: 'Uploaded',
-        labelCustomBg: 'Choose Image',
-        uploadSub: 'PNG / JPG / JPEG / WebP (max 5MB)',
-        uploadBtn: 'Upload',
-        uploadFailed: 'Upload failed.',
-        deleteCustomBgBtn: 'Delete',
-        deleteCustomBgConfirm: 'Delete your custom background?',
-        submitBtn: 'Save',
-        importTokenTitle: 'Record Import Token',
-        importTokenHelp: 'Use this token to upload processed record JSON from external tools to JiETNG.',
-        importTokenCreate: 'Generate Token',
-        importTokenNoteLabel: 'Token title',
-        importTokenNotePlaceholder: 'e.g. Bookmarklet / Tool name',
-        importTokenNoteRequired: 'Please enter a token title.',
-        importTokenCreateLabel: 'New Token',
-        importTokenCreateMeta: 'After generation, the token is shown only once.',
-        importTokenResultTitle: 'Token (shown only once)',
-        importTokenCopy: 'Copy',
-        importTokenCopied: 'Copied',
-        importTokenEmpty: 'No tokens yet.',
-        importTokenRevoke: 'Revoke',
-        importTokenRevoked: 'Revoked',
-        importTokenDelete: 'Delete',
-        importTokenCreateError: 'Failed to generate token.',
-        importTokenRevokeConfirm: 'Revoke this import token?',
-        importTokenRevokeError: 'Failed to revoke.',
-        importTokenDeleteConfirm: 'Delete this revoked import token?',
-        importTokenDeleteError: 'Failed to delete.',
-      },
-      zh: {
-        pageTitle: '设置 | JiETNG',
-        heading: '设置',
-        labelLanguage: '语言',
-        languagePlatformHint: '语言设置可能不会作用于 LINE 以外的第三方平台。',
-        labelTimezone: '时区',
-        labelBgEnabled: '背景图片',
-        rankingPanelTitle: '排行榜设置',
-        labelGlobalRanking: '参与总体排行榜',
-        metaGlobalRanking: '会显示在私聊的 rank / ranking 中。',
-        labelGroupRanking: '参与群内排行榜',
-        metaGroupRanking: '会显示在同一个 LINE 群内的 rank / ranking 中。',
-        labelBgBlur: '背景模糊',
-        labelBgOverlay: '背景淡化',
-        bgHint: '不选择则从所有背景中随机。',
-        sectionCustomBg: '自定义背景',
-        customBgHint: '上传你自己的背景图片（限1张，5MB以内）。',
-        customBgUploaded: '已上传',
-        labelCustomBg: '选择图片',
-        uploadSub: 'PNG / JPG / JPEG / WebP（5MB以内）',
-        uploadBtn: '上传',
-        uploadFailed: '上传失败。',
-        deleteCustomBgBtn: '删除',
-        deleteCustomBgConfirm: '确定删除自定义背景吗？',
-        submitBtn: '保存',
-        importTokenTitle: '成绩导入 Token',
-        importTokenHelp: '用于让外部工具把加工后的成绩 JSON 上传到 JiETNG。',
-        importTokenCreate: '生成 Token',
-        importTokenNoteLabel: 'Token 标题',
-        importTokenNotePlaceholder: '例如：Bookmarklet / 工具名称',
-        importTokenNoteRequired: '请输入 Token 标题。',
-        importTokenCreateLabel: '新的 Token',
-        importTokenCreateMeta: '生成后，Token 只会显示这一次。',
-        importTokenResultTitle: 'Token（只显示这一次）',
-        importTokenCopy: '复制',
-        importTokenCopied: '已复制',
-        importTokenEmpty: '还没有 Token。',
-        importTokenRevoke: '撤销',
-        importTokenRevoked: '已撤销',
-        importTokenDelete: '删除',
-        importTokenCreateError: '生成 Token 失败。',
-        importTokenRevokeConfirm: '确定撤销这个导入 Token 吗？',
-        importTokenRevokeError: '撤销失败。',
-        importTokenDeleteConfirm: '确定删除这个已撤销的导入 Token 吗？',
-        importTokenDeleteError: '删除失败。',
-      },
-      'zh-tw': {
-        pageTitle: '設定 | JiETNG',
-        heading: '設定',
-        labelLanguage: '語言',
-        languagePlatformHint: '語言設定可能不會套用到 LINE 以外的第三方平台。',
-        labelTimezone: '時區',
-        labelBgEnabled: '背景圖片',
-        rankingPanelTitle: '排行榜設定',
-        labelGlobalRanking: '參與總體排行榜',
-        metaGlobalRanking: '會顯示在私聊的 rank / ranking 中。',
-        labelGroupRanking: '參與群內排行榜',
-        metaGroupRanking: '會顯示在同一個 LINE 群內的 rank / ranking 中。',
-        labelBgBlur: '背景模糊',
-        labelBgOverlay: '背景淡化',
-        bgHint: '不選擇時，會從所有背景中隨機使用。',
-        sectionCustomBg: '自訂背景',
-        customBgHint: '上傳您自己的背景圖片（限 1 張，5MB 以內）。',
-        customBgUploaded: '已上傳',
-        labelCustomBg: '選擇圖片',
-        uploadSub: 'PNG / JPG / JPEG / WebP（5MB 以內）',
-        uploadBtn: '上傳',
-        uploadFailed: '上傳失敗。',
-        deleteCustomBgBtn: '刪除',
-        deleteCustomBgConfirm: '確定刪除自訂背景嗎？',
-        submitBtn: '保存',
-        importTokenTitle: '成績匯入 Token',
-        importTokenHelp: '用於讓外部工具把處理後的成績 JSON 上傳到 JiETNG。',
-        importTokenCreate: '產生 Token',
-        importTokenNoteLabel: 'Token 標題',
-        importTokenNotePlaceholder: '例如：Bookmarklet / 工具名稱',
-        importTokenNoteRequired: '請輸入 Token 標題。',
-        importTokenCreateLabel: '新的 Token',
-        importTokenCreateMeta: '產生後，Token 只會顯示這一次。',
-        importTokenResultTitle: 'Token（只顯示這一次）',
-        importTokenCopy: '複製',
-        importTokenCopied: '已複製',
-        importTokenEmpty: '還沒有 Token。',
-        importTokenRevoke: '撤銷',
-        importTokenRevoked: '已撤銷',
-        importTokenDelete: '刪除',
-        importTokenCreateError: '產生 Token 失敗。',
-        importTokenRevokeConfirm: '確定撤銷這個匯入 Token 嗎？',
-        importTokenRevokeError: '撤銷失敗。',
-        importTokenDeleteConfirm: '確定刪除這個已撤銷的匯入 Token 嗎？',
-        importTokenDeleteError: '刪除失敗。',
-      }
-    };
+    const defaultLanguage = {{ default_language | tojson }};
+    const translations = {{ i18n_catalog('web.settings') | tojson }};
 
-    const permTranslations = {
-      ja: {
-        panelTitle: 'アクセス権限の管理',
-        ownerLabel: '作成者',
-        revokeBtn: '撤廃',
-        revokeConfirm: 'このサービスのアクセス権限を取り消しますか？',
-        revokeError: '取り消しに失敗しました。もう一度お試しください。',
-      },
-      en: {
-        panelTitle: 'Manage Access Permissions',
-        ownerLabel: 'Creator',
-        revokeBtn: 'Revoke',
-        revokeConfirm: 'Revoke access for this service?',
-        revokeError: 'Failed to revoke. Please try again.',
-      },
-      zh: {
-        panelTitle: '访问权限管理',
-        ownerLabel: '创建者',
-        revokeBtn: '撤销',
-        revokeConfirm: '确定撤销该服务的访问权限吗？',
-        revokeError: '撤销失败，请重试',
-      },
-      'zh-tw': {
-        panelTitle: '存取權限管理',
-        ownerLabel: '建立者',
-        revokeBtn: '撤銷',
-        revokeConfirm: '確定撤銷此服務的存取權限嗎？',
-        revokeError: '撤銷失敗，請重試',
-      },
-    };
+    const permTranslations = {{ i18n_catalog('web.settings_permissions') | tojson }};
+
+    function translationFor(catalog, lang) {
+      return catalog[lang] || catalog[defaultLanguage] || Object.values(catalog)[0];
+    }
 
     // 当前已选背景列表
     let selectedBgFiles = {{ user_bg_files | tojson }};
@@ -985,7 +775,7 @@
     }
 
     function updateLanguage(lang) {
-      const t = translations[lang] || translations.ja;
+      const t = translationFor(translations, lang);
       document.getElementById('page-title').textContent = t.pageTitle;
       document.getElementById('page-heading').textContent = t.heading;
       document.getElementById('label-language').textContent = t.labelLanguage;
@@ -1022,7 +812,7 @@
     }
 
     function updateImportTokenPanel(lang) {
-      const t = translations[lang] || translations.ja;
+      const t = translationFor(translations, lang);
       const title = document.getElementById('import-token-title');
       if (title) title.textContent = t.importTokenTitle;
       const help = document.getElementById('import-token-help');
@@ -1055,7 +845,7 @@
     }
 
     function updatePermPanel(lang) {
-      const pt = permTranslations[lang] || permTranslations.ja;
+      const pt = translationFor(permTranslations, lang);
       const panelTitle = document.getElementById('perm-panel-title');
       if (panelTitle) panelTitle.textContent = pt.panelTitle;
       document.querySelectorAll('.perm-owner-label').forEach(el => el.textContent = pt.ownerLabel);
@@ -1065,8 +855,8 @@
     }
 
     async function revokePermission(tokenId, btn) {
-      const lang = document.getElementById('language').value || 'ja';
-      const pt = permTranslations[lang] || permTranslations.ja;
+      const lang = document.getElementById('language').value || defaultLanguage;
+      const pt = translationFor(permTranslations, lang);
       if (!confirm(pt.revokeConfirm)) return;
 
       btn.disabled = true;
@@ -1114,8 +904,8 @@
     }
 
     async function createImportToken() {
-      const lang = document.getElementById('language').value || 'ja';
-      const t = translations[lang] || translations.ja;
+      const lang = document.getElementById('language').value || defaultLanguage;
+      const t = translationFor(translations, lang);
       const btn = document.getElementById('import-token-create-btn');
       const noteInput = document.getElementById('import-token-note');
       const note = (noteInput && noteInput.value ? noteInput.value : '').trim();
@@ -1165,8 +955,8 @@
     }
 
     async function copyImportToken() {
-      const lang = document.getElementById('language').value || 'ja';
-      const t = translations[lang] || translations.ja;
+      const lang = document.getElementById('language').value || defaultLanguage;
+      const t = translationFor(translations, lang);
       const value = document.getElementById('import-token-value').textContent;
       if (!value) return;
       await navigator.clipboard.writeText(value);
@@ -1180,8 +970,8 @@
     }
 
     async function revokeImportToken(tokenId, btn) {
-      const lang = document.getElementById('language').value || 'ja';
-      const t = translations[lang] || translations.ja;
+      const lang = document.getElementById('language').value || defaultLanguage;
+      const t = translationFor(translations, lang);
       if (!confirm(t.importTokenRevokeConfirm)) return;
       btn.disabled = true;
       try {
@@ -1208,8 +998,8 @@
     }
 
     async function deleteImportToken(tokenId, btn) {
-      const lang = document.getElementById('language').value || 'ja';
-      const t = translations[lang] || translations.ja;
+      const lang = document.getElementById('language').value || defaultLanguage;
+      const t = translationFor(translations, lang);
       if (!confirm(t.importTokenDeleteConfirm)) return;
       btn.disabled = true;
       try {
@@ -1236,8 +1026,8 @@
     }
 
     async function deleteCustomBg() {
-      const lang = document.getElementById('language').value || 'ja';
-      const t = translations[lang] || translations.ja;
+      const lang = document.getElementById('language').value || defaultLanguage;
+      const t = translationFor(translations, lang);
       if (!confirm(t.deleteCustomBgConfirm)) return;
 
       const btn = document.getElementById('delete-custom-bg-btn');
@@ -1287,8 +1077,8 @@
       } else {
         area.classList.remove('has-file');
         icon.textContent = '+';
-        const lang = document.getElementById('language').value || 'ja';
-        text.textContent = (translations[lang] || translations.ja).labelCustomBg;
+        const lang = document.getElementById('language').value || defaultLanguage;
+        text.textContent = translationFor(translations, lang).labelCustomBg;
         btn.style.display = 'none';
       }
     }
@@ -1301,7 +1091,7 @@
       const btnText = btn.textContent;
       btn.disabled = true;
       btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;"></span>';
-      const lang = document.getElementById('language').value || 'ja';
+      const lang = document.getElementById('language').value || defaultLanguage;
       const file = fileInput.files[0];
 
       const reader = new FileReader();
@@ -1321,7 +1111,7 @@
           const uploadRow = document.getElementById('upload-row');
           uploadRow.style.display = 'none';
 
-          const t = translations[lang] || translations.ja;
+          const t = translationFor(translations, lang);
           const actionsDiv = document.createElement('div');
           actionsDiv.className = 'list-item';
           actionsDiv.id = 'custom-bg-actions';
@@ -1345,7 +1135,7 @@
           totalBgCount++;
           updateBgCount();
         } catch (e) {
-          alert((translations[lang] || translations.ja).uploadFailed + (e.message ? '\n' + e.message : ''));
+          alert(translationFor(translations, lang).uploadFailed + (e.message ? '\n' + e.message : ''));
           btn.textContent = btnText;
           btn.disabled = false;
         }
@@ -1374,7 +1164,7 @@
     });
 
     window.addEventListener('DOMContentLoaded', function() {
-      const userLanguage = '{{ user_language }}' || 'ja';
+      const userLanguage = {{ (user_language or default_language) | tojson }};
       updateLanguage(userLanguage);
 
       const languageSelect = document.getElementById('language');
