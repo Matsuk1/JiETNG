@@ -36,6 +36,30 @@ _worker_thread = None
 _purge_thread = None
 _stop_event = threading.Event()
 _STOP = object()
+_health_lock = threading.Lock()
+_retried_events = 0
+_dropped_events = 0
+_last_write_error = None
+_MAX_WRITE_ATTEMPTS = 3
+
+
+def _record_health(*, retried=0, dropped=0, error=None):
+    global _retried_events, _dropped_events, _last_write_error
+    with _health_lock:
+        _retried_events += retried
+        _dropped_events += dropped
+        if error is not None:
+            _last_write_error = str(error)[:300]
+
+
+def get_tracker_health():
+    with _health_lock:
+        return {
+            "event_queue_size": _event_queue.qsize(),
+            "event_retried": _retried_events,
+            "event_dropped": _dropped_events,
+            "event_last_error": _last_write_error,
+        }
 
 
 def _flush_batch(batch):
@@ -43,29 +67,31 @@ def _flush_batch(batch):
     if not batch:
         return
     # 元组顺序对齐 INSERT 列：(user_id, event_type, metadata)
-    rows = [(uid, et, mj) for (et, uid, mj) in batch]
+    rows = [(uid, event_type, metadata) for event_type, uid, metadata, _ in batch]
     try:
         with database_cursor(write=True) as (_, cursor):
             cursor.executemany(
                 "INSERT INTO events (user_id, event_type, metadata) VALUES (%s, %s, %s)",
                 rows,
             )
-    except Exception as e:
-        msg = str(e).lower()
-        # 表尚未初始化时短暂退避，不丢事件
-        if "doesn't exist" in msg or "no such table" in msg or "1146" in msg:
-            logger.warning(
-                "[EventTracker] events table not ready; requeueing %s events",
-                len(batch),
-            )
-            for item in batch:
+    except Exception as error:
+        retried = dropped = 0
+        for event_type, uid, metadata, attempts in batch:
+            if attempts < _MAX_WRITE_ATTEMPTS and not _stop_event.is_set():
                 try:
-                    _event_queue.put_nowait(item)
+                    _event_queue.put_nowait((event_type, uid, metadata, attempts + 1))
+                    retried += 1
+                    continue
                 except queue.Full:
-                    break
-            time.sleep(2.0)
-        else:
-            logger.error("[EventTracker] batch insert(%s) failed: %s", len(batch), e)
+                    pass
+            dropped += 1
+        _record_health(retried=retried, dropped=dropped, error=error)
+        logger.error(
+            "[EventTracker] batch insert failed: size=%s retried=%s dropped=%s error=%s",
+            len(batch), retried, dropped, error,
+        )
+        if retried:
+            time.sleep(min(2 ** max(item[3] for item in batch), 8))
 
 
 def _event_worker():
@@ -191,10 +217,12 @@ def track_event(
     try:
         metadata_json = json.dumps(metadata, ensure_ascii=False) if metadata else None
         _ensure_worker()
-        _event_queue.put_nowait((event_type, user_id, metadata_json))
+        _event_queue.put_nowait((event_type, user_id, metadata_json, 0))
     except queue.Full:
+        _record_health(dropped=1, error="event queue full")
         logger.warning("[EventTracker] queue full, dropping event: %s", event_type)
     except Exception as e:
+        _record_health(dropped=1, error=e)
         logger.error("[EventTracker] track_event(%s) enqueue failed: %s", event_type, e)
 
 
@@ -244,6 +272,8 @@ def _activity_stats(cursor, date_filter, args=()):
     return {
         "image_calls": count("image_gen"),
         "webhook_msgs": count("line_webhook"),
+        "record_exports": count("record_export"),
+        "record_imports": count("record_import"),
         "bindings": bindings,
         "unbinds": count("user_unbind", distinct=True),
         "sync_total": sync_total,
@@ -290,21 +320,21 @@ def get_business_stats(force_refresh: bool = False) -> dict:
     if not force_refresh:
         cached = _stats_cache["data"]
         if cached is not None and (now - _stats_cache["ts"]) < _STATS_CACHE_TTL:
-            return cached
+            return {**cached, **get_tracker_health()}
     data, ok = _compute_business_stats()
     if ok:
         data["business_stats_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with _stats_cache_lock:
             _stats_cache["ts"] = time.monotonic()
             _stats_cache["data"] = data
-        return data
+        return {**data, **get_tracker_health()}
     # 失败：优先返回任何已有缓存（可能过期），否则返回零数据
     if _stats_cache["data"] is not None:
-        return _stats_cache["data"]
+        return {**_stats_cache["data"], **get_tracker_health()}
     data["business_stats_at"] = (
         datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " (DB error)"
     )
-    return data
+    return {**data, **get_tracker_health()}
 
 
 def _compute_business_stats() -> tuple[dict, bool]:
@@ -327,6 +357,8 @@ def _compute_business_stats() -> tuple[dict, bool]:
         "today_image_calls": 0,
         "today_sync_cmd_calls": 0,
         "today_webhook_msgs": 0,
+        "today_record_exports": 0,
+        "today_record_imports": 0,
         "today_bindings": 0,
         "today_unbinds": 0,
         "today_sync_total": 0,
@@ -377,6 +409,8 @@ def _compute_business_stats() -> tuple[dict, bool]:
             out.update(
                 today_image_calls=activity["image_calls"],
                 today_webhook_msgs=activity["webhook_msgs"],
+                today_record_exports=activity["record_exports"],
+                today_record_imports=activity["record_imports"],
                 today_bindings=activity["bindings"],
                 today_unbinds=activity["unbinds"],
                 today_sync_total=activity["sync_total"],
@@ -433,6 +467,8 @@ def get_hourly_stats(date_str):
         "image_command_breakdown": [],
         "image_calls": 0,
         "webhook_msgs": 0,
+        "record_exports": 0,
+        "record_imports": 0,
         "bindings": 0,
         "unbinds": 0,
         "sync_total": 0,
