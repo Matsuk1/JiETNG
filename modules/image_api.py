@@ -13,6 +13,7 @@ from modules.command_config import RANK_COMMANDS
 from modules.config_loader import TEMP_VERSION, read_dxdata
 from modules.event_tracker import track_event
 from modules.image_manager import compose_images
+from modules.i18n import get_user_language
 from modules.rate_limiter import check_rate_limit
 from modules.record_generator import (
     generate_cover,
@@ -220,7 +221,14 @@ def api_v2_generate_record_image(user_id):
             return jsonify({"error": "No matching records for this command"}), 404
 
         display_type = "未だ知らず" if record_type == "unknown" else record_type
-        record_img = generate_records_picture(up_songs, down_songs, display_type.upper(), ver, details)
+        record_img = generate_records_picture(
+            up_songs,
+            down_songs,
+            display_type.upper(),
+            ver,
+            details,
+            language=get_user_language(user_id),
+        )
         user_info = _udata.get('personal_info')
         profile_img = _services.generate_profile(user_info, user_id=user_id)
         user_tz = get_user_timezone(user_id)
@@ -514,6 +522,7 @@ def api_v2_generate_achievement(user_id):
                 level_display,
                 rank_display,
                 stats,
+                language=get_user_language(user_id),
             )
         finally:
             _close_entry_images(target_data)
