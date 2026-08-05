@@ -8105,11 +8105,6 @@ def start_runtime():
     # 启动 dxdata 每周日 22:00 自动更新（服务器本地时间）
     start_dxdata_weekly_update(DXDATA_URL, DXDATA_FILE)
 
-    # 启动内存管理器
-    memory_manager.start()
-    logger.info("[System] ✓ Memory manager started")
-
-    # 注册清理函数（在内存管理器的清理循环中调用）
     def custom_cleanup():
         """自定义清理函数"""
         try:
@@ -8133,13 +8128,9 @@ def start_runtime():
         except Exception as e:
             logger.error(f"[System] ✗ Custom cleanup error: error={e}", exc_info=True)
 
-    # 覆盖内存管理器的cleanup方法，加入自定义清理
-    original_cleanup = memory_manager.cleanup
-    def enhanced_cleanup():
-        stats = original_cleanup()
-        custom_cleanup()
-        return stats
-    memory_manager.cleanup = enhanced_cleanup
+    memory_manager.register_cleanup(custom_cleanup)
+    memory_manager.start()
+    logger.info("[System] ✓ Memory manager started")
 
     if not _runtime_atexit_registered:
         atexit.register(_shutdown_runtime)
