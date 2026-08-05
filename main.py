@@ -234,7 +234,7 @@ from modules.command_parsers import (
 )
 from modules.dbpool_manager import close_pool
 from modules.image_manager import (
-    compose_images,
+    compose_generated_images,
     font_profile,
     font_trophy,
     resize_by_width,
@@ -1181,6 +1181,14 @@ def _get_user_bg_filter(user_id):
     }
 
 
+def _compose_user_images(images, user_id):
+    return compose_generated_images(
+        images,
+        timezone_offset=get_user_timezone(user_id),
+        bg_filter=_get_user_bg_filter(user_id),
+    )
+
+
 @app.route("/linebot/perms/revoke", methods=["POST"])
 @csrf.exempt
 def linebot_perms_revoke():
@@ -1344,7 +1352,10 @@ def _generate_session_image_from_payload(data: dict):
         details=details,
         language=language,
     )
-    result = compose_images([profile_img, records_img], timezone_offset=timezone_offset)
+    result = compose_generated_images(
+        [profile_img, records_img],
+        timezone_offset=timezone_offset,
+    )
     filename = f"jietng_{ver}_{cmd_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
     return result, filename
 
@@ -1429,7 +1440,10 @@ def demo_page():
         )
         if not records_img:
             raise ValueError("No records matched the selected filters.")
-        return compose_images([profile_img, records_img], timezone_offset=tz)
+        return compose_generated_images(
+            [profile_img, records_img],
+            timezone_offset=tz,
+        )
 
     try:
         result = asyncio.run(_pipeline())
@@ -2577,18 +2591,12 @@ async def generate_plate_rcd(user_id, id_use, title, ver="jp", filter_mode=None)
 
     # 清理 target_data 中的封面图片对象
     for entry in target_data:
-        entry.pop("img", None)
-    del target_data
+        entry.pop("img").close()
 
     # 获取用户信息并创建用户信息图片
     user_info = _id_use_data.get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
-    user_tz = get_user_timezone(user_id)
-    img = compose_images([profile_img, plate_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
-
-    # 清理中间图片对象
-    del profile_img, plate_img
-    gc.collect(0)
+    img = _compose_user_images([profile_img, plate_img], user_id)
 
     original_url, preview_url = await upload_generated_image(img, user_id)
 
@@ -2795,17 +2803,12 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
 
     # 清理 target_data 中的封面图片对象
     for entry in target_data:
-        entry.pop("img", None)
-    del target_data
+        entry.pop("img").close()
 
     # 获取用户信息并创建用户信息图片
     user_info = _id_use_data.get('personal_info')
     profile_img = generate_profile(user_info, scale=1.5, user_id=id_use)
-    user_tz = get_user_timezone(user_id)
-    img = compose_images([profile_img, record_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
-
-    del profile_img, record_img
-    gc.collect(0)
+    img = _compose_user_images([profile_img, record_img], user_id)
 
     original_url, preview_url = await upload_generated_image(img, user_id)
     message = ImageMessage(original_content_url=original_url, preview_image_url=preview_url)
@@ -3251,12 +3254,7 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
     # 获取用户信息并创建用户信息图片
     user_info = _id_use_data.get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
-    user_tz = get_user_timezone(user_id)
-    img = compose_images([profile_img, record_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
-
-    # 清理中间图片对象
-    del profile_img, record_img
-    gc.collect(0)
+    img = _compose_user_images([profile_img, record_img], user_id)
 
     original_url, preview_url = await upload_generated_image(img, user_id)
 
@@ -3324,12 +3322,7 @@ async def generate_friend_record(user_id, friend_code, type="best50", cmd="", ve
         details,
         language=get_user_language(user_id),
     )
-    user_tz = get_user_timezone(user_id)
-    img = compose_images([user_info_img, rcd_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
-
-    # 清理中间图片对象
-    del user_info_img, rcd_img
-    gc.collect(0)
+    img = _compose_user_images([user_info_img, rcd_img], user_id)
 
     original_url, preview_url = await upload_generated_image(img, user_id)
     message = [
@@ -3378,12 +3371,7 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
     # 获取用户信息并创建用户信息图片
     user_info = _id_use_data.get('personal_info')
     profile_img = generate_profile(user_info, user_id=id_use)
-    user_tz = get_user_timezone(user_id)
-    img = compose_images([profile_img, record_img], timezone_offset=user_tz, bg_filter=_get_user_bg_filter(user_id))
-
-    # 清理中间图片对象
-    del profile_img, record_img
-    gc.collect(0)
+    img = _compose_user_images([profile_img, record_img], user_id)
 
     original_url, preview_url = await upload_generated_image(img, user_id)
 
@@ -3421,18 +3409,10 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
     ]
     version_list_img = generate_version_list(songs_data)
 
-    user_tz = get_user_timezone(user_id)
-    user_bg_filter = _get_user_bg_filter(user_id)
     if version_img is None:
-        img = compose_images([version_list_img], timezone_offset=user_tz, bg_filter=user_bg_filter)
+        img = _compose_user_images([version_list_img], user_id)
     else:
-        img = compose_images([version_img, version_list_img], timezone_offset=user_tz, bg_filter=user_bg_filter)
-
-    # 清理中间图片对象
-    if version_img is not None:
-        del version_img
-    del version_list_img
-    gc.collect(0)
+        img = _compose_user_images([version_img, version_list_img], user_id)
 
     original_url, preview_url = await upload_generated_image(img, user_id)
 
