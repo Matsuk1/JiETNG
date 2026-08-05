@@ -1953,6 +1953,42 @@
       background: var(--admin-panel);
     }
 
+    :is(button, input[type="button"], input[type="submit"], .logout-btn, .btn, .tab,
+        .icon-button, .mobile-nav-toggle, .close-btn, .admin-upload-btn, .bg-delete-btn) {
+      touch-action: manipulation;
+      transform: none;
+      transition: background-color 0.12s ease-out,
+                  border-color 0.12s ease-out,
+                  color 0.12s ease-out,
+                  opacity 0.12s ease-out,
+                  transform 0.06s ease-out;
+    }
+
+    :is(button, input[type="button"], input[type="submit"], .logout-btn, .btn, .tab,
+        .icon-button, .mobile-nav-toggle, .close-btn, .admin-upload-btn, .bg-delete-btn):hover {
+      transform: none;
+    }
+
+    :is(button, input[type="button"], input[type="submit"], .btn, .tab, .icon-button,
+        .mobile-nav-toggle, .close-btn, .admin-upload-btn, .bg-delete-btn):active:not(:disabled),
+    .logout-btn:active {
+      transform: translateY(1px);
+      transition-duration: 0s;
+    }
+
+    :is(button, input[type="button"], input[type="submit"], .btn, .tab, .icon-button,
+        .mobile-nav-toggle, .close-btn, .admin-upload-btn, .bg-delete-btn):disabled {
+      transform: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      :is(button, input[type="button"], input[type="submit"], .logout-btn, .btn, .tab,
+          .icon-button, .mobile-nav-toggle, .close-btn, .admin-upload-btn, .bg-delete-btn) {
+        transform: none !important;
+        transition-duration: 0s;
+      }
+    }
+
     .section {
       padding: 18px;
       margin-bottom: 14px;
