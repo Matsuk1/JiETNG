@@ -1,8 +1,10 @@
 """Concurrent task execution with timeout logging and admin tracking."""
 
 import threading
+import time
 import traceback
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -10,6 +12,13 @@ class TaskContext:
     user_id: str | None = None
     reply_token: str | None = None
     source_type: str = "user"
+
+
+@dataclass(frozen=True, slots=True)
+class TaskOutcome:
+    status: str
+    duration: float
+    error: str | None = None
 
 
 def task_context(args):
@@ -45,15 +54,23 @@ def _start_tracking(task_id, func, context, tracking, lock):
     if not task_id:
         return
     with lock:
+        queued = next(
+            (dict(item) for item in tracking["queued"] if item.get("id") == task_id),
+            {},
+        )
         tracking["queued"] = [item for item in tracking["queued"] if item.get("id") != task_id]
-        tracking["running"].append({
-            "id": task_id,
-            "function": func.__name__,
-            "user_id": context.user_id or "Unknown",
-        })
+        tracking["running"].append(
+            {
+                **queued,
+                "id": task_id,
+                "function": queued.get("function", func.__name__),
+                "user_id": queued.get("user_id", context.user_id or "Unknown"),
+                "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
 
 
-def _finish_tracking(task_id, tracking, lock, max_completed):
+def _finish_tracking(task_id, outcome, tracking, lock, max_completed):
     if not task_id:
         return
     with lock:
@@ -63,6 +80,14 @@ def _finish_tracking(task_id, tracking, lock, max_completed):
         )
         tracking["running"] = [item for item in tracking["running"] if item.get("id") != task_id]
         if completed:
+            completed.update(
+                {
+                    "status": outcome.status,
+                    "duration": round(outcome.duration, 3),
+                    "error": outcome.error,
+                    "finished_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+            )
             tracking["completed"].insert(0, completed)
             del tracking["completed"][max_completed:]
 
@@ -83,6 +108,9 @@ def execute_task(
 ):
     context = task_context(args)
     _start_tracking(task_id, func, context, tracking, tracking_lock)
+    started = time.monotonic()
+    error = None
+    timed_out = threading.Event()
 
     with semaphore:
         done = threading.Event()
@@ -90,27 +118,40 @@ def execute_task(
         def target():
             try:
                 func(*args)
-            except Exception as error:
+            except Exception as exc:
+                nonlocal error
+                error = exc
                 logger.exception("[Task] Execution error: function=%s", func.__name__)
                 if on_error:
-                    on_error(func, error, context, traceback.format_exc())
+                    on_error(func, exc, context, traceback.format_exc())
             finally:
                 done.set()
 
         thread = threading.Thread(target=target)
         thread.start()
-        timer = threading.Timer(
-            timeout,
-            lambda: logger.warning("[Task] Execution timeout: timeout=%ss", timeout)
-            if not done.is_set() else None,
-        )
+
+        def mark_timeout():
+            if not done.is_set():
+                timed_out.set()
+                logger.warning("[Task] Execution timeout: timeout=%ss", timeout)
+
+        timer = threading.Timer(timeout, mark_timeout)
         timer.start()
         thread.join()
         timer.cancel()
 
-    _finish_tracking(task_id, tracking, tracking_lock, max_completed)
+    status = "failed" if error else "completed"
+    if timed_out.is_set() and not error:
+        status = "timed_out"
+    outcome = TaskOutcome(
+        status=status,
+        duration=time.monotonic() - started,
+        error=f"{type(error).__name__}: {error}" if error else None,
+    )
+    _finish_tracking(task_id, outcome, tracking, tracking_lock, max_completed)
     if on_complete:
-        on_complete(func)
+        on_complete(func, outcome)
+    return outcome
 
 
 def queue_worker(task_queue, run_item):
