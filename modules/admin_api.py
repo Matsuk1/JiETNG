@@ -131,18 +131,20 @@ def check_admin_auth():
     return session.get("admin_authenticated", False)
 
 
+def _json_body():
+    data = request.get_json(silent=True)
+    return data if isinstance(data, dict) else {}
+
+
 def _is_user_custom_bg(filename):
     return filename.startswith("jietnguser_")
 
 
 @admin_api.route("/admin/panel", methods=["GET", "POST"])
 def admin_panel():
-    """管理后台主页面"""
     if request.method == "POST":
-        # 处理登录
         password = request.form.get("password", "")
 
-        # 验证密码
         if password and password == ADMIN_PASSWORD:
             session['admin_authenticated'] = True
             session.permanent = True
@@ -150,11 +152,9 @@ def admin_panel():
         else:
             return render_template("admin_login.html", error="Invalid password")
 
-    # GET请求
     if not check_admin_auth():
         return render_template("admin_login.html")
 
-    # 准备用户数据 - 使用本地保存的昵称,避免打开后台时批量请求 LINE API
     all_users = load_all_users()
     users_data = {}
     for user_id, user_info in all_users.items():
@@ -164,11 +164,9 @@ def admin_panel():
             'json_str': json.dumps(user_info, indent=2, ensure_ascii=False)
         }
 
-    # 合并业务指标（?refresh=<任何值> 跳过 30s 缓存）
     force_refresh = bool(request.args.get('refresh'))
     stats = _services.overview(force_refresh=force_refresh)
 
-    # 读取日志
     logs = ""
     try:
         with open(LOG_FILE, 'r', encoding='utf-8') as f:
@@ -187,7 +185,6 @@ def admin_panel():
 
 @admin_api.route("/admin/api/overview", methods=["GET"])
 def admin_api_overview():
-    """获取后台首页核心指标"""
     if not check_admin_auth():
         return jsonify({"error": "Unauthorized"}), 401
     force_refresh = bool(request.args.get("refresh"))
@@ -195,13 +192,11 @@ def admin_api_overview():
 
 @admin_api.route("/admin/logout", methods=["GET"])
 def admin_logout():
-    """管理员登出"""
     session.pop('admin_authenticated', None)
     return redirect("/admin/panel")
 
 @admin_api.route("/admin/api/hourly", methods=["GET"])
 def admin_api_hourly():
-    """获取指定日期的小时分布数据"""
     if not check_admin_auth():
         return jsonify({"error": "Unauthorized"}), 401
     date_str = request.args.get("date", "")
@@ -211,18 +206,16 @@ def admin_api_hourly():
 
 @admin_api.route("/admin/trigger_update", methods=["POST"])
 def admin_trigger_update():
-    """触发指定用户的maimai_update"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data = _json_body()
     user_id = data.get('user_id')
 
     if not user_id:
         return jsonify({'error': 'User ID required'}), 400
 
     try:
-        # 创建一个模拟的event对象用于异步任务
         class MockEvent:
             def __init__(self, user_id):
                 self.source = type('obj', (object,), {'user_id': user_id})()
@@ -230,13 +223,10 @@ def admin_trigger_update():
 
         mock_event = MockEvent(user_id)
 
-        # 生成任务ID
         task_id = f"admin_update_{user_id}_{datetime.now().timestamp()}"
 
-        # 获取用户昵称用于显示
         nickname = _services.nickname(user_id, use_cache=True)
 
-        # 添加到任务追踪（在入队之前）
         track_queued(_services.task_tracking, _services.task_tracking_lock, {
             'id': task_id,
             'function': 'async_admin_maimai_update_task',
@@ -245,7 +235,6 @@ def admin_trigger_update():
             'nickname': nickname
         })
 
-        # 添加到webtask队列（使用3元组格式）
         _services.task_queue.put_nowait((_services.update_task, (mock_event,), task_id))
 
         return jsonify({
@@ -267,7 +256,6 @@ def admin_trigger_update():
 
 @admin_api.route("/admin/get_logs", methods=["GET"])
 def admin_get_logs():
-    """获取最新日志"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -280,7 +268,6 @@ def admin_get_logs():
 
 @admin_api.route("/admin/get_notices", methods=["GET"])
 def admin_get_notices():
-    """获取所有公告(包括草稿)"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -293,22 +280,19 @@ def admin_get_notices():
 
 @admin_api.route("/admin/create_notice", methods=["POST"])
 def admin_create_notice():
-    """创建新公告 - 支持多语言、草稿、投票"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data = _json_body()
 
     content = localized_payload(data, "content")
     if not any(content.values()):
         return jsonify({'success': False, 'message': 'At least one language content is required'}), 400
 
-    # 获取其他参数
     status = data.get('status', 'published')  # 'draft' | 'published'
     voting_enabled = data.get('voting_enabled', False)
     created_by = session.get('user_id', 'admin')
 
-    # 按钮参数
     button_type = data.get('button_type')
     button_value = data.get('button_value', '').strip()
     button_labels = localized_payload(data, "button_label")
@@ -324,7 +308,6 @@ def admin_create_notice():
             button_value=button_value
         )
 
-        # 仅发布状态的公告才清除阅读状态
         if status == 'published':
             clear_notice_read_status(notice_id)
             logger.info(f"[Admin] ✓ Notice published: notice_id={notice_id}")
@@ -342,25 +325,22 @@ def admin_create_notice():
 
 @admin_api.route("/admin/update_notice", methods=["POST"])
 def admin_update_notice():
-    """更新公告 - 支持多语言"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data = _json_body()
     notice_id = data.get('notice_id')
 
     content = localized_payload(data, "content")
     if not notice_id or not any(content.values()):
         return jsonify({'success': False, 'message': 'Notice ID and at least one language content are required'}), 400
 
-    # 按钮参数
     button_type = data.get('button_type')
     button_value = data.get('button_value', '').strip()
     remove_button = data.get('remove_button', False)
     button_labels = localized_payload(data, "button_label")
 
     try:
-        # 检查是否为最新已发布公告
         latest_notice = get_latest_published_notice()
         is_latest = latest_notice and latest_notice.get('id') == notice_id
 
@@ -375,7 +355,6 @@ def admin_update_notice():
 
         if success:
             notice = get_notice_by_id(notice_id)
-            # 如果修改的是已发布的公告,清除阅读状态
             if notice.get('status') == 'published' and is_latest:
                 clear_notice_read_status(notice_id)
                 logger.info(f"[Admin] ✓ Updated latest published notice: notice_id={notice_id}")
@@ -392,11 +371,10 @@ def admin_update_notice():
 
 @admin_api.route("/admin/delete_notice", methods=["POST"])
 def admin_delete_notice():
-    """删除公告"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data = _json_body()
     notice_id = data.get('notice_id')
 
     if not notice_id:
@@ -418,11 +396,10 @@ def admin_delete_notice():
 
 @admin_api.route("/admin/publish_notice", methods=["POST"])
 def admin_publish_notice():
-    """发布草稿公告"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data = _json_body()
     notice_id = data.get('notice_id')
 
     if not notice_id:
@@ -432,7 +409,6 @@ def admin_publish_notice():
         success = publish_notice(notice_id)
 
         if success:
-            # 清除所有用户的阅读状态
             clear_notice_read_status(notice_id)
             logger.info(f"[Admin] ✓ Published draft notice: notice_id={notice_id}")
             return jsonify({'success': True, 'message': 'Notice published successfully'})
@@ -445,7 +421,6 @@ def admin_publish_notice():
 
 @admin_api.route("/admin/get_notice_stats", methods=["GET"])
 def admin_get_notice_stats():
-    """获取公告统计数据"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -453,13 +428,11 @@ def admin_get_notice_stats():
 
     try:
         if notice_id:
-            # 获取单个公告的统计
             stats = calculate_notice_stats(notice_id)
             if stats is None:
                 return jsonify({'success': False, 'message': 'Notice not found'}), 404
             return jsonify({'success': True, 'stats': stats})
         else:
-            # 获取所有公告的统计
             stats = get_all_notices_stats()
             return jsonify({'success': True, 'stats': stats})
 
@@ -469,11 +442,7 @@ def admin_get_notice_stats():
 
 @admin_api.route("/linebot/notice_vote", methods=["POST"])
 def notice_vote():
-    """
-    用户投票端点
-    通过 LINE LIFF 或 Postback 调用
-    """
-    data = request.get_json()
+    data = _json_body()
     user_id = data.get('user_id')
     notice_id = data.get('notice_id')
     vote_type = data.get('vote_type')  # 'support' | 'oppose'
@@ -485,7 +454,6 @@ def notice_vote():
         return jsonify({'success': False, 'message': 'Invalid vote type'}), 400
 
     try:
-        # 验证公告存在且启用投票
         notice = get_notice_by_id(notice_id)
         if not notice:
             return jsonify({'success': False, 'message': 'Notice not found'}), 404
@@ -493,11 +461,9 @@ def notice_vote():
         if not notice.get('voting_enabled'):
             return jsonify({'success': False, 'message': 'Voting is not enabled for this notice'}), 400
 
-        # 记录投票
         success = record_notice_vote(user_id, notice_id, vote_type)
 
         if success:
-            # 返回最新统计
             stats = calculate_notice_stats(notice_id)
             logger.info(f"[Notice] ✓ User voted: user_id={user_id}, notice_id={notice_id}, vote={vote_type}")
             return jsonify({
@@ -516,7 +482,6 @@ def notice_vote():
 
 @admin_api.route("/admin/tip_ads", methods=["GET"])
 def admin_get_tip_ads():
-    """获取所有 tip/ad"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -529,7 +494,6 @@ def admin_get_tip_ads():
 
 @admin_api.route("/admin/tip_ads/<tip_ad_id>", methods=["GET"])
 def admin_get_tip_ad(tip_ad_id):
-    """获取单个 tip/ad"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -542,11 +506,10 @@ def admin_get_tip_ad(tip_ad_id):
 
 @admin_api.route("/admin/tip_ads", methods=["POST"])
 def admin_create_tip_ads():
-    """创建新的 tip/ad"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data = _json_body()
     tip_type = data.get('type')
     text = localized_payload(data, "text")
     button_type = data.get('button_type')
@@ -577,11 +540,10 @@ def admin_create_tip_ads():
 
 @admin_api.route("/admin/tip_ads/<tip_ad_id>", methods=["PUT"])
 def admin_put_tip_ads(tip_ad_id):
-    """更新 tip/ad"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data = _json_body()
 
     if not tip_ad_id:
         return jsonify({'success': False, 'message': 'Missing id'}), 400
@@ -617,7 +579,6 @@ def admin_put_tip_ads(tip_ad_id):
 
 @admin_api.route("/admin/tip_ads/<tip_ad_id>", methods=["DELETE"])
 def admin_delete_tip_ads(tip_ad_id):
-    """删除 tip/ad"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -639,12 +600,6 @@ def admin_delete_tip_ads(tip_ad_id):
 
 @admin_api.route("/admin/backgrounds", methods=["GET", "POST"])
 def admin_backgrounds():
-    """
-    背景图资源
-
-    GET:  列出所有背景图
-    POST: 上传新背景图（multipart/form-data, field: file）
-    """
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -672,7 +627,6 @@ def admin_backgrounds():
             logger.error(f"[Admin] ✗ List backgrounds error: {e}")
             return jsonify({'success': False, 'message': str(e)}), 500
 
-    # POST: 上传
     uploaded = request.files.get('file')
     if not uploaded or not uploaded.filename:
         return jsonify({'success': False, 'message': 'No file provided'}), 400
@@ -704,7 +658,6 @@ def admin_backgrounds():
     if not safe_name or safe_name.startswith('.'):
         return jsonify({'success': False, 'message': 'Invalid filename'}), 400
 
-    # HEIC/HEIF 转换为 WebP 保存
     if ext in {'.heic', '.heif'}:
         safe_name = os.path.splitext(safe_name)[0] + '.webp'
         save_path = os.path.join(BG_DIR, safe_name)
@@ -729,7 +682,6 @@ def admin_backgrounds():
 
 @admin_api.route("/admin/backgrounds/<filename>", methods=["DELETE"])
 def admin_delete_background(filename):
-    """删除指定背景图"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -759,11 +711,10 @@ def admin_delete_background(filename):
 
 @admin_api.route("/admin/edit_user", methods=["POST"])
 def admin_edit_user():
-    """编辑用户数据"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data = _json_body()
     user_id = data.get('user_id')
     user_data = data.get('user_data')
 
@@ -780,14 +731,12 @@ def admin_edit_user():
                 'message': f'User {user_id} not found'
             }), 404
 
-        # 合并更新用户数据（保留未修改的字段）
         existing_data = get_user(user_id) or {}
         existing_data.update(user_data)
         save_user(user_id, existing_data)
 
         logger.info(f"[Admin] ✓ User data edited: user_id={user_id}")
 
-        # 不再发送通知给管理员
 
         return jsonify({
             'success': True,
@@ -803,11 +752,10 @@ def admin_edit_user():
 
 @admin_api.route("/admin/delete_user", methods=["POST"])
 def admin_delete_user():
-    """删除用户"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data = _json_body()
     user_id = data.get('user_id')
 
     if not user_id:
@@ -823,7 +771,6 @@ def admin_delete_user():
                 'message': f'User {user_id} not found'
             }), 404
 
-        # 使用 delete_user 函数删除用户
         delete_user(user_id)
         link_unbound_rich_menu(user_id)
 
@@ -843,7 +790,6 @@ def admin_delete_user():
 
 @admin_api.route("/admin/clear_cache", methods=["POST"])
 def admin_clear_cache():
-    """清除昵称缓存"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -868,11 +814,10 @@ def admin_clear_cache():
 
 @admin_api.route("/admin/get_user_data", methods=["POST"])
 def admin_get_user_data():
-    """获取单个用户的最新数据"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data = _json_body()
     user_id = data.get('user_id')
 
     if not user_id:
@@ -882,7 +827,6 @@ def admin_get_user_data():
         }), 400
 
     try:
-        # 获取用户数据
         user_info = get_user(user_id)
         if not user_info:
             return jsonify({
@@ -890,10 +834,8 @@ def admin_get_user_data():
                 'message': f'User {user_id} not found'
             }), 404
 
-        # 获取昵称(不使用缓存,强制刷新)
         nickname = _services.nickname(user_id, use_cache=False)
 
-        # 格式化 JSON
         json_str = json.dumps(user_info, indent=2, ensure_ascii=False)
 
         return jsonify({
@@ -912,15 +854,13 @@ def admin_get_user_data():
 
 @admin_api.route("/admin/load_nicknames", methods=["POST"])
 def admin_load_nicknames():
-    """批量加载用户昵称"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
     try:
-        data = request.get_json(silent=True) or {}
+        data = _json_body()
         refresh = bool(data.get('refresh'))
 
-        # 默认只读取本地保存的昵称；只有显式刷新才请求 LINE API
         nicknames = {}
         if refresh:
             for user_id in get_all_user_ids():
@@ -945,7 +885,6 @@ def admin_load_nicknames():
 
 @admin_api.route("/admin/backups", methods=["POST"])
 def admin_create_backup():
-    """从管理面板创建系统备份"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -975,14 +914,12 @@ def admin_create_backup():
 
 @admin_api.route("/admin/get_backups", methods=["GET"])
 def admin_get_backups():
-    """获取所有备份文件列表"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
     try:
         backup_files = []
 
-        # 扫描备份目录
         if os.path.exists(BACKUP_DIR):
             for filename in os.listdir(BACKUP_DIR):
                 if filename.startswith("backup_") and filename.endswith(".zip"):
@@ -997,7 +934,6 @@ def admin_get_backups():
                         'timestamp': stat.st_mtime
                     })
 
-        # 按时间倒序排序（最新的在前）
         backup_files.sort(key=lambda x: x['timestamp'], reverse=True)
 
         return jsonify({
@@ -1015,10 +951,10 @@ def admin_get_backups():
 
 @admin_api.route("/admin/download_backup", methods=["GET"])
 def admin_download_backup():
-    """下载指定的备份文件"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
+    filename = None
     try:
         filename = request.args.get('file')
         if not filename:
@@ -1027,14 +963,12 @@ def admin_download_backup():
                 'message': 'Missing file parameter'
             }), 400
 
-        # 安全检查：只允许备份文件
         if not filename.startswith("backup_") or not filename.endswith(".zip"):
             return jsonify({
                 'success': False,
                 'message': 'Invalid backup filename'
             }), 400
 
-        # 防止路径遍历攻击
         if ".." in filename or "/" in filename or "\\" in filename:
             return jsonify({
                 'success': False,
@@ -1043,14 +977,12 @@ def admin_download_backup():
 
         backup_path = os.path.join(BACKUP_DIR, filename)
 
-        # 检查文件是否存在
         if not os.path.exists(backup_path):
             return jsonify({
                 'success': False,
                 'message': 'Backup file not found'
             }), 404
 
-        # 发送文件
         return send_file(
             backup_path,
             as_attachment=True,
@@ -1067,12 +999,11 @@ def admin_download_backup():
 
 @admin_api.route("/admin/delete_backup", methods=["POST"])
 def admin_delete_backup():
-    """删除指定的备份文件"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
     try:
-        data = request.get_json()
+        data = _json_body()
         filename = data.get('filename')
 
         if not filename:
@@ -1081,14 +1012,12 @@ def admin_delete_backup():
                 'message': 'Missing filename parameter'
             }), 400
 
-        # 安全检查：只允许备份文件
         if not filename.startswith("backup_") or not filename.endswith(".zip"):
             return jsonify({
                 'success': False,
                 'message': 'Invalid backup filename'
             }), 400
 
-        # 防止路径遍历攻击
         if ".." in filename or "/" in filename or "\\" in filename:
             return jsonify({
                 'success': False,
@@ -1097,14 +1026,12 @@ def admin_delete_backup():
 
         backup_path = os.path.join(BACKUP_DIR, filename)
 
-        # 检查文件是否存在
         if not os.path.exists(backup_path):
             return jsonify({
                 'success': False,
                 'message': 'Backup file not found'
             }), 404
 
-        # 删除文件
         os.remove(backup_path)
         logger.info(f"[Admin] ✓ Backup deleted: file={filename}")
 
@@ -1122,19 +1049,16 @@ def admin_delete_backup():
 
 @admin_api.route("/admin/dxdata_status", methods=["GET"])
 def admin_dxdata_status():
-    """获取 DXData 状态（歌曲数、谱面数、版本数）"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
     try:
         songs, versions = read_dxdata()
-        # 统计歌曲数
         total_songs = len(songs)
         std_songs = len([s for s in songs if s['type'] == 'std'])
         dx_songs = len([s for s in songs if s['type'] == 'dx'])
         utage_songs = len([s for s in songs if s['type'] == 'utage'])
 
-        # 统计谱面数（不包括宴会曲）
         total_sheets = 0
         jp_sheets = 0
         intl_sheets = 0
@@ -1176,7 +1100,6 @@ def admin_dxdata_status():
 
 @admin_api.route("/admin/update_dxdata", methods=["POST"])
 def admin_update_dxdata():
-    """触发 DXData 更新"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1196,7 +1119,6 @@ def admin_update_dxdata():
 
 @admin_api.route("/admin/notifications", methods=["GET"])
 def admin_get_notifications():
-    """获取所有系统通知"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1205,7 +1127,6 @@ def admin_get_notifications():
 
 @admin_api.route("/admin/notifications", methods=["DELETE"])
 def admin_clear_notifications():
-    """清空所有系统通知"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1215,7 +1136,6 @@ def admin_clear_notifications():
 
 @admin_api.route("/admin/vapid-public-key", methods=["GET"])
 def admin_vapid_public_key():
-    """返回 VAPID 公钥（前端订阅 push 时使用）"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1224,11 +1144,10 @@ def admin_vapid_public_key():
 
 @admin_api.route("/admin/push-subscription", methods=["POST"])
 def admin_add_push_subscription():
-    """保存浏览器 push 订阅"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    sub = request.get_json()
+    sub = _json_body()
     if not sub or not sub.get('endpoint'):
         return jsonify({'error': 'Invalid subscription'}), 400
 
@@ -1238,11 +1157,10 @@ def admin_add_push_subscription():
 
 @admin_api.route("/admin/push-subscription", methods=["DELETE"])
 def admin_remove_push_subscription():
-    """删除浏览器 push 订阅"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data = _json_body()
     endpoint = data.get('endpoint') if data else None
     if not endpoint:
         return jsonify({'error': 'Missing endpoint'}), 400
@@ -1255,13 +1173,11 @@ def admin_remove_push_subscription():
 
 @admin_api.route("/admin/devtokens", methods=["GET"])
 def admin_list_devtokens():
-    """获取所有开发者 token 列表"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
     try:
         tokens = list_dev_tokens()
-        # 补充 allowed_users 数量
         all_tokens = load_dev_tokens()
         for t in tokens:
             token_data = all_tokens.get(t['token_id'], {})
@@ -1273,11 +1189,10 @@ def admin_list_devtokens():
 
 @admin_api.route("/admin/devtokens", methods=["POST"])
 def admin_create_devtoken():
-    """创建新的开发者 token"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data = _json_body()
     note = data.get('note', '').strip() if data else ''
     if not note:
         return jsonify({'success': False, 'message': 'Note is required'})
@@ -1294,11 +1209,10 @@ def admin_create_devtoken():
 
 @admin_api.route("/admin/devtokens/<token_id>", methods=["PATCH"])
 def admin_update_devtoken(token_id):
-    """更新开发者 token 状态（如撤销）"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    data = request.get_json()
+    data = _json_body()
     if data and data.get('revoked'):
         if revoke_dev_token(token_id):
             return jsonify({'success': True})
@@ -1309,7 +1223,6 @@ def admin_update_devtoken(token_id):
 
 @admin_api.route("/admin/devtokens/<token_id>", methods=["DELETE"])
 def admin_delete_devtoken(token_id):
-    """删除开发者 token"""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
 
