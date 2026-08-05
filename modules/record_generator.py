@@ -32,12 +32,17 @@ from modules.image_manager import (
     round_corner,
     truncate_text,
 )
+from modules.i18n import language_catalog, select_text
 from modules.maimai_manager import get_rating_image_path
 from modules.record_manager import get_single_ra
 
 logger = logging.getLogger(__name__)
 
 RECORD_RATING_BLOCK_SIZE = (259, 51)
+
+
+def _image_text(path, language):
+    return select_text(language_catalog(f"images.{path}"), language=language)
 RATING_SOURCE_WIDTH = 296
 RATING_DIGIT_WIDTH = 23
 RATING_DIGIT_START_X = 140
@@ -696,7 +701,14 @@ def _score_break_rows_from_internal(judgement, break_detail):
     ]
 
 
-def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezone_offset=9, bg_filter=None):
+def generate_score_recognition_picture(
+    result,
+    ver="jp",
+    img_width=1100,
+    timezone_offset=9,
+    bg_filter=None,
+    language=None,
+):
     """
     Generate a static score-recognition result image using the same data hierarchy
     as the OCR FlexMsg.
@@ -707,22 +719,11 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
     metric_color = (114, 20, 141) if difficulty == "remaster" else diff_color
     header_text_color = (114, 20, 141) if difficulty == "remaster" else (255, 255, 255)
 
+    language = language or ("ja" if ver == "jp" else "en")
     texts = {
-        "jp": {
-            "subtitle": "判定詳細",
-            "judgement": "判定データ",
-            "loss": "詳細判定",
-            "break": "BREAK 詳細判定",
-            "empty": "判定詳細を認識できませんでした。",
-        },
-        "intl": {
-            "subtitle": "Judgement Details",
-            "judgement": "Judgements",
-            "loss": "Detailed Judgements",
-            "break": "BREAK Details",
-            "empty": "No judgement details were recognized.",
-        },
-    }[ver]
+        key: _image_text(f"score.{key}", language)
+        for key in ("subtitle", "judgement", "loss", "break", "empty")
+    }
 
     font_header = ImageFont.truetype(FONT_FILE, 48)
     font_subtitle = ImageFont.truetype(FONT_FILE, 26)
@@ -851,13 +852,10 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
     if combo_file:
         icon_items.append(("combo_icon", combo_file, combo_icon_size, "combo"))
 
-    status_x1, status_y1, status_x2, status_y2 = metric_boxes[1][1:]
+    status_x1, status_y1, status_x2, _ = metric_boxes[1][1:]
     icon_gap = 16
     total_icon_w = sum(item[2][0] for item in icon_items) + icon_gap * max(0, len(icon_items) - 1)
     icon_x = int(status_x1 + max(18, (status_x2 - status_x1 - total_icon_w) / 2))
-    icon_bottom = y + 58 + 40
-    icon_y = int(icon_bottom - status_icon_h)
-    icon_y = max(int(status_y1 + 18), min(icon_y, int(status_y2 - status_icon_h - 12)))
     icon_y = status_y1 + 22
     if rank_icon:
         rank_file = {
@@ -1127,7 +1125,7 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
     if loss_rows:
         loss_accent = (192, 57, 43)
         draw_loss_panel(texts["loss"], loss_accent, loss_rows)
-        draw_summary_total_bar("COMMON TOTAL", total_loss, loss_accent)
+        draw_summary_total_bar(_image_text("score.common_total", language), total_loss, loss_accent)
 
     if break_rows:
         def break_row_total(cells):
@@ -1153,7 +1151,7 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
             )
         break_accent = (184, 110, 25)
         draw_loss_panel(texts["break"], break_accent, break_rows)
-        draw_summary_total_bar("BREAK TOTAL", total_break_loss, break_accent)
+        draw_summary_total_bar(_image_text("score.break_total", language), total_break_loss, break_accent)
 
     final_h = min(img_height, y + margin + 8)
     cropped = img.crop((0, 0, img_width, final_h))
@@ -1179,11 +1177,12 @@ def generate_records_picture(
     title="RECORD",
     ver="jp",
     details=None,
+    language=None,
 ):
     up_songs = up_songs or []
     down_songs = down_songs or []
     details = details or {}
-    uploaded_data = up_songs + down_songs
+    language = language or ("ja" if ver == "jp" else "en")
     up_num = len(up_songs)
     down_num = len(down_songs)
     num = up_num + down_num
@@ -1225,19 +1224,11 @@ def generate_records_picture(
     rating_equation = f"= {_format_rating_value(up_ra)} + {_format_rating_value(down_ra)}" if up_ra and down_ra else ""
     rating_block_size = RECORD_RATING_BLOCK_SIZE
 
-    if ver == "jp":
-        header_text = [
-            f"平均レベル: {round(float(all_level)/num, 2):.2f}",
-            f"平均達成率: {round(all_score/num, 4):.4f}%",
-            f"平均レーティング: {round(float(all_ra)/num, 2):.2f}"
-        ]
-        
-    else:
-        header_text = [
-            f"AVG LEVEL: {round(float(all_level)/num, 2):.2f}",
-            f"AVG ACHIEVEMENT: {round(all_score/num, 4):.4f}%",
-            f"AVG RATING: {round(float(all_ra)/num, 2):.2f}"
-        ]
+    header_text = [
+        f"{_image_text('records.avg_level', language)}: {all_level / num:.2f}",
+        f"{_image_text('records.avg_achievement', language)}: {all_score / num:.4f}%",
+        f"{_image_text('records.avg_rating', language)}: {all_ra / num:.2f}",
+    ]
 
     # 绘制统计信息背景卡片（右侧）
     card_padding = 20
@@ -1344,8 +1335,6 @@ def generate_records_picture(
 
     up_thumbnails = [create_thumbnail(song) for song in up_songs[:grid_size[0] * grid_size[1]]]
     down_thumbnails = [create_thumbnail(song) for song in down_songs[:grid_size[0] * grid_size[1]]]
-    thumbnails = up_thumbnails + down_thumbnails
-
     for i, thumb in enumerate(up_thumbnails):
         x_offset = (i % grid_size[0]) * (thumb_size[0] + spacing) + side_width
         y_offset = header_height + (i // grid_size[0]) * (thumb_size[1] + spacing)
@@ -1441,12 +1430,6 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
         url_func=lambda value: "https://maimaidx.jp/maimai-mobile/img/music_standard.png" if value == "std" else "https://maimaidx.jp/maimai-mobile/img/music_dx.png"
     )
 
-    # 检查底部是否有圆点容器（牌子模式圆点在 footer，不影响封面布局）
-    has_bottom_content = False
-    if complete_info and not is_plate_mode:
-        difficulties = ["basic", "advanced", "expert", "master"]
-        has_bottom_content = any(complete_info.get(diff, False) for diff in difficulties)
-
     # 添加灰色蒙层（在 icon 之前，这样不会遮挡 icon）
     # 有 footer 的模式不使用蒙层，改用 footer 区域表示达成状态
     if achieved is True and not has_footer:
@@ -1482,10 +1465,7 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
                 # 粘贴图标（居中于封面区域，不包含 footer）
                 x_offset = (img_width - icon_width) // 2
                 cover_center_y = size // 2
-                if has_bottom_content:
-                    y_offset = cover_center_y - new_height // 2 - int(base_size * 0.08)
-                else:
-                    y_offset = cover_center_y - new_height // 2
+                y_offset = cover_center_y - new_height // 2
                 record_img.paste(resized_img, (x_offset, y_offset), resized_img.convert("RGBA"))
 
         except Exception as e:
@@ -1775,6 +1755,7 @@ def generate_level_rank_progress_image(
     margin=20,
     group_by="internal_level",
     show_progress_suffix=True,
+    language="ja",
 ):
     """
     生成难度评级进度图片，顶部显示总体统计卡片，下方显示分组封面列表
@@ -1829,10 +1810,10 @@ def generate_level_rank_progress_image(
 
     # 顶部布局：标题单独居中一行，统计卡片下一行横向铺满。
     if rank_name:
-        suffix = " PROGRESS" if show_progress_suffix else ""
+        suffix = f" {_image_text('progress.progress_suffix', language)}" if show_progress_suffix else ""
         title_text = f"{level_name} {rank_name}{suffix}"
     else:
-        title_text = f"{level_name} LEVEL LIST"
+        title_text = f"{level_name} {_image_text('progress.level_list_suffix', language)}"
 
     measure_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1), (0, 0, 0, 0)))
     title_font = _fit_font_to_width(measure_draw, title_text, img_width - margin * 4, 170, 92)
@@ -1857,10 +1838,10 @@ def generate_level_rank_progress_image(
     card_radius = 22
 
     card_data = [
-        ("完了", stats["achieved"], (76, 175, 80)),       # 绿色
-        ("未完了", stats["unachieved"], (255, 152, 0)),   # 橙色
-        ("未プレイ", stats["unplayed"], (158, 158, 158)),  # 灰色
-        ("総計", stats["total"], (66, 133, 244))          # 蓝色
+        (_image_text("progress.completed", language), stats["achieved"], (76, 175, 80)),
+        (_image_text("progress.incomplete", language), stats["unachieved"], (255, 152, 0)),
+        (_image_text("progress.unplayed", language), stats["unplayed"], (158, 158, 158)),
+        (_image_text("progress.total", language), stats["total"], (66, 133, 244)),
     ]
 
     final_img_rgba = final_img
@@ -1902,7 +1883,7 @@ def generate_level_rank_progress_image(
         card_draw = ImageDraw.Draw(final_img_rgba)
 
         total = stats["total"]
-        if label != "総計" and total > 0:
+        if idx < len(card_data) - 1 and total > 0:
             pct = count / total * 100
             data_text = f"{count} ({pct:.1f}%)"
         else:
