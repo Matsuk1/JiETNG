@@ -149,9 +149,3 @@ def clear_notifications():
     """清空所有通知"""
     with _notif_lock:
         _notifications.clear()
-
-
-def get_notification_count():
-    """获取通知数量"""
-    with _notif_lock:
-        return len(_notifications)

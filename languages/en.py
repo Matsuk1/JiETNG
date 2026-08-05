@@ -553,35 +553,6 @@ MESSAGE_TEXTS = {'access_error_text': "🙇 There's a lot of traffic right now..
                     'subtitle': 'Note Calc',
                     'title_distribution': 'Note Distribution'},
  'cannot_do_for_others_text': 'This command can only be used for your own account.',
- 'devtoken_create_failed_text': '❌ Failed to create token.',
- 'devtoken_create_success_text': '✅ Developer token created successfully!\n'
-                                 '\n'
-                                 'Token ID: {token_id}\n'
-                                 'Token: {token}\n'
-                                 'Note: {note}\n'
-                                 'Created: {created_at}\n'
-                                 '\n'
-                                 '⚠️ This token will only be shown once. Please store it securely.',
- 'devtoken_info_not_found_text': '❌ Token not found.',
- 'devtoken_info_text': '📝 Token Details\n'
-                       '\n'
-                       'Token ID: {token_id}\n'
-                       'Token: {token}\n'
-                       'Note: {note}\n'
-                       'Created by: {created_by}\n'
-                       'Created: {created_at}\n'
-                       'Last used: {last_used}\n'
-                       'Status: {status}',
- 'devtoken_list_empty_text': 'No tokens created yet.',
- 'devtoken_list_header_text': '📋 Developer Tokens List',
- 'devtoken_revoke_failed_text': '❌ Token {token_id} not found.',
- 'devtoken_revoke_success_text': '✅ Token {token_id} has been revoked.',
- 'devtoken_usage_text': '📚 Developer Token Management\n'
-                        '\n'
-                        'devtoken create <note> - Create a new token\n'
-                        'devtoken list - List all tokens\n'
-                        'devtoken revoke <token_id> - Revoke a token\n'
-                        'devtoken info <token_id> - Show token details',
  'dxdata_current_stats_text': '📈 Current: {songs} Songs / {sheets} Charts',
  'dxdata_fetch_failed_text': '❌ Failed to fetch data!',
  'dxdata_first_update_text': '(Initial update complete!)',
@@ -595,9 +566,7 @@ MESSAGE_TEXTS = {'access_error_text': "🙇 There's a lot of traffic right now..
  'dxdata_parse_failed_text': '❌ Failed to parse data!',
  'dxdata_sheets_decreased_text': '📊 Charts: {count}',
  'dxdata_songs_decreased_text': '🎵 Songs: {count}',
- 'dxdata_update_notification_text': '📢 Dxdata Update Notification\n\n{message}',
  'dxdata_update_success_text': '✅ Dxdata Updated!',
- 'dxdata_update_text': '✅ Dxdata Updated!',
  'export_alt_text': 'Records exported',
  'export_empty_text': 'No records to export yet. Run `maimai update` first, then try again.',
  'export_failed_text': 'Failed to export records. Please try again later.',
@@ -615,7 +584,6 @@ MESSAGE_TEXTS = {'access_error_text': "🙇 There's a lot of traffic right now..
  'info_error_text': 'Your maimai profile has not been saved yet. Run `maimai update` first, then '
                     'try again.',
  'input_error_text': 'Command not recognized. Please check your input.',
- 'language_set_success_text': '✅ Language set to English!',
  'level_not_supported_text': 'This level constant table is not supported.\n'
                              'Only levels 12 and above are available.',
  'level_record_not_found_text': "No records found for level '{level}' page {page}...",
@@ -665,7 +633,6 @@ MESSAGE_TEXTS = {'access_error_text': "🙇 There's a lot of traffic right now..
  'rebind_not_bound_text': 'No SEGA account is linked yet. Link one with bind first.',
  'rebind_title_alt_text': 'Edit Account Settings',
  'record_error_text': 'No maimai records found yet. Run `maimai update` first, then try again.',
- 'save_image_button_text': 'Save Image',
  'search_group_warning_text': 'artist / designer / bpm search is only available in private chat.',
  'sega_bind_alt_text': 'Link SEGA Account',
  'sega_bind_button_text': 'Start Linking',

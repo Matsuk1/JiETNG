@@ -124,11 +124,6 @@ def upload_notice(
         return notice_id
 
 
-def get_latest_notice():
-    notices = _load_notices()
-    return notices[0] if notices else None
-
-
 def get_latest_published_notice():
     return next(
         (notice for notice in _load_notices() if notice.get("status") == "published"),
@@ -194,11 +189,3 @@ def delete_notice(notice_id):
             return False
         _save_notices(remaining)
         return True
-
-
-def get_notices_by_date(target_date):
-    return [
-        notice
-        for notice in _load_notices()
-        if str(notice.get("date", "")).startswith(target_date)
-    ]

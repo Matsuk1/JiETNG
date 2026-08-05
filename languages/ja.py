@@ -487,35 +487,6 @@ MESSAGE_TEXTS = {'access_error_text': '🙇 今めっちゃアクセス多いん
                     'subtitle': 'ノーツ計算',
                     'title_distribution': 'ノーツ分布'},
  'cannot_do_for_others_text': 'このコマンドは自分のアカウントにのみ使用できます。',
- 'devtoken_create_failed_text': '❌ トークンの作成に失敗しました。',
- 'devtoken_create_success_text': '✅ 開発者トークンを作成しました！\n'
-                                 '\n'
-                                 'Token ID: {token_id}\n'
-                                 'Token: {token}\n'
-                                 '備考: {note}\n'
-                                 '作成日時: {created_at}\n'
-                                 '\n'
-                                 '⚠️ このトークンは一度しか表示されません。安全な場所に保管してください。',
- 'devtoken_info_not_found_text': '❌ トークンが見つかりません。',
- 'devtoken_info_text': '📝 トークン詳細情報\n'
-                       '\n'
-                       'Token ID: {token_id}\n'
-                       'Token: {token}\n'
-                       '備考: {note}\n'
-                       '作成者: {created_by}\n'
-                       '作成日時: {created_at}\n'
-                       '最終使用: {last_used}\n'
-                       'ステータス: {status}',
- 'devtoken_list_empty_text': 'トークンはまだ作成されていません。',
- 'devtoken_list_header_text': '📋 開発者トークン一覧',
- 'devtoken_revoke_failed_text': '❌ トークン {token_id} が見つかりません。',
- 'devtoken_revoke_success_text': '✅ トークン {token_id} を無効化しました。',
- 'devtoken_usage_text': '📚 開発者トークン管理\n'
-                        '\n'
-                        'devtoken create <備考> - 新しいトークンを作成\n'
-                        'devtoken list - トークン一覧を表示\n'
-                        'devtoken revoke <token_id> - トークンを無効化\n'
-                        'devtoken info <token_id> - トークンの詳細を表示',
  'dxdata_current_stats_text': '📈 現在: 楽曲{songs}首 / 譜面{sheets}個',
  'dxdata_fetch_failed_text': '❌ データ取得失敗！',
  'dxdata_first_update_text': '(初回更新完了！)',
@@ -529,9 +500,7 @@ MESSAGE_TEXTS = {'access_error_text': '🙇 今めっちゃアクセス多いん
  'dxdata_parse_failed_text': '❌ データ解析失敗！',
  'dxdata_sheets_decreased_text': '📊 譜面: {count}個',
  'dxdata_songs_decreased_text': '🎵 楽曲: {count}首',
- 'dxdata_update_notification_text': '📢 Dxdata 更新通知\n\n{message}',
  'dxdata_update_success_text': '✅ Dxdata Updated!',
- 'dxdata_update_text': '✅ Dxdata Updated!',
  'export_alt_text': '成績データを書き出しました',
  'export_empty_text': 'まだ書き出せる成績データがありません。『maimai update』で更新してから試してください。',
  'export_failed_text': '成績データの書き出しに失敗しました。しばらくしてからもう一度お試しください。',
@@ -547,7 +516,6 @@ MESSAGE_TEXTS = {'access_error_text': '🙇 今めっちゃアクセス多いん
  'friend_rcd_text': '{name} のデータ',
  'info_error_text': 'maimai プロフィールがまだ保存されていません。『maimai update』で更新してから試してください。',
  'input_error_text': 'コマンドを認識できませんでした。入力内容を確認してください。',
- 'language_set_success_text': '✅ 言語を日本語に設定しました！',
  'level_not_supported_text': 'このレベルの定数表はサポートされていません。\nレベル12以上のみ対応しています。',
  'level_record_not_found_text': '指定されたレベル「{level}」の{page}ページ目の譜面記録は存在しないかも...',
  'level_record_page_hint_text': 'これは{page}ページ目のデータだよ！',
@@ -593,7 +561,6 @@ MESSAGE_TEXTS = {'access_error_text': '🙇 今めっちゃアクセス多いん
  'rebind_not_bound_text': 'SEGA アカウントがまだ連携されていません。先に bind で連携してください。',
  'rebind_title_alt_text': 'アカウント設定の編集',
  'record_error_text': 'まだ maimai 成績データがありません。『maimai update』で更新してから試してください。',
- 'save_image_button_text': '画像を保存',
  'search_group_warning_text': 'artist / designer / bpm 検索は個人チャット専用です。',
  'sega_bind_alt_text': 'SEGA アカウント連携',
  'sega_bind_button_text': '連携を開始',

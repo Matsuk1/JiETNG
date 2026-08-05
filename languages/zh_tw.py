@@ -486,35 +486,6 @@ MESSAGE_TEXTS = {'access_error_text': '🙇 現在訪問量很大…請稍後再
                     'subtitle': 'Note 計算',
                     'title_distribution': 'Note 分布'},
  'cannot_do_for_others_text': '該命令只能用於你自己的帳號。',
- 'devtoken_create_failed_text': '❌ Token 建立失敗。',
- 'devtoken_create_success_text': '✅ 開發者 Token 建立成功！\n'
-                                 '\n'
-                                 'Token ID: {token_id}\n'
-                                 'Token: {token}\n'
-                                 '備註: {note}\n'
-                                 '建立時間: {created_at}\n'
-                                 '\n'
-                                 '⚠️ 此 Token 僅顯示一次，請妥善保管。',
- 'devtoken_info_not_found_text': '❌ 找不到 Token。',
- 'devtoken_info_text': '📝 Token 詳細資訊\n'
-                       '\n'
-                       'Token ID: {token_id}\n'
-                       'Token: {token}\n'
-                       '備註: {note}\n'
-                       '建立者: {created_by}\n'
-                       '建立時間: {created_at}\n'
-                       '最後使用: {last_used}\n'
-                       '狀態: {status}',
- 'devtoken_list_empty_text': '還沒有建立任何 Token。',
- 'devtoken_list_header_text': '📋 開發者 Token 列表',
- 'devtoken_revoke_failed_text': '❌ 找不到 Token {token_id}。',
- 'devtoken_revoke_success_text': '✅ 已撤銷 Token {token_id}。',
- 'devtoken_usage_text': '📚 開發者 Token 管理\n'
-                        '\n'
-                        'devtoken create <備註> - 建立新 Token\n'
-                        'devtoken list - 顯示所有 Token\n'
-                        'devtoken revoke <token_id> - 撤銷 Token\n'
-                        'devtoken info <token_id> - 顯示 Token 詳情',
  'dxdata_current_stats_text': '📈 目前: {songs}首歌曲 / {sheets}個譜面',
  'dxdata_fetch_failed_text': '❌ 資料獲取失敗！',
  'dxdata_first_update_text': '(首次更新完成！)',
@@ -528,9 +499,7 @@ MESSAGE_TEXTS = {'access_error_text': '🙇 現在訪問量很大…請稍後再
  'dxdata_parse_failed_text': '❌ 資料解析失敗！',
  'dxdata_sheets_decreased_text': '📊 譜面: {count}個',
  'dxdata_songs_decreased_text': '🎵 歌曲: {count}首',
- 'dxdata_update_notification_text': '📢 Dxdata 更新通知\n\n{message}',
  'dxdata_update_success_text': '✅ Dxdata 更新成功！',
- 'dxdata_update_text': '✅ Dxdata 已更新！',
  'export_alt_text': '成績資料已導出',
  'export_empty_text': '還沒有可導出的成績資料。請先使用『maimai update』更新後再試。',
  'export_failed_text': '成績資料導出失敗，請稍後再試。',
@@ -546,7 +515,6 @@ MESSAGE_TEXTS = {'access_error_text': '🙇 現在訪問量很大…請稍後再
  'friend_rcd_text': '{name} 的資料',
  'info_error_text': '你的 maimai 玩家資料尚未保存。請先使用『maimai update』更新後再試。',
  'input_error_text': '無法識別該命令，請檢查輸入內容。',
- 'language_set_success_text': '✅ 語言已設定為中文！',
  'level_not_supported_text': '不支持該等級的定數表。\n僅支持12級及以上。',
  'level_record_not_found_text': '指定等級「{level}」的第 {page} 頁記錄可能不存在...',
  'level_record_page_hint_text': '這是第 {page} 頁的資料！',
@@ -589,7 +557,6 @@ MESSAGE_TEXTS = {'access_error_text': '🙇 現在訪問量很大…請稍後再
  'rebind_not_bound_text': '尚未綁定 SEGA 帳號。請先使用 bind 完成綁定。',
  'rebind_title_alt_text': '編輯帳號設定',
  'record_error_text': '還沒有 maimai 成績資料。請先使用『maimai update』更新後再試。',
- 'save_image_button_text': '保存圖片',
  'search_group_warning_text': 'artist / designer / bpm 搜索只能在私聊使用。',
  'sega_bind_alt_text': '綁定 SEGA 帳號',
  'sega_bind_button_text': '開始綁定',

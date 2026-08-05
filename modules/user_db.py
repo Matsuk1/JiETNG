@@ -127,26 +127,6 @@ def increment_user_field(user_id: str, field: str, delta: Any) -> None:
         )
 
 
-def migrate_from_json(users_dict: dict) -> int:
-    """Upsert legacy JSON users in one transaction and return the row count."""
-    if not users_dict:
-        return 0
-    try:
-        with database_cursor(write=True) as (_, cursor):
-            for user_id, user_data in users_dict.items():
-                data_json = _encode_json(user_data)
-                cursor.execute(
-                    "INSERT INTO users (user_id, data) VALUES (%s, %s) "
-                    "ON DUPLICATE KEY UPDATE data = %s",
-                    (user_id, data_json, data_json),
-                )
-        logger.info("[UserDB] Migrated %s users from JSON", len(users_dict))
-        return len(users_dict)
-    except Exception:
-        logger.exception("[UserDB] Migration failed")
-        raise
-
-
 def get_user(user_id: str) -> Optional[dict]:
     """Return one complete user document, or ``None`` when absent or unavailable."""
     try:

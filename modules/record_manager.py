@@ -237,17 +237,6 @@ def delete_record(user_id, recent=False):
         cursor.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
 
 
-def filter_highest_achievement(data: list) -> list:
-    result = {}
-    for entry in data:
-        key = (entry.get("name"), entry.get("difficulty"), entry.get("type"))
-        if key not in result or _achievement_value(
-            entry.get("score")
-        ) > _achievement_value(result[key].get("score")):
-            result[key] = entry
-    return list(result.values())
-
-
 def _achievement_value(value: Any) -> float:
     try:
         return float(str(value or 0).rstrip("%"))

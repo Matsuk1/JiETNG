@@ -97,12 +97,6 @@ def get_user_timezone(user_id: str) -> int:
     return get_user_field(user_id, "timezone", 9)
 
 
-def clear_user_value(key: str, word: Any, operation: int = SET_VALUE) -> None:
-    """Apply one field operation to every user."""
-    for user_id in get_all_user_ids():
-        edit_user_value(user_id, key, word, operation)
-
-
 def _get_cached_nickname(user_id: str) -> Optional[str]:
     with nickname_cache_lock:
         cached = nickname_cache.get(user_id)

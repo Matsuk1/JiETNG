@@ -42,7 +42,6 @@ from modules.message_texts import (
     dxdata_parse_failed_text,
     dxdata_sheets_decreased_text,
     dxdata_songs_decreased_text,
-    dxdata_update_notification_text,
     dxdata_update_success_text,
     export_alt_text,
     export_flex_button_text,
@@ -983,11 +982,6 @@ def level_record_not_found(level, page, user_id=None):
 def level_record_page_hint(page, user_id=None):
     """生成等级记录页面提示消息"""
     text = get_multilingual_text(level_record_page_hint_text, user_id).format(page=page)
-    return TextMessage(text=text)
-
-def dxdata_update_notification(message, user_id=None):
-    """生成 Dxdata 更新通知消息（管理员）"""
-    text = get_multilingual_text(dxdata_update_notification_text, user_id).format(message=message)
     return TextMessage(text=text)
 
 def get_notice_header(user_id=None):
