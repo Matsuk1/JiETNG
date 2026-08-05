@@ -18,6 +18,7 @@ pyzipper==0.3.6
 pykakasi==2.3.0
 ultralytics==8.4.112
 beautifulsoup4==4.15.0
+chardet==5.2.0
 numpy==2.3.5
 opencv-python==5.0.0.93
 playwright==1.49.1
