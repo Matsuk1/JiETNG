@@ -1173,7 +1173,16 @@ def generate_score_recognition_picture(result, ver="jp", img_width=1100, timezon
     )
 
 
-def generate_records_picture(up_songs=[], down_songs=[], title="RECORD", ver="jp", details={}):
+def generate_records_picture(
+    up_songs=None,
+    down_songs=None,
+    title="RECORD",
+    ver="jp",
+    details=None,
+):
+    up_songs = up_songs or []
+    down_songs = down_songs or []
+    details = details or {}
     uploaded_data = up_songs + down_songs
     up_num = len(up_songs)
     down_num = len(down_songs)
@@ -1565,7 +1574,16 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
 
     return record_img
 
-def generate_plate_image(target_data, title, img_width=1700, img_height=600, max_per_row=9, margin=20, headers={}):
+def generate_plate_image(
+    target_data,
+    title,
+    img_width=1700,
+    img_height=600,
+    max_per_row=9,
+    margin=20,
+    headers=None,
+):
+    headers = headers or {}
     level_width = 100
     img_size = 150
     footer_height = 30  # 与 generate_cover 中的 footer_height 一致
