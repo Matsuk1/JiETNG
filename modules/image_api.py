@@ -46,28 +46,31 @@ def configure_image_api(*, background_filter, generate_profile, select_records):
 
 
 def _send_image_response(buf):
-    """根据 format 参数返回图片（png 或 base64 JSON）"""
-    fmt = request.args.get('format', 'png').strip().lower()
-    if fmt == 'base64':
+    if request.args.get("format", "png").strip().lower() == "base64":
         img_data = base64.b64encode(buf.getvalue()).decode()
         buf.close()
         return jsonify({"success": True, "format": "base64", "image": img_data})
     return send_file(buf, mimetype="image/png")
 
 
+def _png_buffer(image):
+    try:
+        buf = BytesIO()
+        image.save(buf, "PNG")
+        buf.seek(0)
+        return buf
+    finally:
+        image.close()
+        gc.collect(0)
+
+
+def _find_song(song_id, version):
+    return next((song for song in read_dxdata(version)[0] if song.get("id") == song_id), None)
+
+
 @image_api.route("/api/v2/songs/<song_id>/image", methods=["GET"])
 @require_dev_token
 def api_v2_song_info(song_id):
-    """
-    生成歌曲信息图片 API
-
-    需要 Bearer Token 认证
-
-    参数:
-    - ver: 服务器版本 jp/intl (默认 jp)
-
-    返回: image/png
-    """
     try:
         token_info = request.token_info
         if check_rate_limit(token_info['token_id'], "api_song_info_image"):
@@ -77,43 +80,27 @@ def api_v2_song_info(song_id):
         if ver not in ('jp', 'intl'):
             return jsonify({"error": "Invalid ver, must be jp or intl"}), 400
 
-        songs, _ = read_dxdata(ver)
-        matching_song = None
-        for song in songs:
-            if song.get('id') == song_id:
-                matching_song = song
-                break
-
+        matching_song = _find_song(song_id, ver)
         if not matching_song:
             return jsonify({"error": "Song not found"}), 404
 
-        song_img = song_info_generate(matching_song, ver=ver)
+        buf = _png_buffer(song_info_generate(matching_song, ver=ver))
 
-        buf = BytesIO()
-        song_img.save(buf, "PNG")
-        buf.seek(0)
-        del song_img
-        gc.collect(0)
-
-        logger.info(f"[API] Song info generated: song_id={song_id}, ver={ver}, token_id={token_info['token_id']}")
+        logger.info(
+            "[API] Song info generated: song_id=%s, ver=%s, token_id=%s",
+            song_id, ver, token_info["token_id"],
+        )
         track_event('image_gen', user_id=None, metadata={'command': 'song-info', 'song_id': song_id, 'ver': ver})
         return _send_image_response(buf)
 
-    except Exception as e:
-        logger.error(f"[API] ✗ Song info error: song_id={song_id}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+    except Exception as exc:
+        logger.exception("[API] Song info failed: song_id=%s", song_id)
+        return jsonify({"error": "Internal server error", "message": str(exc)}), 500
 
 
 @image_api.route("/api/v2/users/<user_id>/songs/<song_id>/image", methods=["GET"])
 @require_dev_token
 def api_v2_song_record(user_id, song_id):
-    """
-    生成用户歌曲记录图片 API
-
-    需要 Bearer Token 认证
-
-    返回: image/png（包含用户在该歌曲各难度的游玩记录）
-    """
     try:
         token_info = request.token_info
         if check_rate_limit(user_id, "api_song_record_image"):
@@ -128,13 +115,7 @@ def api_v2_song_record(user_id, song_id):
             return jsonify({"error": "User info not found, please sync first"}), 404
 
         ver = _udata.get("version", "jp")
-        songs, _ = read_dxdata(ver)
-        matching_song = None
-        for song in songs:
-            if song.get('id') == song_id:
-                matching_song = song
-                break
-
+        matching_song = _find_song(song_id, ver)
         if not matching_song:
             return jsonify({"error": "Song not found"}), 404
 
@@ -151,36 +132,30 @@ def api_v2_song_record(user_id, song_id):
             return jsonify({"error": "No record for this song"}), 404
 
         user_tz = get_user_timezone(user_id)
-        song_img = song_info_generate(matching_song, played_data, timezone_offset=user_tz, ver=ver, bg_filter=_services.background_filter(user_id))
+        song_img = song_info_generate(
+            matching_song,
+            played_data,
+            timezone_offset=user_tz,
+            ver=ver,
+            bg_filter=_services.background_filter(user_id),
+        )
+        buf = _png_buffer(song_img)
 
-        buf = BytesIO()
-        song_img.save(buf, "PNG")
-        buf.seek(0)
-        del song_img
-        gc.collect(0)
-
-        logger.info(f"[API] Song record generated: user_id={user_id}, song_id={song_id}, token_id={token_info['token_id']}")
+        logger.info(
+            "[API] Song record generated: user_id=%s, song_id=%s, token_id=%s",
+            user_id, song_id, token_info["token_id"],
+        )
         track_event('image_gen', user_id=user_id, metadata={'command': 'song-record'})
         return _send_image_response(buf)
 
-    except Exception as e:
-        logger.error(f"[API] ✗ Song record error: user_id={user_id}, song_id={song_id}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+    except Exception as exc:
+        logger.exception("[API] Song record failed: user_id=%s, song_id=%s", user_id, song_id)
+        return jsonify({"error": "Internal server error", "message": str(exc)}), 500
 
 
 @image_api.route("/api/v2/users/<user_id>/image", methods=["GET"])
 @require_dev_token
 def api_v2_generate_record_image(user_id):
-    """
-    生成用户成绩图片 API (v2)
-
-    需要 Bearer Token 认证
-
-    参数:
-    - command: 命令字符串，如 b50, rct50, apb50 等（默认 b50）
-
-    返回: image/png
-    """
     try:
         token_info = request.token_info
         if check_rate_limit(user_id, "api_record_image"):
@@ -233,36 +208,24 @@ def api_v2_generate_record_image(user_id):
         user_tz = get_user_timezone(user_id)
         img = compose_images([profile_img, record_img], timezone_offset=user_tz, bg_filter=_services.background_filter(user_id))
         del profile_img, record_img
-        gc.collect(0)
 
-        buf = BytesIO()
-        img.save(buf, "PNG")
-        buf.seek(0)
-        del img
-        gc.collect(0)
+        buf = _png_buffer(img)
 
-        logger.info(f"[API] v2 Image generated: user_id={user_id}, command={command}, token_id={token_info['token_id']}")
+        logger.info(
+            "[API] Record image generated: user_id=%s, command=%s, token_id=%s",
+            user_id, command, token_info["token_id"],
+        )
         track_event('image_gen', user_id=user_id, metadata={'command': command, 'source': 'api'})
         return _send_image_response(buf)
 
-    except Exception as e:
-        logger.error(f"[API] ✗ v2 Generate image error: user_id={user_id}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+    except Exception as exc:
+        logger.exception("[API] Record image failed: user_id=%s", user_id)
+        return jsonify({"error": "Internal server error", "message": str(exc)}), 500
 
 
 @image_api.route("/api/v2/users/<user_id>/plate", methods=["GET"])
 @require_dev_token
 def api_v2_generate_plate(user_id):
-    """
-    生成段位牌图片 API
-
-    需要 Bearer Token 认证
-
-    参数:
-    - title: 牌子名称
-
-    返回: image/png
-    """
     try:
         token_info = request.token_info
         if check_rate_limit(user_id, "api_plate_image"):
@@ -377,37 +340,24 @@ def api_v2_generate_plate(user_id):
         user_tz = get_user_timezone(user_id)
         img = compose_images([profile_img, plate_img], timezone_offset=user_tz, bg_filter=_services.background_filter(user_id))
         del profile_img, plate_img
-        gc.collect(0)
 
-        buf = BytesIO()
-        img.save(buf, "PNG")
-        buf.seek(0)
-        del img
-        gc.collect(0)
+        buf = _png_buffer(img)
 
-        logger.info(f"[API] Plate generated: user_id={user_id}, title={title}, token_id={token_info['token_id']}")
+        logger.info(
+            "[API] Plate generated: user_id=%s, title=%s, token_id=%s",
+            user_id, title, token_info["token_id"],
+        )
         track_event('image_gen', user_id=user_id, metadata={'command': 'plate'})
         return _send_image_response(buf)
 
-    except Exception as e:
-        logger.error(f"[API] ✗ Generate plate error: user_id={user_id}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+    except Exception as exc:
+        logger.exception("[API] Plate generation failed: user_id=%s", user_id)
+        return jsonify({"error": "Internal server error", "message": str(exc)}), 500
 
 
 @image_api.route("/api/v2/users/<user_id>/achievement", methods=["GET"])
 @require_dev_token
 def api_v2_generate_achievement(user_id):
-    """
-    生成达成状况图片 API
-
-    需要 Bearer Token 认证
-
-    参数:
-    - level: 等级，如 11, 12+, 13, 14+, 15
-    - rank: 可选，评级，如 sss, sss+, ap, ap+, fdx, fc 等
-
-    返回: image/png
-    """
     try:
         token_info = request.token_info
         if check_rate_limit(user_id, "api_achievement_image"):
@@ -544,21 +494,16 @@ def api_v2_generate_achievement(user_id):
         user_tz = get_user_timezone(user_id)
         img = compose_images([profile_img, record_img], timezone_offset=user_tz, bg_filter=_services.background_filter(user_id))
         del profile_img, record_img
-        gc.collect(0)
 
-        buf = BytesIO()
-        img.save(buf, "PNG")
-        buf.seek(0)
-        del img
-        gc.collect(0)
+        buf = _png_buffer(img)
 
-        logger.info(f"[API] Achievement generated: user_id={user_id}, level={level}, rank={rank}, token_id={token_info['token_id']}")
+        logger.info(
+            "[API] Achievement generated: user_id=%s, level=%s, rank=%s, token_id=%s",
+            user_id, level, rank, token_info["token_id"],
+        )
         track_event('image_gen', user_id=user_id, metadata={'command': 'progress' if rank else 'level-list'})
         return _send_image_response(buf)
 
-    except Exception as e:
-        logger.error(f"[API] ✗ Generate achievement error: user_id={user_id}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error", "message": str(e)}), 500
-
-
-
+    except Exception as exc:
+        logger.exception("[API] Achievement generation failed: user_id=%s", user_id)
+        return jsonify({"error": "Internal server error", "message": str(exc)}), 500
