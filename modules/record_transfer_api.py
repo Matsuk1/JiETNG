@@ -45,7 +45,7 @@ def export_records(user_id):
             "[API] Export generated: user_id=%s, fmt=%s, bytes=%s, token_id=%s",
             user_id, fmt, len(content), token["token_id"],
         )
-        track_event("image_gen", user_id=user_id, metadata={"command": f"export-{fmt}", "source": "api"})
+        track_event("record_export", user_id=user_id, metadata={"format": fmt, "source": "api"})
         return Response(content, mimetype=f"application/{fmt}", headers={
             "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}",
             "Content-Length": str(len(content)),
