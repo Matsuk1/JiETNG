@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from languages.zh import MESSAGE_TEXTS  # noqa: E402
-from modules.zh_tw import to_traditional  # noqa: E402
+from languages.traditional import to_traditional  # noqa: E402
 
 
 START = "# BEGIN GENERATED MESSAGE TEXTS"

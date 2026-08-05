@@ -1,6 +1,18 @@
 from PIL import Image, ImageDraw
-from modules.record_generator import create_thumbnail_in_line, _get_difficulty_color, generate_cover
-from modules.image_manager import *
+
+from modules.image_manager import (
+    compose_images,
+    draw_aligned_colon_text,
+    font_large,
+    font_song_info,
+    font_song_title,
+    resize_by_width,
+    round_corner,
+    truncate_text,
+    wrap_in_rounded_background,
+)
+from modules.record_generator import _get_difficulty_color, create_thumbnail_in_line, generate_cover
+
 
 def _draw_rounded_panel(base_img, box, radius=22, fill=(255, 255, 255, 255), outline=(180, 180, 180, 255), width=4):
     scale = 4
@@ -19,18 +31,13 @@ def _draw_rounded_panel(base_img, box, radius=22, fill=(255, 255, 255, 255), out
     base_img.alpha_composite(panel, (x1, y1))
 
 
-def song_info_generate(song_json, played_data = [], timezone_offset=9, ver="jp", bg_filter=None):
+def song_info_generate(song_json, played_data=(), timezone_offset=9, ver="jp", bg_filter=None):
     img1 = resize_by_width(_render_basic_info_image(song_json, ver), 900)
-
     if played_data:
         img2 = resize_by_width(_makeup_played_data(played_data), 780)
-
     else:
         img2 = resize_by_width(_generate_song_table_image(song_json, ver=ver), 1200)
-
-    song_img = compose_images([img1, img2], timezone_offset=timezone_offset, bg_filter=bg_filter)
-
-    return song_img
+    return compose_images([img1, img2], timezone_offset=timezone_offset, bg_filter=bg_filter)
 
 def _render_basic_info_image(song_json, ver="jp"):
     # 参数设定
@@ -66,8 +73,6 @@ def _render_basic_info_image(song_json, ver="jp"):
     category = song_json.get("category", "UNKNOWN")
     bpm = song_json.get("bpm", "-")
     version = song_json.get("version", "UNKNOWN")
-    id = song_json.get("id", "N/A")
-
     if ver == "jp":
         info_text = [
             truncate_text(draw, f"アーティスト: {artist}", font_song_info, canvas_width - text_x - margin),
@@ -87,8 +92,6 @@ def _render_basic_info_image(song_json, ver="jp"):
     # 标题
     title = truncate_text(draw, title, font_song_title, canvas_width - text_x - margin)
     draw.text((text_x, text_y), title, font=font_song_title, fill=(0, 0, 0))
-    title_width = draw.textlength(title, font=font_song_title)
-
     draw_aligned_colon_text(
         draw,
         lines=info_text,
@@ -170,10 +173,7 @@ def _generate_song_table_image(song_json, scale_width=1.5, scale_height=2.0, ver
     return image
 
 def _makeup_played_data(played_data, gap=10):
-    rcd_imgs = []
-    for rcd in played_data:
-        rcd_imgs.append(create_thumbnail_in_line(rcd))
-
+    rcd_imgs = [create_thumbnail_in_line(record) for record in played_data]
     widths = [img.width for img in rcd_imgs]
     heights = [img.height for img in rcd_imgs]
 
@@ -214,9 +214,7 @@ def _render_song_info_small_img(song_json):
     cover_y = margin
     img.paste(large_cover, (cover_x, cover_y), large_cover)
 
-    levels = []
-    for sheet in song_json['sheets']:
-        levels.append(sheet['internalLevelValue'])
+    levels = [sheet['internalLevelValue'] for sheet in song_json['sheets']]
 
     # 文字区域
     text_x = cover_x + cover_size + text_gap
@@ -267,16 +265,10 @@ def _concat_images_grid(image_list, cols=4, margin=20, inner_gap=10, bg_color=(0
     if not image_list:
         raise ValueError("图片列表不能为空")
 
-    # 计算总行数
     rows = (len(image_list) + cols - 1) // cols
-
-    # 获取单个格子大小
-    widths = []
-    heights = []
-    for r in range(rows):
-        group = image_list[r*cols:(r+1)*cols]
-        widths.append(sum(img.width for img in group) + inner_gap * (len(group)-1))
-        heights.append(max(img.height for img in group))
+    groups = [image_list[row * cols:(row + 1) * cols] for row in range(rows)]
+    widths = [sum(img.width for img in group) + inner_gap * (len(group) - 1) for group in groups]
+    heights = [max(img.height for img in group) for group in groups]
     total_width = max(widths)
     total_height = sum(heights) + inner_gap * (rows-1)
 
@@ -288,8 +280,7 @@ def _concat_images_grid(image_list, cols=4, margin=20, inner_gap=10, bg_color=(0
     )
 
     y_offset = margin
-    for r in range(rows):
-        group = image_list[r*cols:(r+1)*cols]
+    for group in groups:
         x_offset = margin
         max_h = max(img.height for img in group)
         for img in group:

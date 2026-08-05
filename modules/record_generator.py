@@ -17,8 +17,21 @@ from modules.config_loader import (
     ICON_SYNC_RCD_DIR,
     ICON_BASE_DIR
 )
-from modules.image_cache import *
-from modules.image_manager import *
+from modules.image_cache import download_and_cache_icon, get_cover_image, paste_icon_optimized
+from modules.image_manager import (
+    compose_images,
+    draw_aligned_colon_text,
+    font_large,
+    font_level_badge,
+    font_record_detail_title,
+    font_record_info,
+    font_record_name,
+    font_record_title,
+    font_small,
+    font_stadium,
+    round_corner,
+    truncate_text,
+)
 from modules.maimai_manager import get_rating_image_path
 from modules.record_manager import get_single_ra
 

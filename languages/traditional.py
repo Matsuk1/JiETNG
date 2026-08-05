@@ -1,3 +1,5 @@
+"""Deterministic Simplified-to-Traditional Chinese conversion."""
+
 from __future__ import annotations
 
 

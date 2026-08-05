@@ -1,216 +1,90 @@
-"""
-Token管理模块
-
-生成和验证SEGA账户绑定的临时Token
-"""
+"""Short-lived signed tokens for account actions."""
 
 import base64
-import hmac
 import hashlib
+import hmac
 import time
+
 from modules.config_loader import BIND_TOKEN_KEY
 
-# Token有效期 (秒)
 TOKEN_EXPIRE_SECONDS = 120
-PERM_TOKEN_EXPIRE_SECONDS = 600  # 权限管理 Token 有效期：10 分钟
-SETTINGS_TOKEN_EXPIRE_SECONDS = 1800  # 设置页面 Token 有效期：30 分钟
-UNBIND_TOKEN_EXPIRE_SECONDS = 600  # 解绑确认 Token 有效期：10 分钟
+PERM_TOKEN_EXPIRE_SECONDS = 600
+SETTINGS_TOKEN_EXPIRE_SECONDS = 1800
+UNBIND_TOKEN_EXPIRE_SECONDS = 600
+
+
+def _generate_token(user_id, purpose=None):
+    prefix = f"{purpose}." if purpose else ""
+    raw = f"{prefix}{user_id}.{int(time.time())}".encode()
+    signature = hmac.new(BIND_TOKEN_KEY, raw, hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(raw + b"." + signature).decode()
+
+
+def _verify_token(token, *, purpose=None, expires, error_label="token"):
+    try:
+        decoded = base64.urlsafe_b64decode(token.encode())
+        if len(decoded) < 34 or decoded[-33] != ord("."):
+            raise ValueError("Invalid token format")
+
+        raw, signature = decoded[:-33], decoded[-32:]
+        expected = hmac.new(BIND_TOKEN_KEY, raw, hashlib.sha256).digest()
+        if not hmac.compare_digest(signature, expected):
+            raise ValueError("Invalid token signature")
+
+        payload = raw.decode()
+        prefix = f"{purpose}." if purpose else ""
+        if prefix and not payload.startswith(prefix):
+            raise ValueError("Invalid token purpose")
+        user_id, timestamp = payload[len(prefix):].rsplit(".", 1)
+        if abs(int(time.time()) - int(timestamp)) > expires:
+            raise ValueError("Token expired")
+        return user_id
+    except Exception as error:
+        raise ValueError(f"Invalid {error_label}") from error
 
 
 def generate_bind_token(user_id: str) -> str:
-    """
-    生成绑定Token
-
-    Args:
-        user_id: 用户ID
-
-    Returns:
-        Base64编码的签名Token字符串
-    """
-    timestamp = str(int(time.time()))
-    raw = f"{user_id}.{timestamp}".encode('utf-8')
-
-    signature = hmac.new(BIND_TOKEN_KEY, raw, hashlib.sha256).digest()
-
-    token = base64.urlsafe_b64encode(raw + b"." + signature).decode('utf-8')
-    return token
+    return _generate_token(user_id)
 
 
 def get_user_id_from_token(token: str) -> str:
-    """
-    验证Token并提取用户ID
-
-    Args:
-        token: Base64编码的Token字符串
-
-    Returns:
-        用户ID
-
-    Raises:
-        ValueError: Token无效、签名错误或已过期
-    """
-    try:
-        decoded = base64.urlsafe_b64decode(token.encode('utf-8'))
-
-        parts = decoded.split(b".", 2)
-        if len(parts) != 3:
-            raise ValueError("Invalid token format")
-
-        user_id_bytes, timestamp_bytes, signature = parts
-        raw = user_id_bytes + b"." + timestamp_bytes
-
-        # 验证签名
-        expected_signature = hmac.new(BIND_TOKEN_KEY, raw, hashlib.sha256).digest()
-        if not hmac.compare_digest(signature, expected_signature):
-            raise ValueError("Invalid token signature")
-
-        # 验证时效
-        timestamp = int(timestamp_bytes.decode('utf-8'))
-        now = int(time.time())
-        if abs(now - timestamp) > TOKEN_EXPIRE_SECONDS:
-            raise ValueError("Token expired")
-
-        return user_id_bytes.decode('utf-8')
-
-    except Exception as e:
-        raise ValueError("Invalid token") from e
+    return _verify_token(token, expires=TOKEN_EXPIRE_SECONDS)
 
 
 def generate_settings_token(user_id: str) -> str:
-    """
-    生成设置页面 Token（30 分钟有效）
-    payload 前缀 "settings." 以区分
-    """
-    timestamp = str(int(time.time()))
-    raw = f"settings.{user_id}.{timestamp}".encode('utf-8')
-    signature = hmac.new(BIND_TOKEN_KEY, raw, hashlib.sha256).digest()
-    return base64.urlsafe_b64encode(raw + b"." + signature).decode('utf-8')
+    return _generate_token(user_id, "settings")
 
 
 def get_user_id_from_settings_token(token: str) -> str:
-    """
-    验证设置页面 Token 并提取用户ID
-    """
-    try:
-        decoded = base64.urlsafe_b64decode(token.encode('utf-8'))
-        if len(decoded) < 34:
-            raise ValueError("Invalid token format")
-        raw_bytes = decoded[:-33]
-        sig_bytes = decoded[-32:]
-
-        expected = hmac.new(BIND_TOKEN_KEY, raw_bytes, hashlib.sha256).digest()
-        if not hmac.compare_digest(sig_bytes, expected):
-            raise ValueError("Invalid token signature")
-
-        parts = raw_bytes.decode('utf-8').split('.')
-        if len(parts) < 3 or parts[0] != "settings":
-            raise ValueError("Invalid settings token format")
-
-        timestamp = int(parts[-1])
-        user_id = '.'.join(parts[1:-1])
-
-        if abs(int(time.time()) - timestamp) > SETTINGS_TOKEN_EXPIRE_SECONDS:
-            raise ValueError("Token expired")
-
-        return user_id
-
-    except Exception as e:
-        raise ValueError("Invalid settings token") from e
+    return _verify_token(
+        token,
+        purpose="settings",
+        expires=SETTINGS_TOKEN_EXPIRE_SECONDS,
+        error_label="settings token",
+    )
 
 
 def generate_unbind_token(user_id: str) -> str:
-    """
-    生成解绑确认 Token（10 分钟有效）
-    payload 前缀 "unbind." 以区分
-    """
-    timestamp = str(int(time.time()))
-    raw = f"unbind.{user_id}.{timestamp}".encode('utf-8')
-    signature = hmac.new(BIND_TOKEN_KEY, raw, hashlib.sha256).digest()
-    return base64.urlsafe_b64encode(raw + b"." + signature).decode('utf-8')
+    return _generate_token(user_id, "unbind")
 
 
 def get_user_id_from_unbind_token(token: str) -> str:
-    """
-    验证解绑确认 Token 并提取用户ID
-    """
-    try:
-        decoded = base64.urlsafe_b64decode(token.encode('utf-8'))
-        if len(decoded) < 34:
-            raise ValueError("Invalid token format")
-        raw_bytes = decoded[:-33]
-        sig_bytes = decoded[-32:]
-
-        expected = hmac.new(BIND_TOKEN_KEY, raw_bytes, hashlib.sha256).digest()
-        if not hmac.compare_digest(sig_bytes, expected):
-            raise ValueError("Invalid token signature")
-
-        parts = raw_bytes.decode('utf-8').split('.')
-        if len(parts) < 3 or parts[0] != "unbind":
-            raise ValueError("Invalid unbind token format")
-
-        timestamp = int(parts[-1])
-        user_id = '.'.join(parts[1:-1])
-
-        if abs(int(time.time()) - timestamp) > UNBIND_TOKEN_EXPIRE_SECONDS:
-            raise ValueError("Token expired")
-
-        return user_id
-
-    except Exception as e:
-        raise ValueError("Invalid unbind token") from e
+    return _verify_token(
+        token,
+        purpose="unbind",
+        expires=UNBIND_TOKEN_EXPIRE_SECONDS,
+        error_label="unbind token",
+    )
 
 
 def generate_perm_token(user_id: str) -> str:
-    """
-    生成权限管理 Token（10 分钟有效）
-
-    格式与 bind token 相同，但在 payload 中加入 "perm." 前缀以区分。
-    """
-    timestamp = str(int(time.time()))
-    raw = f"perm.{user_id}.{timestamp}".encode('utf-8')
-    signature = hmac.new(BIND_TOKEN_KEY, raw, hashlib.sha256).digest()
-    return base64.urlsafe_b64encode(raw + b"." + signature).decode('utf-8')
+    return _generate_token(user_id, "perm")
 
 
 def get_user_id_from_perm_token(token: str) -> str:
-    """
-    验证权限管理 Token 并提取用户ID
-
-    Raises:
-        ValueError: Token 无效、签名错误或已过期
-    """
-    try:
-        decoded = base64.urlsafe_b64decode(token.encode('utf-8'))
-        # payload 格式：perm.<user_id>.<timestamp>.<signature>
-        # 由于 user_id 中可能含 '.'，只从末尾切出 signature，再从前缀后切 timestamp
-        # 结构：b"perm." + user_id + b"." + timestamp + b"." + signature
-        # 反向：最后 32 字节为 signature（sha256 digest）
-        if len(decoded) < 34:
-            raise ValueError("Invalid token format")
-        signature = decoded[-32:]
-        payload = decoded[:-33]  # 去掉最后的 "." + signature
-        raw = decoded[:-33]      # 用于签名验证的原始数据（不含 "." + sig）
-        raw_full = decoded[:-32 - 1]  # = payload（去掉末尾的 "." 分隔符）
-        # 重新拆：raw = perm.<user_id>.<timestamp>，signature 在末尾
-        raw_bytes = decoded[:-33]  # 去掉末尾 b"." + 32字节签名
-        sig_bytes  = decoded[-32:]
-
-        expected = hmac.new(BIND_TOKEN_KEY, raw_bytes, hashlib.sha256).digest()
-        if not hmac.compare_digest(sig_bytes, expected):
-            raise ValueError("Invalid token signature")
-
-        parts = raw_bytes.decode('utf-8').split('.')
-        # parts = ["perm", *user_id_parts, timestamp]
-        if len(parts) < 3 or parts[0] != "perm":
-            raise ValueError("Invalid perm token format")
-
-        timestamp = int(parts[-1])
-        user_id = '.'.join(parts[1:-1])  # user_id 本身可能含 '.'
-
-        if abs(int(time.time()) - timestamp) > PERM_TOKEN_EXPIRE_SECONDS:
-            raise ValueError("Token expired")
-
-        return user_id
-
-    except Exception as e:
-        raise ValueError("Invalid perm token") from e
+    return _verify_token(
+        token,
+        purpose="perm",
+        expires=PERM_TOKEN_EXPIRE_SECONDS,
+        error_label="perm token",
+    )

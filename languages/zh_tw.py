@@ -1,6 +1,6 @@
 """Traditional Chinese language plugin."""
 
-from modules.zh_tw import to_traditional
+from languages.traditional import to_traditional
 
 
 LANGUAGE = {
