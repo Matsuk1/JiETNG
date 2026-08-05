@@ -1,7 +1,7 @@
 from PIL import Image, ImageDraw
 
 from modules.image_manager import (
-    compose_images,
+    compose_generated_images,
     draw_aligned_colon_text,
     font_large,
     font_song_info,
@@ -37,7 +37,11 @@ def song_info_generate(song_json, played_data=(), timezone_offset=9, ver="jp", b
         img2 = resize_by_width(_makeup_played_data(played_data), 780)
     else:
         img2 = resize_by_width(_generate_song_table_image(song_json, ver=ver), 1200)
-    return compose_images([img1, img2], timezone_offset=timezone_offset, bg_filter=bg_filter)
+    return compose_generated_images(
+        [img1, img2],
+        timezone_offset=timezone_offset,
+        bg_filter=bg_filter,
+    )
 
 def _render_basic_info_image(song_json, ver="jp"):
     # 参数设定
