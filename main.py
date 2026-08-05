@@ -17,7 +17,6 @@ import secrets
 import asyncio
 import aiohttp
 import atexit
-from urllib.parse import quote as _url_quote
 import time
 import gc
 import math
@@ -128,12 +127,7 @@ from modules.export_manager import (
     export_records,
     shutdown_periodic_cleanup as shutdown_export_cleanup,
     start_periodic_cleanup as start_export_cleanup,
-    build_payload as _export_build_payload,
-    to_json_bytes as _export_to_json,
-    to_xml_bytes as _export_to_xml,
-    _build_friendly_name as _export_friendly_name,
 )
-from modules.import_manager import import_processed_payload, ImportValidationError
 from modules.import_token_manager import (
     create_import_token,
     delete_revoked_import_token,
@@ -144,7 +138,6 @@ from modules.api_auth import (
     check_user_permission,
     maimai_session_cors as _maimai_session_cors,
     require_dev_token,
-    require_import_token,
     require_owner_permission,
     require_user_permission,
 )
@@ -240,6 +233,7 @@ from modules.progress_parser import (
 from modules.task_runtime import discard_queued, execute_task, queue_worker, track_queued
 from modules.song_api import song_api
 from modules.image_api import configure_image_api, image_api
+from modules.record_transfer_api import record_transfer_api
 from modules.mention_parser import (
     clean_message_text,
     has_non_bot_mention,
@@ -280,6 +274,8 @@ csrf.exempt(song_api)
 app.register_blueprint(song_api)
 csrf.exempt(image_api)
 app.register_blueprint(image_api)
+csrf.exempt(record_transfer_api)
+app.register_blueprint(record_transfer_api)
 
 # 配置安全响应头
 @app.after_request
@@ -7113,117 +7109,6 @@ def api_v2_score_recognition():
 
 
 # ==================== API v2 ====================
-
-@app.route("/api/v2/users/<user_id>/export", methods=["GET"])
-@csrf.exempt
-@require_dev_token
-def api_v2_export_records(user_id):
-    """
-    导出用户成绩数据 API (v2)
-
-    需要 Bearer Token 认证
-
-    参数:
-    - fmt: 导出格式，json (默认) 或 xml
-
-    返回:
-    - application/json 或 application/xml；Content-Disposition: attachment
-    - 文件名: JiETNG-{玩家名}-{时间戳}.{json|xml}
-    """
-    try:
-        token_info = request.token_info
-
-        has_permission, result = check_user_permission(user_id, token_info['token_id'])
-        if not has_permission:
-            return result
-
-        _udata = result
-        if "personal_info" not in _udata:
-            return jsonify({"error": "User info not found, please sync first"}), 404
-
-        fmt = (request.args.get('fmt', 'json') or 'json').strip().lower()
-        if fmt not in ('json', 'xml'):
-            return jsonify({"error": "Invalid format",
-                            "message": "fmt must be 'json' or 'xml'"}), 400
-
-        payload = _export_build_payload(user_id)
-        recs = payload.get('records', {}) or {}
-        if not recs.get('best') and not recs.get('recent'):
-            return jsonify({"error": "No records to export, please sync first"}), 404
-
-        content = _export_to_json(payload) if fmt == 'json' else _export_to_xml(payload)
-        friendly_name = _export_friendly_name(payload.get('profile'), fmt)
-        mimetype = 'application/json' if fmt == 'json' else 'application/xml'
-
-        logger.info(f"[API] v2 Export generated: user_id={user_id}, fmt={fmt}, "
-                    f"bytes={len(content)}, token_id={token_info['token_id']}")
-        track_event('image_gen', user_id=user_id,
-                    metadata={'command': f'export-{fmt}', 'source': 'api'})
-
-        return Response(
-            content,
-            mimetype=mimetype,
-            headers={
-                # RFC 6266 filename* 支持 CJK 文件名
-                'Content-Disposition': f"attachment; filename*=UTF-8''{_url_quote(friendly_name)}",
-                'Content-Length': str(len(content)),
-            },
-        )
-
-    except Exception as e:
-        logger.error(f"[API] ✗ Export records error: user_id={user_id}, error={e}", exc_info=True)
-        return jsonify({"error": "Internal server error", "message": str(e)}), 500
-
-
-@app.route("/api/v2/import/records", methods=["POST", "OPTIONS"])
-@csrf.exempt
-@require_import_token
-def api_v2_import_records():
-    """
-    用用户导入 token 上传加工后的成绩 JSON。
-
-    Authorization: Bearer <import_token>
-    Body: modules.export_manager.build_payload 生成的 JSON 结构
-    """
-    if request.method == "OPTIONS":
-        return _maimai_session_cors(app.make_response(("", 204)))
-
-    token_info = request.import_token_info
-    user_id = token_info["user_id"]
-    if check_rate_limit(user_id, "api_import_records"):
-        return _maimai_session_cors(jsonify({"error": "Rate limited", "message": "Too many import requests. Please retry later."})), 429
-
-    try:
-        payload = request.get_json(force=True, silent=False)
-        result = import_processed_payload(
-            user_id,
-            payload,
-            source=f"import_token:{token_info.get('token_id')}",
-        )
-        logger.info(
-            "[API] Import records: user_id=%s, token_id=%s, best=%s, recent=%s",
-            user_id, token_info.get("token_id"), result["best_count"], result["recent_count"]
-        )
-        track_event('record_import', user_id=user_id, metadata={
-            'token_id': token_info.get('token_id'),
-            'best_count': result['best_count'],
-            'recent_count': result['recent_count'],
-            'version': result['version'],
-        })
-        return _maimai_session_cors(jsonify({
-            "success": True,
-            "user_id": user_id,
-            "best_count": result["best_count"],
-            "recent_count": result["recent_count"],
-            "version": result["version"],
-            "message": "Records imported successfully.",
-        }))
-    except ImportValidationError as e:
-        return _maimai_session_cors(jsonify({"error": "Invalid payload", "message": str(e)})), 400
-    except Exception as e:
-        logger.error(f"[API] ✗ Import records error: user_id={user_id}, error={e}", exc_info=True)
-        return _maimai_session_cors(jsonify({"error": "Internal server error", "message": str(e)})), 500
-
 
 configure_image_api(
     background_filter=_get_user_bg_filter,
