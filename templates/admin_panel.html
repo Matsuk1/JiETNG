@@ -1774,6 +1774,584 @@
       }
     }
 
+    /* Operational admin layout */
+    :root {
+      --admin-bg: #f3f4f6;
+      --admin-panel: #ffffff;
+      --admin-sidebar: #17191d;
+      --admin-sidebar-text: #b8bdc7;
+      --admin-divider: #d9dce2;
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+      --radius-xl: 8px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+      --shadow-md: none;
+    }
+
+    html,
+    body {
+      background: var(--admin-bg);
+    }
+
+    body {
+      padding: 0;
+      padding-bottom: env(safe-area-inset-bottom);
+      font-size: 13px;
+    }
+
+    .container {
+      max-width: none;
+      margin: 0;
+    }
+
+    .admin-shell {
+      grid-template-columns: 224px minmax(0, 1fr);
+      gap: 0;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      min-height: 0;
+      padding: 18px 14px;
+      overflow-y: auto;
+      border: 0;
+      border-right: 1px solid #292c32;
+      border-radius: 0;
+      background: var(--admin-sidebar);
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .brand-block {
+      padding: 0 4px 17px;
+      margin-bottom: 12px;
+      border-bottom-color: #30333a;
+    }
+
+    .brand-identity {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      flex: 0 0 auto;
+    }
+
+    .brand-title {
+      color: #f7f7f8;
+      font-size: 17px;
+      font-weight: 720;
+      line-height: 1.15;
+    }
+
+    .brand-subtitle {
+      margin-top: 2px;
+      color: #858b96;
+      font-size: 11px;
+    }
+
+    .side-section-label {
+      margin: 17px 10px 6px;
+      color: #6f7580;
+      font-size: 10px;
+    }
+
+    .nav-stack {
+      gap: 2px;
+    }
+
+    .tab {
+      gap: 10px;
+      min-height: 36px;
+      padding: 7px 9px;
+      border-radius: 5px;
+      color: var(--admin-sidebar-text);
+      font-size: 13px;
+      font-weight: 560;
+    }
+
+    .tab:hover {
+      color: #ffffff;
+      background: #25282e;
+    }
+
+    .tab.active,
+    .tab.active:hover {
+      color: #ffffff;
+      background: #30343b;
+      box-shadow: inset 3px 0 0 var(--accent-color);
+    }
+
+    .tab-icon,
+    .tab.active .tab-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      color: currentColor;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .admin-main {
+      min-width: 0;
+      padding: 0 24px 24px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      min-height: 64px;
+      margin: 0 -24px 18px;
+      padding: 10px 24px;
+      border: 0;
+      border-bottom: 1px solid var(--admin-divider);
+      border-radius: 0;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: none;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .topbar-title h1 {
+      font-size: 19px;
+      font-weight: 680;
+    }
+
+    .topbar-meta {
+      margin-top: 2px;
+      font-size: 11px;
+    }
+
+    .icon-button,
+    .logout-btn,
+    .btn {
+      min-height: 32px;
+      padding: 6px 11px;
+      border-radius: 5px;
+      box-shadow: none;
+      font-size: 12px;
+      font-weight: 620;
+    }
+
+    .icon-button {
+      background: var(--admin-panel);
+    }
+
+    .logout-btn {
+      background: var(--admin-panel);
+    }
+
+    .section {
+      padding: 18px;
+      margin-bottom: 14px;
+      border: 1px solid var(--admin-divider);
+      border-radius: 6px;
+      background: var(--admin-panel);
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .section-title {
+      margin-bottom: 14px;
+      padding-bottom: 11px;
+      font-size: 14px;
+      font-weight: 680;
+    }
+
+    .monitor-board {
+      gap: 12px;
+    }
+
+    .monitor-hero,
+    .monitor-grid {
+      gap: 12px;
+    }
+
+    .monitor-hero {
+      grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.8fr);
+    }
+
+    .monitor-grid {
+      grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.65fr);
+    }
+
+    .monitor-card {
+      border-color: var(--admin-divider);
+      border-radius: 6px;
+      background: var(--admin-panel);
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .monitor-primary {
+      min-height: 0;
+      padding: 18px;
+      grid-template-columns: minmax(0, 1.3fr) minmax(220px, 0.7fr);
+      grid-template-rows: auto auto;
+      gap: 14px 20px;
+    }
+
+    .monitor-head {
+      grid-column: 1 / -1;
+      align-items: center;
+    }
+
+    .monitor-title {
+      font-size: 17px;
+      font-weight: 680;
+    }
+
+    .monitor-subtitle {
+      margin-top: 2px;
+      font-size: 11px;
+    }
+
+    .live-badge,
+    .monitor-total-delta {
+      min-height: 24px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+    }
+
+    .monitor-total {
+      padding: 0;
+      gap: 12px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .monitor-number {
+      font-size: 40px;
+      line-height: 1;
+    }
+
+    .monitor-segments {
+      gap: 0;
+      padding-top: 12px;
+    }
+
+    .monitor-segment {
+      padding: 3px 11px;
+      border: 0;
+      border-right: 1px solid var(--admin-divider);
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .monitor-segment:first-child {
+      padding-left: 0;
+    }
+
+    .monitor-segment:last-child {
+      border-right: 0;
+    }
+
+    .monitor-mini-grid {
+      grid-template-columns: 1fr;
+      gap: 0;
+      border-left: 1px solid var(--admin-divider);
+    }
+
+    .mini-stat {
+      padding: 8px 12px;
+      border: 0;
+      border-bottom: 1px solid var(--admin-divider);
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .mini-stat:last-child {
+      border-bottom: 0;
+    }
+
+    .mini-value {
+      margin-top: 2px;
+      font-size: 18px;
+    }
+
+    .health-panel {
+      padding: 16px 18px;
+      gap: 6px;
+    }
+
+    .health-row {
+      grid-template-columns: 68px 1fr 72px;
+      gap: 10px;
+      padding: 9px 0;
+    }
+
+    .health-track,
+    .command-bar {
+      height: 5px;
+      border-radius: 2px;
+    }
+
+    .panel-heading {
+      padding: 15px 16px 0;
+    }
+
+    .panel-heading h2 {
+      font-size: 14px;
+      font-weight: 680;
+    }
+
+    .chart-panel {
+      padding: 0 12px 12px;
+    }
+
+    .command-list {
+      gap: 0;
+      padding: 12px 16px 16px;
+    }
+
+    .monitor-grid .command-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .monitor-grid .command-list .mini-stat:nth-last-child(-n + 2) {
+      border-bottom: 0;
+    }
+
+    .command-row {
+      min-height: 35px;
+      border-bottom: 1px solid var(--admin-divider);
+    }
+
+    .command-row:last-child {
+      border-bottom: 0;
+    }
+
+    .system-summary {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 0;
+      overflow: hidden;
+      border: 1px solid var(--admin-divider);
+      border-radius: 6px;
+      background: var(--admin-panel);
+    }
+
+    .summary-tile {
+      padding: 11px 13px;
+      border: 0;
+      border-right: 1px solid var(--admin-divider);
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .summary-tile:last-child {
+      border-right: 0;
+    }
+
+    .summary-value {
+      margin-top: 3px;
+      font-size: 13px;
+    }
+
+    .user-list,
+    .notification-stack {
+      gap: 6px;
+    }
+
+    .user-item,
+    .notification-card,
+    .modal-content,
+    .form-input,
+    .form-textarea,
+    .search-box,
+    .log-viewer,
+    .json-viewer {
+      border-radius: 6px;
+      box-shadow: none;
+    }
+
+    .user-item:hover {
+      transform: none;
+    }
+
+    .stats-grid {
+      gap: 8px;
+    }
+
+    .stat-card {
+      padding: 13px;
+      border-radius: 6px;
+      box-shadow: none;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --admin-bg: #111316;
+        --admin-panel: #191b1f;
+        --admin-divider: #303339;
+      }
+
+      html,
+      body {
+        background: var(--admin-bg);
+      }
+
+      .topbar {
+        background: rgba(25, 27, 31, 0.96);
+      }
+
+      .tab.active,
+      .tab.active:hover {
+        color: #ffffff;
+        background: #30343b;
+      }
+    }
+
+    @media (max-width: 1100px) {
+      .system-summary {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .summary-tile:nth-child(4n) {
+        border-right: 0;
+      }
+
+      .summary-tile:nth-child(-n + 4) {
+        border-bottom: 1px solid var(--admin-divider);
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 0;
+      }
+
+      .sidebar {
+        top: 0;
+        height: auto;
+        margin: 0;
+        padding: 11px 12px;
+        border: 0;
+        border-bottom: 1px solid #30333a;
+        border-radius: 0;
+      }
+
+      .brand-block {
+        padding: 0;
+        margin: 0;
+      }
+
+      .brand-logo {
+        width: 28px;
+        height: 28px;
+      }
+
+      .brand-subtitle {
+        text-align: left;
+      }
+
+      .mobile-nav-toggle {
+        border-color: #3a3e46;
+        border-radius: 5px;
+        background: #25282e;
+        color: #ffffff;
+      }
+
+      .mobile-nav-content {
+        margin-top: 10px;
+      }
+
+      .admin-main {
+        padding: 0 10px 16px;
+      }
+
+      .topbar {
+        top: var(--mobile-nav-offset, 52px);
+        margin: 0 -10px 10px;
+        padding: 9px 12px;
+        border-radius: 0;
+      }
+
+      .monitor-hero,
+      .monitor-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .monitor-primary {
+        grid-template-columns: 1fr;
+      }
+
+      .monitor-head {
+        grid-column: auto;
+        align-items: flex-start;
+        flex-direction: row;
+      }
+
+      .monitor-mini-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        border-top: 1px solid var(--admin-divider);
+        border-left: 0;
+      }
+
+      .mini-stat {
+        border-right: 1px solid var(--admin-divider);
+        border-bottom: 0;
+      }
+
+      .mini-stat:last-child {
+        border-right: 0;
+      }
+
+      .system-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .summary-tile,
+      .summary-tile:nth-child(4n) {
+        border-right: 1px solid var(--admin-divider);
+        border-bottom: 1px solid var(--admin-divider);
+      }
+
+      .summary-tile:nth-child(2n) {
+        border-right: 0;
+      }
+
+      .summary-tile:nth-last-child(-n + 2) {
+        border-bottom: 0;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .topbar-meta,
+      #notif-toggle-label {
+        display: none;
+      }
+
+      .monitor-grid .command-list {
+        grid-template-columns: 1fr;
+      }
+
+      .monitor-grid .command-list .mini-stat {
+        border-right: 0;
+        border-bottom: 1px solid var(--admin-divider);
+      }
+
+      .monitor-grid .command-list .mini-stat:last-child {
+        border-bottom: 0;
+      }
+    }
+
     /* Animations */
     @keyframes pulse {
       0%, 100% {
@@ -1804,31 +2382,36 @@
   <div class="container admin-shell">
     <aside class="sidebar">
       <div class="brand-block">
-        <div class="brand-title">JiETNG</div>
-        <div class="brand-subtitle">Admin Console</div>
+        <div class="brand-identity">
+          <img class="brand-logo" src="/static/pics/logo.png" alt="">
+          <div>
+            <div class="brand-title">JiETNG</div>
+            <div class="brand-subtitle">Administration</div>
+          </div>
+        </div>
         <button class="mobile-nav-toggle" type="button" id="mobile-nav-toggle" aria-label="Toggle navigation" aria-expanded="false" onclick="toggleMobileNav()"></button>
       </div>
 
       <div class="mobile-nav-content" id="mobile-nav-content">
         <div class="side-section-label">Monitor</div>
         <div class="tabs nav-stack">
-          <button class="tab active" data-tab="stats" onclick="switchTab('stats', this)"><span class="tab-icon">S</span>Overview</button>
-          <button class="tab" data-tab="operations" onclick="switchTab('operations', this)"><span class="tab-icon">O</span>Operations <span id="notification-badge" style="display:none; background:#ff3b30; color:#fff; border-radius:999px; padding:1px 6px; font-size:11px; margin-left:auto;"></span></button>
+          <button class="tab active" data-tab="stats" onclick="switchTab('stats', this)"><span class="tab-icon">▦</span>Overview</button>
+          <button class="tab" data-tab="operations" onclick="switchTab('operations', this)"><span class="tab-icon">≋</span>Operations <span id="notification-badge" style="display:none; background:#ff3b30; color:#fff; border-radius:999px; padding:1px 6px; font-size:11px; margin-left:auto;"></span></button>
         </div>
 
         <div class="side-section-label">Manage</div>
         <div class="tabs nav-stack">
-          <button class="tab" data-tab="users" onclick="switchTab('users', this)"><span class="tab-icon">U</span>Users</button>
-          <button class="tab" data-tab="notices" onclick="switchTab('notices', this)"><span class="tab-icon">N</span>Notices</button>
-          <button class="tab" data-tab="tipad" onclick="switchTab('tipad', this)"><span class="tab-icon">T</span>Tip / Ad</button>
+          <button class="tab" data-tab="users" onclick="switchTab('users', this)"><span class="tab-icon">◎</span>Users</button>
+          <button class="tab" data-tab="notices" onclick="switchTab('notices', this)"><span class="tab-icon">!</span>Notices</button>
+          <button class="tab" data-tab="tipad" onclick="switchTab('tipad', this)"><span class="tab-icon">i</span>Tip / Ad</button>
         </div>
 
         <div class="side-section-label">Maintain</div>
         <div class="tabs nav-stack">
-          <button class="tab" data-tab="dxdata" onclick="switchTab('dxdata', this)"><span class="tab-icon">D</span>DxData</button>
-          <button class="tab" data-tab="backups" onclick="switchTab('backups', this)"><span class="tab-icon">B</span>Backups</button>
-          <button class="tab" data-tab="backgrounds" onclick="switchTab('backgrounds', this)"><span class="tab-icon">R</span>Backgrounds</button>
-          <button class="tab" data-tab="devtoken" onclick="switchTab('devtoken', this)"><span class="tab-icon">K</span>Dev Tokens</button>
+          <button class="tab" data-tab="dxdata" onclick="switchTab('dxdata', this)"><span class="tab-icon">↻</span>DxData</button>
+          <button class="tab" data-tab="backups" onclick="switchTab('backups', this)"><span class="tab-icon">↓</span>Backups</button>
+          <button class="tab" data-tab="backgrounds" onclick="switchTab('backgrounds', this)"><span class="tab-icon">▧</span>Backgrounds</button>
+          <button class="tab" data-tab="devtoken" onclick="switchTab('devtoken', this)"><span class="tab-icon">#</span>Dev Tokens</button>
         </div>
       </div>
     </aside>
@@ -2055,34 +2638,34 @@
         </section>
         {% endif %}
 
-        <div class="system-summary">
+        {% set completed_tasks = stats.total_tasks_processed %}
+        {% set successful_tasks = completed_tasks - stats.total_tasks_failed - stats.total_tasks_timed_out %}
+        {% set success_rate = (successful_tasks / completed_tasks * 100) if completed_tasks else 100 %}
+        {% set queued_tasks = stats.image_queue_size + stats.image_query_queue_size + stats.web_queue_size %}
+        <div class="system-summary" aria-label="System summary">
           <div class="summary-tile">
             <div class="summary-label">Uptime</div>
-            <div class="summary-value">{{ stats.uptime }}</div>
+            <div class="summary-value" id="summary-uptime">{{ stats.uptime }}</div>
+          </div>
+          <div class="summary-tile" title="{{ successful_tasks }} successful, {{ stats.total_tasks_failed }} failed, {{ stats.total_tasks_timed_out }} timed out">
+            <div class="summary-label">Task Success</div>
+            <div class="summary-value" id="summary-task-success">{{ success_rate|round(1) }}%</div>
           </div>
           <div class="summary-tile">
-            <div class="summary-label">Threads</div>
-            <div class="summary-value">{{ stats.thread_count }}</div>
+            <div class="summary-label">Queue Backlog</div>
+            <div class="summary-value" id="summary-queue-backlog">{{ queued_tasks }}</div>
           </div>
           <div class="summary-tile">
-            <div class="summary-label">Python</div>
-            <div class="summary-value">{{ stats.python_version }}</div>
+            <div class="summary-label">Process Memory</div>
+            <div class="summary-value" id="summary-process-memory">{{ stats.process_memory_mb }} MB</div>
           </div>
           <div class="summary-tile">
-            <div class="summary-label">Platform</div>
-            <div class="summary-value">{{ stats.platform_short }}</div>
+            <div class="summary-label">Runtime</div>
+            <div class="summary-value" id="summary-runtime">Python {{ stats.python_version }}</div>
           </div>
           <div class="summary-tile">
-            <div class="summary-label">Tasks</div>
-            <div class="summary-value">{{ stats.total_tasks_processed }}</div>
-          </div>
-          <div class="summary-tile">
-            <div class="summary-label">Failed</div>
-            <div class="summary-value">{{ stats.total_tasks_failed }}</div>
-          </div>
-          <div class="summary-tile">
-            <div class="summary-label">Timed out</div>
-            <div class="summary-value">{{ stats.total_tasks_timed_out }}</div>
+            <div class="summary-label">Host</div>
+            <div class="summary-value" id="summary-host" title="{{ stats.hostname }}">{{ stats.hostname }}</div>
           </div>
         </div>
       </div>
@@ -3583,6 +4166,14 @@
           document.getElementById('stat-record-exports').textContent = s.today_record_exports;
           document.getElementById('stat-record-imports').textContent = s.today_record_imports;
           document.getElementById('stat-event-dropped').textContent = s.event_dropped;
+          const successfulTasks = Math.max(0, s.total_tasks_processed - s.total_tasks_failed - s.total_tasks_timed_out);
+          const successRate = s.total_tasks_processed ? (successfulTasks / s.total_tasks_processed * 100) : 100;
+          document.getElementById('summary-uptime').textContent = s.uptime;
+          document.getElementById('summary-task-success').textContent = successRate.toFixed(1) + '%';
+          document.getElementById('summary-queue-backlog').textContent = s.image_queue_size + s.image_query_queue_size + s.web_queue_size;
+          document.getElementById('summary-process-memory').textContent = s.process_memory_mb + ' MB';
+          document.getElementById('summary-runtime').textContent = 'Python ' + s.python_version;
+          document.getElementById('summary-host').textContent = s.hostname;
           showToast('✅ Stats refreshed', 'success');
           btn.disabled = false;
           btn.textContent = originalText;
