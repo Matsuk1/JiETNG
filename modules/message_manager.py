@@ -4,7 +4,7 @@ from urllib.parse import quote
 from modules.config_loader import SUPPORT_PAGE, LINE_ACCOUNT_ID
 from modules.i18n import get_user_language, select_text
 from modules.user_db import get_user
-from modules.user_manager import get_notice_interaction, get_user_timezone
+from modules.user_manager import get_user_timezone
 from modules.tip_ad_manager import get_random_tip, get_random_ad
 from modules.message_texts import *
 from linebot.v3.messaging import (
@@ -912,108 +912,37 @@ def get_segaid_error_quick_reply(user_id=None):
 
 def get_record_error_quick_reply(user_id=None):
     """获取记录错误的 QuickReply"""
-    label = get_quick_reply_label("maimai_update", user_id)
-    return QuickReply(
-        items=[
-            QuickReplyItem(action=MessageAction(
-                label=label,
-                text="maimai update",
-                display_text=label
-            )),
-            QuickReplyItem(action=URIAction(
-                label=get_quick_reply_label("support", user_id),
-                uri=SUPPORT_PAGE
-            ))
-        ]
-    )
+    return get_update_quick_reply(user_id)
 
-# ============================================================
-# 向后兼容的消息生成函数 / Backward Compatible Message Functions
-# ============================================================
+def _message_factory(message_text, quick_reply_factory=None):
+    def build_message(user_id=None):
+        quick_reply = quick_reply_factory(user_id) if quick_reply_factory else None
+        return create_text_message(message_text, user_id, quick_reply)
 
-def rebind_msg(user_id=None):
-    """生成 SEGA ID 更新成功消息"""
-    return create_text_message(rebind_msg_text, user_id, get_update_quick_reply(user_id))
+    return build_message
 
-def segaid_error(user_id=None):
-    """生成 SEGA ID 错误消息"""
-    return create_text_message(segaid_error_text, user_id, get_segaid_error_quick_reply(user_id))
 
-def record_error(user_id=None):
-    """生成记录错误消息"""
-    return create_text_message(record_error_text, user_id, get_record_error_quick_reply(user_id))
-
-def info_error(user_id=None):
-    """生成个人信息错误消息"""
-    return create_text_message(info_error_text, user_id, get_record_error_quick_reply(user_id))
-
-def access_error(user_id=None):
-    """生成访问错误消息"""
-    return create_text_message(access_error_text, user_id)
-
-def system_error(user_id=None):
-    """生成系统错误消息"""
-    return create_text_message(system_error_text, user_id, get_support_quick_reply(user_id))
-
-def input_error(user_id=None):
-    """生成输入错误消息"""
-    return create_text_message(input_error_text, user_id, get_support_quick_reply(user_id))
-
-def song_error(user_id=None):
-    """生成歌曲错误消息"""
-    return create_text_message(song_error_text, user_id, get_support_quick_reply(user_id))
-
-def level_not_supported(user_id=None):
-    """生成等级不支持消息"""
-    return create_text_message(level_not_supported_text, user_id, get_support_quick_reply(user_id))
-
-def plate_error(user_id=None):
-    """生成牌子错误消息"""
-    return create_text_message(plate_error_text, user_id, get_support_quick_reply(user_id))
-
-def version_error(user_id=None):
-    """生成版本错误消息"""
-    return create_text_message(version_error_text, user_id, get_support_quick_reply(user_id))
-
-def store_error(user_id=None):
-    """生成店铺错误消息"""
-    return create_text_message(store_error_text, user_id)
-
-def rate_limit_msg(user_id=None):
-    """生成频率限制消息"""
-    return create_text_message(rate_limit_msg_text, user_id, get_support_quick_reply(user_id))
-
-def maintenance_error(user_id=None):
-    """生成维护错误消息"""
-    return create_text_message(maintenance_error_text, user_id, get_support_quick_reply(user_id))
-
-def friend_error(user_id=None):
-    """生成好友错误消息"""
-    return create_text_message(friend_error_text, user_id)
-
-def friend_rcd_error(user_id=None):
-    """生成好友记录错误消息"""
-    return create_text_message(friend_rcd_error_text, user_id)
-
-def mention_error(user_id=None):
-    """生成提到用户不存在错误消息"""
-    return create_text_message(mention_error_text, user_id)
-
-def mention_record_error(user_id=None):
-    """生成被提到用户无成绩数据错误消息（与 record_error 区分，避免主语错位）"""
-    return create_text_message(mention_record_error_text, user_id)
-
-def cannot_do_for_others(user_id=None):
-    """@ 别人但用了仅限本人的命令（如 update / bind / unbind / export）时的拒绝消息"""
-    return create_text_message(cannot_do_for_others_text, user_id)
-
-def no_matching_data(user_id=None):
-    """有成绩，但本次查询的过滤/条件无匹配时返回（与 record_error 区分语义）"""
-    return create_text_message(no_matching_data_text, user_id)
-
-def mention_no_matching_data(user_id=None):
-    """被 @ 的用户有成绩但本次查询无匹配时返回"""
-    return create_text_message(mention_no_matching_data_text, user_id)
+rebind_msg = _message_factory(rebind_msg_text, get_update_quick_reply)
+segaid_error = _message_factory(segaid_error_text, get_segaid_error_quick_reply)
+record_error = _message_factory(record_error_text, get_record_error_quick_reply)
+info_error = _message_factory(info_error_text, get_record_error_quick_reply)
+access_error = _message_factory(access_error_text)
+system_error = _message_factory(system_error_text, get_support_quick_reply)
+input_error = _message_factory(input_error_text, get_support_quick_reply)
+song_error = _message_factory(song_error_text, get_support_quick_reply)
+level_not_supported = _message_factory(level_not_supported_text, get_support_quick_reply)
+plate_error = _message_factory(plate_error_text, get_support_quick_reply)
+version_error = _message_factory(version_error_text, get_support_quick_reply)
+store_error = _message_factory(store_error_text)
+rate_limit_msg = _message_factory(rate_limit_msg_text, get_support_quick_reply)
+maintenance_error = _message_factory(maintenance_error_text, get_support_quick_reply)
+friend_error = _message_factory(friend_error_text)
+friend_rcd_error = _message_factory(friend_rcd_error_text)
+mention_error = _message_factory(mention_error_text)
+mention_record_error = _message_factory(mention_record_error_text)
+cannot_do_for_others = _message_factory(cannot_do_for_others_text)
+no_matching_data = _message_factory(no_matching_data_text)
+mention_no_matching_data = _message_factory(mention_no_matching_data_text)
 
 def get_perm_request_notification_alt_text(count, user_id=None):
     """获取权限请求通知的 alt text"""
@@ -1155,10 +1084,6 @@ def generate_notice_flex(notice_json, user_id=None):
 
     # 如果启用投票，添加投票按钮
     if voting_enabled and user_id:
-        # 获取用户当前投票状态
-        interaction = get_notice_interaction(user_id, notice_id)
-        current_vote = interaction.get('vote') if interaction else None
-
         # 投票按钮文本
         vote_labels = {
             'support': {'ja': '支持', 'en': 'Support', 'zh': '支持'},

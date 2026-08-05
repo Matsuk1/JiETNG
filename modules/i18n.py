@@ -1,58 +1,131 @@
-from __future__ import annotations
+"""Language registration, locale normalization, and translation fallback."""
 
-from typing import Any, Mapping
+from dataclasses import dataclass, field
+from typing import Any, Callable, Mapping
+
 from modules.zh_tw import to_traditional
 
 
-SUPPORTED_LANGUAGES = ("ja", "en", "zh", "zh-tw")
+TextTransform = Callable[[str], str]
 DEFAULT_LANGUAGE = "en"
-ALIASES = {
-    "jp": "ja",
-    "jpn": "ja",
-    "ja-jp": "ja",
-    "zh-cn": "zh",
-    "zh-hans": "zh",
-    "zh-hant": "zh-tw",
-    "zh-hk": "zh-tw",
-    "zh-mo": "zh-tw",
+
+
+@dataclass(frozen=True, slots=True)
+class Language:
+    aliases: tuple[str, ...] = ()
+    fallbacks: tuple[str, ...] = ()
+    transforms: Mapping[str, TextTransform] = field(default_factory=dict)
+
+
+LANGUAGES: dict[str, Language] = {
+    "en": Language(aliases=("en-us", "en-gb")),
+    "ja": Language(aliases=("jp", "jpn", "ja-jp")),
+    "zh": Language(aliases=("zh-cn", "zh-hans"), fallbacks=("zh-tw",)),
+    "zh-tw": Language(
+        aliases=("zh-hant", "zh-hk", "zh-mo"),
+        fallbacks=("zh",),
+        transforms={"zh": to_traditional, "*": to_traditional},
+    ),
 }
+SUPPORTED_LANGUAGES = tuple(LANGUAGES)
 
 
-def normalize_language(language: Any, default: str = DEFAULT_LANGUAGE) -> str:
-    default = default if default in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
-    code = str(language or "").strip().lower().replace("_", "-")
-    code = ALIASES.get(code, code)
-    if code not in SUPPORTED_LANGUAGES:
-        code = code.split("-", 1)[0]
-    return code if code in SUPPORTED_LANGUAGES else default
+def _clean_code(language: Any) -> str:
+    return str(language or "").strip().lower().replace("_", "-")
 
 
-def get_user_language(user_id: str | None, default: str = DEFAULT_LANGUAGE) -> str:
+def _resolve_registered_language(code: str) -> str | None:
+    candidate = code
+    while candidate:
+        if candidate in LANGUAGES:
+            return candidate
+        for language, definition in LANGUAGES.items():
+            if candidate in definition.aliases:
+                return language
+        candidate = candidate.rpartition("-")[0]
+    return None
+
+
+def register_language(
+    code: str,
+    *,
+    aliases=(),
+    fallbacks=(),
+    transforms: Mapping[str, TextTransform] | None = None,
+):
+    """Register a language without changing normalization or selection code."""
+    global SUPPORTED_LANGUAGES
+    code = _clean_code(code)
+    if not code:
+        raise ValueError("Language code must not be empty")
+    LANGUAGES[code] = Language(
+        aliases=tuple(_clean_code(alias) for alias in aliases),
+        fallbacks=tuple(_clean_code(item) for item in fallbacks),
+        transforms=dict(transforms or {}),
+    )
+    SUPPORTED_LANGUAGES = tuple(LANGUAGES)
+    return code
+
+
+def normalize_language(language: Any, default=DEFAULT_LANGUAGE) -> str:
+    normalized_default = (
+        _resolve_registered_language(_clean_code(default)) or DEFAULT_LANGUAGE
+    )
+    return _resolve_registered_language(_clean_code(language)) or normalized_default
+
+
+def get_user_language(user_id: str | None, default=DEFAULT_LANGUAGE) -> str:
     if not user_id:
         return normalize_language(default)
 
     from modules.user_db import get_user_field, user_exists
 
-    language = get_user_field(user_id, "language", default) if user_exists(user_id) else default
+    language = (
+        get_user_field(user_id, "language", default)
+        if user_exists(user_id)
+        else default
+    )
     return normalize_language(language, default)
+
+
+def _fallback_chain(language: str, default_language: str):
+    candidates = (
+        language,
+        *LANGUAGES[language].fallbacks,
+        normalize_language(default_language),
+        DEFAULT_LANGUAGE,
+        *LANGUAGES,
+    )
+    resolved = (_resolve_registered_language(code) for code in candidates)
+    yield from dict.fromkeys(code for code in resolved if code)
+
+
+def _transform(value: str, target_language: str, source_language: str):
+    transforms = LANGUAGES[target_language].transforms
+    transform = transforms.get(source_language) or transforms.get("*")
+    return transform(value) if transform else value
 
 
 def select_text(
     text: Any,
     user_id: str | None = None,
     language: str | None = None,
-    default_language: str = DEFAULT_LANGUAGE,
+    default_language=DEFAULT_LANGUAGE,
 ) -> str:
     if not isinstance(text, Mapping):
         return "" if text is None else str(text)
 
-    lang = normalize_language(language, default_language) if language is not None else get_user_language(user_id, default_language)
-    zh_fallback = ("zh",) if lang == "zh-tw" else ("zh-tw",) if lang == "zh" else ()
-    for code in (lang, *zh_fallback, normalize_language(default_language), DEFAULT_LANGUAGE, "ja", "zh", "zh-tw"):
-        value = text.get(code)
-        if value is not None:
-            value = str(value)
-            return to_traditional(value) if lang == "zh-tw" and code == "zh" else value
+    target = (
+        normalize_language(language, default_language)
+        if language is not None
+        else get_user_language(user_id, default_language)
+    )
+    for source in _fallback_chain(target, default_language):
+        if text.get(source) is not None:
+            return _transform(str(text[source]), target, source)
 
-    value = str(next((value for value in text.values() if value is not None), ""))
-    return to_traditional(value) if lang == "zh-tw" else value
+    source, value = next(
+        ((str(code), value) for code, value in text.items() if value is not None),
+        (target, ""),
+    )
+    return _transform(str(value), target, source)

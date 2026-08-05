@@ -6,6 +6,19 @@ import discord
 from discord import app_commands
 
 
+DEFAULT_LANGUAGE = "en"
+LANGUAGES = {
+    "en": {"aliases": ("en-us", "en-gb"), "fallbacks": ()},
+    "ja": {"aliases": ("jp", "jpn", "ja-jp"), "fallbacks": ()},
+    "zh": {"aliases": ("zh-cn", "zh-hans"), "fallbacks": ("zh-tw",)},
+    "zh-tw": {
+        "aliases": ("zh-hant", "zh-hk", "zh-mo"),
+        "fallbacks": ("zh",),
+    },
+}
+SUPPORTED_LANGUAGES = tuple(LANGUAGES)
+
+
 MESSAGES: dict[str, dict[str, str]] = {
     "api_token_invalid": {
         "zh": "JiETNG API token 无效或已过期。",
@@ -283,13 +296,48 @@ COMMAND_TRANSLATIONS: dict[str, dict[str, str]] = {
 }
 
 
-def locale_key(locale: Any) -> str:
-    value = str(locale or "").lower()
-    if value.startswith("ja"):
-        return "ja"
-    if value.startswith(("zh", "zh-cn", "zh-tw")):
-        return "zh"
-    return "en"
+def _clean_code(locale: Any) -> str:
+    return str(locale or "").strip().lower().replace("_", "-")
+
+
+def _resolve_language(code: str) -> str | None:
+    candidate = code
+    while candidate:
+        if candidate in LANGUAGES:
+            return candidate
+        for language, definition in LANGUAGES.items():
+            if candidate in definition["aliases"]:
+                return language
+        candidate = candidate.rpartition("-")[0]
+    return None
+
+
+def register_language(code: str, *, aliases=(), fallbacks=()) -> str:
+    global SUPPORTED_LANGUAGES
+    code = _clean_code(code)
+    if not code:
+        raise ValueError("Language code must not be empty")
+    LANGUAGES[code] = {
+        "aliases": tuple(_clean_code(alias) for alias in aliases),
+        "fallbacks": tuple(_clean_code(item) for item in fallbacks),
+    }
+    SUPPORTED_LANGUAGES = tuple(LANGUAGES)
+    return code
+
+
+def locale_key(locale: Any, default=DEFAULT_LANGUAGE) -> str:
+    normalized_default = _resolve_language(_clean_code(default)) or DEFAULT_LANGUAGE
+    return _resolve_language(_clean_code(locale)) or normalized_default
+
+
+def _translation(catalog, key, language):
+    translations = catalog.get(key, {})
+    definition = LANGUAGES[language]
+    candidates = (language, *definition["fallbacks"], DEFAULT_LANGUAGE, *LANGUAGES)
+    for candidate in dict.fromkeys(locale_key(code) for code in candidates):
+        if translations.get(candidate) is not None:
+            return translations[candidate]
+    return None
 
 
 def interaction_lang(interaction: discord.Interaction) -> str:
@@ -297,7 +345,7 @@ def interaction_lang(interaction: discord.Interaction) -> str:
 
 
 def tr(lang: str, key: str, **kwargs: Any) -> str:
-    text = MESSAGES.get(key, {}).get(lang) or MESSAGES.get(key, {}).get("en") or key
+    text = _translation(MESSAGES, key, locale_key(lang)) or key
     return text.format(**kwargs)
 
 
@@ -310,4 +358,4 @@ class BotTranslator(app_commands.Translator):
     ) -> str | None:
         key = string.extras.get("key", string.message)
         lang = locale_key(locale)
-        return COMMAND_TRANSLATIONS.get(key, {}).get(lang)
+        return _translation(COMMAND_TRANSLATIONS, key, lang)
