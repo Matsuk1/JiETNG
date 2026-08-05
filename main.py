@@ -1978,7 +1978,13 @@ async def random_song(user_id, key="", ver="jp"):
     song_id = song.get('id')
 
     user_tz = get_user_timezone(user_id)
-    song_img = song_info_generate(song, timezone_offset=user_tz, ver=ver, bg_filter=_get_user_bg_filter(user_id))
+    song_img = song_info_generate(
+        song,
+        timezone_offset=user_tz,
+        ver=ver,
+        bg_filter=_get_user_bg_filter(user_id),
+        language=get_user_language(user_id),
+    )
     img_w, img_h = song_img.size
     original_url, preview_url = await upload_generated_image(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='info')
@@ -2017,7 +2023,13 @@ async def search_song_by_id(user_id, song_id, ver="jp"):
         return song_error(user_id)
 
     user_tz = get_user_timezone(user_id)
-    song_img = song_info_generate(matching_song, timezone_offset=user_tz, ver=ver, bg_filter=_get_user_bg_filter(user_id))
+    song_img = song_info_generate(
+        matching_song,
+        timezone_offset=user_tz,
+        ver=ver,
+        bg_filter=_get_user_bg_filter(user_id),
+        language=get_user_language(user_id),
+    )
     img_w, img_h = song_img.size
     original_url, preview_url = await upload_generated_image(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='info')
@@ -2416,7 +2428,14 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
 
     # 生成歌曲信息图片
     user_tz = get_user_timezone(user_id)
-    song_img = song_info_generate(matching_song, played_data, timezone_offset=user_tz, ver=ver, bg_filter=_get_user_bg_filter(user_id))
+    song_img = song_info_generate(
+        matching_song,
+        played_data,
+        timezone_offset=user_tz,
+        ver=ver,
+        bg_filter=_get_user_bg_filter(user_id),
+        language=get_user_language(user_id),
+    )
     img_w, img_h = song_img.size
     original_url, preview_url = await upload_generated_image(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='record')
@@ -3407,7 +3426,10 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
         for song in songs
         if song["version"] in target_versions and song["type"] != "utage"
     ]
-    version_list_img = generate_version_list(songs_data)
+    version_list_img = generate_version_list(
+        songs_data,
+        language=get_user_language(user_id),
+    )
 
     if version_img is None:
         img = _compose_user_images([version_list_img], user_id)
