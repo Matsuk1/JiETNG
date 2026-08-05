@@ -618,3 +618,28 @@ MESSAGE_TEXTS = {'access_error_text': '🙇 今めっちゃアクセス多いん
 # END GENERATED MESSAGE TEXTS
 
 TEXTS["messages"] = MESSAGE_TEXTS
+
+TEXTS["images"] = {
+    "score": {
+        "subtitle": "判定詳細",
+        "judgement": "判定データ",
+        "loss": "詳細判定",
+        "break": "BREAK 詳細判定",
+        "empty": "判定詳細を認識できませんでした。",
+        "common_total": "通常ノーツ合計",
+        "break_total": "BREAK 合計",
+    },
+    "records": {
+        "avg_level": "平均レベル",
+        "avg_achievement": "平均達成率",
+        "avg_rating": "平均レーティング",
+    },
+    "progress": {
+        "completed": "完了",
+        "incomplete": "未完了",
+        "unplayed": "未プレイ",
+        "total": "総計",
+        "progress_suffix": "進捗",
+        "level_list_suffix": "レベル一覧",
+    },
+}

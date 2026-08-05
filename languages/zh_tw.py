@@ -614,3 +614,28 @@ MESSAGE_TEXTS = {'access_error_text': '🙇 現在訪問量很大…請稍後再
 # END GENERATED MESSAGE TEXTS
 
 TEXTS["messages"] = MESSAGE_TEXTS
+
+TEXTS["images"] = {
+    "score": {
+        "subtitle": "判定詳情",
+        "judgement": "判定資料",
+        "loss": "詳細判定",
+        "break": "BREAK 詳細判定",
+        "empty": "未能辨識判定詳情。",
+        "common_total": "普通音符合計",
+        "break_total": "BREAK 合計",
+    },
+    "records": {
+        "avg_level": "平均等級",
+        "avg_achievement": "平均達成率",
+        "avg_rating": "平均 Rating",
+    },
+    "progress": {
+        "completed": "已完成",
+        "incomplete": "未完成",
+        "unplayed": "未遊玩",
+        "total": "總計",
+        "progress_suffix": "進度",
+        "level_list_suffix": "等級列表",
+    },
+}

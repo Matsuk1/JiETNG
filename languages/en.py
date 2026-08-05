@@ -693,3 +693,28 @@ MESSAGE_TEXTS = {'access_error_text': "🙇 There's a lot of traffic right now..
 # END GENERATED MESSAGE TEXTS
 
 TEXTS["messages"] = MESSAGE_TEXTS
+
+TEXTS["images"] = {
+    "score": {
+        "subtitle": "Judgement Details",
+        "judgement": "Judgements",
+        "loss": "Detailed Judgements",
+        "break": "BREAK Details",
+        "empty": "No judgement details were recognized.",
+        "common_total": "COMMON TOTAL",
+        "break_total": "BREAK TOTAL",
+    },
+    "records": {
+        "avg_level": "AVG LEVEL",
+        "avg_achievement": "AVG ACHIEVEMENT",
+        "avg_rating": "AVG RATING",
+    },
+    "progress": {
+        "completed": "COMPLETED",
+        "incomplete": "INCOMPLETE",
+        "unplayed": "UNPLAYED",
+        "total": "TOTAL",
+        "progress_suffix": "PROGRESS",
+        "level_list_suffix": "LEVEL LIST",
+    },
+}
