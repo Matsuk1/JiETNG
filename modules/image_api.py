@@ -13,7 +13,6 @@ from modules.command_config import RANK_COMMANDS
 from modules.config_loader import TEMP_VERSION, read_dxdata
 from modules.event_tracker import track_event
 from modules.image_manager import compose_generated_images
-from modules.i18n import get_user_language, normalize_language
 from modules.rate_limiter import check_rate_limit
 from modules.record_generator import (
     generate_cover,
@@ -95,12 +94,8 @@ def api_v2_song_info(song_id):
         if not matching_song:
             return jsonify({"error": "Song not found"}), 404
 
-        language = normalize_language(
-            request.args.get("language"),
-            default="ja" if ver == "jp" else "en",
-        )
         buf = _png_buffer(
-            song_info_generate(matching_song, ver=ver, language=language)
+            song_info_generate(matching_song, ver=ver)
         )
 
         logger.info(
@@ -155,7 +150,6 @@ def api_v2_song_record(user_id, song_id):
             timezone_offset=user_tz,
             ver=ver,
             bg_filter=_services.background_filter(user_id),
-            language=get_user_language(user_id),
         )
         buf = _png_buffer(song_img)
 
@@ -226,7 +220,6 @@ def api_v2_generate_record_image(user_id):
             display_type.upper(),
             ver,
             details,
-            language=get_user_language(user_id),
         )
         user_info = _udata.get('personal_info')
         profile_img = _services.generate_profile(user_info, user_id=user_id)
@@ -521,7 +514,7 @@ def api_v2_generate_achievement(user_id):
                 level_display,
                 rank_display,
                 stats,
-                language=get_user_language(user_id),
+                ver=ver,
             )
         finally:
             _close_entry_images(target_data)

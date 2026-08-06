@@ -1302,10 +1302,6 @@ def _generate_session_image_from_payload(data: dict):
     ver = data.get("version", "jp")
     if ver not in ("jp", "intl"):
         raise ValueError("Invalid version")
-    language = normalize_language(
-        data.get("language"),
-        default="ja" if ver == "jp" else "en",
-    )
 
     cmd_type = str(data.get("cmd_type", data.get("type", "best50"))).strip().lower()
     valid_cmd_types = {"best50", "best40", "best35", "best15", "allb35", "allb50", "apb50", "fdxb50", "idlb50", "sun50"}
@@ -1350,7 +1346,6 @@ def _generate_session_image_from_payload(data: dict):
         title=cmd_type.upper(),
         ver=ver,
         details=details,
-        language=language,
     )
     result = compose_generated_images(
         [profile_img, records_img],
@@ -1388,10 +1383,6 @@ def demo_page():
     segaid = request.form.get("segaid", "").strip()
     password = request.form.get("password", "").strip()
     ver = request.form.get("ver", "jp")
-    language = normalize_language(
-        request.form.get("language"),
-        default="ja" if ver == "jp" else "en",
-    )
     cmd_type = request.form.get("cmd_type", "best50").strip()
     params = request.form.get("params", "").strip()
     try:
@@ -1436,7 +1427,6 @@ def demo_page():
             title=title,
             ver=ver,
             details=details,
-            language=language,
         )
         if not records_img:
             raise ValueError("No records matched the selected filters.")
@@ -1983,7 +1973,6 @@ async def random_song(user_id, key="", ver="jp"):
         timezone_offset=user_tz,
         ver=ver,
         bg_filter=_get_user_bg_filter(user_id),
-        language=get_user_language(user_id),
     )
     img_w, img_h = song_img.size
     original_url, preview_url = await upload_generated_image(song_img, user_id)
@@ -2028,7 +2017,6 @@ async def search_song_by_id(user_id, song_id, ver="jp"):
         timezone_offset=user_tz,
         ver=ver,
         bg_filter=_get_user_bg_filter(user_id),
-        language=get_user_language(user_id),
     )
     img_w, img_h = song_img.size
     original_url, preview_url = await upload_generated_image(song_img, user_id)
@@ -2434,7 +2422,6 @@ async def get_song_record_by_id(user_id, id_use, song_id, ver="jp"):
         timezone_offset=user_tz,
         ver=ver,
         bg_filter=_get_user_bg_filter(user_id),
-        language=get_user_language(user_id),
     )
     img_w, img_h = song_img.size
     original_url, preview_url = await upload_generated_image(song_img, user_id)
@@ -2817,7 +2804,7 @@ async def generate_level_rank_progress(user_id, id_use, level, rank=None, ver="j
         stats,
         group_by="internal_level" if is_level_target else "level",
         show_progress_suffix=is_level_target,
-        language=get_user_language(user_id),
+        ver=ver,
     )
 
     # 清理 target_data 中的封面图片对象
@@ -3267,7 +3254,6 @@ async def generate_records(user_id, id_use, type="best50", command="", ver="jp")
         type.upper(),
         ver,
         details,
-        language=get_user_language(user_id),
     )
 
     # 获取用户信息并创建用户信息图片
@@ -3339,7 +3325,6 @@ async def generate_friend_record(user_id, friend_code, type="best50", cmd="", ve
         type.upper(),
         ver,
         details,
-        language=get_user_language(user_id),
     )
     img = _compose_user_images([user_info_img, rcd_img], user_id)
 
@@ -3384,7 +3369,6 @@ async def generate_level_records(user_id, id_use, level, ver="jp", page=1):
         down_level_list,
         title.replace("+", "⁺"),
         ver,
-        language=get_user_language(user_id),
     )
 
     # 获取用户信息并创建用户信息图片
@@ -3428,7 +3412,7 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
     ]
     version_list_img = generate_version_list(
         songs_data,
-        language=get_user_language(user_id),
+        ver=ver,
     )
 
     if version_img is None:
@@ -3691,7 +3675,6 @@ def _handle_fix_record_command(event, command_text: str) -> bool:
                 ver=ver,
                 timezone_offset=get_user_timezone(user_id),
                 bg_filter=_get_user_bg_filter(user_id),
-                language=get_user_language(user_id),
             )
             original_url, preview_url = asyncio.run(
                 upload_generated_image(result_img, user_id)
@@ -3774,7 +3757,6 @@ def _score_recognition_queue_task(event, command: str, quoted_message_id: str, f
                         ver=ver,
                         timezone_offset=get_user_timezone(user_id),
                         bg_filter=_get_user_bg_filter(user_id),
-                        language=get_user_language(user_id),
                     )
                     original_url, preview_url = asyncio.run(
                         upload_generated_image(result_img, user_id)

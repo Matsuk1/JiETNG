@@ -11,7 +11,7 @@ from modules.image_manager import (
     truncate_text,
     wrap_in_rounded_background,
 )
-from modules.i18n import language_catalog, select_text
+from modules.i18n import image_language, language_catalog, select_text
 from modules.record_generator import _get_difficulty_color, create_thumbnail_in_line, generate_cover
 
 
@@ -42,9 +42,8 @@ def song_info_generate(
     timezone_offset=9,
     ver="jp",
     bg_filter=None,
-    language=None,
 ):
-    language = language or ("ja" if ver == "jp" else "en")
+    language = image_language(ver)
     img1 = resize_by_width(_render_basic_info_image(song_json, language), 900)
     if played_data:
         img2 = resize_by_width(_makeup_played_data(played_data), 780)
@@ -264,7 +263,8 @@ def _render_song_info_small_img(song_json, language="en"):
 
     return img
 
-def generate_version_list(songs_json, language="en"):
+def generate_version_list(songs_json, ver="jp"):
+    language = image_language(ver)
     song_imgs = []
 
     for song in songs_json:

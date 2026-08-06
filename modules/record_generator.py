@@ -32,7 +32,7 @@ from modules.image_manager import (
     round_corner,
     truncate_text,
 )
-from modules.i18n import language_catalog, select_text
+from modules.i18n import image_language, language_catalog, select_text
 from modules.maimai_manager import get_rating_image_path
 from modules.record_manager import get_single_ra
 
@@ -707,7 +707,6 @@ def generate_score_recognition_picture(
     img_width=1100,
     timezone_offset=9,
     bg_filter=None,
-    language=None,
 ):
     """
     Generate a static score-recognition result image using the same data hierarchy
@@ -719,7 +718,7 @@ def generate_score_recognition_picture(
     metric_color = (114, 20, 141) if difficulty == "remaster" else diff_color
     header_text_color = (114, 20, 141) if difficulty == "remaster" else (255, 255, 255)
 
-    language = language or ("ja" if ver == "jp" else "en")
+    language = image_language(ver)
     texts = {
         key: _image_text(f"score.{key}", language)
         for key in ("subtitle", "judgement", "loss", "break", "empty")
@@ -1177,12 +1176,11 @@ def generate_records_picture(
     title="RECORD",
     ver="jp",
     details=None,
-    language=None,
 ):
     up_songs = up_songs or []
     down_songs = down_songs or []
     details = details or {}
-    language = language or ("ja" if ver == "jp" else "en")
+    language = image_language(ver)
     up_num = len(up_songs)
     down_num = len(down_songs)
     num = up_num + down_num
@@ -1755,7 +1753,7 @@ def generate_level_rank_progress_image(
     margin=20,
     group_by="internal_level",
     show_progress_suffix=True,
-    language="ja",
+    ver="jp",
 ):
     """
     生成难度评级进度图片，顶部显示总体统计卡片，下方显示分组封面列表
@@ -1770,7 +1768,9 @@ def generate_level_rank_progress_image(
         margin: 边距
         group_by: "internal_level" 按定数分组，"level" 按等级分组
         show_progress_suffix: 是否在进度标题末尾显示 PROGRESS
+        ver: 服务器版本，决定图片使用日文或英文
     """
+    language = image_language(ver)
     level_width = 100
     img_size = 150
     footer_height = 30  # 与 generate_cover 中的 footer_height 一致

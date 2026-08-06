@@ -9,6 +9,7 @@ from languages import iter_language_plugins
 TextTransform = Callable[[str], str]
 DEFAULT_LANGUAGE = "en"
 DEFAULT_WEB_LANGUAGE = "ja"
+IMAGE_LANGUAGES = {"jp": "ja", "intl": "en"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,6 +141,11 @@ def normalize_language(language: Any, default=DEFAULT_LANGUAGE) -> str:
         _resolve_registered_language(_clean_code(default)) or DEFAULT_LANGUAGE
     )
     return _resolve_registered_language(_clean_code(language)) or normalized_default
+
+
+def image_language(version: Any) -> str:
+    """Return the font-safe language used by image renderers."""
+    return IMAGE_LANGUAGES.get(_clean_code(version), "ja")
 
 
 def get_user_language(user_id: str | None, default=DEFAULT_LANGUAGE) -> str:
