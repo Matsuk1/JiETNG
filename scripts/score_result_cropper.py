@@ -1196,7 +1196,7 @@ def is_dxnet_result_screenshot(image: Image.Image) -> bool:
     """Detect a DX NET page only when its judgement table is also present."""
     image = ImageOps.exif_transpose(image).convert("RGB")
     width, height = image.size
-    if width <= 0 or height / width < 1.6:
+    if width <= 0 or height / width < 1.2:
         return False
     sample = image.resize((80, 80), Image.Resampling.BILINEAR)
     pixels = sample.load()
@@ -1212,7 +1212,11 @@ def is_dxnet_result_screenshot(image: Image.Image) -> bool:
     )
     if vivid_cyan / (sample.width * sample.height) < 0.08:
         return False
-    return detect_dxnet_judgement_table(image) is not None
+    judgement_table = detect_dxnet_judgement_table(image)
+    return (
+        judgement_table is not None
+        and judgement_table.top >= height * 0.28
+    )
 
 
 def _dxnet_grid_line_pixel(pixel: tuple[int, int, int]) -> bool:
@@ -1277,6 +1281,69 @@ def detect_dxnet_judgement_table(image: Image.Image) -> Box | None:
     ).clamp(width, height)
 
 
+def detect_dxnet_title_bar(
+    image: Image.Image,
+    judgement_table: Box,
+) -> Box | None:
+    """Find the wide white song-title bar above a DX NET judgement table."""
+    rgb = np.asarray(image.convert("RGB"))
+    height, width = rgb.shape[:2]
+    left = int(round(width * 0.035))
+    right = int(round(width * 0.850))
+    search_top = max(0, int(round(judgement_table.top - width * 0.90)))
+    search_bottom = min(
+        height,
+        int(round(judgement_table.top - width * 0.42)),
+    )
+    if right <= left or search_bottom <= search_top:
+        return None
+
+    region = rgb[search_top:search_bottom, left:right]
+    channel_min = region.min(axis=2)
+    channel_spread = region.max(axis=2) - channel_min
+    white_rows = ((channel_min >= 215) & (channel_spread <= 32)).mean(axis=1)
+    indexes = np.flatnonzero(white_rows >= 0.70).tolist()
+    clusters = _cluster_ranges(indexes, max_gap=1)
+    candidates = []
+    for start, end in clusters:
+        bar_height = end - start + 1
+        if not width * 0.035 <= bar_height <= width * 0.12:
+            continue
+        coverage = float(white_rows[start:end + 1].mean())
+        candidates.append((coverage, bar_height, start, end))
+    if not candidates:
+        return None
+
+    _, _, start, end = max(candidates)
+    absolute_top = search_top + start
+    absolute_bottom = search_top + end + 1
+    title_region = rgb[absolute_top:absolute_bottom]
+    title_min = title_region.min(axis=2)
+    title_spread = title_region.max(axis=2) - title_min
+    white_columns = (
+        (title_min >= 215) & (title_spread <= 32)
+    ).mean(axis=0)
+    column_clusters = _cluster_ranges(
+        np.flatnonzero(white_columns >= 0.55).tolist(),
+        max_gap=1,
+    )
+    wide_columns = [
+        (column_end - column_start + 1, column_start, column_end)
+        for column_start, column_end in column_clusters
+        if column_end - column_start + 1 >= width * 0.45
+    ]
+    if not wide_columns:
+        return None
+    _, column_start, column_end = max(wide_columns)
+    margin = max(2, int(round(width * 0.004)))
+    return Box(
+        max(0, column_start - margin),
+        max(0, absolute_top - margin),
+        min(width, column_end + 1 + margin),
+        min(height, absolute_bottom + margin),
+    )
+
+
 def dxnet_result_field_boxes(image: Image.Image) -> dict[str, Box]:
     """Locate mobile DX NET fields relative to the judgement table."""
     width, height = image.size
@@ -1307,9 +1374,22 @@ def dxnet_result_field_boxes(image: Image.Image) -> dict[str, Box]:
             )
         return box
 
+    title_bar = detect_dxnet_title_bar(image, judgement_table)
+    if title_bar is None:
+        main_title = anchored_box(0.035, -0.633, 0.850, -0.562)
+        main_achievement = anchored_box(0.465, -0.517, 0.800, -0.418)
+    else:
+        main_title = title_bar
+        main_achievement = Box(
+            int(round(width * 0.450)),
+            min(height, title_bar.bottom + int(round(width * 0.010))),
+            int(round(width * 0.830)),
+            min(height, title_bar.bottom + int(round(width * 0.160))),
+        )
+
     fields = {
-        "main_title": anchored_box(0.035, -0.633, 0.850, -0.562),
-        "main_achievement": anchored_box(0.465, -0.517, 0.800, -0.418),
+        "main_title": main_title,
+        "main_achievement": main_achievement,
         "sub_judgement_table": judgement_table,
     }
     if any(box.width <= 0 or box.height <= 0 for box in fields.values()):

@@ -43,6 +43,11 @@ NUMERIC_OCR_TRANSLATION = str.maketrans({
     "〇": "0",
     "Z": "2",
     "z": "2",
+    "I": "1",
+    "i": "1",
+    "L": "1",
+    "l": "1",
+    "|": "1",
 })
 
 
