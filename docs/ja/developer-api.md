@@ -197,20 +197,40 @@ POST /api/web/session-image
 Content-Type: application/json
 ```
 
-ブックマークレットの JSON を受け取り、`image/png` を返します。開発者 Token は不要ですが、CORS は公式 maimai モバイルページ向けです。
+ブックマークレットの JSON を受け取り、`image/png` を返します。開発者 Token は不要です。
 
 主な body：
 
 ```json
 {
-  "ver": "jp",
-  "command": "b50",
-  "params": "-lv 14",
+  "version": "jp",
+  "cmd_type": "best50",
+  "command": "-lv 14",
   "timezone": 9,
-  "profile": {},
-  "records": []
+  "profile": {
+    "name": "Player",
+    "rating": "15000"
+  },
+  "records": {
+    "best": [
+      {
+        "name": "Song Title",
+        "difficulty": "master",
+        "type": "dx",
+        "score": "100.5000%",
+        "dx_score": "1234",
+        "score_icon": "sssp",
+        "combo_icon": "ap",
+        "sync_icon": "fdx"
+      }
+    ]
+  }
 }
 ```
+
+`version` は `jp` または `intl` のみです。`cmd_type` は `best50`、`best40`、`best35`、`best15`、`allb35`、`allb50`、`apb50`、`fdxb50`、`idlb50`、`sun50` に対応し、`command` には `-lv 14` などのフィルターを指定します。`profile` と、1 件以上の有効な `records.best` が必要です。
+
+画像内の言語はサーバーバージョンで固定されます。`jp` は日本語、`intl` は英語で描画され、ユーザーの言語設定やリクエスト内の他の言語フィールドでは変更できません。
 
 このエンドポイントは画像生成のみです。保存には Import API を使います。
 
@@ -282,10 +302,13 @@ Content-Type: application/json
 
 ## CORS
 
-ブックマークレット用 API は次の公式サイトを想定しています。
+本番 API は次のオリジンを許可しています。
 
 - `https://maimaidx.jp`
 - `https://maimaidx-eng.com`
+- `https://dxrating.net`
+
+ローカル開発では `http://localhost:5173` と `http://127.0.0.1:5173` も許可されます。
 
 ## エラー
 

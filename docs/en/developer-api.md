@@ -199,20 +199,40 @@ POST /api/web/session-image
 Content-Type: application/json
 ```
 
-Receives bookmarklet JSON and returns `image/png`. It does not require a developer token, but CORS is intended for official maimai mobile pages.
+Receives bookmarklet JSON and returns `image/png`. It does not require a developer token.
 
 Core body:
 
 ```json
 {
-  "ver": "jp",
-  "command": "b50",
-  "params": "-lv 14",
+  "version": "jp",
+  "cmd_type": "best50",
+  "command": "-lv 14",
   "timezone": 9,
-  "profile": {},
-  "records": []
+  "profile": {
+    "name": "Player",
+    "rating": "15000"
+  },
+  "records": {
+    "best": [
+      {
+        "name": "Song Title",
+        "difficulty": "master",
+        "type": "dx",
+        "score": "100.5000%",
+        "dx_score": "1234",
+        "score_icon": "sssp",
+        "combo_icon": "ap",
+        "sync_icon": "fdx"
+      }
+    ]
+  }
 }
 ```
+
+`version` accepts only `jp` or `intl`. `cmd_type` accepts `best50`, `best40`, `best35`, `best15`, `allb35`, `allb50`, `apb50`, `fdxb50`, `idlb50`, or `sun50`; use `command` for filters such as `-lv 14`. `profile` and at least one valid item in `records.best` are required.
+
+Image labels are fixed by server version: `jp` renders Japanese and `intl` renders English. User language preferences and other language fields in the request do not override the image language.
 
 This endpoint generates an image only. Use Import API to save records.
 
@@ -284,10 +304,13 @@ Success:
 
 ## CORS
 
-Bookmarklet endpoints are designed for:
+The production API allows these origins:
 
 - `https://maimaidx.jp`
 - `https://maimaidx-eng.com`
+- `https://dxrating.net`
+
+Local development also allows `http://localhost:5173` and `http://127.0.0.1:5173`.
 
 ## Error Codes
 

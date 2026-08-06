@@ -312,20 +312,40 @@ POST /api/web/session-image
 Content-Type: application/json
 ```
 
-接收网页书签整理出的 JSON，返回 `image/png`。该端点不需要开发者 Token，但只允许官方 maimai 移动站相关来源跨域调用。
+接收网页书签整理出的 JSON，返回 `image/png`。该端点不需要开发者 Token。
 
 请求体核心字段：
 
 ```json
 {
-  "ver": "jp",
-  "command": "b50",
-  "params": "-lv 14",
+  "version": "jp",
+  "cmd_type": "best50",
+  "command": "-lv 14",
   "timezone": 9,
-  "profile": {},
-  "records": []
+  "profile": {
+    "name": "Player",
+    "rating": "15000"
+  },
+  "records": {
+    "best": [
+      {
+        "name": "Song Title",
+        "difficulty": "master",
+        "type": "dx",
+        "score": "100.5000%",
+        "dx_score": "1234",
+        "score_icon": "sssp",
+        "combo_icon": "ap",
+        "sync_icon": "fdx"
+      }
+    ]
+  }
 }
 ```
+
+`version` 只支持 `jp` 与 `intl`。`cmd_type` 支持 `best50`、`best40`、`best35`、`best15`、`allb35`、`allb50`、`apb50`、`fdxb50`、`idlb50`、`sun50`；`command` 用于传入 `-lv 14` 等筛选条件。`profile` 和至少一条有效的 `records.best` 记录为必需字段。
+
+图片文字由服务器版本固定：`jp` 使用日文，`intl` 使用英文。用户语言设置或请求中的其他语言字段不会覆盖图片语言。
 
 该端点只生成图片，不保存成绩。保存成绩请使用 Import API。
 
@@ -405,10 +425,13 @@ Content-Type: application/json
 
 ## CORS
 
-`/api/web/session-image` 与 `/api/v2/import/records` 为网页书签设计，允许官方 maimai 移动站来源：
+`/api/web/session-image` 与 `/api/v2/import/records` 的生产环境允许以下来源：
 
 - `https://maimaidx.jp`
 - `https://maimaidx-eng.com`
+- `https://dxrating.net`
+
+本地开发还允许 `http://localhost:5173` 与 `http://127.0.0.1:5173`。
 
 ## 错误码
 

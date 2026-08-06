@@ -67,7 +67,18 @@ The bookmarklet sends this JSON shape to JiETNG for image generation:
     "rating": "15000"
   },
   "records": {
-    "best": []
+    "best": [
+      {
+        "name": "song title",
+        "difficulty": "master",
+        "type": "dx",
+        "score": "100.5000%",
+        "dx_score": "1234",
+        "score_icon": "sssp",
+        "combo_icon": "ap",
+        "sync_icon": "fdx"
+      }
+    ]
   }
 }
 ```
@@ -96,10 +107,17 @@ POST https://jietng-endpoint.matsuk1.com/api/web/session-image
 Content-Type: application/json
 ```
 
-Allowed CORS origins are the two official maimai mobile origins:
+Allowed production CORS origins:
 
 - `https://maimaidx.jp`
 - `https://maimaidx-eng.com`
+- `https://dxrating.net`
+
+Local development also allows `http://localhost:5173` and
+`http://127.0.0.1:5173`.
+
+Image labels follow the server version: JP renders Japanese and INTL renders
+English. Other language fields do not override the image language.
 
 The endpoint returns `image/png` and does not write records to the database.
 The bookmarklet converts the PNG response into a local blob URL and displays it

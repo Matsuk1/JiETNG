@@ -177,6 +177,7 @@ ver=jp
 
 ### 图像生成
 - `format`: 返回格式，`png`（默认）或 `base64`（返回 JSON 含 base64 编码图片）
+- 图片文字由服务器版本决定：`jp` 固定使用日文，`intl` 固定使用英文，不接受其他图片语言覆盖
 
 ### 歌曲搜索
 - `q`: 搜索关键词（支持 "__empty__" 表示空字符串）
@@ -192,11 +193,11 @@ ver=jp
 | 201 | Created | POST 创建权限请求成功 |
 | 202 | Accepted | POST 异步任务（数据同步）已接受 |
 | 400 | Bad Request | 参数缺失或无效 |
+| 404 | Not Found | 资源不存在（用户/任务/权限） |
 | 413 | Payload Too Large | OCR 图片超过上传上限 |
 | 415 | Unsupported Media Type | OCR 图片格式不受支持 |
 | 422 | Unprocessable Content | 无法识别并校验完整成绩 |
 | 429 | Too Many Requests | 请求频率超过限制 |
-| 404 | Not Found | 资源不存在（用户/任务/权限） |
 | 500 | Internal Server Error | 服务器内部错误 |
 | 503 | Service Unavailable | 队列已满 |
 
