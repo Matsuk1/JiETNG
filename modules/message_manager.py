@@ -1304,6 +1304,12 @@ def _generate_score_recognition_single_flex(result, user_id=None):
             node["weight"] = weight
         return node
 
+    def zero_count_color(value, default_color=COLOR_TEXT_PRIMARY):
+        try:
+            return COLOR_TEXT_MUTED if int(value) == 0 else default_color
+        except (TypeError, ValueError):
+            return default_color
+
     parsed = result.get("parsed") or {}
     validation = result.get("validation") or {}
     judgement = parsed.get("sub_judgement") or {}
@@ -1505,7 +1511,7 @@ def _generate_score_recognition_single_flex(result, user_id=None):
         )
         return table_cell(
             f"{value}?" if uncertain else value,
-            color="#C0392B" if uncertain else COLOR_TEXT_PRIMARY,
+            color="#C0392B" if uncertain else zero_count_color(value),
             weight="bold" if uncertain else weight,
         )
 
@@ -1586,7 +1592,7 @@ def _generate_score_recognition_single_flex(result, user_id=None):
                     "type": "text",
                     "text": str(value),
                     "size": "sm",
-                    "color": text_color,
+                    "color": zero_count_color(value, text_color),
                     "weight": "bold",
                     "align": "center",
                     "wrap": False,

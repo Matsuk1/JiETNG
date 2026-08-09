@@ -1003,6 +1003,13 @@ def generate_score_recognition_picture(
         (231, 245, 237),
         (233, 237, 242),
     ]
+    zero_count_fill = (145, 150, 160)
+
+    def count_text_fill(value, default_fill=(20, 24, 32)):
+        try:
+            return zero_count_fill if int(value) == 0 else default_fill
+        except (TypeError, ValueError):
+            return default_fill
 
     table_top = y
     table_bottom = y + row_h * (1 + max(1, len(visible_rows)))
@@ -1050,7 +1057,8 @@ def generate_score_recognition_picture(
                     )
                 align_x = cx + 22 if i == 0 else cx + col_w[i] / 2
                 anchor = "lm" if i == 0 else "mm"
-                draw.text((align_x, y + row_h / 2), str(value), font=font_table_bold if i == 0 else font_table, fill=(20, 24, 32), anchor=anchor)
+                fill_color = (20, 24, 32) if i == 0 else count_text_fill(value)
+                draw.text((align_x, y + row_h / 2), str(value), font=font_table_bold if i == 0 else font_table, fill=fill_color, anchor=anchor)
                 cx += col_w[i]
             y += row_h
     else:
@@ -1085,7 +1093,7 @@ def generate_score_recognition_picture(
                 _draw_score_card(draw, (cell_x, y + 10, cell_right, y + 72), radius=10, fill=bg)
                 loss_fill = (192, 57, 43) if _has_weighted_score_loss(count, loss) else (105, 110, 120)
                 draw.text(((cell_x + cell_right) / 2, y + 27), _format_score_loss(loss), font=font_small_detail, fill=loss_fill, anchor="mm")
-                draw.text(((cell_x + cell_right) / 2, y + 54), str(count), font=font_table_bold, fill=fg, anchor="mm")
+                draw.text(((cell_x + cell_right) / 2, y + 54), str(count), font=font_table_bold, fill=count_text_fill(count, fg), anchor="mm")
                 cell_x += cell_w
             y += 90
             if _has_score_loss(total):
