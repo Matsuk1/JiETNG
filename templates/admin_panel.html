@@ -1781,6 +1781,7 @@
       --admin-sidebar: #17191d;
       --admin-sidebar-text: #b8bdc7;
       --admin-divider: #d9dce2;
+      --admin-header-bg: rgba(255, 255, 255, 0.96);
       --radius-sm: 4px;
       --radius-md: 6px;
       --radius-lg: 8px;
@@ -1918,7 +1919,7 @@
       border: 0;
       border-bottom: 1px solid var(--admin-divider);
       border-radius: 0;
-      background: rgba(255, 255, 255, 0.96);
+      background: var(--admin-header-bg);
       box-shadow: none;
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
@@ -2091,10 +2092,6 @@
       background: transparent;
     }
 
-    .monitor-segment:first-child {
-      padding-left: 0;
-    }
-
     .monitor-segment:last-child {
       border-right: 0;
     }
@@ -2236,15 +2233,12 @@
         --admin-bg: #111316;
         --admin-panel: #191b1f;
         --admin-divider: #303339;
+        --admin-header-bg: rgba(25, 27, 31, 0.96);
       }
 
       html,
       body {
         background: var(--admin-bg);
-      }
-
-      .topbar {
-        background: rgba(25, 27, 31, 0.96);
       }
 
       .tab.active,
@@ -2279,13 +2273,18 @@
         margin: 0;
         padding: 11px 12px;
         border: 0;
-        border-bottom: 1px solid #30333a;
+        border-bottom: 1px solid var(--admin-divider);
         border-radius: 0;
+        background: var(--admin-header-bg);
+        color: var(--text-color);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
       }
 
       .brand-block {
         padding: 0;
         margin: 0;
+        border-bottom-color: var(--admin-divider);
       }
 
       .brand-logo {
@@ -2294,18 +2293,44 @@
       }
 
       .brand-subtitle {
+        color: var(--text-secondary);
         text-align: left;
       }
 
       .mobile-nav-toggle {
-        border-color: #3a3e46;
+        border-color: var(--admin-divider);
         border-radius: 5px;
-        background: #25282e;
-        color: #ffffff;
+        background: var(--admin-bg);
+        color: var(--text-color);
       }
 
       .mobile-nav-content {
         margin-top: 10px;
+      }
+
+      .brand-title,
+      .tab:hover,
+      .tab.active,
+      .tab.active:hover {
+        color: var(--text-color);
+      }
+
+      .side-section-label {
+        color: var(--text-tertiary);
+      }
+
+      .tab {
+        color: var(--text-secondary);
+      }
+
+      .tab:hover {
+        background: var(--hover-bg);
+      }
+
+      .tab.active,
+      .tab.active:hover {
+        background: var(--accent-light);
+        box-shadow: inset 3px 0 0 var(--accent-color);
       }
 
       .admin-main {
@@ -2342,10 +2367,6 @@
       .monitor-segment {
         overflow: hidden;
         padding: 3px 10px;
-      }
-
-      .monitor-segment:first-child {
-        padding-left: 0;
       }
 
       .monitor-mini-grid {
