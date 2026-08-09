@@ -826,7 +826,7 @@ def generate_help_index_flex(user_id=None):
         ),
         (
             _help_i18n(user_id, 'songs_and_records'),
-            "info / rec -flex / fix-rcd / record",
+            "info / rec / record",
             _help_i18n(user_id, 'song_details_score_image_recognition_single_song_records_and_son'),
             "#267D8B",
         ),

@@ -28,8 +28,6 @@ EXACT_HELP_ALIASES = {
     "ranking": "ranking",
     "random": "random_song",
     "rec": "score_recognition",
-    "rec -flex": "score_recognition",
-    "fix-rcd": "score_recognition",
 }
 
 FIRST_WORD_HELP_ALIASES = {
