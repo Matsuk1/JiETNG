@@ -116,11 +116,11 @@ TEXTS["message_manager"]["help_details"] = {'ab50_allb50_ab35_allb35': 'ab50 / a
  'friend_list_and_friend_record_lookup': 'フレンド一覧とフレンド成績検索。',
  'generate_best_all_best_special_score_images_with_optional_filter': 'Best / All Best / '
                                                                      '特殊成績画像を生成し、フィルターを追加できます。',
- 'level_lists_constant_lists_plate_completion_and_target_progress': 'レベルリスト、定数リスト、プレート達成状況、目標進捗。',
+ 'level_lists_constant_lists_plate_completion_and_target_progress': 'レベルリスト、定数リスト、プレート達成状況、目標達成。',
  'level_or_constant_one_value_is_exact_two_values_are_a_range': 'レベルまたは定数。1 つは完全一致、2 つは範囲です。',
  'line_mentions_can_query_registered_users_self_only_commands_do_n': 'LINE '
                                                                      'メンションで登録済みユーザーを検索できます。本人専用コマンドはメンション不可です。',
- 'lists_and_progress': 'リストと進捗',
+ 'lists_and_progress': 'リストと目標',
  'missing_arguments': '引数不足',
  'next_version_preview_using_the_next_rating_structure': '次バージョンプレビュー。次の Rating 構成で成績画像を表示します。',
  'page_number_starting_from_1': 'ページ番号。1 から始まります。',
@@ -200,73 +200,60 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                '形式: すべて非負整数で、空白区切りです。\n'
                '示例: calc 500 50 80 30\n'
                'calc 500 50 80 20 30',
- 'calc_song': '命令: calc-song <6桁楽曲ID>\n'
-              '说明: 指定楽曲の達成率関連情報を計算します。\n'
-              '参数: 必須: <6桁楽曲ID>。曲名ではなく正確な楽曲 ID を指定します。\n'
-              '形式: calc-song の後に空白を入れて ID を書きます。ID は 6 文字です。\n'
-              '示例: calc-song 114514',
- 'export': '命令: export <json|xml> / 成績エクスポート <json|xml>\n'
+ 'export': '命令: export <json|xml>\n'
            '说明: 自分の成績データを指定形式で書き出します。\n'
            '参数: 必須: <形式>。json または xml のみ指定できます。\n'
            '出力: 成功時は一時ダウンロード URL とコピー用ボタンを返します。\n'
            '条件: 成績データが必要です。空の場合は空データの案内を返します。\n'
-           '示例: export json\n'
-           '成績エクスポート xml',
- 'friend_list': '命令: friend list / friends\n'
+           '示例: export json',
+ 'friend_list': '命令: friends\n'
                 '说明: maimai NET から登録済みフレンド一覧を表示します。\n'
                 '参数: 引数なし: friend list または friends をそのまま送信します。\n'
+                '関連: friend-rcd <フレンド番号または名前> [成績画像タイプ] [フィルター] でフレンド成績画像を表示できます。\n'
                 '示例: friends',
- 'friend_rcd': '命令: friend-rcd <フレンド番号または名前> [成績画像タイプ] [フィルター]\n'
-               '说明: 指定したフレンドの成績を表示します。\n'
-               '参数: 必須: <フレンド番号または名前>。friends の番号、または一致するフレンド名を指定します。\n'
-               '任意: [成績画像タイプ]。既定は best50。b50、b40、ab50、ap50、fdx50、r50 などに対応します。\n'
-               '任意: [フィルター]。b50-help と同じ -lv、-diff、-scr、-page などを使えます。\n'
-               '示例: friend-rcd 1\n'
-               'friend-rcd 1 b50 -lv 14 14.9',
- 'level_rank_list': '命令: <レベルまたは定数> level-list / <レベルまたは定数>の定数リスト\n'
+ 'level_rank_list': '命令: <レベルまたは定数> levels\n'
                     '说明: 指定レベルまたは定数の楽曲一覧を表示します。\n'
                     '参数: 必須: <レベルまたは定数>。13、13+、14、13.6 などに対応します。\n'
                     '検索: 整数/+ はレベル、小数は定数の完全一致です。\n'
-                    '示例: 13.6 level-list\n'
-                    '14+ level-list',
- 'level_rank_progress': '命令: <レベルまたはカテゴリ><評価> progress [-uc|-up|-c]\n'
-                        '说明: 指定レベルまたはカテゴリ内の評価目標進捗を表示します。\n'
+                    '示例: 13.6 levels\n'
+                    '14+ levels',
+ 'level_rank_progress': '命令: <レベルまたはカテゴリ><評価> prog [-uc|-up|-c]\n'
+                        '说明: 指定レベルまたはカテゴリ内の評価目標達成状況を表示します。\n'
                         '参数: 必須: <レベルまたはカテゴリ>。レベルは 11-15、カテゴリは '
                         'vocaloid、touhou、popani、gekichu、game、maimai に対応します。\n'
                         '必須: <評価>。レベル/カテゴリの後に書きます。s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+ '
                         'に対応します。\n'
                         '任意: -uc は目標未達成のみ、-up は未プレイのみ、-c は目標達成済みのみを表示します。\n'
-                        '形式: レベルは 14sss+ progress のように連結できます。カテゴリは vocaloid sss+ progress '
+                        '形式: レベルは 14sss+ prog のように連結できます。カテゴリは vocaloid sss+ prog '
                         'のように空白区切りを推奨します。\n'
-                        '示例: 14sss+ progress\n'
-                        '13ap progress -uc\n'
-                        'vocaloid sss+ progress\n'
-                        'popani ss+ progress -up',
- 'level_records': '命令: <レベルまたは定数> records [ページ] / <レベルまたは定数> record-list [ページ]\n'
+                        '示例: 14sss+ prog\n'
+                        '13ap prog -uc\n'
+                        'vocaloid sss+ prog\n'
+                        'popani ss+ prog -up',
+ 'level_records': '命令: <レベルまたは定数> records [ページ]\n'
                   '说明: 指定レベルまたは定数の成績リストを表示します。\n'
                   '参数: 必須: <レベルまたは定数>。13、13+、14、13.6 などに対応します。\n'
                   '任意: [ページ]。1 から始まる正整数。省略時は 1 ページ目です。\n'
                   '検索: 整数/+ はレベル、小数は定数の完全一致です。\n'
                   '示例: 13.6 records\n'
                   '14 records 2',
- 'maimai_update': '命令: maimai update / update\n'
+ 'maimai_update': '命令: maimai update\n'
                   '说明: maimai NET からプレイ済み楽曲成績を同期します。\n'
                   '参数: 引数なし: maimai update または update をそのまま送信します。\n'
                   '示例: maimai update\n'
                   '注意: SEGA アカウント連携が必要です。',
- 'plate': '命令: <プレート名> achievement [-uc|-up|-c] / <プレート名>の達成状況\n'
+ 'plate': '命令: <プレート名> plate [-uc|-up|-c]\n'
           '说明: プレートや称号系目標の達成状況を表示します。\n'
-          '参数: 必須: <プレート名>。achievement の前に置きます。例: 真極、檄将。\n'
+          '参数: 必須: <プレート名>。plate の前に置きます。例: 真極、檄将。\n'
           '任意: -uc は未完成項目のみ、-up は未プレイ項目のみ、-c は達成済み項目のみを表示します。\n'
           '形式: フィルターは末尾に置きます。省略時は全体の達成状況です。\n'
-          '示例: 真極 achievement\n'
-          '真極 achievement -uc',
- 'profile': '命令: profile / getme\n'
+          '示例: 真極 plate\n'
+          '真極 plate -uc',
+ 'profile': '命令: profile\n'
             '说明: 連携状態、サーバー、言語設定などの JiETNG アカウント情報を表示します。\n'
-            '参数: 引数なし: profile または getme をそのまま送信します。\n'
+            '参数: 引数なし: profile をそのまま送信します。\n'
             '制限: 個人情報保護のため個人チャット専用です。\n'
-            '示例: profile\n'
-            'getme',
+            '示例: profile',
  'random_song': '命令: random [条件]\n'
                 '说明: ランダムに 1 曲おすすめします。\n'
                 '参数: 任意: [条件]。レベル、定数、譜面種別、難易度などのキーワードを指定できます。\n'
@@ -274,12 +261,12 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                 '示例: random\n'
                 'random 13+ dx\n'
                 'random 14 mas',
- 'ranking': '命令: rank [jp|intl] / ranking [jp|intl]\n'
+ 'ranking': '命令: rank [jp|intl]\n'
             '说明: DX Rating ランキングを表示します。個人チャットでは総合、グループでは現在の LINE グループ内ランキングを表示します。\n'
             '参数: 任意: [サーバー]。jp、intl に対応。省略時はユーザーの連携サーバーを使います。\n'
-            '形式: rank / ranking の後ろに空白区切りで指定します。\n'
+            '形式: rank の後ろに空白区切りで指定します。\n'
             '示例: rank\n'
-            'ranking intl',
+            'rank intl',
  'rc': '命令: rc <定数>\n'
        '说明: Rating Composition / レート内訳の情報を検索します。\n'
        '参数: 必須: <定数>。1.0 から 15.0 までの数値です。\n'
@@ -298,17 +285,13 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                 '参数: 引数なし: refreshmenu をそのまま送信します。\n'
                 '制限: 送信者本人の Rich Menu のみに影響します。\n'
                 '示例: refreshmenu',
- 'score_recognition': '命令: rec\n'
-                      'rec-flex\n'
-                      'crop\n'
-                      'fix-rcd <曲名>\n'
-                      '说明: rec はリザルト全体を認識します。完全に検証できた場合は生成画像を返し、修正が必要な場合はコピー可能な修正カードを返します。rec-flex '
-                      'は rec の -flex 接尾辞で、常に FlexMsg を返します。crop は認識範囲確認用の裁切画像だけを返します。\n'
-                      '参数: rec、rec-flex、crop はリザルト画像への返信が必須で、追加引数は使用できません。\n'
+ 'score_recognition': '命令: rec [-flex]\n'
+                      '说明: rec はリザルト全体を認識します。完全に検証できた場合は生成画像を返し、修正が必要な場合はコピー可能な修正カードを返します。rec -flex は常に FlexMsg を返します。\n'
+                      '参数: rec、rec -flex はリザルト画像への返信が必須で、追加引数は使用できません。\n'
                       'fix-rcd: 1 行目に [DX]/[STD] を含まない曲名、2 行目に達成率、その後に TAP、HOLD、SLIDE、TOUCH、BREAK '
                       'を記述します。\n'
                       '形式: 達成率の % は任意です。判定行は CP/PF/GR/GD/MS の非負整数 5 個です。\n'
-                      '示例: rec-flex\n'
+                      '示例: rec -flex\n'
                       'fix-rcd HECATONCHEIR\n'
                       '98.4298%\n'
                       '357/211/46/6/3\n'
@@ -340,34 +323,22 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                        '制限: グループでの連投防止のため個人チャット専用です。\n'
                        '示例: designer Jack\n'
                        'designer 譜面 2',
- 'search_by_id': '命令: search <6桁楽曲ID>\n'
-                 '说明: 楽曲 ID で楽曲情報を検索します。\n'
-                 '参数: 必須: <6桁楽曲ID>。曲名ではなく正確な楽曲 ID を指定します。\n'
-                 '形式: search の後に空白を入れて ID を書きます。ID は 6 文字です。\n'
-                 '示例: search 114514',
- 'search_record': '命令: search-record <6桁楽曲ID>\n'
-                  '说明: 楽曲 ID で自分の単曲成績を検索します。\n'
-                  '参数: 必須: <6桁楽曲ID>。曲名ではなく正確な楽曲 ID を指定します。\n'
-                  '形式: 6 文字ちょうど。短すぎる/長すぎる値は無効です。\n'
-                  '示例: search-record 114514',
  'settings': '命令: settings\n'
              '说明: タイムゾーン、言語、背景画像、プライバシーなどを変更する設定 URL を返します。\n'
              '参数: 引数なし: settings をそのまま送信します。\n'
              '制限: 個人チャット専用です。\n'
              '示例: settings',
- 'song_info': '命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n'
+ 'song_info': '命令: <曲名> info\n'
               '说明: 楽曲情報、譜面情報、BPM を表示します。リザルト画像に返信して info を送ると、曲名を自動認識できます。\n'
               '参数: テキスト検索では正式名・部分一致・別名を指定します。画像への返信時は曲名の入力は不要です。\n'
               '検索: 複数候補がある場合は選択候補を返します。\n'
               '示例: ヒバナ info\n'
-              'ヒバナってどんな曲\n'
               '（画像に返信）info',
- 'song_record': '命令: <曲名> record / <曲名> song-record / <曲名>のレコード\n'
+ 'song_record': '命令: <曲名> record\n'
                 '说明: 曲名または別名で自分の単曲成績を検索します。\n'
-                '参数: 必須: <曲名>。record / song-record の前に置き、正式名・部分一致・別名を指定できます。\n'
+                '参数: 必須: <曲名>。record の前に置き、正式名・部分一致・別名を指定できます。\n'
                 '検索: 複数候補がある場合は選択候補を返します。\n'
-                '示例: ヒバナ record\n'
-                'ヒバナ song-record',
+                '示例: ヒバナ record',
  'status': '命令: status\n'
            '说明: 稼働時間、キュー、システムリソースなど Bot の状態を表示します。\n'
            '参数: 引数なし: status をそのまま送信します。\n'
@@ -378,12 +349,12 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                   '条件: SEGA アカウント、または Import Token アカウント連携済みである必要があります。\n'
                   '制限: 個人チャット専用です。\n'
                   '示例: unbind',
- 'version_songs': '命令: <バージョン名> version-list / <バージョン名>のバージョンリスト\n'
+ 'version_songs': '命令: <バージョン名> ver\n'
                   '说明: 指定バージョンの楽曲一覧を表示します。\n'
-                  '参数: 必須: <バージョン名>。version-list の前に置き、正式名または認識可能な略称を指定します。\n'
-                  '形式: バージョン名に空白を含められます。version-list より前の全体を検索語として扱います。\n'
-                  '示例: BUDDiES version-list\n'
-                  'PRiSM PLUS version-list'}
+                  '参数: 必須: <バージョン名>。ver の前に置き、正式名または認識可能な略称を指定します。\n'
+                  '形式: バージョン名に空白を含められます。ver より前の全体を検索語として扱います。\n'
+                  '示例: BUDDiES ver\n'
+                  'PRiSM PLUS ver'}
 # END COMMAND HELP
 
 # BEGIN TEMPLATE TEXTS
@@ -639,7 +610,7 @@ TEXTS["images"] = {
         "incomplete": "未完了",
         "unplayed": "未プレイ",
         "total": "総計",
-        "progress_suffix": "進捗",
+        "progress_suffix": "目標",
         "level_list_suffix": "レベル一覧",
     },
     "song": {

@@ -76,14 +76,12 @@ export xml
 ## 其他
 
 ```text
-donate
 status
 rank
 rank jp
 rank intl
 ```
 
-- `donate`：显示支持开发信息。
 - `status`：显示机器人运行状态。
 - `rank` / `ranking`：查看 DX Rating 排行榜，可指定 `jp` 或 `intl`。
 

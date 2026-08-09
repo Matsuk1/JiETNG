@@ -1,6 +1,6 @@
 ---
 title: B50 レコードコマンド
-description: JiETNG の maimai B50、Best 50、Recent 50、DX Rating、レート内訳、レベル進捗、単曲レコードコマンド一覧。
+description: JiETNG の maimai B50、Best 50、Recent 50、DX Rating、レート内訳、レベル目標、単曲レコードコマンド一覧。
 ---
 
 # レコードコマンド
@@ -48,33 +48,28 @@ b50 -page 2
 
 ```text
 ヒバナ record
-ヒバナ song-record
-ヒバナのレコード
-search-record 123456
 ```
 
-`record` は曲名または別名で検索します。`search-record` は 6 桁の楽曲 ID で検索します。候補が複数ある場合はリストを返します。
+`record` は曲名または別名で検索します。候補が複数ある場合はリストを返します。
 
 ## レベル / 定数リスト
 
 ```text
 13 records
-13 record-list 2
 13.6 records
-14.7 record-list 2
+14.7 records 2
+13.6 levels
 ```
 
 整数はレベル、小数は定数です。末尾の数字はページとして扱われます。
 
-## 進捗
+## 目標
 
 ```text
-13sss+ progress
-14AP進捗
-15fdx+ 进度
-14ss+ progress -uc
-14ss+ progress -up
-14ss+ progress -c
+13sss+ prog
+14ss+ prog -uc
+14ss+ prog -up
+14ss+ prog -c
 ```
 
 目標：`s`、`s+`、`ss`、`ss+`、`sss`、`sss+`、`fc`、`fc+`、`ap`、`ap+`、`fdx`、`fdx+`。
@@ -88,16 +83,13 @@ search-record 123456
 ## プレートとバージョン
 
 ```text
-真極の達成状況
-真極 achievement
-真極の達成状況 -uc
-PRiSM PLUSのバージョンリスト
-PRiSM PLUS version-list
-13.6のレベルリスト
-13.6 level-list
+真極 plate
+真極 plate -uc
+PRiSM PLUS ver
+13.6 levels
 ```
 
-プレート進捗も `-uc`、`-up`、`-c` に対応しています。
+プレートコマンドも `-uc`、`-up`、`-c` に対応しています。
 
 ## メンション
 
@@ -106,7 +98,7 @@ PRiSM PLUS version-list
 ```text
 @friend b50
 @friend 13 records
-@friend 14sss+ progress
+@friend 14sss+ prog
 ```
 
 アカウント、設定、エクスポート、更新コマンドは常に送信者本人にのみ作用します。

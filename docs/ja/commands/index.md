@@ -1,6 +1,6 @@
 ---
 title: maimai DX コマンド一覧
-description: JiETNG の maimai B50、スコア管理、レート内訳、プレート進捗、楽曲検索、エクスポート、Import Token コマンド一覧。
+description: JiETNG の maimai B50、スコア管理、レート内訳、プレート達成状況、楽曲検索、エクスポート、Import Token コマンド一覧。
 ---
 
 # JiETNG コマンド一覧
@@ -48,36 +48,30 @@ description: JiETNG の maimai B50、スコア管理、レート内訳、プレ�
 
 | 形式 | 説明 |
 |------|------|
-| `[曲名] record` / `[曲名] song-record` / `[曲名]のレコード` | 単曲個人成績 |
-| `search-record <楽曲ID>` | 6 桁 ID で個人成績 |
-| `[曲名] info` / `[曲名] song-info` / `[曲名]ってどんな曲` | 楽曲情報 |
-| `search <楽曲ID>` | ID で楽曲情報 |
-| `calc-song <楽曲ID>` | 達成率計算 |
+| `[曲名] record` | 単曲個人成績 |
+| `[曲名] info` | 楽曲情報 |
 | `artist <キーワード> [ページ]` | アーティスト検索 |
 | `designer <キーワード> [ページ]` | 譜面制作者検索 |
 | `bpm <BPMまたは範囲> [ページ]` | BPM 検索。例: `bpm 180` / `bpm 0-120` / `bpm 120-180` |
 
-## リストと進捗
+## リストと目標
 
 | 形式 | 説明 |
 |------|------|
 | `[レベル/定数] records [ページ]` | 成績リスト |
-| `[レベル/定数] record-list [ページ]` | 成績リスト |
-| `[レベル/定数]のレコードリスト [ページ]` | 成績リスト |
-| `[レベル/定数] level-list` | レベル/定数リスト |
-| `[レベル][目標] progress` | レベル目標進捗 |
-| `[レベル][目標] 進捗` / `[レベル][目標] 进度` | 同上 |
+| `[レベル/定数] levels` | レベル/定数リスト |
+| `[レベル][目標] prog` | レベル目標 |
 
 目標：`s`、`s+`、`ss`、`ss+`、`sss`、`sss+`、`fc`、`fc+`、`ap`、`ap+`、`fdx`、`fdx+`。
 
-進捗とプレートは `-uc`、`-up`、`-c` に対応しています。
+目標とプレートは `-uc`、`-up`、`-c` に対応しています。
 
 ## その他
 
 | コマンド | 説明 |
 |----------|------|
-| `[プレート]の達成状況` / `[プレート] achievement` | プレート進捗 |
-| `[バージョン]のバージョンリスト` / `[バージョン] version-list` | バージョン楽曲一覧 |
+| `[プレート] plate` | プレート達成状況 |
+| `[バージョン] ver` | バージョン楽曲一覧 |
 | `friend list` / `friends` | maimai フレンド一覧 |
 | `friend-rcd <コード> [コマンド] [フィルター]` | フレンド成績画像 |
 | `rc <定数>` | Rating 表 |
@@ -85,10 +79,3 @@ description: JiETNG の maimai B50、スコア管理、レート内訳、プレ�
 | `random [レベル/定数]` | ランダム選曲 |
 | `rank` / `ranking` / `rank jp` / `rank intl` | ランキング |
 | LINE 位置メッセージ | JP / INTL 店舗データを統合して近い店舗を表示 |
-
-## 権限リクエスト
-
-```text
-accept-perm-request <request_id>
-reject-perm-request <request_id>
-```

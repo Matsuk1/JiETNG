@@ -1,6 +1,6 @@
 ---
 title: 舞萌DX 查分器命令大全
-description: JiETNG 命令大全，包含舞萌DX / maimai B50、查分、レート内訳、牌子进度、歌曲查询、导出和 Import Token。
+description: JiETNG 命令大全，包含舞萌DX / maimai B50、查分、レート内訳、牌子目标、歌曲查询、导出和 Import Token。
 ---
 
 # JiETNG 命令大全
@@ -20,7 +20,6 @@ description: JiETNG 命令大全，包含舞萌DX / maimai B50、查分、レー
 | `unbind` / `unbind confirm` | 解除绑定并删除数据 |
 | `maimai update` / `update` | 从 maimai NET 同步成绩 |
 | `export json` / `export xml` | 导出加工后的成绩数据 |
-| `donate` | 显示支持开发信息 |
 | `status` | 显示机器人运行状态 |
 | `help` | 显示命令目录 |
 
@@ -48,31 +47,23 @@ description: JiETNG 命令大全，包含舞萌DX / maimai B50、查分、レー
 
 | 命令格式 | 说明 |
 |---------|------|
-| `[曲名] record` / `[曲名] song-record` / `[曲名]のレコード` | 查询单曲个人成绩 |
-| `search-record <6位歌曲ID>` | 用歌曲 ID 查询个人成绩 |
-| `[曲名] info` / `[曲名] song-info` / `[曲名]ってどんな曲` | 查询歌曲信息 |
-| `search <6位歌曲ID>` | 用歌曲 ID 查询歌曲信息 |
-| `calc-song <6位歌曲ID>` | 计算歌曲达成率相关信息 |
+| `[曲名] record` | 查询单曲个人成绩 |
+| `[曲名] info` | 查询歌曲信息 |
 | `artist <关键词> [页码]` | 按艺术家搜索 |
 | `designer <关键词> [页码]` | 按谱师搜索 |
 | `bpm <BPM或范围> [页码]` | 按 BPM 搜索，如 `bpm 180` / `bpm 0-120` / `bpm 120-180` |
 
-## 列表与进度
+## 列表与目标
 
 | 命令格式 | 说明 |
 |---------|------|
 | `[等级/定数] records [页码]` | 查看等级或定数成绩列表 |
-| `[等级/定数] record-list [页码]` | 同上 |
-| `[等级/定数]のレコードリスト [页码]` | 同上 |
-| `[等级/定数] level-list` | 查看等级/定数列表 |
-| `[等级/定数]のレベルリスト` | 同上 |
-| `[等级/定数]の定数リスト` | 同上 |
-| `[等级][目标] progress` | 查看等级达成进度 |
-| `[等级][目标] 進捗` / `[等级][目标] 进度` | 同上 |
+| `[等级/定数] levels` | 查看等级/定数列表 |
+| `[等级][目标] prog` | 查看等级目标达成情况 |
 
 目标支持 `s`、`s+`、`ss`、`ss+`、`sss`、`sss+`、`fc`、`fc+`、`ap`、`ap+`、`fdx`、`fdx+`。
 
-进度和牌子命令支持后缀：
+目标和牌子命令支持后缀：
 
 - `-uc`：未达成
 - `-up`：未游玩
@@ -82,10 +73,8 @@ description: JiETNG 命令大全，包含舞萌DX / maimai B50、查分、レー
 
 | 命令格式 | 说明 |
 |---------|------|
-| `[版本牌子]の達成状況` | 查看牌子达成情况 |
-| `[版本牌子] achievement` | 同上 |
-| `[版本名]のバージョンリスト` | 查看版本歌曲列表 |
-| `[版本名] version-list` | 同上 |
+| `[版本牌子] plate` | 查看牌子达成情况 |
+| `[版本名] ver` | 查看版本歌曲列表 |
 
 ## 好友与群聊
 
@@ -107,12 +96,3 @@ description: JiETNG 命令大全，包含舞萌DX / maimai B50、查分、レー
 | `rank` / `ranking` | 排行榜 |
 | `rank jp` / `rank intl` | 指定服务器排行榜 |
 | 发送 LINE 位置 | 查询附近 maimai 机厅，JP 与 INTL 数据源会合并后排序 |
-
-## 权限请求
-
-开发者 API 权限请求可由用户在 LINE 中处理：
-
-```text
-accept-perm-request <request_id>
-reject-perm-request <request_id>
-```

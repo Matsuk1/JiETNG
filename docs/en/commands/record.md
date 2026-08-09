@@ -1,6 +1,6 @@
 ---
 title: B50 Record Commands
-description: JiETNG maimai DX B50, Best 50, Recent 50, DX Rating, rating breakdown, level progress, and song record command reference.
+description: JiETNG maimai DX B50, Best 50, Recent 50, DX Rating, rating breakdown, level targets, and song record command reference.
 ---
 
 # Record Commands
@@ -48,33 +48,28 @@ Supported fields include level/constant, chart rating, achievement, DX score, DX
 
 ```text
 ヒバナ record
-ヒバナ song-record
-ヒバナのレコード
-search-record 123456
 ```
 
-`record` searches by title or alias. `search-record` uses a 6-character song ID. If multiple songs match, the bot returns a selectable list.
+`record` searches by title or alias. If multiple songs match, the bot returns a selectable list.
 
 ## Level and Constant Lists
 
 ```text
 13 records
-13 record-list 2
 13.6 records
-14.7 record-list 2
+14.7 records 2
+13.6 levels
 ```
 
 Integers mean levels; decimals mean constants. A trailing number is treated as the page.
 
-## Progress
+## Targets
 
 ```text
-13sss+ progress
-14AP進捗
-15fdx+ 进度
-14ss+ progress -uc
-14ss+ progress -up
-14ss+ progress -c
+13sss+ prog
+14ss+ prog -uc
+14ss+ prog -up
+14ss+ prog -c
 ```
 
 Targets: `s`, `s+`, `ss`, `ss+`, `sss`, `sss+`, `fc`, `fc+`, `ap`, `ap+`, `fdx`, `fdx+`.
@@ -90,16 +85,13 @@ Suffixes:
 ## Plates and Versions
 
 ```text
-真極の達成状況
-真極 achievement
-真極の達成状況 -uc
-PRiSM PLUSのバージョンリスト
-PRiSM PLUS version-list
-13.6のレベルリスト
-13.6 level-list
+真極 plate
+真極 plate -uc
+PRiSM PLUS ver
+13.6 levels
 ```
 
-Plate progress also supports `-uc`, `-up`, and `-c`.
+Plate commands also support `-uc`, `-up`, and `-c`.
 
 ## Mentions
 
@@ -108,7 +100,7 @@ In group chats, mention a registered JiETNG user to query their score data:
 ```text
 @friend b50
 @friend 13 records
-@friend 14sss+ progress
+@friend 14sss+ prog
 ```
 
 Only score-related commands support mention queries. Account, settings, export, and update commands are always self-only.

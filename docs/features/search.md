@@ -31,35 +31,32 @@ bpm 180
 bpm 0-120
 bpm 120-180
 ヒバナ info
-ヒバナってどんな曲
+ヒバナ info
 ```
 
 - `artist` 按艺术家名搜索。
 - `designer` 按谱面设计师搜索。
 - `bpm` 按 BPM 精确值或范围搜索，支持从 `0` 开始的范围，以及 `120-180`、`120~180`、`120 180`。
-- `info` / `song-info` / `ってどんな曲` 查询歌曲信息。
+- `info` 查询歌曲信息。
 - 关键词大小写不敏感。
 
 ## 歌曲成绩
 
 ```text
 ヒバナ record
-ヒバナのレコード
-search-record 123456
 ```
 
-`record` 按歌曲名或别名搜索个人成绩。`search-record` 使用 6 位歌曲 ID 精确查询。
+`record` 按歌曲名或别名搜索个人成绩。
 
 ## 等级列表
 
 ```text
 13 records
-13.6 record-list
-13.6 level-list
+13.6 levels
 ```
 
-- `records` / `record-list` 输出你的成绩列表。
-- `level-list` / `のレベルリスト` / `の定数リスト` 输出定数/等级相关的歌曲列表与达成进度视图。
+- `records` 输出你的成绩列表。
+- `levels` 输出定数/等级相关的歌曲列表与目标达成视图。
 
 ## 数据来源
 

@@ -51,8 +51,8 @@ Token の平文は一度だけ表示されます。設定ページでは token �
 b50
 rct50
 13.6 records
-13sss+ progress
-真極 achievement
+13sss+ prog
+真極 plate
 ヒバナ record
 settings
 export json

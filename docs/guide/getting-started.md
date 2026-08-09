@@ -59,9 +59,9 @@ Import Token 明文只显示一次。设置页可以查看所有 token、撤销 
 ```text
 b50
 rct50
-13.6のレコードリスト
-13sss+ progress
-真極の達成状況
+13.6 records
+13sss+ prog
+真極 plate
 ヒバナ record
 settings
 export json

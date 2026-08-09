@@ -274,6 +274,37 @@ def generate_version_list(songs_json, ver="jp"):
 
     return _concat_images_grid(song_imgs)
 
+def wrap_version_content_panel(images, padding=34, radius=28):
+    """Wrap version content images in a translucent rounded panel."""
+    images = [img.convert("RGBA") for img in images if img is not None]
+    if not images:
+        raise ValueError("Version content images must not be empty")
+
+    spacing = 8
+    content_width = max(img.width for img in images)
+    content_height = sum(img.height for img in images) + spacing * (len(images) - 1)
+    panel_width = content_width + padding * 2
+    panel_height = content_height + padding * 2
+
+    panel = Image.new("RGBA", (panel_width, panel_height), (0, 0, 0, 0))
+    overlay = Image.new("RGBA", panel.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    draw.rounded_rectangle(
+        (0, 0, panel_width - 1, panel_height - 1),
+        radius=radius,
+        fill=(255, 255, 255, 224),
+        outline=(210, 220, 235, 190),
+        width=3,
+    )
+    panel.alpha_composite(overlay)
+
+    y = padding
+    for img in images:
+        x = padding + (content_width - img.width) // 2
+        panel.alpha_composite(img, (x, y))
+        y += img.height + spacing
+    return panel
+
 def _concat_images_grid(image_list, cols=4, margin=20, inner_gap=10, bg_color=(0, 0, 0, 0)):
     """
     将图像以网格形式拼接（默认每行4张），每块之间空出间距。

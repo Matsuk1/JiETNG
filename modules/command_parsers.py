@@ -76,7 +76,7 @@ def parse_plate_query(text: str) -> tuple[str, Optional[FilterMode]]:
     filter_mode = parse_filter_mode(text)
     body = re.sub(r"\s*-(uc|up|c)\s*$", "", text, flags=re.IGNORECASE)
     title = re.sub(
-        r"\s*(の達成状況|achievement)$",
+        r"\s+plate$",
         "",
         body,
         flags=re.IGNORECASE,
@@ -91,7 +91,7 @@ def parse_filter_mode(text: str) -> Optional[FilterMode]:
 
 def parse_level_records_query(text: str) -> tuple[str, int]:
     level = re.sub(
-        r"\s*(のレコードリスト|record-list|records)[ 　]*\d*$",
+        r"\s+records[ 　]*\d*$",
         "",
         text,
         flags=re.IGNORECASE,

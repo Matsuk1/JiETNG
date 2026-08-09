@@ -41,8 +41,8 @@ features:
     linkText: ブックマークレット
 
   - icon: 🏆
-    title: 進捗管理
-    details: プレート進捗、レベル別目標、未達成・未プレイ・達成済みの絞り込みに対応。
+    title: 目標管理
+    details: プレート達成状況、レベル別目標、未達成・未プレイ・達成済みの絞り込みに対応。
     link: /commands/
     linkText: コマンド一覧
 
@@ -75,7 +75,7 @@ features:
 
 JiETNG は **maimai でらっくす / maimai DX** 向けのスコア管理 Bot です。SEGA アカウント連携で maimai NET から同期することも、ブラウザのブックマークレットで取得した加工済みデータを Import Token でアップロードすることもできます。
 
-主な機能は B50 / Best 50 画像、Recent 50、DX Rating とレート内訳、楽曲/譜面検索、レベル/定数リスト、プレート進捗、フレンド成績、近くの店舗検索、JSON/XML エクスポート、開発者 API、Import Token です。
+主な機能は B50 / Best 50 画像、Recent 50、DX Rating とレート内訳、楽曲/譜面検索、レベル/定数リスト、プレート達成状況、フレンド成績、近くの店舗検索、JSON/XML エクスポート、開発者 API、Import Token です。
 
 `maimai b50`、`maimai レート内訳`、`maimai DX Rating`、`maimai スコア管理` のような検索から見つけやすいツールを目指しています。
 
@@ -84,7 +84,7 @@ JiETNG は **maimai でらっくす / maimai DX** 向けのスコア管理 Bot �
 1. JiETNG LINE Bot を追加します。
 2. 個別チャットで `bind` を送信します。SEGA アカウント連携、または Import Token モードを選べます。
 3. `maimai update` で公式データを同期するか、[ブックマークレット](/bookmarklet)で公式サイトから取り込みます。
-4. `b50`、`record`、`13.6 records`、`真極 achievement` などを試します。
+4. `b50`、`record`、`13.6 records`、`真極 plate` などを試します。
 
 [ガイドを読む →](/guide/getting-started)
 

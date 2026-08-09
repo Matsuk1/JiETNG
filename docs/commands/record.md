@@ -1,6 +1,6 @@
 ---
 title: B50 成绩命令
-description: JiETNG 舞萌DX 查分器的 B50、Best 50、Recent 50、DX Rating、レート内訳、等级进度和单曲成绩命令说明。
+description: JiETNG 舞萌DX 查分器的 B50、Best 50、Recent 50、DX Rating、レート内訳、等级目标和单曲成绩命令说明。
 ---
 
 # 成绩命令
@@ -62,36 +62,28 @@ b50 -page 2
 
 ```text
 ヒバナ record
-ヒバナ song-record
-ヒバナのレコード
-search-record 123456
 ```
 
-- `record` / `song-record` / `のレコード` 按曲名或别名搜索。
-- `search-record` 使用 6 位歌曲 ID 查询。
+- `record` 按曲名或别名搜索。
 - 如果搜索结果不唯一，Bot 会返回候选列表。
 
 ## 等级与定数列表
 
 ```text
-13のレコードリスト
 13 records
-13 record-list 2
-13.6のレコードリスト
 14.7 records 2
+13.6 levels
 ```
 
 整数表示等级，小数表示定数。末尾数字表示页码。
 
-## 等级达成进度
+## 等级目标
 
 ```text
-13sss+ progress
-14AP進捗
-15fdx+ 进度
-14ss+ progress -uc
-14ss+ progress -up
-14ss+ progress -c
+13sss+ prog
+14ss+ prog -uc
+14ss+ prog -up
+14ss+ prog -c
 ```
 
 支持的目标：`s`、`s+`、`ss`、`ss+`、`sss`、`sss+`、`fc`、`fc+`、`ap`、`ap+`、`fdx`、`fdx+`。
@@ -107,14 +99,10 @@ search-record 123456
 ## 牌子与版本
 
 ```text
-真極の達成状況
-真極 achievement
-真極の達成状況 -uc
-PRiSM PLUSのバージョンリスト
-PRiSM PLUS version-list
-13.6のレベルリスト
-13.6の定数リスト
-13.6 level-list
+真極 plate
+真極 plate -uc
+PRiSM PLUS ver
+13.6 levels
 ```
 
 牌子达成状况同样支持 `-uc`、`-up`、`-c`。
@@ -126,7 +114,7 @@ PRiSM PLUS version-list
 ```text
 @好友 b50
 @好友 13 records
-@好友 14sss+ progress
+@好友 14sss+ prog
 ```
 
 仅成绩类命令支持 @ 查询。账号、设置、导出、更新等 self-only 命令始终只作用于发送者。

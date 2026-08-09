@@ -14,7 +14,7 @@
 1. 私聊 Bot 发送 `bind`。
 2. 在网页中选择绑定 SEGA 账号，或选择 Import Token 导入模式。
 3. SEGA 用户发送 `maimai update`；导入模式用户打开 `settings` 生成 token 后使用[网页书签工具](/zh/bookmarklet)。
-4. 发送 `b50`、`rct50`、`record`、`achievement` 等命令查看成绩。
+4. 发送 `b50`、`rct50`、`record`、`plate` 等命令查看成绩。
 
 ## 可以在聊天里输入 SEGA 密码吗？
 

@@ -1,6 +1,6 @@
 ---
 title: maimai DX Command Reference
-description: JiETNG command reference for maimai B50, score tracking, rating breakdown, plate progress, song lookup, export, and Import Token.
+description: JiETNG command reference for maimai B50, score tracking, rating breakdown, plate status, song lookup, export, and Import Token.
 ---
 
 # JiETNG Command Reference
@@ -48,36 +48,30 @@ Filters such as `-lv`, `-ra`, `-scr`, `-dx`, `-star`, `-diff`, `-ver`, `-type`, 
 
 | Format | Description |
 |--------|-------------|
-| `[song] record` / `[song] song-record` / `[song]のレコード` | Personal record for a song |
-| `search-record <song_id>` | Personal record by 6-character song ID |
-| `[song] info` / `[song] song-info` / `[song]ってどんな曲` | Song details |
-| `search <song_id>` | Song details by ID |
-| `calc-song <song_id>` | Song achievement calculation |
+| `[song] record` | Personal record for a song |
+| `[song] info` | Song details |
 | `artist <keyword> [page]` | Search by artist |
 | `designer <keyword> [page]` | Search by chart designer |
 | `bpm <BPM or range> [page]` | Search by BPM, e.g. `bpm 180` / `bpm 0-120` / `bpm 120-180` |
 
-## Lists and Progress
+## Lists and Targets
 
 | Format | Description |
 |--------|-------------|
 | `[level/constant] records [page]` | Record list |
-| `[level/constant] record-list [page]` | Record list |
-| `[level/constant]のレコードリスト [page]` | Record list |
-| `[level/constant] level-list` | Level/constant list |
-| `[level][target] progress` | Level target progress |
-| `[level][target] 進捗` / `[level][target] 进度` | Same as above |
+| `[level/constant] levels` | Level/constant list |
+| `[level][target] prog` | Level target status |
 
 Targets: `s`, `s+`, `ss`, `ss+`, `sss`, `sss+`, `fc`, `fc+`, `ap`, `ap+`, `fdx`, `fdx+`.
 
-Progress and plate commands support `-uc`, `-up`, and `-c`.
+Target and plate commands support `-uc`, `-up`, and `-c`.
 
 ## Plates, Friends, and Tools
 
 | Command | Description |
 |---------|-------------|
-| `[plate]の達成状況` / `[plate] achievement` | Plate progress |
-| `[version]のバージョンリスト` / `[version] version-list` | Version song list |
+| `[plate] plate` | Plate status |
+| `[version] ver` | Version song list |
 | `friend list` / `friends` | maimai friend list |
 | `friend-rcd <code> [command] [filters]` | Friend score image |
 | `rc <constant>` | Rating table |
@@ -85,10 +79,3 @@ Progress and plate commands support `-uc`, `-up`, and `-c`.
 | `random [level/constant]` | Random song |
 | `rank` / `ranking` / `rank jp` / `rank intl` | Rankings |
 | LINE location message | Nearby maimai arcades, merged from JP and INTL sources |
-
-## Permission Requests
-
-```text
-accept-perm-request <request_id>
-reject-perm-request <request_id>
-```

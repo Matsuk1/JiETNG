@@ -14,7 +14,7 @@ Automatic maimai NET sync requires a full SEGA binding.
 1. Send `bind` in a private chat.
 2. Bind a SEGA account, or choose import-only mode.
 3. SEGA users send `maimai update`; Import Token users create a token in `settings` and use the [bookmarklet](/en/bookmarklet).
-4. Try `b50`, `rct50`, `record`, or `achievement`.
+4. Try `b50`, `rct50`, `record`, or `plate`.
 
 ## Can I type my SEGA password in chat?
 

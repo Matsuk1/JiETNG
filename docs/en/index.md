@@ -42,7 +42,7 @@ features:
 
   - icon: 🏆
     title: Progress Tracking
-    details: Track plate progress, level targets, and cleared / unplayed / uncleared states.
+    details: Track plate status, level targets, and cleared / unplayed / uncleared states.
     link: /en/commands/
     linkText: Command list
 
@@ -75,7 +75,7 @@ features:
 
 JiETNG is a **maimai DX / maimai でらっくす** score tracker and LINE bot. It can sync records from maimai NET through a bound SEGA account, or receive processed records uploaded by the browser bookmarklet through an Import Token.
 
-Current major features include B50 / Best 50 images, Recent 50, DX Rating and rating breakdown views, song/chart lookup, level and constant lists, plate progress, friend record lookup, nearby arcade search, JSON/XML export, developer APIs, and Import Token upload.
+Current major features include B50 / Best 50 images, Recent 50, DX Rating and rating breakdown views, song/chart lookup, level and constant lists, plate status, friend record lookup, nearby arcade search, JSON/XML export, developer APIs, and Import Token upload.
 
 The project is designed for searches such as `maimai b50`, `maimai DX Rating`, `maimai rating breakdown`, and `maimai score tracker`.
 
@@ -84,7 +84,7 @@ The project is designed for searches such as `maimai b50`, `maimai DX Rating`, `
 1. Add the JiETNG LINE Bot.
 2. Send `bind` in a private chat. Bind a SEGA account, or choose import-only mode with an Import Token.
 3. Send `maimai update` to sync official data, or use the [bookmarklet](/en/bookmarklet) on the official maimai site.
-4. Try `b50`, `record`, `13.6 records`, or `真極 achievement`.
+4. Try `b50`, `record`, `13.6 records`, or `真極 plate`.
 
 [Read the guide →](/en/guide/getting-started)
 

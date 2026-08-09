@@ -134,14 +134,14 @@ TEXTS["message_manager"]["help_details"] = {'ab50_allb50_ab35_allb35': 'ab50 / a
                                                                      'optional filters.',
  'level_lists_constant_lists_plate_completion_and_target_progress': 'Level lists, constant lists, '
                                                                     'plate completion, and target '
-                                                                    'progress.',
+                                                                    'status.',
  'level_or_constant_one_value_is_exact_two_values_are_a_range': 'Level or constant. One value is '
                                                                 'exact; two values are a range.',
  'line_mentions_can_query_registered_users_self_only_commands_do_n': 'LINE mentions can query '
                                                                      'registered users; self-only '
                                                                      'commands do not accept '
                                                                      'mentions.',
- 'lists_and_progress': 'Lists and Progress',
+ 'lists_and_progress': 'Lists and Targets',
  'missing_arguments': 'Missing arguments',
  'next_version_preview_using_the_next_rating_structure': 'Next-version preview using the next '
                                                          'rating structure.',
@@ -237,11 +237,6 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                'Format: all values must be non-negative integers separated by spaces.\n'
                '示例: calc 500 50 80 30\n'
                'calc 500 50 80 20 30',
- 'calc_song': '命令: calc-song <6-character song ID>\n'
-              '说明: Calculate achievement-related values for a song.\n'
-              '参数: Required: <6-character song ID>; use the exact song ID, not a title.\n'
-              'Format: put one space after calc-song, then the ID; ID length must be 6.\n'
-              '示例: calc-song 114514',
  'export': '命令: export <json|xml>\n'
            '说明: Export your score data in the selected format.\n'
            '参数: Required: <format>, must be json or xml.\n'
@@ -249,43 +244,33 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
            'Requirement: score data must exist; empty data returns an empty-data message.\n'
            '示例: export json\n'
            'export xml',
- 'friend_list': '命令: friend list / friends\n'
+ 'friend_list': '命令: friends\n'
                 '说明: Show your saved friend list from maimai NET.\n'
                 '参数: No arguments: send friend list or friends as-is.\n'
+                'Related: use friend-rcd <friend number or name> [score image type] [filters] for friend score images.\n'
                 '示例: friends',
- 'friend_rcd': '命令: friend-rcd <friend number or name> [score image type] [filters]\n'
-               '说明: Show records for a selected friend.\n'
-               '参数: Required: <friend number or name>; use the number from friends or a matching '
-               'friend name.\n'
-               'Optional: [score image type], defaults to best50; supports b50, b40, ab50, ap50, '
-               'fdx50, r50, and other B-series types.\n'
-               'Optional: [filters], same filters as b50-help, such as -lv, -diff, -scr, and '
-               '-page.\n'
-               '示例: friend-rcd 1\n'
-               'friend-rcd 1 b50 -lv 14 14.9',
- 'level_rank_list': '命令: <level or constant> level-list / <level or constant>の定数リスト\n'
+ 'level_rank_list': '命令: <level or constant> levels\n'
                     '说明: Show songs for a level or constant.\n'
                     '参数: Required: <level or constant>; supports 13, 13+, 14, 13.6, and similar '
                     'formats.\n'
                     'Matching: integer/+ values match level; decimals match exact constant.\n'
-                    '示例: 13.6 level-list\n'
-                    '14+ level-list',
- 'level_rank_progress': '命令: <level or category><rank> progress [-uc|-up|-c]\n'
-                        '说明: Show progress toward a rank target at a level or song category.\n'
+                    '示例: 13.6 levels\n'
+                    '14+ levels',
+ 'level_rank_progress': '命令: <level or category><rank> prog [-uc|-up|-c]\n'
+                        '说明: Show rank-target status at a level or song category.\n'
                         '参数: Required: <level or category>; levels support 11-15; categories '
                         'support vocaloid, touhou, popani, gekichu, game, and maimai.\n'
                         'Required: <rank>, written after the level/category; supports s, s+, ss, '
                         'ss+, sss, sss+, fc, fc+, ap, ap+, fdx, fdx+.\n'
                         'Optional: -uc shows unfinished target charts, -up shows unplayed charts, '
                         '-c shows completed target charts.\n'
-                        'Format: levels may be joined directly, for example 14sss+ progress; put a '
-                        'space after category names, for example vocaloid sss+ progress.\n'
-                        '示例: 14sss+ progress\n'
-                        '13ap progress -uc\n'
-                        'vocaloid sss+ progress\n'
-                        'popani ss+ progress -up',
- 'level_records': '命令: <level or constant> records [page] / <level or constant> record-list '
-                  '[page]\n'
+                        'Format: levels may be joined directly, for example 14sss+ prog; put a '
+                        'space after category names, for example vocaloid sss+ prog.\n'
+                        '示例: 14sss+ prog\n'
+                        '13ap prog -uc\n'
+                        'vocaloid sss+ prog\n'
+                        'popani ss+ prog -up',
+ 'level_records': '命令: <level or constant> records [page]\n'
                   '说明: Show a record list for a level or constant.\n'
                   '参数: Required: <level or constant>; supports 13, 13+, 14, 13.6, and similar '
                   'formats.\n'
@@ -293,26 +278,25 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                   'Matching: integer/+ values match level; decimals match exact constant.\n'
                   '示例: 13.6 records\n'
                   '14 records 2',
- 'maimai_update': '命令: maimai update / update\n'
+ 'maimai_update': '命令: maimai update\n'
                   '说明: Sync played song records from maimai NET.\n'
                   '参数: No arguments: send maimai update or update as-is.\n'
                   '示例: maimai update\n'
                   '注意: A linked SEGA account is required.',
- 'plate': '命令: <plate title> achievement [-uc|-up|-c] / <plate title>の達成状況\n'
+ 'plate': '命令: <plate title> plate [-uc|-up|-c]\n'
           '说明: Show completion status for plate/title goals.\n'
-          '参数: Required: <plate title>, placed before achievement, such as 真極 or 檄将.\n'
+          '参数: Required: <plate title>, placed before plate, such as 真極 or 檄将.\n'
           'Optional: -uc shows unfinished items, -up shows unplayed items, -c shows completed '
           'items.\n'
           'Format: put the filter at the end; omit it to show full completion.\n'
-          '示例: 真極 achievement\n'
-          '真極 achievement -uc',
- 'profile': '命令: profile / getme\n'
+          '示例: 真極 plate\n'
+          '真極 plate -uc',
+ 'profile': '命令: profile\n'
             '说明: Show your JiETNG account profile, including binding status, server, and language '
             'settings.\n'
-            '参数: No arguments: send profile or getme as-is.\n'
+            '参数: No arguments: send profile as-is.\n'
             'Restriction: private chat only to avoid exposing personal information.\n'
-            '示例: profile\n'
-            'getme',
+            '示例: profile',
  'random_song': '命令: random [condition]\n'
                 '说明: Recommend a random song.\n'
                 '参数: Optional: [condition], such as level, constant, chart type, or difficulty '
@@ -322,13 +306,13 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                 '示例: random\n'
                 'random 13+ dx\n'
                 'random 14 mas',
- 'ranking': '命令: rank [jp|intl] / ranking [jp|intl]\n'
+ 'ranking': '命令: rank [jp|intl]\n'
             '说明: Show the DX Rating ranking. Private chat shows the global ranking; group chat '
             'shows the current LINE group ranking.\n'
             '参数: Optional: [server], supports jp and intl; omitted value uses your linked server.\n'
-            'Format: put the server after rank / ranking, separated by a space.\n'
+            'Format: put the server after rank, separated by a space.\n'
             '示例: rank\n'
-            'ranking intl',
+            'rank intl',
  'rc': '命令: rc <constant>\n'
        '说明: Query Rating Composition / rating breakdown information.\n'
        '参数: Required: <constant>, a number between 1.0 and 15.0.\n'
@@ -347,21 +331,16 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                 '参数: No arguments: send refreshmenu as-is.\n'
                 "Restriction: only affects the sender's Rich Menu.\n"
                 '示例: refreshmenu',
- 'score_recognition': '命令: rec\n'
-                      'rec-flex\n'
-                      'crop\n'
-                      'fix-rcd <title>\n'
+ 'score_recognition': '命令: rec [-flex]\n'
                       '说明: rec recognizes the full score; it returns a generated result image when '
                       'validation is complete, or a correction card when manual fixes are needed. '
-                      'rec-flex is rec with the -flex suffix and always returns FlexMsg. crop '
-                      'returns only crop previews for checking detected regions.\n'
-                      '参数: rec, rec-flex, and crop must reply to a score image and accept no other '
-                      'arguments.\n'
+                      'rec -flex always returns FlexMsg.\n'
+                      '参数: rec and rec -flex must reply to a score image and accept no other arguments.\n'
                       'fix-rcd: put the title without [DX]/[STD] on line 1, achievement on line 2, '
                       'then TAP, HOLD, SLIDE, TOUCH, and BREAK.\n'
                       'Format: achievement may include %; judgement rows must contain five '
                       'non-negative integers as CP/PF/GR/GD/MS.\n'
-                      '示例: rec-flex\n'
+                      '示例: rec -flex\n'
                       'fix-rcd HECATONCHEIR\n'
                       '98.4298%\n'
                       '357/211/46/6/3\n'
@@ -397,39 +376,26 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                        'Restriction: private chat only to prevent group spam.\n'
                        '示例: designer Jack\n'
                        'designer chart 2',
- 'search_by_id': '命令: search <6-character song ID>\n'
-                 '说明: Look up song details by exact song ID.\n'
-                 '参数: Required: <6-character song ID>; use the exact song ID, not a title.\n'
-                 'Format: put one space after search, then the ID; ID length must be 6.\n'
-                 '示例: search 114514',
- 'search_record': '命令: search-record <6-character song ID>\n'
-                  '说明: Look up your record for one song by exact song ID.\n'
-                  '参数: Required: <6-character song ID>; use the exact song ID, not a title.\n'
-                  'Format: exactly 6 characters, usually digits; shorter or longer values are '
-                  'invalid.\n'
-                  '示例: search-record 114514',
  'settings': '命令: settings\n'
              '说明: Return your settings page URL for timezone, language, background image, privacy, '
              'and other options.\n'
              '参数: No arguments: send settings as-is.\n'
              'Restriction: private chat only.\n'
              '示例: settings',
- 'song_info': '命令: <song> info / <song> song-info / <song>ってどんな曲\n'
+ 'song_info': '命令: <song> info\n'
               '说明: Show song details, chart data, and BPM; you can also reply to a result image '
               'with info to recognize its title.\n'
               '参数: For text search, provide a full title, partial title, or alias; no title is '
               'needed when replying to an image.\n'
               'Matching: if multiple songs match, the bot returns selectable candidates.\n'
               '示例: ヒバナ info\n'
-              'ヒバナってどんな曲\n'
               '(reply to image) info',
- 'song_record': '命令: <song> record / <song> song-record / <song>のレコード\n'
+ 'song_record': '命令: <song> record\n'
                 '说明: Look up your record by title or alias.\n'
-                '参数: Required: <song>, placed before record / song-record; accepts full title, '
+                '参数: Required: <song>, placed before record; accepts full title, '
                 'partial title, or alias.\n'
                 'Matching: if multiple songs match, the bot returns selectable candidates.\n'
-                '示例: ヒバナ record\n'
-                'ヒバナ song-record',
+                '示例: ヒバナ record',
  'status': '命令: status\n'
            '说明: Show bot service status, including uptime, task queues, and system resources.\n'
            '参数: No arguments: send status as-is.\n'
@@ -441,14 +407,14 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                   'Requirement: a SEGA account or Import Token account must already be linked.\n'
                   'Restriction: private chat only.\n'
                   '示例: unbind',
- 'version_songs': '命令: <version> version-list / <version>のバージョンリスト\n'
+ 'version_songs': '命令: <version> ver\n'
                   '说明: Show the song list for a version.\n'
-                  '参数: Required: <version>, placed before version-list; accepts full version names '
+                  '参数: Required: <version>, placed before ver; accepts full version names '
                   'or recognizable aliases.\n'
-                  'Format: version names may contain spaces; all text before version-list is used '
+                  'Format: version names may contain spaces; all text before ver is used '
                   'as the query.\n'
-                  '示例: BUDDiES version-list\n'
-                  'PRiSM PLUS version-list'}
+                  '示例: BUDDiES ver\n'
+                  'PRiSM PLUS ver'}
 # END COMMAND HELP
 
 # BEGIN TEMPLATE TEXTS
@@ -714,7 +680,7 @@ TEXTS["images"] = {
         "incomplete": "INCOMPLETE",
         "unplayed": "UNPLAYED",
         "total": "TOTAL",
-        "progress_suffix": "PROGRESS",
+        "progress_suffix": "TARGET",
         "level_list_suffix": "LEVEL LIST",
     },
     "song": {

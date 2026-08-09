@@ -115,11 +115,11 @@ TEXTS["message_manager"]["help_details"] = {'ab50_allb50_ab35_allb35': 'ab50 / a
  'friend_list_and_friend_record_lookup': '好友列表和好友成绩查询。',
  'generate_best_all_best_special_score_images_with_optional_filter': '生成 Best / All Best / '
                                                                      '特殊成绩图，可追加筛选参数。',
- 'level_lists_constant_lists_plate_completion_and_target_progress': '等级列表、定数列表、牌子完成度和目标进度。',
+ 'level_lists_constant_lists_plate_completion_and_target_progress': '等级列表、定数列表、牌子完成度和目标达成。',
  'level_or_constant_one_value_is_exact_two_values_are_a_range': '等级或定数。1 个值精确匹配，2 个值范围。',
  'line_mentions_can_query_registered_users_self_only_commands_do_n': '支持 LINE mention '
                                                                      '查询已注册用户；仅限本人命令不会接受 mention。',
- 'lists_and_progress': '列表与进度',
+ 'lists_and_progress': '列表与目标',
  'missing_arguments': '参数缺失',
  'next_version_preview_using_the_next_rating_structure': '下版本预览。按下一版本 Rating 结构预览成绩图。',
  'page_number_starting_from_1': '页码，从 1 开始。',
@@ -200,71 +200,58 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                '格式: 所有参数必须是非负整数，用空格分隔。\n'
                '示例: calc 500 50 80 30\n'
                'calc 500 50 80 20 30',
- 'calc_song': '命令: calc-song <6位歌曲ID>\n'
-              '说明: 计算指定歌曲的达成率相关信息。\n'
-              '参数: 必填: <6位歌曲ID>，必须是完整歌曲 ID，不支持曲名。\n'
-              '格式: calc-song 后空一格再写 ID；ID 长度必须为 6。\n'
-              '示例: calc-song 114514',
- 'export': '命令: export <json|xml> / 成绩导出 <json|xml>\n'
+ 'export': '命令: export <json|xml>\n'
            '说明: 将自己的成绩数据导出为指定格式。\n'
            '参数: 必填: <格式>，只能填写 json 或 xml。\n'
            '输出: 成功后返回临时下载链接和复制链接按钮。\n'
            '要求: 需要已有成绩数据；如果没有数据会返回空数据提示。\n'
-           '示例: export json\n'
-           '成绩导出 xml',
- 'friend_list': '命令: friend list / friends\n'
+           '示例: export json',
+ 'friend_list': '命令: friends\n'
                 '说明: 查看已添加的好友列表。\n'
                 '参数: 无需参数: 直接发送命令，会从 maimai NET 读取好友列表。\n'
+                '相关: 好友成绩图可通过 friend-rcd <好友编号或名称> [成绩图类型] [筛选参数] 使用。\n'
                 '示例: friends',
- 'friend_rcd': '命令: friend-rcd <好友编号或名称> [成绩图类型] [筛选参数]\n'
-               '说明: 查看指定好友的成绩。\n'
-               '参数: 必填: <好友编号或名称>，编号来自 friends 列表，也可以填写可匹配的好友名。\n'
-               '可选: [成绩图类型]，默认 best50；支持 b50、b40、ab50、ap50、fdx50、r50 等 B 系列类型。\n'
-               '可选: [筛选参数]，与 b50-help 中的筛选参数一致，例如 -lv、-diff、-scr、-page。\n'
-               '示例: friend-rcd 1\n'
-               'friend-rcd 1 b50 -lv 14 14.9',
- 'level_rank_list': '命令: <等级或定数> level-list / <等级或定数>の定数リスト\n'
+ 'level_rank_list': '命令: <等级或定数> levels\n'
                     '说明: 查看指定等级或定数相关歌曲列表。\n'
                     '参数: 必填: <等级或定数>，支持 13、13+、14、13.6 等格式。\n'
                     '匹配: 整数/带 + 按等级匹配，小数按定数精确匹配。\n'
-                    '示例: 13.6 level-list\n'
-                    '14+ level-list',
- 'level_rank_progress': '命令: <等级或分类><评价> progress [-uc|-up|-c]\n'
-                        '说明: 查看指定等级或分类中评价目标的达成进度。\n'
+                    '示例: 13.6 levels\n'
+                    '14+ levels',
+ 'level_rank_progress': '命令: <等级或分类><评价> prog [-uc|-up|-c]\n'
+                        '说明: 查看指定等级或分类中评价目标的达成情况。\n'
                         '参数: 必填: <等级或分类>，等级支持 11-15；分类支持 '
                         'vocaloid、touhou、popani、gekichu、game、maimai。\n'
                         '必填: <评价>，紧跟等级/分类书写，支持 s、s+、ss、ss+、sss、sss+、fc、fc+、ap、ap+、fdx、fdx+。\n'
                         '可选: -uc 仅看未完成目标，-up 仅看未游玩，-c 仅看已完成目标。\n'
-                        '格式: 等级可直接连写，例如 14sss+ progress；分类建议和评价之间加空格，例如 vocaloid sss+ progress。\n'
-                        '示例: 14sss+ progress\n'
-                        '13ap progress -uc\n'
-                        'vocaloid sss+ progress\n'
-                        'popani ss+ progress -up',
- 'level_records': '命令: <等级或定数> records [页码] / <等级或定数> record-list [页码]\n'
+                        '格式: 等级可直接连写，例如 14sss+ prog；分类建议和评价之间加空格，例如 vocaloid sss+ prog。\n'
+                        '示例: 14sss+ prog\n'
+                        '13ap prog -uc\n'
+                        'vocaloid sss+ prog\n'
+                        'popani ss+ prog -up',
+ 'level_records': '命令: <等级或定数> records [页码]\n'
                   '说明: 查看指定等级或定数的成绩列表。\n'
                   '参数: 必填: <等级或定数>，支持 13、13+、14、13.6 等格式。\n'
                   '可选: [页码]，正整数，从 1 开始；省略时显示第 1 页。\n'
                   '匹配: 整数/带 + 按等级匹配，小数按定数精确匹配。\n'
                   '示例: 13.6 records\n'
                   '14 records 2',
- 'maimai_update': '命令: maimai update / update\n'
+ 'maimai_update': '命令: maimai update\n'
                   '说明: 从 maimai NET 获取并更新已游玩的歌曲成绩数据。\n'
                   '参数: 无需参数: 直接发送命令即可开始同步。\n'
                   '示例: maimai update\n'
                   '注意: 需要先绑定 SEGA 账号。',
- 'plate': '命令: <牌子名> achievement [-uc|-up|-c] / <牌子名>の達成状況\n'
+ 'plate': '命令: <牌子名> plate [-uc|-up|-c]\n'
           '说明: 查看版本牌子或称号类目标的完成情况。\n'
-          '参数: 必填: <牌子名>，写在 achievement 前面，例如 真極、檄将 等。\n'
+          '参数: 必填: <牌子名>，写在 plate 前面，例如 真極、檄将 等。\n'
           '可选: -uc 仅看未完成项目，-up 仅看未游玩项目，-c 仅看已完成项目。\n'
           '格式: 过滤项写在命令最后；不写过滤项时显示完整完成度。\n'
-          '示例: 真極 achievement\n'
-          '真極 achievement -uc',
- 'profile': '命令: profile / getme\n'
+          '示例: 真極 plate\n'
+          '真極 plate -uc',
+ 'profile': '命令: profile\n'
             '说明: 查看自己的 JiETNG 账号信息，包括绑定状态、服务器和语言设置。\n'
-            '参数: 无需参数: 直接发送 profile 或 getme。\n'
+            '参数: 无需参数: 直接发送 profile。\n'
             '限制: 只能在私聊使用，避免公开个人信息。\n'
-            '示例: profile\n'
-            'getme',
+            '示例: profile',
  'random_song': '命令: random [条件]\n'
                 '说明: 随机推荐一首歌曲。\n'
                 '参数: 可选: [条件]，可写等级、定数、谱面类型、难度等关键词。\n'
@@ -272,12 +259,12 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                 '示例: random\n'
                 'random 13+ dx\n'
                 'random 14 mas',
- 'ranking': '命令: rank [jp|intl] / ranking [jp|intl]\n'
+ 'ranking': '命令: rank [jp|intl]\n'
             '说明: 查看 DX Rating 排行榜。私聊显示总体榜，群聊显示当前 LINE 群内榜。\n'
             '参数: 可选: [服务器]，支持 jp、intl；省略时使用当前用户绑定的服务器。\n'
-            '格式: 服务器参数写在 rank / ranking 后面，用空格分隔。\n'
+            '格式: 服务器参数写在 rank 后面，用空格分隔。\n'
             '示例: rank\n'
-            'ranking intl',
+            'rank intl',
  'rc': '命令: rc <定数>\n'
        '说明: 查询 Rating Composition / レート内訳相关信息。\n'
        '参数: 必填: <定数>，支持 1.0 到 15.0 之间的数字。\n'
@@ -296,17 +283,13 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                 '参数: 无需参数: 直接发送 refreshmenu。\n'
                 '限制: 仅影响发送者自己的 Rich Menu。\n'
                 '示例: refreshmenu',
- 'score_recognition': '命令: rec\n'
-                      'rec-flex\n'
-                      'crop\n'
-                      'fix-rcd <曲名>\n'
-                      '说明: rec 识别完整成绩；能完全校验时返回成绩图片，需要修正时返回可复制的修正卡片。rec-flex 是 rec 的 -flex '
-                      '后缀形式，会强制返回 FlexMsg。crop 只返回裁切图，用于检查识别区域。\n'
-                      '参数: rec、rec-flex 和 crop 都必须回复一张成绩图，不接受其他参数。\n'
+ 'score_recognition': '命令: rec [-flex]\n'
+                      '说明: rec 识别完整成绩；能完全校验时返回成绩图片，需要修正时返回可复制的修正卡片。rec -flex 会强制返回 FlexMsg。\n'
+                      '参数: rec 和 rec -flex 都必须回复一张成绩图，不接受其他参数。\n'
                       'fix-rcd: 第一行填写不含 [DX]/[STD] 的曲名，第二行填写达成率，随后依次填写 '
                       'TAP、HOLD、SLIDE、TOUCH、BREAK。\n'
                       '格式: 达成率可带 %；判定行必须为 CP/PF/GR/GD/MS 五个非负整数。\n'
-                      '示例: rec-flex\n'
+                      '示例: rec -flex\n'
                       'fix-rcd HECATONCHEIR\n'
                       '98.4298%\n'
                       '357/211/46/6/3\n'
@@ -338,34 +321,22 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                        '限制: 仅限私聊使用，避免群聊刷屏。\n'
                        '示例: designer Jack\n'
                        'designer 譜面 2',
- 'search_by_id': '命令: search <6位歌曲ID>\n'
-                 '说明: 用歌曲 ID 精确查询歌曲信息。\n'
-                 '参数: 必填: <6位歌曲ID>，必须是完整歌曲 ID，不支持曲名。\n'
-                 '格式: search 后空一格再写 ID；ID 长度必须为 6。\n'
-                 '示例: search 114514',
- 'search_record': '命令: search-record <6位歌曲ID>\n'
-                  '说明: 用歌曲 ID 精确查询自己的单曲成绩。\n'
-                  '参数: 必填: <6位歌曲ID>，必须是完整歌曲 ID，不支持曲名。\n'
-                  '格式: 6 个字符，通常为数字；不足或过长都会视为无效。\n'
-                  '示例: search-record 114514',
  'settings': '命令: settings\n'
              '说明: 返回个人设置页面链接，用于修改时区、语言、背景图片、隐私等选项。\n'
              '参数: 无需参数: 直接发送 settings。\n'
              '限制: 只能在私聊使用。\n'
              '示例: settings',
- 'song_info': '命令: <曲名> info / <曲名> song-info / <曲名>ってどんな曲\n'
+ 'song_info': '命令: <曲名> info\n'
               '说明: 查询歌曲基本信息、谱面信息和 BPM；也可以回复成绩图片直接发送 info，自动识别曲名。\n'
               '参数: 文本查询时填写 <曲名>，可以是完整曲名、部分曲名或别名；图片查询时无需填写曲名。\n'
               '匹配: 如果匹配到多首歌，会返回可选择的候选结果。\n'
               '示例: ヒバナ info\n'
-              'ヒバナってどんな曲\n'
               '（回复图片）info',
- 'song_record': '命令: <曲名> record / <曲名> song-record / <曲名>のレコード\n'
+ 'song_record': '命令: <曲名> record\n'
                 '说明: 按曲名或别名查询自己的单曲成绩。\n'
-                '参数: 必填: <曲名>，写在 record / song-record 前面，可以是完整曲名、部分曲名或别名。\n'
+                '参数: 必填: <曲名>，写在 record 前面，可以是完整曲名、部分曲名或别名。\n'
                 '匹配: 如果匹配到多首歌，会返回可选择的候选结果。\n'
-                '示例: ヒバナ record\n'
-                'ヒバナ song-record',
+                '示例: ヒバナ record',
  'status': '命令: status\n说明: 查看机器人服务状态，包括运行时间、任务队列和系统资源。\n参数: 无需参数: 直接发送 status。\n示例: status',
  'unbind_prompt': '命令: unbind\n'
                   '说明: 返回一次性 SEGA 账号解绑链接，在浏览器内确认后才会删除账号数据。\n'
@@ -373,12 +344,12 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                   '要求: 必须已经绑定 SEGA 账号或已启用 Import Token 账号。\n'
                   '限制: 只能在私聊使用。\n'
                   '示例: unbind',
- 'version_songs': '命令: <版本名> version-list / <版本名>のバージョンリスト\n'
+ 'version_songs': '命令: <版本名> ver\n'
                   '说明: 查看指定版本歌曲列表。\n'
-                  '参数: 必填: <版本名>，写在 version-list 前面，支持版本完整名或可识别简称。\n'
-                  '格式: 版本名可包含空格；整段 version-list 前的文本都会作为版本查询词。\n'
-                  '示例: BUDDiES version-list\n'
-                  'PRiSM PLUS version-list'}
+                  '参数: 必填: <版本名>，写在 ver 前面，支持版本完整名或可识别简称。\n'
+                  '格式: 版本名可包含空格；整段 ver 前的文本都会作为版本查询词。\n'
+                  '示例: BUDDiES ver\n'
+                  'PRiSM PLUS ver'}
 # END COMMAND HELP
 
 # BEGIN TEMPLATE TEXTS
@@ -631,7 +602,7 @@ TEXTS["images"] = {
         "incomplete": "未完成",
         "unplayed": "未游玩",
         "total": "总计",
-        "progress_suffix": "进度",
+        "progress_suffix": "目标",
         "level_list_suffix": "等级列表",
     },
     "song": {

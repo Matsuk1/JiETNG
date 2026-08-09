@@ -814,7 +814,7 @@ def generate_help_index_flex(user_id=None):
     groups = [
         (
             _help_i18n(user_id, 'account_and_system'),
-            "bind / rebind / settings / profile / update / export / status",
+            "help / bind / rebind / settings / profile / unbind / update / export / status",
             _help_i18n(user_id, 'binding_settings_profile_sync_export_and_status'),
             "#E85D75",
         ),
@@ -826,7 +826,7 @@ def generate_help_index_flex(user_id=None):
         ),
         (
             _help_i18n(user_id, 'songs_and_records'),
-            "info / rec / record / search / search-record / calc-song",
+            "info / rec -flex / fix-rcd / record",
             _help_i18n(user_id, 'song_details_score_image_recognition_single_song_records_and_son'),
             "#267D8B",
         ),
@@ -838,13 +838,13 @@ def generate_help_index_flex(user_id=None):
         ),
         (
             _help_i18n(user_id, 'lists_and_progress'),
-            "records / record-list / level-list / achievement / progress",
+            "records / levels / ver / plate / prog",
             _help_i18n(user_id, 'level_lists_constant_lists_plate_completion_and_target_progress'),
             "#B86E19",
         ),
         (
             _help_i18n(user_id, 'social'),
-            "friends / friend-rcd",
+            "friends",
             _help_i18n(user_id, 'friend_list_and_friend_record_lookup'),
             "#315B7D",
         ),
@@ -1207,8 +1207,7 @@ def generate_song_info_flex(song_id, image_url, image_width, image_height, user_
             {
                 "type": "postback",
                 "label": record_label,
-                "data": f"search-record {song_id}",
-                "displayText": f"search-record {song_id}"
+                "data": f"search-record {song_id}"
             },
             bg_color="#315B7D",
         ))
@@ -1219,8 +1218,7 @@ def generate_song_info_flex(song_id, image_url, image_width, image_height, user_
             {
                 "type": "postback",
                 "label": info_label,
-                "data": f"search {song_id}",
-                "displayText": f"search {song_id}"
+                "data": f"search-song {song_id}"
             },
             bg_color="#315B7D",
         ))
@@ -2752,7 +2750,7 @@ def generate_search_results_flex(user_id, matching_songs, search_type='song', id
         id_use_text = f"&id_use={id_use}"
 
     config = {
-        'command': 'search' if search_type == 'song' else 'search-record',
+        'command': 'search-song' if search_type == 'song' else 'search-record',
         'title': format_catalog(
             f"message_manager.search_titles.{search_type}",
             count=len(matching_songs),
@@ -2816,8 +2814,7 @@ def generate_search_results_flex(user_id, matching_songs, search_type='song', id
                     {
                         "type": "postback",
                         "label": "→",
-                        "data": f"{config['command']} {song_id}{id_use_text}",
-                        "displayText": f"{config['command']} {song_id}"
+                        "data": f"{config['command']} {song_id}{id_use_text}"
                     }
                 )
             ]
@@ -3084,8 +3081,7 @@ def generate_song_list_flex(user_id, title, matching_songs, page, command_prefix
                     {
                         "type": "postback",
                         "label": "→",
-                        "data": f"search {song_id}",
-                        "displayText": f"search {song_id}"
+                        "data": f"search-song {song_id}"
                     }
                 )
             ]

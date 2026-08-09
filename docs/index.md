@@ -41,8 +41,8 @@ features:
     linkText: 查看书签工具
 
   - icon: 🏆
-    title: 牌子与进度
-    details: 支持版本达成状况、等级达成进度、未游玩/未达成/已达成筛选。
+    title: 牌子与目标
+    details: 支持版本达成状况、等级目标、未游玩/未达成/已达成筛选。
     link: /zh/commands/
     linkText: 查看命令大全
 
@@ -88,7 +88,7 @@ JiETNG 是面向 **maimai でらっくす / 舞萌DX** 的查分器和 LINE 成�
 1. 添加 JiETNG LINE Bot。
 2. 私聊发送 `bind`，选择绑定 SEGA 账号，或选择 Import Token 导入模式。
 3. 发送 `maimai update` 同步官方数据，或使用[网页书签工具](/zh/bookmarklet)从官方网页读取并上传成绩。
-4. 发送 `b50`、`record`、`13.6のレコードリスト`、`真極の達成状況` 等命令查看结果。
+4. 发送 `b50`、`record`、`13.6 records`、`真極 plate` 等命令查看结果。
 
 [阅读快速开始 →](/zh/guide/getting-started)
 

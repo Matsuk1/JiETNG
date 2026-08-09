@@ -51,8 +51,8 @@ Import Token plaintext is shown only once. The settings page can list tokens, re
 b50
 rct50
 13.6 records
-13sss+ progress
-真極 achievement
+13sss+ prog
+真極 plate
 ヒバナ record
 settings
 export json

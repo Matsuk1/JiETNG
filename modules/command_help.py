@@ -28,16 +28,11 @@ EXACT_HELP_ALIASES = {
     "ranking": "ranking",
     "random": "random_song",
     "rec": "score_recognition",
-    "rec-flex": "score_recognition",
-    "crop": "score_recognition",
+    "rec -flex": "score_recognition",
     "fix-rcd": "score_recognition",
 }
 
 FIRST_WORD_HELP_ALIASES = {
-    "friend-rcd": "friend_rcd",
-    "search-record": "search_record",
-    "search": "search_by_id",
-    "calc-song": "calc_song",
     "artist": "search_by_artist",
     "designer": "search_by_designer",
     "bpm": "search_by_bpm",
@@ -50,24 +45,12 @@ FIRST_WORD_HELP_ALIASES = {
 
 SUFFIX_HELP_ALIASES = {
     "record": "song_record",
-    "song-record": "song_record",
-    "のレコード": "song_record",
     "info": "song_info",
-    "song-info": "song_info",
-    "ってどんな曲": "song_info",
-    "version-list": "version_songs",
-    "のバージョンリスト": "version_songs",
-    "level-list": "level_rank_list",
-    "の定数リスト": "level_rank_list",
-    "のレベルリスト": "level_rank_list",
+    "ver": "version_songs",
+    "levels": "level_rank_list",
     "records": "level_records",
-    "record-list": "level_records",
-    "のレコードリスト": "level_records",
-    "achievement": "plate",
-    "の達成状況": "plate",
-    "progress": "level_rank_progress",
-    "進捗": "level_rank_progress",
-    "进度": "level_rank_progress",
+    "plate": "plate",
+    "prog": "level_rank_progress",
 }
 
 REQUIRED_PARAM_HELP_WORDS = set(FIRST_WORD_HELP_ALIASES) | set(SUFFIX_HELP_ALIASES)
@@ -107,22 +90,20 @@ def detect_command_help_key(text, *, b_command_words=(), progress_rank_pattern="
     if first_word in FIRST_WORD_HELP_ALIASES:
         return FIRST_WORD_HELP_ALIASES[first_word]
 
-    suffix_matches = (
-        (("のレコード", "song-record", "record"), "song_record"),
-        (("ってどんな曲", "info", "song-info"), "song_info"),
-        (("のバージョンリスト", "version-list"), "version_songs"),
-        (("の定数リスト", "のレベルリスト", "level-list"), "level_rank_list"),
-    )
-    for suffixes, help_key in suffix_matches:
-        if lowered.endswith(suffixes):
-            return help_key
-
-    if re.match(r".+(のレコードリスト|record-list|records)(?:[ 　]*\d*)?$", lowered):
+    if re.match(r"^.+\s+record$", lowered):
+        return "song_record"
+    if re.match(r"^.+\s+info$", lowered):
+        return "song_info"
+    if re.match(r"^.+\s+ver$", lowered):
+        return "version_songs"
+    if re.match(r"^.+\s+levels$", lowered):
+        return "level_rank_list"
+    if re.match(r"^.+\s+records(?:[ 　]*\d*)?$", lowered):
         return "level_records"
-    if re.match(r"^.+(の達成状況|achievement)(\s*-(uc|up|c))?$", lowered):
+    if re.match(r"^.+\s+plate(\s*-(uc|up|c))?$", lowered):
         return "plate"
     if progress_rank_pattern and re.match(
-        fr"^.+\s*{progress_rank_pattern}\s*(progress|進捗|进度)\s*(?:-(uc|up|c))?$",
+        fr"^.+\s*{progress_rank_pattern}\s*prog\s*(?:-(uc|up|c))?$",
         lowered,
     ):
         return "level_rank_progress"

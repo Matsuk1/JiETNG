@@ -21,7 +21,7 @@ def resolve_progress_category(target):
 def parse_level_rank_progress(text):
     body = re.sub(r"\s+", " ", text.strip().lower())
     body = re.sub(r"\s*-(uc|up|c)\s*$", "", body).strip()
-    body = re.sub(r"\s*(progress|進捗|进度)\s*$", "", body).strip()
+    body = re.sub(r"\s*prog\s*$", "", body).strip()
     match = re.search(fr"{PROGRESS_RANK_PATTERN}\s*$", body)
     if not match:
         return None, None

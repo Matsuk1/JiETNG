@@ -29,24 +29,21 @@ bpm 180
 bpm 0-120
 bpm 120-180
 ヒバナ info
-ヒバナってどんな曲
 ```
 
 - `artist` searches by artist.
 - `designer` searches by chart designer.
 - `bpm` searches by exact BPM or range; ranges can start from `0`, and `120-180`, `120~180`, and `120 180` are supported.
-- `info` / `song-info` / `ってどんな曲` shows song details.
+- `info` shows song details.
 - Keywords are case-insensitive.
 
 ## Song Records
 
 ```text
 ヒバナ record
-ヒバナのレコード
-search-record 123456
 ```
 
-`record` searches your record by title or alias. `search-record` uses the 6-character song ID.
+`record` searches your record by title or alias.
 
 ## Data Source
 

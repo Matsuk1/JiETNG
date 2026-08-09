@@ -65,7 +65,11 @@ from linebot.v3.webhooks import (
 )
 
 # Song and record generators
-from modules.song_generator import song_info_generate, generate_version_list
+from modules.song_generator import (
+    generate_version_list,
+    song_info_generate,
+    wrap_version_content_panel,
+)
 from modules.record_generator import (
     generate_cover,
     generate_level_rank_progress_image,
@@ -1654,10 +1658,10 @@ def async_get_song_record_task(event):
         mai_ver_use = "jp"
 
     # 提取歌曲名称（移除命令后缀）
-    acronym = re.sub(r"\s*(のレコード|song-record|record)$", "", user_message).strip()
+    acronym = re.sub(r"\s+record$", "", user_message, flags=re.IGNORECASE).strip()
 
     try:
-        track_event('image_gen', user_id=user_id, metadata={'command': 'song-record', 'source': 'line'})
+        track_event('image_gen', user_id=user_id, metadata={'command': 'record', 'source': 'line'})
     except Exception: pass
 
     # 调用实际的查询函数
@@ -1697,7 +1701,7 @@ def async_get_song_record_by_id_task(event):
         id_use = user_message.split("id_use=", 1)[1]
 
     try:
-        track_event('image_gen', user_id=user_id, metadata={'command': 'song-record-id', 'source': 'line'})
+        track_event('image_gen', user_id=user_id, metadata={'command': 'search-record', 'source': 'line'})
     except Exception: pass
 
     # 调用实际的查询函数
@@ -3415,10 +3419,17 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
         ver=ver,
     )
 
-    if version_img is None:
-        img = _compose_user_images([version_list_img], user_id)
-    else:
-        img = _compose_user_images([version_img, version_list_img], user_id)
+    version_panel = None
+    try:
+        version_panel = wrap_version_content_panel([version_list_img])
+        content_images = [version_panel] if version_img is None else [version_img, version_panel]
+        img = _compose_user_images(content_images, user_id)
+    finally:
+        version_list_img.close()
+        if version_panel is not None:
+            version_panel.close()
+        if version_img is not None:
+            version_img.close()
 
     original_url, preview_url = await upload_generated_image(img, user_id)
 
@@ -3853,7 +3864,7 @@ def _enqueue_score_recognition_task(event, command: str, quoted_message_id: str,
 
 def _handle_recognize_command(event, cleaned_text: str) -> bool:
     command_text = cleaned_text.strip().lower()
-    command_match = re.fullmatch(r"(?P<command>rec|crop)(?P<suffix>-flex)?", command_text)
+    command_match = re.fullmatch(r"(?P<command>rec|crop)(?:\s+(?P<suffix>-flex))?", command_text)
     if not command_match:
         return False
     command = command_match.group("command")
@@ -4089,11 +4100,51 @@ def cmd_ranking(ctx):
         group_key=_ranking_group_key(ctx.event),
     )
 
-def cmd_search_by_id(ctx):
-    return asyncio.run(search_song_by_id(ctx.user_id, ctx.match.group(1), ctx.mai_ver))
+def handle_postback_command(event, text):
+    user_id = event.source.user_id
+    source_type = getattr(event.source, 'type', 'user')
+    cleaned = re.sub(r"\s+", " ", text.strip())
 
-def cmd_calc_song(ctx):
-    return calc_by_id(ctx.user_id, ctx.match.group(1), ctx.mai_ver)
+    accept_match = re.fullmatch(r"accept-perm-request\s+(\S+)", cleaned, re.IGNORECASE)
+    if accept_match:
+        reply_msg = handle_accept_perm_request(user_id, accept_match.group(1))
+        smart_reply(user_id, event.reply_token, reply_msg, configuration,
+                    source_type=source_type)
+        return True
+
+    reject_match = re.fullmatch(r"reject-perm-request\s+(\S+)", cleaned, re.IGNORECASE)
+    if reject_match:
+        reply_msg = handle_reject_perm_request(user_id, reject_match.group(1))
+        smart_reply(user_id, event.reply_token, reply_msg, configuration,
+                    source_type=source_type)
+        return True
+
+    search_match = re.fullmatch(r"search-song\s+(\S{6})", cleaned, re.IGNORECASE)
+    if search_match:
+        ver = get_user_field(user_id, 'version') or "jp"
+        reply_msg = asyncio.run(search_song_by_id(user_id, search_match.group(1), ver))
+        smart_reply(user_id, event.reply_token, reply_msg, configuration,
+                    addition=False, source_type=source_type)
+        return True
+
+    calc_match = re.fullmatch(r"calc-song\s+(\S{6})", cleaned, re.IGNORECASE)
+    if calc_match:
+        ver = get_user_field(user_id, 'version') or "jp"
+        reply_msg = calc_by_id(user_id, calc_match.group(1), ver)
+        smart_reply(user_id, event.reply_token, reply_msg, configuration,
+                    addition=False, source_type=source_type)
+        return True
+
+    record_match = re.fullmatch(r"search-record\s+(\S{6})(?:&id_use=(\S+))?", cleaned, re.IGNORECASE)
+    if record_match:
+        ver = get_user_field(user_id, 'version') or "jp"
+        id_use = record_match.group(2) or user_id
+        reply_msg = asyncio.run(get_song_record_by_id(user_id, id_use, record_match.group(1), ver))
+        smart_reply(user_id, event.reply_token, reply_msg, configuration,
+                    source_type=source_type)
+        return True
+
+    return False
 
 def cmd_artist(ctx):
     keyword, page = parse_paginated_keyword(ctx.text)
@@ -4117,7 +4168,7 @@ def cmd_bpm(ctx):
     )
 
 def cmd_song_info(ctx):
-    keyword = re.sub(r"\s*(ってどんな曲|info|song-info)$", "", ctx.text).strip()
+    keyword = re.sub(r"(\s+info|ってどんな曲)$", "", ctx.text, flags=re.IGNORECASE).strip()
     if not keyword:
         quoted_message_id = getattr(ctx.event.message, "quoted_message_id", None)
         if not quoted_message_id:
@@ -4166,18 +4217,17 @@ def cmd_level_records(ctx):
 def cmd_version_songs(ctx):
     msg = ctx.text
     title = re.sub(r"\s*\+\s*", " PLUS",
-                   re.sub(r"(のバージョンリスト|version-list)$", "", msg)).strip()
+                   re.sub(r"\s+ver$", "", msg, flags=re.IGNORECASE)).strip()
     return asyncio.run(generate_version_songs(ctx.user_id, title, ctx.mai_ver))
 
 def cmd_level_rank_list(ctx):
-    """の定数リスト / のレベルリスト / level-list
-    旧实现传 user_id 而非 id_use（即使 @ 别人也查自己），保留以维持原行为。"""
-    level = re.sub(r"\s*(の定数リスト|のレベルリスト|level-list)$", "", ctx.text)
+    """Level/constant list. Keeps self lookup behavior for compatibility."""
+    level = re.sub(r"\s+levels$", "", ctx.text, flags=re.IGNORECASE)
     return asyncio.run(generate_level_rank_progress(
         ctx.user_id, ctx.user_id, level, ver=ctx.mai_ver))
 
 def cmd_level_rank_progress(ctx):
-    """难度 + 评级 + 进度，如 \"13sss+進捗\" / \"14AP progress -uc\""""
+    """Level/category + rank + prog, for example "14AP prog -uc"."""
     msg_lower = ctx.text.lower()
     level, rank = _parse_level_rank_progress_text(msg_lower)
     if not level or not rank:
@@ -4202,14 +4252,6 @@ def cmd_b_records(ctx):
         return input_error(ctx.user_id)  # matcher 保证不会到这
     return asyncio.run(generate_records(
         ctx.user_id, ctx.id_use, mode, rest, ctx.mai_ver_use))
-
-def cmd_accept_perm(ctx):
-    rid = re.sub(r"^accept-perm-request ", "", ctx.text, flags=re.IGNORECASE).strip()
-    return handle_accept_perm_request(ctx.user_id, rid)
-
-def cmd_reject_perm(ctx):
-    rid = re.sub(r"^reject-perm-request ", "", ctx.text, flags=re.IGNORECASE).strip()
-    return handle_reject_perm_request(ctx.user_id, rid)
 
 def cmd_calc_notes(ctx):
     """calc <tap> <hold> <slide> [touch] <break>"""
@@ -4311,35 +4353,31 @@ COMMANDS = [
             async_generate_friend_record_task, queue=QUEUE_WEB,
             rate_limit_key="async_generate_friend_record_task",
             name="friend_rcd"),
-    Command(Prefix("search-record "),
-            async_get_song_record_by_id_task, queue=QUEUE_WEB,
-            rate_limit_key="async_get_song_record_by_id_task",
-            name="search_record"),
-    Command(Suffix("のレコード", "song-record", "record"),
+    Command(Regex(r"^.+\s+record$", re.IGNORECASE),
             async_get_song_record_task, queue=QUEUE_WEB,
             mention_queryable=True,
             rate_limit_key="async_get_song_record_task",
             name="song_record"),
 
     # ============ Image tasks ============
-    Command(Regex(r".+(のレコードリスト|record-list|records)[ 　]*\d*$"),
+    Command(Regex(r"^.+\s+records[ 　]*\d*$", re.IGNORECASE),
             cmd_level_records, queue=QUEUE_IMAGE, mention_queryable=True,
             name="level_records"),
     Command(Regex(
-        fr"^.+\s*{PROGRESS_RANK_PATTERN}\s*(progress|進捗|进度)\s*(?:-(uc|up|c))?\s*$",
+        fr"^.+\s*{PROGRESS_RANK_PATTERN}\s*prog\s*(?:-(uc|up|c))?\s*$",
         re.IGNORECASE),
             cmd_level_rank_progress, queue=QUEUE_IMAGE, mention_queryable=True,
             name="level_rank_progress"),
-    Command(Suffix("ってどんな曲", "info", "song-info"),
+    Command(Regex(r"^.+(\s+info|ってどんな曲)$", re.IGNORECASE),
             cmd_song_info, queue=QUEUE_IMAGE,
             name="song_info"),
-    Command(Regex(r"^.+(の達成状況|achievement)(\s*-(uc|up|c))?\s*$"),
+    Command(Regex(r"^.+\s+plate(\s*-(uc|up|c))?\s*$", re.IGNORECASE),
             cmd_plate, queue=QUEUE_IMAGE, mention_queryable=True,
             name="plate"),
-    Command(Suffix("のバージョンリスト", "version-list"),
+    Command(Regex(r"^.+\s+ver$", re.IGNORECASE),
             cmd_version_songs, queue=QUEUE_IMAGE,
             name="version_songs"),
-    Command(Suffix("の定数リスト", "のレベルリスト", "level-list"),
+    Command(Regex(r"^.+\s+levels$", re.IGNORECASE),
             cmd_level_rank_list, queue=QUEUE_IMAGE,
             name="level_rank_list"),
     Command(FirstWord(*_B_COMMAND_WORDS),
@@ -4367,10 +4405,6 @@ COMMANDS = [
 
     Command(Regex(r"^(rank|ranking)(\s+(jp|intl))?$"),
             cmd_ranking, name="ranking"),
-    Command(Regex(r"^search\s+(\S{6})$"),
-            cmd_search_by_id, name="search_by_id"),
-    Command(Regex(r"^calc-song\s+(\S{6})$"),
-            cmd_calc_song, name="calc_song"),
     Command(Prefix("artist "), cmd_artist, name="search_by_artist"),
     Command(Prefix("designer "), cmd_designer, name="search_by_designer"),
     Command(Prefix("bpm "), cmd_bpm, name="search_by_bpm"),
@@ -4379,9 +4413,6 @@ COMMANDS = [
     Command(Regex(r"^(成績エクスポート|成绩导出|export)\s+(json|xml)\s*$",
                   re.IGNORECASE),
             cmd_export, self_only=True, name="export"),
-
-    Command(Prefix("accept-perm-request "), cmd_accept_perm, name="accept_perm"),
-    Command(Prefix("reject-perm-request "), cmd_reject_perm, name="reject_perm"),
 
     Command(Prefix("calc "), cmd_calc_notes, name="calc_notes"),
 ]
@@ -4507,6 +4538,9 @@ def handle_postback(event):
                 else:
                     logger.error(f"[Notice] ✗ Vote failed: user_id={user_id}, notice_id={notice_id}")
                     return
+
+        if handle_postback_command(event, postback_data):
+            return
 
         # 其他Postback事件：走原有的文本命令逻辑
         # 创建一个模拟的 TextMessageContent 对象
