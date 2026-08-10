@@ -56,6 +56,7 @@ TEXTS["message_manager"] = {'help_ui': {'b_subtitle': 'Best / All Best / special
              'command': 'Command',
              'default_purpose': 'Show help for this command.',
              'detail_hint': 'Detailed Help',
+             'docs_button': 'Help Docs',
              'examples': 'Examples',
              'function': 'Description',
              'help_title': 'Command Help',

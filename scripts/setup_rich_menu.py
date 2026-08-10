@@ -211,7 +211,7 @@ def page_actions(lang: str, page: str, support_url: str) -> list[dict]:
     if page == "start":
         return [
             message_action(t["bind"], "bind"),
-            uri_action(t["help"], support_url),
+            message_action(t["help"], "help"),
         ]
     if page == "main":
         return [
@@ -226,7 +226,7 @@ def page_actions(lang: str, page: str, support_url: str) -> list[dict]:
             message_action(t["ranking"], "ranking"),
             message_action(t["friends"], "friends"),
             message_action(t["random"], "random"),
-            uri_action(t["docs"], support_url),
+            message_action(t["docs"], "help"),
         ]
     if page == "profile":
         return [

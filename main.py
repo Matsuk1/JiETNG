@@ -4105,6 +4105,15 @@ def handle_postback_command(event, text):
     source_type = getattr(event.source, 'type', 'user')
     cleaned = re.sub(r"\s+", " ", text.strip())
 
+    help_match = re.fullmatch(r"help\s+([A-Za-z0-9_]+)", cleaned, re.IGNORECASE)
+    if help_match:
+        reply_msg = _command_help_message(help_match.group(1), user_id)
+        if reply_msg is None:
+            reply_msg = input_error(user_id)
+        smart_reply(user_id, event.reply_token, reply_msg, configuration,
+                    addition=False, source_type=source_type)
+        return True
+
     accept_match = re.fullmatch(r"accept-perm-request\s+(\S+)", cleaned, re.IGNORECASE)
     if accept_match:
         reply_msg = handle_accept_perm_request(user_id, accept_match.group(1))

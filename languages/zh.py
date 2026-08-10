@@ -57,6 +57,7 @@ TEXTS["message_manager"] = {'help_ui': {'b_subtitle': 'Best / All Best / 特殊�
              'command': '命令',
              'default_purpose': '查看该命令的说明。',
              'detail_hint': '详细说明',
+             'docs_button': '帮助文档',
              'examples': '示例',
              'function': '说明',
              'help_title': '命令帮助',

@@ -48,14 +48,6 @@ def smart_reply(user_id: str, reply_token: str, messages, configuration: Configu
     if not isinstance(messages, list):
         messages = [messages]
 
-    # 保存原始消息中的 quick_reply（如果存在）
-    saved_quick_reply = None
-    for msg in messages:
-        if hasattr(msg, 'quick_reply') and msg.quick_reply is not None:
-            saved_quick_reply = msg.quick_reply
-            msg.quick_reply = None  # 移除原消息的 quick_reply
-            break
-
     can_append_private_additions = addition and source_type == "user"
 
     # 只有私聊且消息数量小于5时，才添加附加消息
@@ -84,10 +76,6 @@ def smart_reply(user_id: str, reply_token: str, messages, configuration: Configu
                     notice_flex = generate_notice_flex(latest_notice, user_id)
                     messages.append(notice_flex)
                     record_notice_read(user_id, notice_id)
-
-    # 如果有保存的 quick_reply，将其移动到最后一条消息上
-    if saved_quick_reply is not None and messages:
-        messages[-1].quick_reply = saved_quick_reply
 
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)

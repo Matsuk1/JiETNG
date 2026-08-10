@@ -5,6 +5,7 @@ import re
 from modules.i18n import localized_catalog
 from modules.message_manager import (
     generate_b_records_help_flex,
+    generate_help_category_flex,
     generate_help_index_flex,
     generate_standard_help_flex,
 )
@@ -61,6 +62,9 @@ def command_help_message(help_key, user_id=None):
         return generate_help_index_flex(user_id)
     if help_key == "b_records":
         return generate_b_records_help_flex(user_id)
+    category_help = generate_help_category_flex(help_key, user_id)
+    if category_help is not None:
+        return category_help
     help_data = COMMAND_HELP.get(help_key)
     return generate_standard_help_flex(help_data, user_id) if help_data else None
 

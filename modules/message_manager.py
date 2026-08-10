@@ -64,7 +64,6 @@ from modules.message_texts import (
     no_matching_data_text,
     notice_header_text,
     plate_error_text,
-    quick_reply_labels,
     ranking_alt_text,
     ranking_title_text,
     rate_limit_msg_text,
@@ -98,10 +97,6 @@ from modules.message_texts import (
 )
 from linebot.v3.messaging import (
     TextMessage,
-    QuickReply,
-    QuickReplyItem,
-    MessageAction,
-    URIAction,
     FlexMessage,
     FlexContainer,
 )
@@ -226,6 +221,69 @@ def _help_mode_card(title, body, accent):
     }
 
 
+def _help_postback_button(label, data, color="#315B7D", display_text=None):
+    action = {
+        "type": "postback",
+        "label": label,
+        "data": data,
+    }
+    if display_text:
+        action["displayText"] = display_text
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "height": "32px",
+        "cornerRadius": "16px",
+        "backgroundColor": color,
+        "justifyContent": "center",
+        "alignItems": "center",
+        "paddingStart": "12px",
+        "paddingEnd": "12px",
+        "action": action,
+        "contents": [
+            _help_flex_text(label, size="xxs", color="#FFFFFF", weight="bold", align="center", wrap=False),
+        ],
+    }
+
+
+def _help_directory_card(title, desc, commands, action_data, accent):
+    return {
+        "type": "box",
+        "layout": "horizontal",
+        "spacing": "sm",
+        "paddingAll": "10px",
+        "cornerRadius": "8px",
+        "borderWidth": "1px",
+        "borderColor": "#E6E8EC",
+        "alignItems": "center",
+        "contents": [
+            {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "xs",
+                "flex": 1,
+                "contents": [
+                    node
+                    for node in (
+                        _help_flex_text(title, size="xs", color=accent, weight="bold"),
+                        _help_flex_text(desc, size="xxs", color="#555555"),
+                        _help_flex_text(commands, size="xxs", color="#6B7280") if commands else None,
+                    )
+                    if node is not None
+                ],
+            },
+            {
+                "type": "box",
+                "layout": "vertical",
+                "width": "86px",
+                "contents": [
+                    _help_postback_button("HELP", action_data, accent),
+                ],
+            },
+        ],
+    }
+
+
 def _help_filter_row(label, desc, example=None):
     contents = [
         {
@@ -286,7 +344,43 @@ def _help_body_row(desc):
     }
 
 
-def _standard_help_bubble(title, subtitle, sections, alt_text):
+def _support_page_uri():
+    separator = "&" if "?" in SUPPORT_PAGE else "?"
+    return f"{SUPPORT_PAGE}{separator}openExternalBrowser=1"
+
+
+def _help_docs_footer(user_id=None):
+    label = _help_ui("docs_button", user_id)
+    return {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "paddingAll": "12px",
+        "contents": [
+            {
+                "type": "box",
+                "layout": "vertical",
+                "height": "38px",
+                "cornerRadius": "19px",
+                "backgroundColor": "#FF7A45",
+                "justifyContent": "center",
+                "alignItems": "center",
+                "paddingStart": "16px",
+                "paddingEnd": "16px",
+                "action": {
+                    "type": "uri",
+                    "label": label,
+                    "uri": _support_page_uri(),
+                },
+                "contents": [
+                    _help_flex_text(label, size="sm", color="#FFFFFF", weight="bold", align="center", wrap=False),
+                ],
+            }
+        ],
+    }
+
+
+def _standard_help_bubble(title, subtitle, sections, alt_text, user_id=None, docs_button=True):
     body_contents = [
         _standard_header_box(title, subtitle),
     ]
@@ -300,7 +394,7 @@ def _standard_help_bubble(title, subtitle, sections, alt_text):
         })
     bubble = {
         "type": "bubble",
-        "size": "mega",
+        "size": "giga",
         "body": {
             "type": "box",
             "layout": "vertical",
@@ -309,6 +403,8 @@ def _standard_help_bubble(title, subtitle, sections, alt_text):
             "contents": body_contents,
         },
     }
+    if docs_button:
+        bubble["footer"] = _help_docs_footer(user_id)
     return FlexMessage(
         alt_text=alt_text,
         contents=FlexContainer.from_dict(bubble),
@@ -626,26 +722,19 @@ def generate_export_flex(user_id, meta):
     )
 
 
-def get_quick_reply_label(key, user_id=None):
-    """获取 QuickReply 按钮的多语言标签"""
-    if key not in quick_reply_labels:
-        return key
-    return get_multilingual_text(quick_reply_labels[key], user_id)
-
-def create_text_message(msg_text_dict, user_id=None, quick_reply=None):
+def create_text_message(msg_text_dict, user_id=None):
     """
     生成多语言 TextMessage
 
     Args:
         msg_text_dict: 多语言消息字典
         user_id: 用户ID（可选）
-        quick_reply: QuickReply 对象（可选）
 
     Returns:
         TextMessage: 多语言文本消息
     """
     text = get_multilingual_text(msg_text_dict, user_id)
-    return TextMessage(text=text, quick_reply=quick_reply)
+    return TextMessage(text=text)
 
 
 def _clean_help_text(text):
@@ -745,6 +834,7 @@ def generate_standard_help_flex(help_data, user_id=None):
         subtitle=_help_ui("help_title", user_id),
         sections=sections,
         alt_text=f"{command} {_help_ui('help_title', user_id)}",
+        user_id=user_id,
     )
 
 
@@ -807,62 +897,151 @@ def generate_b_records_help_flex(user_id=None):
         subtitle=_help_ui("b_subtitle", user_id),
         sections=sections,
         alt_text=f"{_help_ui('b_title', user_id)} {_help_ui('help_title', user_id)}",
+        user_id=user_id,
     )
 
 
+HELP_DIRECTORY_CATEGORIES = [
+    {
+        "key": "account",
+        "title_key": "account_and_system",
+        "commands": "help / bind / rebind / settings / profile / unbind / update / export / status",
+        "desc_key": "binding_settings_profile_sync_export_and_status",
+        "color": "#E85D75",
+        "items": [
+            ("help", "help_index"),
+            ("bind", "bind"),
+            ("rebind", "rebind"),
+            ("settings", "settings"),
+            ("profile", "profile"),
+            ("unbind", "unbind_prompt"),
+            ("update", "maimai_update"),
+            ("export", "export"),
+            ("status", "status"),
+        ],
+    },
+    {
+        "key": "scores",
+        "title_key": "score_images",
+        "commands": "b50 / b40 / ab50 / ap50 / fdx50 / r50 / idlb50 / s50",
+        "desc_key": "best_all_best_recent_and_special_score_images",
+        "color": "#8A63D2",
+        "items": [
+            ("b50", "b_records"),
+            ("b40", "b_records"),
+            ("ab50", "b_records"),
+            ("ap50", "b_records"),
+            ("fdx50", "b_records"),
+            ("r50", "b_records"),
+            ("idlb50", "b_records"),
+            ("s50", "b_records"),
+        ],
+    },
+    {
+        "key": "songs",
+        "title_key": "songs_and_records",
+        "commands": "info / rec / record",
+        "desc_key": "song_details_score_image_recognition_single_song_records_and_son",
+        "color": "#267D8B",
+        "items": [
+            ("info", "song_info"),
+            ("rec", "score_recognition"),
+            ("record", "song_record"),
+        ],
+    },
+    {
+        "key": "search",
+        "title_key": "search",
+        "commands": "artist / designer / bpm / random",
+        "desc_key": "search_by_artist_designer_bpm_or_random_conditions",
+        "color": "#2F7D51",
+        "items": [
+            ("artist", "search_by_artist"),
+            ("designer", "search_by_designer"),
+            ("bpm", "search_by_bpm"),
+            ("random", "random_song"),
+        ],
+    },
+    {
+        "key": "lists",
+        "title_key": "lists_and_progress",
+        "commands": "records / levels / ver / plate / prog",
+        "desc_key": "level_lists_constant_lists_plate_completion_and_target_progress",
+        "color": "#B86E19",
+        "items": [
+            ("records", "level_records"),
+            ("levels", "level_rank_list"),
+            ("ver", "version_songs"),
+            ("plate", "plate"),
+            ("prog", "level_rank_progress"),
+        ],
+    },
+    {
+        "key": "social",
+        "title_key": "social",
+        "commands": "friends",
+        "desc_key": "friend_list_and_friend_record_lookup",
+        "color": "#315B7D",
+        "items": [
+            ("friends", "friend_list"),
+        ],
+    },
+    {
+        "key": "tools",
+        "title_key": "tools",
+        "commands": "rank / rc / calc / refreshmenu",
+        "desc_key": "ranking_rating_breakdown_note_scoring_and_utility_commands",
+        "color": "#6B7280",
+        "items": [
+            ("rank", "ranking"),
+            ("rc", "rc"),
+            ("calc", "calc_notes"),
+            ("refreshmenu", "refreshmenu"),
+        ],
+    },
+]
+
+HELP_DIRECTORY_BY_KEY = {
+    category["key"]: category
+    for category in HELP_DIRECTORY_CATEGORIES
+}
+
+
+def _help_category_title(category, user_id):
+    return _help_i18n(user_id, category["title_key"])
+
+
+def _help_category_desc(category, user_id):
+    return _help_i18n(user_id, category["desc_key"])
+
+
+def _help_command_summary(help_key, category, user_id):
+    if help_key == "b_records":
+        return _help_i18n(user_id, "generate_best_all_best_special_score_images_with_optional_filter")
+    help_data = localized_catalog("command_help").get(help_key)
+    if not help_data:
+        return _help_category_desc(category, user_id)
+    fields = _parse_plain_help(get_multilingual_text(help_data, user_id))
+    return fields.get("说明") or fields.get("function") or _help_category_desc(category, user_id)
+
+
+def _help_index_action_key(category):
+    if category["key"] == "scores" or len(category["items"]) == 1:
+        return category["items"][0][1]
+    return category["key"]
+
+
 def generate_help_index_flex(user_id=None):
-    groups = [
-        (
-            _help_i18n(user_id, 'account_and_system'),
-            "help / bind / rebind / settings / profile / unbind / update / export / status",
-            _help_i18n(user_id, 'binding_settings_profile_sync_export_and_status'),
-            "#E85D75",
-        ),
-        (
-            _help_i18n(user_id, 'score_images'),
-            "b50 / b40 / ab50 / ap50 / fdx50 / r50 / idlb50 / s50",
-            _help_i18n(user_id, 'best_all_best_recent_and_special_score_images'),
-            "#8A63D2",
-        ),
-        (
-            _help_i18n(user_id, 'songs_and_records'),
-            "info / rec / record",
-            _help_i18n(user_id, 'song_details_score_image_recognition_single_song_records_and_son'),
-            "#267D8B",
-        ),
-        (
-            _help_i18n(user_id, 'search'),
-            "artist / designer / bpm / random",
-            _help_i18n(user_id, 'search_by_artist_designer_bpm_or_random_conditions'),
-            "#2F7D51",
-        ),
-        (
-            _help_i18n(user_id, 'lists_and_progress'),
-            "records / levels / ver / plate / prog",
-            _help_i18n(user_id, 'level_lists_constant_lists_plate_completion_and_target_progress'),
-            "#B86E19",
-        ),
-        (
-            _help_i18n(user_id, 'social'),
-            "friends",
-            _help_i18n(user_id, 'friend_list_and_friend_record_lookup'),
-            "#315B7D",
-        ),
-        (
-            _help_i18n(user_id, 'tools'),
-            "rank / rc / calc / refreshmenu",
-            _help_i18n(user_id, 'ranking_rating_breakdown_note_scoring_and_utility_commands'),
-            "#6B7280",
-        ),
-    ]
     sections = [
         (_help_ui("categories", user_id), [
-            _help_mode_card(title, commands, color)
-            for title, commands, _desc, color in groups
-        ]),
-        (_help_ui("function", user_id), [
-            _help_note_row(title, desc)
-            for title, _commands, desc, _color in groups
+            _help_directory_card(
+                _help_category_title(category, user_id),
+                _help_category_desc(category, user_id),
+                category["commands"],
+                f"help {_help_index_action_key(category)}",
+                category["color"],
+            )
+            for category in HELP_DIRECTORY_CATEGORIES
         ]),
         (_help_ui("detail_hint", user_id), [
             _help_filter_row(_help_i18n(user_id, 'single_command'), _help_i18n(user_id, 'send_b50_help_artist_help_bpm_help_and_similar_forms_for_full_us')),
@@ -874,6 +1053,37 @@ def generate_help_index_flex(user_id=None):
         subtitle=_help_ui("catalog_subtitle", user_id),
         sections=sections,
         alt_text=f"{_help_ui('catalog_title', user_id)}",
+        user_id=user_id,
+    )
+
+
+def generate_help_category_flex(category_key, user_id=None):
+    category = HELP_DIRECTORY_BY_KEY.get(category_key)
+    if category is None:
+        return None
+
+    rows = [
+        _help_directory_card(
+            label,
+            _help_command_summary(help_key, category, user_id),
+            "",
+            f"help {help_key}",
+            category["color"],
+        )
+        for label, help_key in category["items"]
+    ]
+    sections = [
+        (_help_ui("function", user_id), [
+            _help_body_row(_help_category_desc(category, user_id)),
+        ]),
+        (_help_ui("command", user_id), rows),
+    ]
+    return _standard_help_bubble(
+        title=_help_category_title(category, user_id),
+        subtitle=_help_ui("catalog_title", user_id),
+        sections=sections,
+        alt_text=f"{_help_category_title(category, user_id)} {_help_ui('catalog_title', user_id)}",
+        user_id=user_id,
     )
 
 
@@ -888,77 +1098,27 @@ def _update_status_label(func_name, lang):
         return func_name
     return get_multilingual_text(update_result_flex_text[text_key], language=lang)
 
-def get_support_quick_reply(user_id=None):
-    """获取「サポート」按钮的 QuickReply"""
-    return QuickReply(
-        items=[
-            QuickReplyItem(action=URIAction(
-                label=get_quick_reply_label("support", user_id),
-                uri=SUPPORT_PAGE
-            ))
-        ]
-    )
-
-def get_update_quick_reply(user_id=None):
-    """获取更新相关的 QuickReply"""
-    label = get_quick_reply_label("maimai_update", user_id)
-    return QuickReply(
-        items=[
-            QuickReplyItem(action=MessageAction(
-                label=label,
-                text="maimai update",
-                display_text=label
-            )),
-            QuickReplyItem(action=URIAction(
-                label=get_quick_reply_label("support", user_id),
-                uri=SUPPORT_PAGE
-            ))
-        ]
-    )
-
-def get_segaid_error_quick_reply(user_id=None):
-    """获取 SEGA ID 错误的 QuickReply"""
-    label = get_quick_reply_label("account_bind", user_id)
-    return QuickReply(
-        items=[
-            QuickReplyItem(action=MessageAction(
-                label=label,
-                text="bind",
-                display_text=label
-            )),
-            QuickReplyItem(action=URIAction(
-                label=get_quick_reply_label("support", user_id),
-                uri=SUPPORT_PAGE
-            ))
-        ]
-    )
-
-def get_record_error_quick_reply(user_id=None):
-    """获取记录错误的 QuickReply"""
-    return get_update_quick_reply(user_id)
-
-def _message_factory(message_text, quick_reply_factory=None):
+def _message_factory(message_text):
     def build_message(user_id=None):
-        quick_reply = quick_reply_factory(user_id) if quick_reply_factory else None
-        return create_text_message(message_text, user_id, quick_reply)
+        return create_text_message(message_text, user_id)
 
     return build_message
 
 
-rebind_msg = _message_factory(rebind_msg_text, get_update_quick_reply)
-segaid_error = _message_factory(segaid_error_text, get_segaid_error_quick_reply)
-record_error = _message_factory(record_error_text, get_record_error_quick_reply)
-info_error = _message_factory(info_error_text, get_record_error_quick_reply)
+rebind_msg = _message_factory(rebind_msg_text)
+segaid_error = _message_factory(segaid_error_text)
+record_error = _message_factory(record_error_text)
+info_error = _message_factory(info_error_text)
 access_error = _message_factory(access_error_text)
-system_error = _message_factory(system_error_text, get_support_quick_reply)
-input_error = _message_factory(input_error_text, get_support_quick_reply)
-song_error = _message_factory(song_error_text, get_support_quick_reply)
-level_not_supported = _message_factory(level_not_supported_text, get_support_quick_reply)
-plate_error = _message_factory(plate_error_text, get_support_quick_reply)
-version_error = _message_factory(version_error_text, get_support_quick_reply)
+system_error = _message_factory(system_error_text)
+input_error = _message_factory(input_error_text)
+song_error = _message_factory(song_error_text)
+level_not_supported = _message_factory(level_not_supported_text)
+plate_error = _message_factory(plate_error_text)
+version_error = _message_factory(version_error_text)
 store_error = _message_factory(store_error_text)
-rate_limit_msg = _message_factory(rate_limit_msg_text, get_support_quick_reply)
-maintenance_error = _message_factory(maintenance_error_text, get_support_quick_reply)
+rate_limit_msg = _message_factory(rate_limit_msg_text)
+maintenance_error = _message_factory(maintenance_error_text)
 friend_error = _message_factory(friend_error_text)
 friend_rcd_error = _message_factory(friend_rcd_error_text)
 mention_error = _message_factory(mention_error_text)
@@ -2225,6 +2385,7 @@ def generate_user_info_flex(user_id):
         subtitle="JiETNG",
         sections=sections,
         alt_text=get_multilingual_text(texts['alt_text'], language=lang),
+        docs_button=False,
     )
 
 # ============================================================
