@@ -484,7 +484,7 @@ def _main_screen_pose_image(image: Image.Image) -> tuple[Box | None, Image.Image
         return None, None
 
     try:
-        prediction = model.predict(image, imgsz=960, conf=0.15, verbose=False)[0]
+        prediction = model.predict(image, imgsz=640, conf=0.15, verbose=False)[0]
     except Exception:
         return None, None
 
@@ -556,7 +556,7 @@ def _cropper_pose_table(image: Image.Image) -> tuple[Box | None, Image.Image | N
         return None, None
 
     try:
-        prediction = model.predict(image, imgsz=960, conf=0.15, verbose=False)[0]
+        prediction = model.predict(image, imgsz=640, conf=0.15, verbose=False)[0]
     except Exception:
         return None, None
 
@@ -603,7 +603,7 @@ def detect_sub_screen_by_cropper_model(image: Image.Image) -> Box | None:
         return None
 
     try:
-        prediction = model.predict(image, imgsz=960, conf=0.15, verbose=False)[0]
+        prediction = model.predict(image, imgsz=640, conf=0.15, verbose=False)[0]
     except Exception:
         return None
 

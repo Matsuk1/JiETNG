@@ -52,7 +52,13 @@ def create_score_api(max_image_bytes):
 
         started_at = time.perf_counter()
         try:
-            result = validate_recognized_judgement(recognize_score_image_bytes(image_bytes), ver=version)
+            result = validate_recognized_judgement(
+                recognize_score_image_bytes(
+                    image_bytes,
+                    line_like_preprocess=True,
+                ),
+                ver=version,
+            )
             if image_output:
                 selected = expand_score_recognition_calc_variants(result)[0]
                 public = build_score_recognition_response(selected)

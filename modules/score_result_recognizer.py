@@ -45,6 +45,12 @@ _OCR_FIELDS: tuple[str, ...] | None = None
 _PROCESS_IMAGE_DATA: Any | None = None
 SUPPORTED_SCORE_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP"}
 MAX_SCORE_IMAGE_PIXELS = 40_000_000
+API_LINE_LIKE_OCR_MAX_EDGE = int(
+    os.getenv("SCORE_RECOGNITION_API_LINE_LIKE_MAX_EDGE", "2048")
+)
+API_LINE_LIKE_OCR_JPEG_QUALITY = int(
+    os.getenv("SCORE_RECOGNITION_API_LINE_LIKE_JPEG_QUALITY", "88")
+)
 
 _TITLE_OCR_CONFUSABLES = str.maketrans({
     "极": "極",
@@ -61,6 +67,45 @@ def _process_rss_mb() -> float | None:
         return round(psutil.Process(os.getpid()).memory_info().rss / (1024**2), 1)
     except Exception:
         return None
+
+
+def _line_like_ocr_image(image: Image.Image, image_format: str) -> Image.Image:
+    """Approximate LINE-delivered image characteristics for API OCR input."""
+    original_size = image.size
+    normalized = image.convert("RGB")
+    max_edge = max(0, API_LINE_LIKE_OCR_MAX_EDGE)
+    quality = max(1, min(100, API_LINE_LIKE_OCR_JPEG_QUALITY))
+
+    if max_edge and max(normalized.size) > max_edge:
+        scale = max_edge / max(normalized.size)
+        normalized = normalized.resize(
+            (
+                max(1, int(round(normalized.width * scale))),
+                max(1, int(round(normalized.height * scale))),
+            ),
+            Image.Resampling.LANCZOS,
+        )
+
+    buffer = BytesIO()
+    normalized.save(buffer, format="JPEG", quality=quality, optimize=True)
+    compressed_bytes = buffer.tell()
+    buffer.seek(0)
+    with Image.open(buffer) as compressed:
+        result = compressed.convert("RGB").copy()
+
+    logger.info(
+        "Score OCR API line-like image preprocessing: format=%s original=%sx%s "
+        "processed=%sx%s max_edge=%s jpeg_quality=%s bytes=%s",
+        image_format,
+        original_size[0],
+        original_size[1],
+        result.width,
+        result.height,
+        max_edge,
+        quality,
+        compressed_bytes,
+    )
+    return result
 
 
 def _normalize_title_for_ocr(text):
@@ -2115,6 +2160,7 @@ def build_score_crop_preview_image(image_bytes: bytes) -> Image.Image:
 def recognize_score_image_bytes(
     image_bytes: bytes,
     fields: tuple[str, ...] | None = None,
+    line_like_preprocess: bool = False,
 ) -> dict[str, Any]:
     try:
         with Image.open(BytesIO(image_bytes)) as source:
@@ -2129,6 +2175,8 @@ def recognize_score_image_bytes(
                     f"Image dimensions exceed the {MAX_SCORE_IMAGE_PIXELS}-pixel limit"
                 )
             image = source.convert("RGB")
+            if line_like_preprocess:
+                image = _line_like_ocr_image(image, image_format)
     except UnsupportedScoreImageError:
         raise
     except (UnidentifiedImageError, OSError) as exc:
