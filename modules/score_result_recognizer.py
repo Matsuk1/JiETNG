@@ -11,6 +11,7 @@ import logging
 import re
 import unicodedata
 import difflib
+import gc
 import os
 import sys
 import threading
@@ -43,6 +44,8 @@ _ENGINE_LOCK = threading.Lock()
 _OCR_LOCK = threading.Lock()
 _OCR_FIELDS: tuple[str, ...] | None = None
 _PROCESS_IMAGE_DATA: Any | None = None
+_ENGINE_REQUEST_COUNT = 0
+_ENGINE_LAST_RESET_RSS_MB: float | None = None
 SUPPORTED_SCORE_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP"}
 MAX_SCORE_IMAGE_PIXELS = 40_000_000
 API_LINE_LIKE_OCR_MAX_EDGE = int(
@@ -50,6 +53,11 @@ API_LINE_LIKE_OCR_MAX_EDGE = int(
 )
 API_LINE_LIKE_OCR_JPEG_QUALITY = int(
     os.getenv("SCORE_RECOGNITION_API_LINE_LIKE_JPEG_QUALITY", "88")
+)
+OCR_ENGINE_MAX_REQUESTS = int(os.getenv("JIETNG_OCR_ENGINE_MAX_REQUESTS", "60"))
+OCR_ENGINE_MAX_RSS_MB = float(os.getenv("JIETNG_OCR_ENGINE_MAX_RSS_MB", "1800"))
+OCR_ENGINE_IDLE_RESET_RSS_MB = float(
+    os.getenv("JIETNG_OCR_ENGINE_IDLE_RESET_RSS_MB", "1400")
 )
 
 _TITLE_OCR_CONFUSABLES = str.maketrans({
@@ -2063,6 +2071,41 @@ def _engine() -> Any:
         return _ENGINE
 
 
+def _reset_ocr_engine(reason: str, rss_mb: float | None = None) -> bool:
+    global _ENGINE, _ENGINE_REQUEST_COUNT, _ENGINE_LAST_RESET_RSS_MB
+    with _ENGINE_LOCK:
+        if _ENGINE is None:
+            return False
+        _ENGINE = None
+        _ENGINE_REQUEST_COUNT = 0
+        _ENGINE_LAST_RESET_RSS_MB = rss_mb
+    collected = gc.collect()
+    logger.info(
+        "Score OCR engine reset: reason=%s rss=%sMB collected=%s",
+        reason,
+        rss_mb,
+        collected,
+    )
+    return True
+
+
+def cleanup_score_recognizer_memory() -> bool:
+    """Best-effort idle cleanup hook for the periodic memory manager."""
+    if not _OCR_LOCK.acquire(blocking=False):
+        return False
+    try:
+        rss_mb = _process_rss_mb()
+        if (
+            _ENGINE is not None
+            and rss_mb is not None
+            and rss_mb >= OCR_ENGINE_IDLE_RESET_RSS_MB
+        ):
+            return _reset_ocr_engine("idle_rss_threshold", rss_mb)
+    finally:
+        _OCR_LOCK.release()
+    return False
+
+
 def initialize_score_recognizer() -> None:
     _engine()
     try:
@@ -2162,6 +2205,7 @@ def recognize_score_image_bytes(
     fields: tuple[str, ...] | None = None,
     line_like_preprocess: bool = False,
 ) -> dict[str, Any]:
+    global _ENGINE_REQUEST_COUNT
     try:
         with Image.open(BytesIO(image_bytes)) as source:
             image_format = str(source.format or "").upper()
@@ -2196,11 +2240,24 @@ def recognize_score_image_bytes(
             fields or ocr_fields,
             _engine(),
         )
+        _ENGINE_REQUEST_COUNT += 1
         rss_after = _process_rss_mb()
         if rss_before is not None or rss_after is not None:
             logger.info(
-                "Score OCR memory: rss_before=%sMB rss_after=%sMB",
+                "Score OCR memory: rss_before=%sMB rss_after=%sMB requests=%s",
                 rss_before,
                 rss_after,
+                _ENGINE_REQUEST_COUNT,
             )
+        if (
+            OCR_ENGINE_MAX_REQUESTS > 0
+            and _ENGINE_REQUEST_COUNT >= OCR_ENGINE_MAX_REQUESTS
+        ):
+            _reset_ocr_engine("request_threshold", rss_after)
+        elif (
+            OCR_ENGINE_MAX_RSS_MB > 0
+            and rss_after is not None
+            and rss_after >= OCR_ENGINE_MAX_RSS_MB
+        ):
+            _reset_ocr_engine("rss_threshold", rss_after)
         return result

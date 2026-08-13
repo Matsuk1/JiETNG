@@ -274,6 +274,7 @@ from modules.i18n import (
 from modules.score_result_recognizer import (
     InvalidScoreImageError,
     build_score_crop_preview_image,
+    cleanup_score_recognizer_memory,
     expand_score_recognition_calc_variants,
     initialize_score_recognizer,
     parse_fix_record_command,
@@ -4869,6 +4870,8 @@ def start_runtime():
             # 清理空闲的 API 同步锁
             cleaned_api_sync_locks = cleanup_api_sync_locks()
 
+            cleaned_score_ocr = cleanup_score_recognizer_memory()
+
             # 清理未绑定的用户（没有 sega_id 或 sega_pwd）
             cleanup_result = clean_unbound_users()
             cleaned_unbound_users = cleanup_result.get('deleted_count', 0)
@@ -4876,7 +4879,7 @@ def start_runtime():
             # 刷新 dev tokens 缓存到磁盘
             flush_dev_tokens()
 
-            logger.info(f"[System] ✓ Custom cleanup completed: nicknames={cleaned_nicknames}, rate_limits={cleaned_rate_limits}, api_sync_locks={cleaned_api_sync_locks}, unbound_users={cleaned_unbound_users}")
+            logger.info(f"[System] ✓ Custom cleanup completed: nicknames={cleaned_nicknames}, rate_limits={cleaned_rate_limits}, api_sync_locks={cleaned_api_sync_locks}, score_ocr={cleaned_score_ocr}, unbound_users={cleaned_unbound_users}")
         except Exception as e:
             logger.error(f"[System] ✗ Custom cleanup error: error={e}", exc_info=True)
 

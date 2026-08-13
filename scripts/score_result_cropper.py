@@ -1168,25 +1168,82 @@ def main_screen_model_field_boxes(screen: Box, width: int, height: int) -> tuple
     return title, achievement
 
 
-def enhance_judgement_table_for_ocr(image: Image.Image) -> Image.Image:
+def restore_judgement_table_photo(rgb: np.ndarray) -> np.ndarray:
+    """Normalize noisy or color-shifted judgement table crops before OCR."""
+    bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+
+    bgr = cv2.fastNlMeansDenoisingColored(
+        bgr,
+        None,
+        h=4.0,
+        hColor=4.0,
+        templateWindowSize=7,
+        searchWindowSize=21,
+    )
+
+    balanced = np.empty_like(bgr)
+    for channel_index in range(3):
+        channel = bgr[:, :, channel_index].astype(np.float32)
+        low, high = np.percentile(channel, [0.2, 99.8])
+        if high > low:
+            channel = (channel - low) * 255.0 / (high - low)
+        balanced[:, :, channel_index] = np.clip(channel, 0, 255).astype(np.uint8)
+
+    lab = cv2.cvtColor(balanced, cv2.COLOR_BGR2LAB).astype(np.float32)
+    lightness, channel_a, channel_b = cv2.split(lab)
+    color_shift_strength = 0.22
+    channel_a += (128.0 - channel_a.mean()) * color_shift_strength
+    channel_b += (128.0 - channel_b.mean()) * color_shift_strength
+    lab = cv2.merge((
+        np.clip(lightness, 0, 255),
+        np.clip(channel_a, 0, 255),
+        np.clip(channel_b, 0, 255),
+    )).astype(np.uint8)
+    bgr = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+    lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)
+    lightness, channel_a, channel_b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=0.85, tileGridSize=(12, 12))
+    lightness = clahe.apply(lightness)
+    bgr = cv2.cvtColor(cv2.merge((lightness, channel_a, channel_b)), cv2.COLOR_LAB2BGR)
+
+    bgr = cv2.bilateralFilter(bgr, d=3, sigmaColor=18, sigmaSpace=3)
+    blurred = cv2.GaussianBlur(bgr, (0, 0), sigmaX=0.8, sigmaY=0.8)
+    bgr = cv2.addWeighted(bgr, 1.16, blurred, -0.16, 0)
+    return cv2.cvtColor(np.clip(bgr, 0, 255).astype(np.uint8), cv2.COLOR_BGR2RGB)
+
+
+def enhance_judgement_table_for_ocr(
+    image: Image.Image,
+    restore_photo: bool = True,
+) -> Image.Image:
     rgb = np.asarray(image.convert("RGB"))
+    if restore_photo:
+        rgb = restore_judgement_table_photo(rgb)
     lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB)
     lightness, channel_a, channel_b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=1.08, tileGridSize=(8, 4))
+    clahe = cv2.createCLAHE(clipLimit=0.75, tileGridSize=(12, 6))
     lightness = clahe.apply(lightness)
     clahe_rgb = cv2.cvtColor(cv2.merge((lightness, channel_a, channel_b)), cv2.COLOR_LAB2RGB)
-    blended = cv2.addWeighted(rgb, 0.86, clahe_rgb, 0.14, 0)
+    blended = cv2.addWeighted(rgb, 0.92, clahe_rgb, 0.08, 0)
 
     image = Image.fromarray(blended, "RGB")
-    image = ImageEnhance.Contrast(image).enhance(1.30)
-    image = ImageEnhance.Sharpness(image).enhance(1.42)
-    return image.filter(ImageFilter.UnsharpMask(radius=0.8, percent=55, threshold=4))
+    image = ImageEnhance.Contrast(image).enhance(1.15)
+    image = ImageEnhance.Sharpness(image).enhance(1.18)
+    return image.filter(ImageFilter.UnsharpMask(radius=0.6, percent=25, threshold=8))
 
 
-def sharpen_for_ocr(image: Image.Image, field_name: str | None = None) -> Image.Image:
+def sharpen_for_ocr(
+    image: Image.Image,
+    field_name: str | None = None,
+    restore_judgement_photo: bool = True,
+) -> Image.Image:
     image = ImageOps.exif_transpose(image).convert("RGB")
     if field_name == "sub_judgement_table":
-        return enhance_judgement_table_for_ocr(image)
+        return enhance_judgement_table_for_ocr(
+            image,
+            restore_photo=restore_judgement_photo,
+        )
     image = ImageEnhance.Contrast(image).enhance(1.35)
     image = ImageEnhance.Sharpness(image).enhance(1.45)
     return image
@@ -1404,7 +1461,11 @@ def _dxnet_fields_in_memory(image: Image.Image) -> dict:
     fields = {}
     for name, field_box in field_boxes.items():
         fields[name] = {
-            "image": sharpen_for_ocr(image.crop(field_box.to_tuple()), name),
+            "image": sharpen_for_ocr(
+                image.crop(field_box.to_tuple()),
+                name,
+                restore_judgement_photo=name != "sub_judgement_table",
+            ),
             "left": field_box.left,
             "top": field_box.top,
             "right": field_box.right,
