@@ -95,6 +95,62 @@ def _get_random_user_agent():
     return random.choice(USER_AGENTS)
 
 
+def _jp_login_headers(user_agent):
+    return {
+        "User-Agent": user_agent,
+        "Referer": "https://maimaidx.jp/maimai-mobile/login/",
+        "Origin": "https://maimaidx.jp",
+        "Host": "maimaidx.jp",
+    }
+
+
+def _cookie_value(cookie):
+    if cookie is None:
+        return ""
+    return getattr(cookie, "value", str(cookie)).strip()
+
+
+def _looks_like_login_token(value):
+    return bool(re.fullmatch(r"[0-9a-fA-F]{16,64}", value or ""))
+
+
+def _describe_jp_login_page(html):
+    if not html:
+        return "empty"
+    if "再度ログインしてください" in html:
+        return "relogin"
+    if "Please agree to the following terms of service before log in." in html:
+        return "tos"
+    if 'name="segaId"' in html and 'name="password"' in html:
+        return "login_form_without_token"
+    title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+    if title_match:
+        return normalize(title_match.group(1))
+    return "unknown"
+
+
+def _extract_jp_login_token(session, html, dom=None):
+    if dom is not None:
+        token_list = dom.xpath('//input[@name="token"]/@value')
+        if token_list and token_list[0]:
+            return token_list[0], "input"
+
+    token_match = re.search(
+        r'<input\b(?=[^>]*\bname=["\']token["\'])(?=[^>]*\bvalue=["\']([^"\']+)["\'])[^>]*>',
+        html or "",
+        re.IGNORECASE,
+    )
+    if token_match:
+        return token_match.group(1), "regex"
+
+    cookies = session.cookie_jar.filter_cookies("https://maimaidx.jp")
+    token_cookie = _cookie_value(cookies.get("_t"))
+    if _looks_like_login_token(token_cookie):
+        return token_cookie, "cookie"
+
+    return None, None
+
+
 def parse_level_value(input_str):
     input_str = input_str.strip()
 
@@ -238,12 +294,18 @@ async def login_to_maimai(sega_id: str, password: str, ver="jp", aime=0):
         async with _create_session() as session:
             # 偶发抖动重试（SEGA 偶尔返回不含 token 的页面 / 瞬时网络错）
             token = None
+            token_source = None
             last_status = None
             last_html_len = 0
+            last_page_hint = ""
             last_snippet = ""
+            headers = _jp_login_headers(user_agent)
             for attempt in range(3):
                 try:
-                    async with session.get("https://maimaidx.jp/maimai-mobile/login/") as response:
+                    async with session.get(
+                        "https://maimaidx.jp/maimai-mobile/login/",
+                        headers=headers,
+                    ) as response:
                         last_status = response.status
                         if response.status == 503:
                             logger.warning("[Maimai] ⚠ Server maintenance (503): server=JP")
@@ -253,16 +315,20 @@ async def login_to_maimai(sega_id: str, password: str, ver="jp", aime=0):
 
                     last_html_len = len(html or "")
                     dom = await asyncio.to_thread(etree.HTML, html)
-                    token_list = dom.xpath('//input[@name="token"]/@value')
-                    if token_list:
-                        token = token_list[0]
+                    token, token_source = _extract_jp_login_token(session, html, dom)
+                    if token:
                         if attempt > 0:
-                            logger.info(f"[Maimai] ✓ JP login token recovered on attempt {attempt + 1}")
+                            logger.info(
+                                f"[Maimai] ✓ JP login token recovered on attempt {attempt + 1}: "
+                                f"source={token_source}"
+                            )
                         break
+                    last_page_hint = _describe_jp_login_page(html)
                     last_snippet = (html or "")[:200].replace("\n", " ")
                     logger.warning(
                         f"[Maimai] ⚠ JP login token missing (attempt {attempt + 1}/3): "
-                        f"status={last_status}, html_len={last_html_len}, snippet={last_snippet!r}"
+                        f"status={last_status}, html_len={last_html_len}, "
+                        f"page={last_page_hint}, snippet={last_snippet!r}"
                     )
                 except Exception as e:
                     logger.warning(
@@ -275,7 +341,8 @@ async def login_to_maimai(sega_id: str, password: str, ver="jp", aime=0):
             if not token:
                 raise Exception(
                     f"Unable to fetch login token after 3 attempts "
-                    f"(last_status={last_status}, last_html_len={last_html_len})"
+                    f"(last_status={last_status}, last_html_len={last_html_len}, "
+                    f"last_page={last_page_hint})"
                 )
 
             # POST 登录
@@ -287,13 +354,19 @@ async def login_to_maimai(sega_id: str, password: str, ver="jp", aime=0):
                     "save_cookie": "on",
                     "token": token
                 },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                headers={
+                    **headers,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
                 allow_redirects=True
             ):
                 pass
 
             # 选择 AIME 卡
-            async with session.get(f"https://maimaidx.jp/maimai-mobile/aimeList/submit/?idx={aime}"):
+            async with session.get(
+                f"https://maimaidx.jp/maimai-mobile/aimeList/submit/?idx={aime}",
+                headers=headers,
+            ):
                 pass
 
             return session.cookie_jar.filter_cookies("https://maimaidx.jp")
@@ -415,9 +488,14 @@ async def get_aime_candidates(sega_id: str, password: str, ver="jp"):
     user_agent = _get_random_user_agent()
     async with _create_session() as session:
         token = None
+        token_source = None
+        headers = _jp_login_headers(user_agent)
         for attempt in range(3):
             try:
-                async with session.get("https://maimaidx.jp/maimai-mobile/login/") as response:
+                async with session.get(
+                    "https://maimaidx.jp/maimai-mobile/login/",
+                    headers=headers,
+                ) as response:
                     if response.status == 503:
                         logger.warning("[Maimai] ⚠ Server maintenance (503): server=JP")
                         return "MAINTENANCE"
@@ -425,10 +503,19 @@ async def get_aime_candidates(sega_id: str, password: str, ver="jp"):
                     html = await response.text()
 
                 dom = await asyncio.to_thread(etree.HTML, html)
-                token_list = dom.xpath('//input[@name="token"]/@value')
-                if token_list:
-                    token = token_list[0]
+                token, token_source = _extract_jp_login_token(session, html, dom)
+                if token:
+                    if attempt > 0:
+                        logger.info(
+                            f"[Maimai] ✓ JP Aime-list login token recovered on attempt {attempt + 1}: "
+                            f"source={token_source}"
+                        )
                     break
+                logger.warning(
+                    f"[Maimai] ⚠ JP login token missing for Aime list (attempt {attempt + 1}/3): "
+                    f"status={response.status}, html_len={len(html or '')}, "
+                    f"page={_describe_jp_login_page(html)}"
+                )
             except Exception as e:
                 logger.warning(f"[Maimai] ⚠ JP login page fetch failed for Aime list (attempt {attempt + 1}/3): {e}")
 
@@ -447,8 +534,8 @@ async def get_aime_candidates(sega_id: str, password: str, ver="jp"):
                 "token": token
             },
             headers={
+                **headers,
                 "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": user_agent,
             },
             allow_redirects=True
         ) as login_response:
@@ -459,7 +546,7 @@ async def get_aime_candidates(sega_id: str, password: str, ver="jp"):
 
         async with session.get(
             "https://maimaidx.jp/maimai-mobile/aimeList/",
-            headers={"User-Agent": user_agent}
+            headers=headers
         ) as response:
             if response.status == 503:
                 logger.warning("[Maimai] ⚠ Server maintenance (503): server=JP")
