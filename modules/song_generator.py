@@ -211,13 +211,14 @@ def _makeup_played_data(played_data, gap=10):
     return new_img
 
 def generate_version_list(songs_json, version_info=None, ver="jp"):
-    img_width = 1700
+    img_width = 1820
     margin = 20
     level_width = 100
     img_size = 150
     cover_height = img_size + 30
+    cover_gap = margin
     row_height = cover_height + margin
-    max_per_row = 9
+    max_per_row = 10
     version_info = version_info or {}
 
     entries = []
@@ -323,7 +324,7 @@ def generate_version_list(songs_json, version_info=None, ver="jp"):
                 y_offset += row_height
                 x_offset = level_width + margin
             final_img.paste(img, (x_offset, y_offset), img if img.mode == "RGBA" else None)
-            x_offset += img_size + margin
+            x_offset += img_size + cover_gap
         y_offset += row_height
 
     for entry in entries:
