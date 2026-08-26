@@ -279,19 +279,17 @@ def compose_images(images, timezone_offset=9, bg_filter=None, outer_margin=40, i
         bg_path = os.path.join(BG_DIR, random.choice(candidate_files))
         with Image.open(bg_path) as _bg:
             bg_img = _bg.convert("RGB")
-        # Cover 裁剪：等比缩放使短边覆盖目标尺寸，居中裁剪
         bg_w, bg_h = bg_img.size
-        scale = max(final_width / bg_w, final_height / bg_h)
+        scale = min(final_width / bg_w, final_height / bg_h)
         new_bg_w = int(bg_w * scale)
         new_bg_h = int(bg_h * scale)
         bg_img = bg_img.resize((new_bg_w, new_bg_h), Image.Resampling.LANCZOS)
-        left = (new_bg_w - final_width) // 2
-        top = (new_bg_h - final_height) // 2
-        bg_img = bg_img.crop((left, top, left + final_width, top + final_height))
-        # 高斯模糊（在 RGB 上操作避免 alpha 边缘伪影）
+        background = Image.new("RGB", (final_width, final_height), (255, 255, 255))
+        background.paste(bg_img, ((final_width - new_bg_w) // 2, (final_height - new_bg_h) // 2))
+        bg_img.close()
+        bg_img = background
         if bg_blur_radius > 0:
             bg_img = bg_img.filter(ImageFilter.GaussianBlur(radius=bg_blur_radius))
-        # 转回 RGBA 后叠加半透明白色遮罩
         bg_img = bg_img.convert("RGBA")
         if bg_overlay_alpha > 0:
             overlay = Image.new("RGBA", (final_width, final_height), (255, 255, 255, bg_overlay_alpha))
