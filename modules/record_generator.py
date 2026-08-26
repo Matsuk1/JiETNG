@@ -1520,9 +1520,9 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
 def generate_plate_image(
     target_data,
     title,
-    img_width=1700,
+    img_width=1820,
     img_height=600,
-    max_per_row=9,
+    max_per_row=10,
     margin=20,
     headers=None,
 ):
