@@ -60,15 +60,15 @@ def delete_user(user_id: str) -> None:
     with nickname_cache_lock:
         nickname_cache.pop(user_id, None)
 
-    background_path = os.path.join(BG_DIR, f"jietnguser_{user_id}.webp")
-    try:
-        os.remove(background_path)
-    except FileNotFoundError:
-        pass
-    except OSError:
-        logger.exception(
-            "[UserManager] Failed to delete custom bg: user_id=%s", user_id
-        )
+    for filename in (f"jietnguser_{user_id}.webp", f"jietnguser_{user_id}_2.webp"):
+        try:
+            os.remove(os.path.join(BG_DIR, filename))
+        except FileNotFoundError:
+            pass
+        except OSError:
+            logger.exception(
+                "[UserManager] Failed to delete custom bg: user_id=%s", user_id
+            )
 
 
 def edit_user_value(

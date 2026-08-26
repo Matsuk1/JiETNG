@@ -117,7 +117,7 @@ def wrap_in_rounded_background(content_img, padding=20, radius=30,
 
     return bg
 
-def compose_images(images, timezone_offset=9, bg_filter=None, outer_margin=40, image_y_offset=10):
+def compose_images(images, timezone_offset=9, bg_filter=None):
     """
     将多张图片垂直拼接，并添加页脚（RGB / RGBA 自适应）。
 
@@ -134,6 +134,7 @@ def compose_images(images, timezone_offset=9, bg_filter=None, outer_margin=40, i
         组合后的 PIL.Image 对象（RGB 或 RGBA）
     """
     spacing = 5
+    outer_margin = 40
     footer_height = 150
     if not images:
         raise ValueError("图片列表不能为空")
@@ -160,6 +161,10 @@ def compose_images(images, timezone_offset=9, bg_filter=None, outer_margin=40, i
 
     base_logo_size = 130
     dynamic_logo_size = max(100, min(180, int(base_logo_size * scale_factor)))
+    dynamic_footer_height = max(
+        dynamic_footer_height,
+        30 + int(10 * scale_factor) + dynamic_logo_size,
+    )
 
     dynamic_left_margin = max(40, min(80, int(50 * scale_factor))) - 10
     dynamic_right_margin = max(150, min(250, int(180 * scale_factor))) - 10
@@ -172,7 +177,7 @@ def compose_images(images, timezone_offset=9, bg_filter=None, outer_margin=40, i
     combined = Image.new("RGBA", (inner_width, inner_height), (0, 0, 0, 0))
 
     # 5. 粘贴图片（统一使用 alpha）
-    y_offset = image_y_offset
+    y_offset = 10
     for img in images_with_bg:
         x_offset = (inner_width - img.width) // 2
         combined.paste(img, (x_offset, y_offset), img)
@@ -279,6 +284,7 @@ def compose_images(images, timezone_offset=9, bg_filter=None, outer_margin=40, i
         bg_path = os.path.join(BG_DIR, random.choice(candidate_files))
         with Image.open(bg_path) as _bg:
             bg_img = _bg.convert("RGB")
+        # Cover 裁剪：等比缩放使短边覆盖目标尺寸，居中裁剪
         bg_w, bg_h = bg_img.size
         scale = max(final_width / bg_w, final_height / bg_h)
         new_bg_w = int(bg_w * scale)
@@ -287,8 +293,10 @@ def compose_images(images, timezone_offset=9, bg_filter=None, outer_margin=40, i
         left = (new_bg_w - final_width) // 2
         top = (new_bg_h - final_height) // 2
         bg_img = bg_img.crop((left, top, left + final_width, top + final_height))
+        # 高斯模糊（在 RGB 上操作避免 alpha 边缘伪影）
         if bg_blur_radius > 0:
             bg_img = bg_img.filter(ImageFilter.GaussianBlur(radius=bg_blur_radius))
+        # 转回 RGBA 后叠加半透明白色遮罩
         bg_img = bg_img.convert("RGBA")
         if bg_overlay_alpha > 0:
             overlay = Image.new("RGBA", (final_width, final_height), (255, 255, 255, bg_overlay_alpha))
@@ -307,6 +315,8 @@ def compose_generated_images(images, **options):
     """Compose owned source images and release them when composition finishes."""
     images = list(images)
     try:
+        options.pop("outer_margin", None)
+        options.pop("image_y_offset", None)
         return compose_images(images, **options)
     finally:
         closed = set()

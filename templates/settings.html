@@ -199,13 +199,17 @@
       display: flex;
     }
 
-    .bg-option .bg-label {
+    .bg-option .bg-delete-btn {
       position: absolute;
       bottom: 0;
       left: 0;
       right: 0;
-      background: rgba(0,0,0,0.5);
+      width: 100%;
+      border: 0;
+      background: var(--danger-color);
       color: #fff;
+      cursor: pointer;
+      font-family: inherit;
       font-size: 10px;
       text-align: center;
       padding: 2px 0;
@@ -230,7 +234,7 @@
 
     .bg-preview::before {
       background-image: var(--preview-bg, none);
-      background-size: contain;
+      background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
       filter: blur(var(--preview-blur, 20px));
@@ -631,10 +635,10 @@
           <div class="bg-grid">
             {% for file in bg_files %}
             <div class="bg-option {% if file in user_bg_files %}selected{% endif %}" onclick="toggleBg(this, '{{ file }}')">
-              <img src="/static/pics/bg/{{ file }}{% if file == custom_bg_filename %}?t={{ range(100000) | random }}{% endif %}" alt="{{ file }}" loading="lazy" />
+              <img src="/static/pics/bg/{{ file }}{% if file in custom_bg_filenames %}?t={{ range(100000) | random }}{% endif %}" alt="{{ file }}" loading="lazy" />
               <div class="check-mark">✓</div>
-              {% if file == custom_bg_filename %}
-              <div class="bg-label">Custom</div>
+              {% if file in custom_bg_filenames %}
+              <button type="button" class="bg-delete-btn delete-custom-bg-btn" onclick='event.stopPropagation(); deleteCustomBg({{ file | tojson }}, this)'>削除</button>
               {% endif %}
             </div>
             {% endfor %}
@@ -643,14 +647,12 @@
 
         <div id="section-title-custom-bg" class="section-title">カスタム背景</div>
         <div class="list-panel" style="margin-bottom: 20px;">
-          <div class="bg-hint" id="custom-bg-hint-text">自分だけの背景画像をアップロードできます（1枚まで、5MB以下）。</div>
-          {% if has_custom_bg %}
-          <div class="list-item" id="custom-bg-actions">
-            <span style="font-size:13px; color:var(--text-secondary);" id="custom-bg-status-text">アップロード済み</span>
-            <button type="button" class="btn-danger" id="delete-custom-bg-btn" onclick="deleteCustomBg()">削除</button>
+          <div class="bg-hint" id="custom-bg-hint-text">自分だけの背景画像をアップロードできます（2枚まで、各5MB以下）。</div>
+          <div class="list-item" id="custom-bg-delete-all-row" {% if not custom_bg_filenames %}style="display: none;"{% endif %}>
+            <span class="list-item-meta" id="custom-bg-upload-count">{{ custom_bg_filenames | length }}/2</span>
+            <button type="button" class="btn-danger" id="delete-all-custom-bg-btn" onclick="deleteAllCustomBg()">すべて削除</button>
           </div>
-          {% endif %}
-          <div id="upload-row" {% if has_custom_bg %}style="display: none;"{% endif %}>
+          <div id="upload-row" {% if custom_bg_filenames | length >= 2 %}style="display: none;"{% endif %}>
             <div class="upload-area" id="upload-area" onclick="document.getElementById('custom_bg').click()">
               <div class="upload-icon" id="upload-icon">+</div>
               <div class="upload-text" id="upload-text">画像を選択</div>
@@ -709,13 +711,7 @@
       </div>
       <div class="list-item">
         <label for="import-token-note" id="import-token-note-label">Token名</label>
-        <input type="text" id="import-token-note" maxlength="120" placeholder="Bookmarklet / Tool name" autocomplete="off">
-      </div>
-      <div class="list-item">
-        <div class="list-item-info">
-          <span class="list-item-label" id="import-token-create-label">新しいToken</span>
-          <span class="list-item-meta" id="import-token-create-meta">生成後、Tokenは一度だけ表示されます。</span>
-        </div>
+        <input type="text" id="import-token-note" maxlength="120" placeholder="Tool" autocomplete="off">
         <button type="button" class="token-action-btn" id="import-token-create-btn" onclick="createImportToken()">Tokenを生成</button>
       </div>
       <div id="import-token-list">
@@ -758,6 +754,7 @@
     // 当前已选背景列表
     let selectedBgFiles = {{ user_bg_files | tojson }};
     let totalBgCount = {{ bg_files | length }};
+    let customBgCount = {{ custom_bg_filenames | length }};
     let initialSettingsSnapshot = null;
 
     function getSettingsSnapshot() {
@@ -796,11 +793,12 @@
       if (!preview) return;
       const enabled = document.getElementById('bg_enabled_hidden').value === '1';
       const file = selectedBgFiles[0] || document.querySelector('.bg-option img')?.alt || '';
-      const blur = document.getElementById('bg_blur')?.value || 20;
+      const image = Array.from(document.querySelectorAll('.bg-option img')).find(el => el.alt === file);
+      const blur = Number(document.getElementById('bg_blur')?.value || 20);
       const overlay = (Number(document.getElementById('bg_overlay')?.value || 40) / 255).toFixed(3);
       preview.classList.toggle('disabled', !enabled || !file);
-      preview.style.setProperty('--preview-bg', file ? 'url("/static/pics/bg/' + encodeURIComponent(file) + '")' : 'none');
-      preview.style.setProperty('--preview-blur', blur + 'px');
+      preview.style.setProperty('--preview-bg', file ? 'url(' + JSON.stringify(image?.src || '/static/pics/bg/' + encodeURIComponent(file)) + ')' : 'none');
+      preview.style.setProperty('--preview-blur', (blur * preview.clientWidth / 1780).toFixed(2) + 'px');
       preview.style.setProperty('--preview-overlay', overlay);
     }
 
@@ -858,10 +856,9 @@
       if (sectionCustomBg) sectionCustomBg.textContent = t.sectionCustomBg;
       const customBgHint = document.getElementById('custom-bg-hint-text');
       if (customBgHint) customBgHint.textContent = t.customBgHint;
-      const customBgStatus = document.getElementById('custom-bg-status-text');
-      if (customBgStatus) customBgStatus.textContent = t.customBgUploaded;
-      const deleteBtn = document.getElementById('delete-custom-bg-btn');
-      if (deleteBtn) deleteBtn.textContent = t.deleteCustomBgBtn;
+      document.querySelectorAll('.delete-custom-bg-btn').forEach(el => { el.textContent = t.deleteCustomBgBtn; });
+      const deleteAllBtn = document.getElementById('delete-all-custom-bg-btn');
+      if (deleteAllBtn) deleteAllBtn.textContent = t.deleteAllCustomBgBtn;
       const uploadText = document.getElementById('upload-text');
       if (uploadText && !document.getElementById('upload-area').classList.contains('has-file')) {
         uploadText.textContent = t.labelCustomBg;
@@ -887,10 +884,6 @@
       if (noteLabel) noteLabel.textContent = t.importTokenNoteLabel;
       const noteInput = document.getElementById('import-token-note');
       if (noteInput) noteInput.placeholder = t.importTokenNotePlaceholder;
-      const createLabel = document.getElementById('import-token-create-label');
-      if (createLabel) createLabel.textContent = t.importTokenCreateLabel;
-      const createMeta = document.getElementById('import-token-create-meta');
-      if (createMeta) createMeta.textContent = t.importTokenCreateMeta;
       const resultTitle = document.getElementById('import-token-result-title');
       if (resultTitle) resultTitle.textContent = t.importTokenResultTitle;
       const copyBtn = document.getElementById('import-token-copy-btn');
@@ -1089,43 +1082,69 @@
       }
     }
 
-    async function deleteCustomBg() {
+    async function deleteCustomBg(filename, btn) {
       const lang = document.getElementById('language').value || defaultLanguage;
       const t = translationFor(translations, lang);
       if (!confirm(t.deleteCustomBgConfirm)) return;
 
-      const btn = document.getElementById('delete-custom-bg-btn');
       if (btn) btn.disabled = true;
 
       try {
         const params = new URLSearchParams(window.location.search);
-        const res = await fetch('/linebot/settings/custom_bg?token=' + params.get('token'), {
+        const res = await fetch('/linebot/settings/custom_bg?token=' + params.get('token') + '&filename=' + encodeURIComponent(filename), {
           method: 'DELETE',
         });
         if (!res.ok) throw new Error();
 
-        const actions = document.getElementById('custom-bg-actions');
-        if (actions) actions.remove();
+        const card = btn?.closest('.bg-option');
+        if (card) card.remove();
         const uploadRow = document.getElementById('upload-row');
         if (uploadRow) uploadRow.style.display = '';
-        // 从 grid 中移除自定义背景卡片
-        const customFilename = '{{ custom_bg_filename }}';
-        document.querySelectorAll('.bg-option').forEach(el => {
-          const img = el.querySelector('img');
-          if (img && img.alt === customFilename) el.remove();
-        });
         // 从已选背景中移除
-        const idx = selectedBgFiles.indexOf(customFilename);
-        if (idx > -1) {
-          selectedBgFiles.splice(idx, 1);
+        if (selectedBgFiles.includes(filename)) {
+          selectedBgFiles = selectedBgFiles.filter(item => item !== filename);
           document.getElementById('bg_files_input').value = selectedBgFiles.join(',');
         }
+        customBgCount--;
         totalBgCount--;
+        document.getElementById('custom-bg-upload-count').textContent = customBgCount + '/2';
+        document.getElementById('custom-bg-delete-all-row').style.display = customBgCount ? '' : 'none';
         updateBgCount();
         updateBgPreview();
         updateSaveButtonVisibility();
       } catch (e) {
         if (btn) btn.disabled = false;
+      }
+    }
+
+    async function deleteAllCustomBg() {
+      const lang = document.getElementById('language').value || defaultLanguage;
+      const t = translationFor(translations, lang);
+      if (!confirm(t.deleteAllCustomBgConfirm)) return;
+
+      const btn = document.getElementById('delete-all-custom-bg-btn');
+      btn.disabled = true;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const res = await fetch('/linebot/settings/custom_bg?token=' + params.get('token') + '&all=1', {
+          method: 'DELETE',
+        });
+        if (!res.ok) throw new Error();
+
+        const customFiles = Array.from(document.querySelectorAll('.bg-option .bg-delete-btn'), el => el.closest('.bg-option').querySelector('img').alt);
+        document.querySelectorAll('.bg-option .bg-delete-btn').forEach(el => el.closest('.bg-option').remove());
+        selectedBgFiles = selectedBgFiles.filter(filename => !customFiles.includes(filename));
+        document.getElementById('bg_files_input').value = selectedBgFiles.join(',');
+        totalBgCount -= customBgCount;
+        customBgCount = 0;
+        document.getElementById('custom-bg-upload-count').textContent = '0/2';
+        document.getElementById('custom-bg-delete-all-row').style.display = 'none';
+        document.getElementById('upload-row').style.display = '';
+        updateBgCount();
+        updateBgPreview();
+        updateSaveButtonVisibility();
+      } catch (e) {
+        btn.disabled = false;
       }
     }
 
@@ -1173,19 +1192,7 @@
           if (!res.ok || !data.success) throw new Error(data.message || '');
 
           // 上传成功
-          const uploadRow = document.getElementById('upload-row');
-          uploadRow.style.display = 'none';
-
           const t = translationFor(translations, lang);
-          const actionsDiv = document.createElement('div');
-          actionsDiv.className = 'list-item';
-          actionsDiv.id = 'custom-bg-actions';
-          actionsDiv.innerHTML = '<span style="font-size:13px; color:var(--text-secondary);" id="custom-bg-status-text">'
-            + t.customBgUploaded + '</span>'
-            + '<button type="button" class="btn-danger" id="delete-custom-bg-btn" onclick="deleteCustomBg()">'
-            + t.deleteCustomBgBtn + '</button>';
-          uploadRow.parentNode.insertBefore(actionsDiv, uploadRow);
-
           const filename = data.filename;
           const grid = document.querySelector('.bg-grid');
           if (grid) {
@@ -1194,10 +1201,26 @@
             card.onclick = function() { toggleBg(card, filename); };
             card.innerHTML = '<img src="/static/pics/bg/' + filename + '?t=' + Date.now() + '" alt="' + filename + '" loading="lazy" />'
               + '<div class="check-mark">✓</div>'
-              + '<div class="bg-label">Custom</div>';
+              + '<button type="button" class="bg-delete-btn delete-custom-bg-btn">' + t.deleteCustomBgBtn + '</button>';
+            card.querySelector('button').onclick = function(event) {
+              event.stopPropagation();
+              deleteCustomBg(filename, this);
+            };
             grid.insertBefore(card, grid.firstChild);
           }
+          customBgCount++;
           totalBgCount++;
+          document.getElementById('custom-bg-upload-count').textContent = customBgCount + '/2';
+          document.getElementById('custom-bg-delete-all-row').style.display = '';
+          const uploadRow = document.getElementById('upload-row');
+          uploadRow.style.display = customBgCount >= 2 ? 'none' : '';
+          fileInput.value = '';
+          document.getElementById('upload-area').classList.remove('has-file');
+          document.getElementById('upload-icon').textContent = '+';
+          document.getElementById('upload-text').textContent = t.labelCustomBg;
+          btn.textContent = btnText;
+          btn.disabled = false;
+          btn.style.display = 'none';
           updateBgCount();
           updateBgPreview();
         } catch (e) {

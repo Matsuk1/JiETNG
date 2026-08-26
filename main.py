@@ -910,7 +910,10 @@ def website_settings():
         user_language = normalize_language(user_data.get("language"), DEFAULT_WEB_LANGUAGE)
         return _error_page(error_messages, user_language)
 
-    custom_bg_filename = f"jietnguser_{user_id}.webp"
+    custom_bg_filenames = [
+        f"jietnguser_{user_id}.webp",
+        f"jietnguser_{user_id}_2.webp",
+    ]
 
     if request.method == "POST":
         user_language = normalize_language(
@@ -974,16 +977,16 @@ def website_settings():
             if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
             and not f.startswith('jietnguser_')
         ])
-        # 自定义背景排在最前
-        if os.path.exists(os.path.join(BG_DIR, custom_bg_filename)):
-            all_bg_files = [custom_bg_filename] + other_bg_files
-        else:
-            all_bg_files = other_bg_files
+        existing_custom_bg_files = [
+            filename for filename in custom_bg_filenames
+            if os.path.exists(os.path.join(BG_DIR, filename))
+        ]
+        all_bg_files = existing_custom_bg_files + other_bg_files
     except Exception:
         all_bg_files = []
+        existing_custom_bg_files = []
 
     user_bg_files = user_data.get("bg_files", [])
-    has_custom_bg = os.path.exists(os.path.join(BG_DIR, custom_bg_filename))
     bg_enabled = user_data.get("bg_enabled", False)
     try:
         bg_blur = int(user_data.get("bg_blur", 20))
@@ -1025,8 +1028,7 @@ def website_settings():
         bg_overlay=bg_overlay,
         participate_global_ranking=user_data.get("participate_global_ranking", True) is not False,
         participate_group_ranking=user_data.get("participate_group_ranking", True) is not False,
-        has_custom_bg=has_custom_bg,
-        custom_bg_filename=custom_bg_filename,
+        custom_bg_filenames=existing_custom_bg_files,
         perm_token=generate_perm_token(user_id),
         perm_list=perm_list,
         import_tokens=list_import_tokens(user_id) or [],
@@ -1103,26 +1105,49 @@ def manage_custom_bg():
 
     ALLOWED_BG_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif'}
     MAX_BG_SIZE = 5 * 1024 * 1024
-    custom_bg_filename = f"jietnguser_{user_id}.webp"
-    custom_bg_path = os.path.join(BG_DIR, custom_bg_filename)
+    custom_bg_filenames = [
+        f"jietnguser_{user_id}.webp",
+        f"jietnguser_{user_id}_2.webp",
+    ]
 
     if request.method == "DELETE":
-        if os.path.exists(custom_bg_path):
+        delete_all = request.args.get("all") == "1"
+        requested_filename = request.args.get("filename")
+        if requested_filename and requested_filename not in custom_bg_filenames:
+            return jsonify({"success": False, "message": "Invalid filename"}), 400
+        delete_filenames = custom_bg_filenames if delete_all else [
+            requested_filename or next(
+                (filename for filename in custom_bg_filenames if os.path.exists(os.path.join(BG_DIR, filename))),
+                custom_bg_filenames[0],
+            )
+        ]
+        for custom_bg_filename in delete_filenames:
             try:
-                os.remove(custom_bg_path)
+                os.remove(os.path.join(BG_DIR, custom_bg_filename))
                 logger.info(f"[Settings] ✓ Deleted custom bg: user_id={user_id}")
+            except FileNotFoundError:
+                pass
             except Exception as e:
                 logger.error(f"[Settings] ✗ Failed to delete custom bg: user_id={user_id}, error={e}")
                 return jsonify({"success": False, "message": "Failed to delete"}), 500
 
         bg_files = get_user_field(user_id, "bg_files", [])
-        if custom_bg_filename in bg_files:
-            bg_files.remove(custom_bg_filename)
+        updated_bg_files = [filename for filename in bg_files if filename not in delete_filenames]
+        if updated_bg_files != bg_files:
+            bg_files = updated_bg_files
             edit_user_value(user_id, "bg_files", bg_files)
 
         return jsonify({"success": True}), 200
 
     # POST: 上传（接收 base64 JSON）
+    custom_bg_filename = next(
+        (filename for filename in custom_bg_filenames if not os.path.exists(os.path.join(BG_DIR, filename))),
+        None,
+    )
+    if not custom_bg_filename:
+        return jsonify({"success": False, "message": "Maximum of 2 images reached"}), 409
+    custom_bg_path = os.path.join(BG_DIR, custom_bg_filename)
+
     body = request.get_json(silent=True)
     if not body or 'data' not in body or 'filename' not in body:
         return jsonify({"success": False, "message": "No file provided"}), 400
@@ -1140,7 +1165,7 @@ def manage_custom_bg():
         return jsonify({"success": False, "message": "File too large"}), 400
 
     try:
-        from PIL import Image as PILImage
+        from PIL import Image as PILImage, ImageOps
         from io import BytesIO as BIO
         try:
             from pillow_heif import register_heif_opener
@@ -1149,7 +1174,7 @@ def manage_custom_bg():
             pass
         with PILImage.open(BIO(file_data)) as source_img:
             source_img.load()
-            img = source_img.convert("RGB")
+            img = ImageOps.exif_transpose(source_img).convert("RGB")
         img.save(custom_bg_path, "WEBP", quality=85)
         logger.info(f"[Settings] ✓ Uploaded custom bg: user_id={user_id}, ext={original_ext}, size={len(file_data)}")
     except Exception as e:
