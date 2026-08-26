@@ -293,7 +293,7 @@ def generate_version_list(songs_json, version_info=None, ver="jp"):
     plates_top_h = plate_rows * plate_h + max(0, plate_rows - 1) * plate_gap_y
     top_area_height = margin + title_h + plates_top_h + 56
     total_height = top_area_height + rows_num * row_height + margin
-    final_img = Image.new("RGBA", (img_width, total_height), (255, 255, 255, 255))
+    final_img = Image.new("RGBA", (img_width, total_height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(final_img)
 
     if logo_img:

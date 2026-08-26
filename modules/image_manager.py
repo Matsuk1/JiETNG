@@ -280,12 +280,20 @@ def compose_images(images, timezone_offset=9, bg_filter=None, outer_margin=40, i
         with Image.open(bg_path) as _bg:
             bg_img = _bg.convert("RGB")
         bg_w, bg_h = bg_img.size
-        scale = min(final_width / bg_w, final_height / bg_h)
-        new_bg_w = int(bg_w * scale)
-        new_bg_h = int(bg_h * scale)
-        bg_img = bg_img.resize((new_bg_w, new_bg_h), Image.Resampling.LANCZOS)
-        background = Image.new("RGB", (final_width, final_height), (255, 255, 255))
-        background.paste(bg_img, ((final_width - new_bg_w) // 2, (final_height - new_bg_h) // 2))
+        cover_scale = max(final_width / bg_w, final_height / bg_h)
+        contain_scale = min(final_width / bg_w, final_height / bg_h)
+        cover_w, cover_h = int(bg_w * cover_scale), int(bg_h * cover_scale)
+        contain_w, contain_h = int(bg_w * contain_scale), int(bg_h * contain_scale)
+        background = bg_img.resize((cover_w, cover_h), Image.Resampling.LANCZOS)
+        background = background.crop((
+            (cover_w - final_width) // 2,
+            (cover_h - final_height) // 2,
+            (cover_w + final_width) // 2,
+            (cover_h + final_height) // 2,
+        ))
+        contained = bg_img.resize((contain_w, contain_h), Image.Resampling.LANCZOS)
+        background.paste(contained, ((final_width - contain_w) // 2, (final_height - contain_h) // 2))
+        contained.close()
         bg_img.close()
         bg_img = background
         if bg_blur_radius > 0:
