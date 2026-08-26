@@ -153,7 +153,7 @@ def _draw_detail_line(draw, x, y, key, value, font, max_w, lh):
 
 
 def _draw_level_label(draw, text, x, row_top, content_h, font,
-                      diameter=92, dx=0, dy=0,
+                      diameter=92, dx=-10, dy=0,
                       border_color=(150, 150, 150, 255), border_width=4):
     """绘制固定大小的等级圆形标签。"""
     label_text = str(text)
@@ -1455,21 +1455,18 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
         record_img = record_img.convert("RGBA")
         draw = ImageDraw.Draw(record_img)
         difficulties = ["basic", "advanced", "expert", "master"]
-        gap = 2
-        total_gap = gap * (len(difficulties) - 1)
-        block_width = (img_width - total_gap) / len(difficulties)
+        block_width = img_width / len(difficulties)
 
         for i, diff in enumerate(difficulties):
             completed = complete_info.get(diff, False) if complete_info else False
             diff_color = _get_difficulty_color(diff)
             color = diff_color + (255,) if len(diff_color) == 3 else diff_color
             color = color if completed else (255, 255, 255, 255)
-            x1 = int(i * (block_width + gap))
-            x2 = int(x1 + block_width)
+            x1 = int(round(i * block_width))
+            x2 = int(round((i + 1) * block_width))
             draw.rectangle([x1, size, x2, img_height], fill=color)
             if i > 0:
-                divider_x = x1 - gap // 2
-                draw.line([(divider_x, size), (divider_x, img_height - 1)], fill=outline_color, width=2)
+                draw.line([(x1, size), (x1, img_height - 1)], fill=outline_color, width=2)
 
     elif is_progress_mode:
         record_img = record_img.convert("RGBA")

@@ -69,7 +69,6 @@ from linebot.v3.webhooks import (
 from modules.song_generator import (
     generate_version_list,
     song_info_generate,
-    wrap_version_content_panel,
 )
 from modules.record_generator import (
     generate_cover,
@@ -3386,14 +3385,10 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
         ver=ver,
     )
 
-    version_panel = None
     try:
-        version_panel = wrap_version_content_panel([version_list_img])
-        img = _compose_user_images([version_panel], user_id)
+        img = _compose_user_images([version_list_img], user_id)
     finally:
         version_list_img.close()
-        if version_panel is not None:
-            version_panel.close()
 
     original_url, preview_url = await upload_generated_image(img, user_id)
 

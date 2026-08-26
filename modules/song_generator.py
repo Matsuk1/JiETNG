@@ -215,7 +215,8 @@ def generate_version_list(songs_json, version_info=None, ver="jp"):
     margin = 20
     level_width = 100
     img_size = 150
-    row_height = img_size + margin
+    cover_height = img_size + 30
+    row_height = cover_height + margin
     max_per_row = 9
     version_info = version_info or {}
 
@@ -227,7 +228,14 @@ def generate_version_list(songs_json, version_info=None, ver="jp"):
         )
         if master_sheet:
             entries.append({
-                "img": generate_cover(song.get("cover_url"), song.get("type"), cover_name=song.get("cover_name")),
+                "img": generate_cover(
+                    song.get("cover_url"),
+                    song.get("type"),
+                    cover_name=song.get("cover_name"),
+                    difficulty="master",
+                    achieved=False,
+                    song_title=song.get("title", ""),
+                ),
                 "level": master_sheet.get("level", "-"),
                 "internal_level": master_sheet.get("internalLevelValue", 0),
                 "title": song.get("title", ""),
@@ -250,7 +258,7 @@ def generate_version_list(songs_json, version_info=None, ver="jp"):
     title_text = version_info.get("version") or ""
     abbr = version_info.get("abbr") or ""
     kanji_match = re.search(r"（(.+?)）|\((.+?)\)", abbr)
-    plate_kanji = kanji_match.group(1) or kanji_match.group(2) if kanji_match else None
+    plate_kanji = (kanji_match.group(1) or kanji_match.group(2)) if kanji_match else None
     logo_img = None
     logo_path = os.path.join(VERSIONS_DIR, f"{title_text.lower().replace(' ', '_')}.png") if title_text else ""
     if logo_path and os.path.exists(logo_path):
@@ -308,7 +316,7 @@ def generate_version_list(songs_json, version_info=None, ver="jp"):
 
     y_offset = top_area_height
     for level, img_list in rows:
-        _draw_level_label(draw, level, margin, y_offset, img_size, font_level_badge)
+        _draw_level_label(draw, level, margin, y_offset, cover_height, font_level_badge)
         x_offset = level_width + margin
         for i, img in enumerate(img_list):
             if i > 0 and i % max_per_row == 0:
@@ -322,34 +330,3 @@ def generate_version_list(songs_json, version_info=None, ver="jp"):
         entry["img"].close()
 
     return final_img
-
-def wrap_version_content_panel(images, padding=34, radius=28):
-    """Wrap version content images in a translucent rounded panel."""
-    images = [img.convert("RGBA") for img in images if img is not None]
-    if not images:
-        raise ValueError("Version content images must not be empty")
-
-    spacing = 8
-    content_width = max(img.width for img in images)
-    content_height = sum(img.height for img in images) + spacing * (len(images) - 1)
-    panel_width = content_width + padding * 2
-    panel_height = content_height + padding * 2
-
-    panel = Image.new("RGBA", (panel_width, panel_height), (0, 0, 0, 0))
-    overlay = Image.new("RGBA", panel.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-    draw.rounded_rectangle(
-        (0, 0, panel_width - 1, panel_height - 1),
-        radius=radius,
-        fill=(255, 255, 255, 224),
-        outline=(210, 220, 235, 190),
-        width=3,
-    )
-    panel.alpha_composite(overlay)
-
-    y = padding
-    for img in images:
-        x = padding + (content_width - img.width) // 2
-        panel.alpha_composite(img, (x, y))
-        y += img.height + spacing
-    return panel
