@@ -595,17 +595,16 @@ def serve_image(image_id):
         logger.warning(f"[ImageHost] ⚠ Invalid image_id format: id={image_id}")
         return send_from_directory('assets/pics', '404.png', mimetype='image/png'), 404
 
-    # 添加.png扩展名
-    filename = f"{image_id}.png"
-    image_path = os.path.join(IMG_DIR, filename)
-
-    # 检查文件是否存在
-    if not os.path.exists(image_path):
+    filename = next(
+        (name for name in (f"{image_id}.jpg", f"{image_id}.png") if os.path.exists(os.path.join(IMG_DIR, name))),
+        None,
+    )
+    if not filename:
         logger.warning(f"[ImageHost] ⚠ Image not found: id={image_id}")
         return send_from_directory('assets/pics', '404.png', mimetype='image/png'), 404
 
     logger.info(f"[ImageHost] → Serving image: id={image_id}")
-    return send_from_directory(IMG_DIR, filename, mimetype='image/png')
+    return send_from_directory(IMG_DIR, filename, mimetype='image/jpeg' if filename.endswith(".jpg") else 'image/png')
 
 
 @app.route("/linebot/export/<file_id>/<friendly_name>", methods=["GET"])
@@ -1350,7 +1349,7 @@ def _generate_session_image_from_payload(data: dict):
         [profile_img, records_img],
         timezone_offset=timezone_offset,
     )
-    filename = f"jietng_{ver}_{cmd_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+    filename = f"jietng_{ver}_{cmd_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
     return result, filename
 
 @app.route("/api/web/session-image", methods=["POST", "OPTIONS"])
@@ -1363,9 +1362,11 @@ def api_web_session_image():
     try:
         result, filename = _generate_session_image_from_payload(data)
         buf = BytesIO()
-        result.save(buf, "PNG")
+        if result.mode == "RGBA":
+            result = Image.alpha_composite(Image.new("RGBA", result.size, (255, 255, 255, 255)), result)
+        result.convert("RGB").save(buf, "JPEG", quality=88, optimize=True, progressive=True)
         buf.seek(0)
-        response = send_file(buf, mimetype="image/png", as_attachment=False, download_name=filename)
+        response = send_file(buf, mimetype="image/jpeg", as_attachment=False, download_name=filename)
         return _maimai_session_cors(response)
     except ValueError as e:
         return _maimai_session_cors(jsonify({"error": str(e)})), 400
@@ -1441,9 +1442,11 @@ def demo_page():
         if not result:
             return _demo_cors(jsonify({"error": "Login failed. Please check your SEGA ID and password."})), 401
         buf = BytesIO()
-        result.save(buf, "PNG")
+        if result.mode == "RGBA":
+            result = Image.alpha_composite(Image.new("RGBA", result.size, (255, 255, 255, 255)), result)
+        result.convert("RGB").save(buf, "JPEG", quality=88, optimize=True, progressive=True)
         buf.seek(0)
-        return _demo_cors(send_file(buf, mimetype="image/png"))
+        return _demo_cors(send_file(buf, mimetype="image/jpeg"))
     except ValueError as e:
         return _demo_cors(jsonify({"error": str(e)})), 400
     except Exception as e:

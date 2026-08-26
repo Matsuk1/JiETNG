@@ -1,4 +1,4 @@
-"""Upload generated PNG images to R2 or the local image host."""
+"""Upload generated JPEG images to R2 or the local image host."""
 
 import asyncio
 import logging
@@ -8,6 +8,8 @@ import threading
 import time
 from datetime import datetime
 from io import BytesIO
+
+from PIL import Image
 
 from modules.config_loader import (
     DOMAIN,
@@ -42,7 +44,7 @@ def cleanup_expired_images(expiry_seconds=LOCAL_EXPIRY_SECONDS):
     now = time.time()
     deleted = 0
     for filename in filenames:
-        if not filename.endswith(".png") or filename.startswith(PERMANENT_PREFIX):
+        if not filename.lower().endswith((".jpg", ".jpeg", ".png")) or filename.startswith(PERMANENT_PREFIX):
             continue
         path = os.path.join(IMG_DIR, filename)
         try:
@@ -76,18 +78,22 @@ def _start_periodic_cleanup():
     logger.info("[ImageCleanup] Periodic cleanup thread started")
 
 
-def _encode_png(image):
+def _encode_jpeg(image):
     with BytesIO() as buffer:
-        image.save(buffer, format="PNG")
+        image = image.convert("RGB") if image.mode != "RGBA" else Image.alpha_composite(
+            Image.new("RGBA", image.size, (255, 255, 255, 255)),
+            image,
+        ).convert("RGB")
+        image.save(buffer, format="JPEG", quality=88, optimize=True, progressive=True)
         return buffer.getvalue()
 
 
-def _save_to_local(png_bytes):
+def _save_to_local(image_bytes):
     try:
         os.makedirs(IMG_DIR, exist_ok=True)
         image_id = secrets.token_urlsafe(16)
-        with open(os.path.join(IMG_DIR, f"{image_id}.png"), "wb") as file:
-            file.write(png_bytes)
+        with open(os.path.join(IMG_DIR, f"{image_id}.jpg"), "wb") as file:
+            file.write(image_bytes)
         url = f"https://{DOMAIN}/linebot/img/{image_id}"
         logger.info("[LocalImageHost] Image saved: id=%s, url=%s", image_id, url)
         return url
@@ -96,7 +102,7 @@ def _save_to_local(png_bytes):
         return None
 
 
-async def _upload_to_r2(png_bytes, user_id=None):
+async def _upload_to_r2(image_bytes, user_id=None):
     if not R2_ENABLED:
         return None
     try:
@@ -106,7 +112,7 @@ async def _upload_to_r2(png_bytes, user_id=None):
         return None
 
     image_id = secrets.token_urlsafe(16)
-    file_name = f"gen/{image_id}.png"
+    file_name = f"gen/{image_id}.jpg"
     metadata = {"upload-time": datetime.now().isoformat()}
     if user_id:
         metadata["user-id"] = str(user_id)
@@ -123,8 +129,8 @@ async def _upload_to_r2(png_bytes, user_id=None):
             await client.put_object(
                 Bucket=R2_BUCKET_NAME,
                 Key=file_name,
-                Body=png_bytes,
-                ContentType="image/png",
+                Body=image_bytes,
+                ContentType="image/jpeg",
                 CacheControl="public, max-age=259200",
                 Metadata=metadata,
             )
@@ -140,19 +146,19 @@ async def _upload_to_r2(png_bytes, user_id=None):
 async def smart_upload(image, user_id=None):
     """Upload one image and return identical original and preview URLs."""
     try:
-        png_bytes = await asyncio.to_thread(_encode_png, image)
+        image_bytes = await asyncio.to_thread(_encode_jpeg, image)
     except Exception:
-        logger.exception("[ImageUploader] PNG encoding failed")
+        logger.exception("[ImageUploader] JPEG encoding failed")
         return None, None
 
-    if R2_ENABLED and len(png_bytes) <= R2_MAX_BYTES:
-        url = await _upload_to_r2(png_bytes, user_id)
+    if R2_ENABLED and len(image_bytes) <= R2_MAX_BYTES:
+        url = await _upload_to_r2(image_bytes, user_id)
         if url:
             return url, url
     elif R2_ENABLED:
-        logger.info("[ImageUploader] Image too large for R2: %.1fMB", len(png_bytes) / 1024 / 1024)
+        logger.info("[ImageUploader] Image too large for R2: %.1fMB", len(image_bytes) / 1024 / 1024)
 
-    url = await asyncio.to_thread(_save_to_local, png_bytes)
+    url = await asyncio.to_thread(_save_to_local, image_bytes)
     return (url, url) if url else (None, None)
 
 
