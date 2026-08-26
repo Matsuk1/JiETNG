@@ -258,22 +258,30 @@ def generate_version_list(songs_json, version_info=None, ver="jp"):
             logo_img = resize_by_width(logo.convert("RGBA"), 1340)
 
     plate_imgs = []
-    for suffix in ("極", "将", "神", "舞舞"):
-        filename = f"{plate_kanji}{suffix}.webp" if plate_kanji else ""
+    plate_order = {"極": 0, "将": 1, "神": 2, "舞舞": 3}
+    plate_files = []
+    if plate_kanji and os.path.isdir(PLATES_DIR):
+        for filename in os.listdir(PLATES_DIR):
+            suffix = filename.removeprefix(plate_kanji).removesuffix(".webp")
+            if filename.startswith(plate_kanji) and filename.endswith(".webp") and suffix in plate_order:
+                plate_files.append((plate_order[suffix], filename))
+
+    for _, filename in sorted(plate_files)[:4]:
         plate_path = os.path.join(PLATES_DIR, filename)
-        if filename and os.path.exists(plate_path):
-            with Image.open(plate_path) as plate:
-                plate_imgs.append(plate.convert("RGBA"))
+        with Image.open(plate_path) as plate:
+            plate_imgs.append(plate.convert("RGBA"))
 
     draw_probe = ImageDraw.Draw(Image.new("RGBA", (1, 1), (0, 0, 0, 0)))
     title_h = logo_img.height + 28 if logo_img else (
         draw_probe.textbbox((0, 0), title_text, font=font_song_title)[3] + 24 if title_text else 0
     )
-    plate_w = 620
-    plate_h = 100
-    plate_gap_x = 22
-    plate_gap_y = 18
-    plates_top_h = plate_h * 2 + plate_gap_y if plate_imgs else 0
+    plate_w = 700
+    plate_h = 113
+    plate_gap_x = 28
+    plate_gap_y = 20
+    shown_plate_count = min(4, len(plate_imgs))
+    plate_rows = (shown_plate_count + 1) // 2
+    plates_top_h = plate_rows * plate_h + max(0, plate_rows - 1) * plate_gap_y
     top_area_height = margin + title_h + plates_top_h + 56
     total_height = top_area_height + rows_num * row_height + margin
     final_img = Image.new("RGBA", (img_width, total_height), (0, 0, 0, 0))
@@ -286,12 +294,14 @@ def generate_version_list(songs_json, version_info=None, ver="jp"):
         title_w = draw.textlength(title_text, font=font_song_title)
         draw.text(((img_width - title_w) // 2, margin), title_text, font=font_song_title, fill=(30, 30, 30))
 
-    grid_width = plate_w * 2 + plate_gap_x
-    start_x = (img_width - grid_width) // 2
     start_y = margin + title_h
-    for idx, plate_img in enumerate(plate_imgs[:4]):
-        x = start_x + (idx % 2) * (plate_w + plate_gap_x)
-        y = start_y + (idx // 2) * (plate_h + plate_gap_y)
+    for idx, plate_img in enumerate(plate_imgs[:shown_plate_count]):
+        row = idx // 2
+        col = idx % 2
+        row_count = min(2, shown_plate_count - row * 2)
+        row_width = row_count * plate_w + max(0, row_count - 1) * plate_gap_x
+        x = (img_width - row_width) // 2 + col * (plate_w + plate_gap_x)
+        y = start_y + row * (plate_h + plate_gap_y)
         resized_plate = plate_img.resize((plate_w, plate_h), Image.Resampling.LANCZOS)
         final_img.paste(resized_plate, (x, y), resized_plate)
         plate_img.close()
