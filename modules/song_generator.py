@@ -1,18 +1,22 @@
+import os
+import re
+
 from PIL import Image, ImageDraw
 
 from modules.image_manager import (
     compose_generated_images,
     draw_aligned_colon_text,
     font_large,
+    font_level_badge,
     font_song_info,
     font_song_title,
     resize_by_width,
     round_corner,
     truncate_text,
-    wrap_in_rounded_background,
 )
+from modules.config_loader import PLATES_DIR, VERSIONS_DIR
 from modules.i18n import image_language, language_catalog, select_text
-from modules.record_generator import _get_difficulty_color, create_thumbnail_in_line, generate_cover
+from modules.record_generator import _draw_level_label, _get_difficulty_color, create_thumbnail_in_line, generate_cover
 
 
 def _song_text(key, language):
@@ -206,73 +210,108 @@ def _makeup_played_data(played_data, gap=10):
 
     return new_img
 
-def _render_song_info_small_img(song_json, language="en"):
-    # 参数设定
-    canvas_width = 1000
-    canvas_height = 265
-    block_height = 260
-    margin = 30
-    text_gap = 35
+def generate_version_list(songs_json, version_info=None, ver="jp"):
+    img_width = 1700
+    margin = 20
+    level_width = 100
+    img_size = 150
+    row_height = img_size + margin
+    max_per_row = 9
+    version_info = version_info or {}
 
-    # 创建画布
-    img = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-
-    # 封面图处理
-    cover_url = song_json.get("cover_url")
-    cover_name = song_json.get("cover_name")
-    song_type = song_json.get("type")
-    cover_img = generate_cover(cover_url, song_type, cover_name = cover_name)
-
-    cover_size = 200
-    large_cover = cover_img.resize((cover_size, cover_size), Image.Resampling.LANCZOS)
-    large_cover = round_corner(large_cover)
-    cover_x = margin
-    cover_y = margin
-    img.paste(large_cover, (cover_x, cover_y), large_cover)
-
-    levels = [sheet['internalLevelValue'] for sheet in song_json['sheets']]
-
-    # 文字区域
-    text_x = cover_x + cover_size + text_gap
-    text_y = cover_y
-    title = song_json.get("title") or _song_text("unknown_title", language)
-    artist = song_json.get("artist") or _song_text("unknown_artist", language)
-    bpm = f"{_song_text('bpm', language)}: {song_json.get('bpm', '-')}"
-    category = song_json.get("category") or _song_text("unknown_category", language)
-    levels_str = " / ".join(f"{level:.1f}" for level in levels)
-    max_text_width = canvas_width - text_x - margin
-    title = truncate_text(draw, title, font_song_title, max_text_width)
-    artist = truncate_text(draw, artist, font_song_info, max_text_width)
-    category = truncate_text(draw, category, font_song_info, max_text_width)
-    levels_str = truncate_text(draw, levels_str, font_song_info, max_text_width)
-
-    # 标题
-    draw.text((text_x, text_y), title, font=font_song_title, fill=(0, 0, 0))
-    title_width = draw.textlength(title, font=font_song_title)
-
-    # 横线
-    line_y = text_y + 45
-    draw.line([(text_x, line_y), (text_x + max(title_width+10, 600), line_y)], fill=(100, 100, 100), width=2)
-
-    # 其他信息
-    draw.text((text_x, line_y + 15), artist, font=font_song_info, fill=(0, 0, 0))
-    draw.text((text_x, line_y + 50), bpm, font=font_song_info, fill=(0, 0, 0))
-    draw.text((text_x, line_y + 85), category, font=font_song_info, fill=(0, 0, 0))
-    draw.text((text_x, line_y + 120), levels_str, font=font_song_info, fill=(0, 0, 0))
-
-    return img
-
-def generate_version_list(songs_json, ver="jp"):
-    language = image_language(ver)
-    song_imgs = []
-
+    entries = []
     for song in songs_json:
-        song_img = _render_song_info_small_img(song, language)
-        song_img = wrap_in_rounded_background(song_img)
-        song_imgs.append(song_img)
+        master_sheet = next(
+            (sheet for sheet in song.get("sheets", []) if sheet.get("difficulty") == "master"),
+            None,
+        )
+        if master_sheet:
+            entries.append({
+                "img": generate_cover(song.get("cover_url"), song.get("type"), cover_name=song.get("cover_name")),
+                "level": master_sheet.get("level", "-"),
+                "internal_level": master_sheet.get("internalLevelValue", 0),
+                "title": song.get("title", ""),
+            })
 
-    return _concat_images_grid(song_imgs)
+    level_order = [
+        "15", "14+", "14", "13+", "13", "12+", "12", "11+", "11",
+        "10+", "10", "9+", "9", "8+", "8", "7+", "7", "6+", "6",
+        "5+", "5", "4+", "4", "3+", "3", "2+", "2", "1+", "1",
+    ]
+    rows = []
+    rows_num = 0
+    for level in level_order:
+        level_entries = [entry for entry in entries if entry["level"] == level]
+        level_entries.sort(key=lambda item: (-float(item.get("internal_level") or 0), str(item.get("title", ""))))
+        if level_entries:
+            rows.append((level, [entry["img"] for entry in level_entries]))
+            rows_num += (len(level_entries) + max_per_row - 1) // max_per_row
+
+    title_text = version_info.get("version") or ""
+    abbr = version_info.get("abbr") or ""
+    kanji_match = re.search(r"（(.+?)）|\((.+?)\)", abbr)
+    plate_kanji = kanji_match.group(1) or kanji_match.group(2) if kanji_match else None
+    logo_img = None
+    logo_path = os.path.join(VERSIONS_DIR, f"{title_text.lower().replace(' ', '_')}.png") if title_text else ""
+    if logo_path and os.path.exists(logo_path):
+        with Image.open(logo_path) as logo:
+            logo_img = resize_by_width(logo.convert("RGBA"), 1340)
+
+    plate_imgs = []
+    for suffix in ("極", "将", "神", "舞舞"):
+        filename = f"{plate_kanji}{suffix}.webp" if plate_kanji else ""
+        plate_path = os.path.join(PLATES_DIR, filename)
+        if filename and os.path.exists(plate_path):
+            with Image.open(plate_path) as plate:
+                plate_imgs.append(plate.convert("RGBA"))
+
+    draw_probe = ImageDraw.Draw(Image.new("RGBA", (1, 1), (0, 0, 0, 0)))
+    title_h = logo_img.height + 28 if logo_img else (
+        draw_probe.textbbox((0, 0), title_text, font=font_song_title)[3] + 24 if title_text else 0
+    )
+    plate_w = 620
+    plate_h = 100
+    plate_gap_x = 22
+    plate_gap_y = 18
+    plates_top_h = plate_h * 2 + plate_gap_y if plate_imgs else 0
+    top_area_height = margin + title_h + plates_top_h + 56
+    total_height = top_area_height + rows_num * row_height + margin
+    final_img = Image.new("RGBA", (img_width, total_height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(final_img)
+
+    if logo_img:
+        final_img.paste(logo_img, ((img_width - logo_img.width) // 2, margin), logo_img)
+        logo_img.close()
+    elif title_text:
+        title_w = draw.textlength(title_text, font=font_song_title)
+        draw.text(((img_width - title_w) // 2, margin), title_text, font=font_song_title, fill=(30, 30, 30))
+
+    grid_width = plate_w * 2 + plate_gap_x
+    start_x = (img_width - grid_width) // 2
+    start_y = margin + title_h
+    for idx, plate_img in enumerate(plate_imgs[:4]):
+        x = start_x + (idx % 2) * (plate_w + plate_gap_x)
+        y = start_y + (idx // 2) * (plate_h + plate_gap_y)
+        resized_plate = plate_img.resize((plate_w, plate_h), Image.Resampling.LANCZOS)
+        final_img.paste(resized_plate, (x, y), resized_plate)
+        plate_img.close()
+
+    y_offset = top_area_height
+    for level, img_list in rows:
+        _draw_level_label(draw, level, margin, y_offset, img_size, font_level_badge)
+        x_offset = level_width + margin
+        for i, img in enumerate(img_list):
+            if i > 0 and i % max_per_row == 0:
+                y_offset += row_height
+                x_offset = level_width + margin
+            final_img.paste(img, (x_offset, y_offset), img if img.mode == "RGBA" else None)
+            x_offset += img_size + margin
+        y_offset += row_height
+
+    for entry in entries:
+        entry["img"].close()
+
+    return final_img
 
 def wrap_version_content_panel(images, padding=34, radius=28):
     """Wrap version content images in a translucent rounded panel."""
@@ -304,42 +343,3 @@ def wrap_version_content_panel(images, padding=34, radius=28):
         panel.alpha_composite(img, (x, y))
         y += img.height + spacing
     return panel
-
-def _concat_images_grid(image_list, cols=4, margin=20, inner_gap=10, bg_color=(0, 0, 0, 0)):
-    """
-    将图像以网格形式拼接（默认每行4张），每块之间空出间距。
-    
-    参数:
-        image_list: 图像对象列表（PIL.Image）
-        cols: 每行图片数量
-        margin: 整体外边距
-        inner_gap: 图片之间的间距
-        bg_color: 背景颜色
-    """
-    if not image_list:
-        raise ValueError("Image list must not be empty")
-
-    rows = (len(image_list) + cols - 1) // cols
-    groups = [image_list[row * cols:(row + 1) * cols] for row in range(rows)]
-    widths = [sum(img.width for img in group) + inner_gap * (len(group) - 1) for group in groups]
-    heights = [max(img.height for img in group) for group in groups]
-    total_width = max(widths)
-    total_height = sum(heights) + inner_gap * (rows-1)
-
-    # 加上外边距
-    final_image = Image.new(
-        "RGBA",
-        (total_width + 2*margin, total_height + 2*margin),
-        bg_color
-    )
-
-    y_offset = margin
-    for group in groups:
-        x_offset = margin
-        max_h = max(img.height for img in group)
-        for img in group:
-            final_image.paste(img, (x_offset, y_offset + (max_h - img.height)//2))
-            x_offset += img.width + inner_gap
-        y_offset += max_h + inner_gap
-
-    return final_image

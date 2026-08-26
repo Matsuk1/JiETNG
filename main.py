@@ -150,7 +150,6 @@ from modules.config_loader import (
     MAIMAI_VERSION,
     PORT,
     TEMP_VERSION,
-    VERSIONS_DIR,
     load_user,
     read_dxdata,
 )
@@ -243,7 +242,6 @@ from modules.image_manager import (
     compose_generated_images,
     font_profile,
     font_trophy,
-    resize_by_width,
     round_corner,
     truncate_text,
 )
@@ -3369,21 +3367,13 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
     songs, versions = read_dxdata(ver)
 
     version_title = version_title.lower().replace("dx", "maimaiでらっくす").replace("deluxe", "maimaiでらっくす")
-    target_versions = [
-        version["version"]
-        for version in versions
-        if version_title == version["version"].lower()
-    ]
+    target_version_info = next(
+        (version for version in versions if version_title == version["version"].lower()),
+        None,
+    )
+    target_versions = [target_version_info["version"]] if target_version_info else []
     if not target_versions:
         return version_error(user_id)
-
-    version_img = None
-    version_img_path = os.path.join(VERSIONS_DIR, f"{version_title.replace(' ', '_')}.png")
-    try:
-        with Image.open(version_img_path) as _ver:
-            version_img = resize_by_width(_ver.copy(), 1340)
-    except Exception as e:
-        logger.error(f"[VersionImage] ✗ Failed to load image: file={version_img_path}, error={e}")
 
     songs_data = [
         song
@@ -3392,20 +3382,18 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
     ]
     version_list_img = generate_version_list(
         songs_data,
+        version_info=target_version_info,
         ver=ver,
     )
 
     version_panel = None
     try:
         version_panel = wrap_version_content_panel([version_list_img])
-        content_images = [version_panel] if version_img is None else [version_img, version_panel]
-        img = _compose_user_images(content_images, user_id)
+        img = _compose_user_images([version_panel], user_id)
     finally:
         version_list_img.close()
         if version_panel is not None:
             version_panel.close()
-        if version_img is not None:
-            version_img.close()
 
     original_url, preview_url = await upload_generated_image(img, user_id)
 
