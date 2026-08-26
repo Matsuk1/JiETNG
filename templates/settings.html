@@ -211,6 +211,52 @@
       padding: 2px 0;
     }
 
+    .bg-preview {
+      position: relative;
+      height: 150px;
+      margin: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      background: var(--input-bg);
+    }
+
+    .bg-preview::before,
+    .bg-preview::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+    }
+
+    .bg-preview::before {
+      background-image: var(--preview-bg, none);
+      background-size: cover;
+      background-position: center;
+      filter: blur(var(--preview-blur, 20px));
+      transform: scale(1.08);
+    }
+
+    .bg-preview::after {
+      background: rgba(255, 255, 255, var(--preview-overlay, 0.31));
+    }
+
+    .bg-preview.disabled::before {
+      background-image: none;
+    }
+
+    .bg-preview-card {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      top: 50%;
+      z-index: 1;
+      height: 58px;
+      transform: translateY(-50%);
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: var(--shadow-sm);
+    }
+
     .bg-hint {
       padding: 8px 12px;
       font-size: 12px;
@@ -563,6 +609,7 @@
 
       <div id="bg-settings-area" {% if not bg_enabled %}style="display: none;"{% endif %}>
         <div class="list-panel" style="margin-bottom: 20px;">
+          <div class="bg-preview" id="bg-preview"><div class="bg-preview-card"></div></div>
           <div class="list-item">
             <label for="bg_blur" id="label-bg-blur">背景ぼかし</label>
             <div class="range-control">
@@ -744,6 +791,19 @@
       document.getElementById('bg-count-text').textContent = selectedBgFiles.length + '/' + totalBgCount;
     }
 
+    function updateBgPreview() {
+      const preview = document.getElementById('bg-preview');
+      if (!preview) return;
+      const enabled = document.getElementById('bg_enabled_hidden').value === '1';
+      const file = selectedBgFiles[0] || document.querySelector('.bg-option img')?.alt || '';
+      const blur = document.getElementById('bg_blur')?.value || 20;
+      const overlay = (Number(document.getElementById('bg_overlay')?.value || 40) / 255).toFixed(3);
+      preview.classList.toggle('disabled', !enabled || !file);
+      preview.style.setProperty('--preview-bg', file ? 'url("/static/pics/bg/' + encodeURIComponent(file) + '")' : 'none');
+      preview.style.setProperty('--preview-blur', blur + 'px');
+      preview.style.setProperty('--preview-overlay', overlay);
+    }
+
     function toggleBg(el, file) {
       const idx = selectedBgFiles.indexOf(file);
       if (idx > -1) {
@@ -755,22 +815,26 @@
       }
       document.getElementById('bg_files_input').value = selectedBgFiles.join(',');
       updateBgCount();
+      updateBgPreview();
       updateSaveButtonVisibility();
     }
 
     function toggleBgEnabled(checked) {
       document.getElementById('bg_enabled_hidden').value = checked ? '1' : '0';
       document.getElementById('bg-settings-area').style.display = checked ? '' : 'none';
+      updateBgPreview();
       updateSaveButtonVisibility();
     }
 
     function updateBgBlurValue(value) {
       document.getElementById('bg-blur-value').textContent = value;
+      updateBgPreview();
       updateSaveButtonVisibility();
     }
 
     function updateBgOverlayValue(value) {
       document.getElementById('bg-overlay-value').textContent = value;
+      updateBgPreview();
       updateSaveButtonVisibility();
     }
 
@@ -1058,6 +1122,7 @@
         }
         totalBgCount--;
         updateBgCount();
+        updateBgPreview();
         updateSaveButtonVisibility();
       } catch (e) {
         if (btn) btn.disabled = false;
@@ -1134,6 +1199,7 @@
           }
           totalBgCount++;
           updateBgCount();
+          updateBgPreview();
         } catch (e) {
           alert(translationFor(translations, lang).uploadFailed + (e.message ? '\n' + e.message : ''));
           btn.textContent = btnText;
@@ -1180,6 +1246,7 @@
       const form = document.getElementById('settings-form');
       form.addEventListener('input', updateSaveButtonVisibility);
       form.addEventListener('change', updateSaveButtonVisibility);
+      updateBgPreview();
       captureInitialSettingsSnapshot();
     });
   </script>
