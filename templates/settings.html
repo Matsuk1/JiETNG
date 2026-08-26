@@ -230,10 +230,10 @@
 
     .bg-preview::before {
       background-image: var(--preview-bg, none);
-      background-size: cover;
+      background-size: contain;
       background-position: center;
+      background-repeat: no-repeat;
       filter: blur(var(--preview-blur, 20px));
-      transform: scale(1.08);
     }
 
     .bg-preview::after {
