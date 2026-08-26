@@ -74,6 +74,7 @@ test_api.py
 # 上传的图片缓存
 uploads/
 temp/
+assets/covers/*.png
 
 # Rich menu generated assets
 assets/richmenu/_preview/

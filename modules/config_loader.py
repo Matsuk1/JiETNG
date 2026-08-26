@@ -122,8 +122,6 @@ def _load_config():
 
     _merge_defaults(config, DEFAULT_CONFIG)
     keys = config["keys"]
-    keys.pop("user_data", None)
-    keys.pop("imgur_client_id", None)
     keys["bind_token"] = _ensure_bind_token(keys.get("bind_token", ""))
     web_push = config["web_push"]
     if not web_push.get("vapid_private_key") or not web_push.get("vapid_public_key"):
