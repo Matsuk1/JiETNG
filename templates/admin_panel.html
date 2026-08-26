@@ -4351,7 +4351,6 @@
           }
 
           if (btn) showToast('✓ ' + (data.refreshed ? 'Refreshed ' : 'Loaded ') + data.count + ' nicknames');
-          console.log('Loaded ' + data.count + ' nicknames');
         } else {
           console.error('Failed to load nicknames:', data.message);
           // 隐藏加载指示器即使失败
@@ -4442,12 +4441,6 @@
           </div>`;
       }
       container.innerHTML = html;
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
     }
 
     function toggleNoticeButtonFields() {

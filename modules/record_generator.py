@@ -1387,29 +1387,25 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
     生成歌曲封面图片，带有类型标识和可选图标
     """
     size = 150
-    # 牌子模式 / 进度模式：封面下方增加 footer 区域
-    is_plate_mode = complete_info is not None
-    is_progress_mode = difficulty is not None
-    has_footer = is_plate_mode or is_progress_mode
-    footer_height = 30 if has_footer else 0
-
+    footer_height = 30 if complete_info is not None or difficulty is not None else 0
     img_width = size
     img_height = size + footer_height
+    has_footer = footer_height > 0
+    is_plate_mode = complete_info is not None
+    is_progress_mode = difficulty is not None
+    outline_color = (145, 145, 145, 255)
 
-    # 如果指定了难度，添加难度颜色边框
     border_width = 3 if difficulty else 0
     inner_size = size - border_width * 2
 
-    # 创建底图
+    # Base cover area
     if difficulty:
         difficulty_color = _get_difficulty_color(difficulty)
-        record_img = Image.new("RGB", (img_width, img_height), difficulty_color)
+        record_img = Image.new("RGBA", (img_width, img_height), difficulty_color + (255,))
     else:
         record_img = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
 
-    # 加载封面图片
     cover_img = get_cover_image(cover_url=cover_url, cover_name=cover_name)
-
     if cover_img:
         if difficulty:
             cover_img = cover_img.resize((inner_size, inner_size), Image.Resampling.LANCZOS)
@@ -1417,15 +1413,13 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
         else:
             cover_img = cover_img.resize((size, size), Image.Resampling.LANCZOS)
             record_img.alpha_composite(cover_img, (0, 0))
-
     else:
         record_img = Image.new("RGBA", (img_width, img_height), (114, 51, 4, 255))
 
-    # 添加 type 图标（std/dx）- 按比例缩放
+    # std / dx badge
     type_width = int(inner_size * 0.5) if difficulty else int(size * 0.5)
     type_height = int(inner_size * 0.15) if difficulty else int(size * 0.15)
     type_position = (img_width - type_width - border_width, size - type_height - border_width)
-
     paste_icon_optimized(
         record_img,
         {'type': type},
@@ -1436,15 +1430,11 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
         url_func=lambda value: "https://maimaidx.jp/maimai-mobile/img/music_standard.png" if value == "std" else "https://maimaidx.jp/maimai-mobile/img/music_dx.png"
     )
 
-    # 添加灰色蒙层（在 icon 之前，这样不会遮挡 icon）
-    # 有 footer 的模式不使用蒙层，改用 footer 区域表示达成状态
     if achieved is True and not has_footer:
-        record_img = record_img.convert("RGBA")
-        # 已完成：灰色蒙层
         overlay = Image.new("RGBA", record_img.size, (50, 50, 50, 180))
-        record_img = Image.alpha_composite(record_img, overlay)
+        record_img = Image.alpha_composite(record_img.convert("RGBA"), overlay)
 
-    # 如果提供了 icon 和 icon_type，显示对应的图标
+    # Rank / combo / sync status icon
     if icon and icon_type and icon != "back":
         try:
             file_path = f"{ICON_BASE_DIR}/{icon_type}/{icon}.png"
@@ -1452,39 +1442,31 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
 
             icon_img = download_and_cache_icon(url, file_path)
             if icon_img:
-                # 转换为 RGBA 以支持透明度
                 record_img = record_img.convert("RGBA")
-
-                # 计算缩放 - 按比例缩放图标（考虑边框）
                 base_size = inner_size if difficulty else size
                 icon_width = int(base_size * 0.75)
                 aspect_ratio = icon_img.height / icon_img.width
                 new_height = int(icon_width * aspect_ratio)
                 resized_img = icon_img.resize((icon_width, new_height), Image.Resampling.LANCZOS)
 
-                # 阴影处理（只覆盖封面区域，不覆盖 footer）
                 shadow = Image.new("RGBA", record_img.size, (0, 0, 0, 0))
                 shadow_draw = ImageDraw.Draw(shadow)
                 shadow_draw.rectangle([0, 0, img_width, size], fill=(0, 0, 0, 150))
                 record_img = Image.alpha_composite(record_img, shadow)
 
-                # 粘贴图标（居中于封面区域，不包含 footer）
                 x_offset = (img_width - icon_width) // 2
-                cover_center_y = size // 2
-                y_offset = cover_center_y - new_height // 2
+                y_offset = size // 2 - new_height // 2
                 record_img.paste(resized_img, (x_offset, y_offset), resized_img.convert("RGBA"))
 
         except Exception as e:
             logger.error(f"[RecordGenerator] ✗ Failed to load icon: icon={icon}, error={e}")
 
-    # 绘制 footer 区域
+    # Footer: plate progress blocks or level/rank progress title
     if is_plate_mode:
-        # 牌子模式：4 色块表示难度完成状态
         record_img = record_img.convert("RGBA")
         draw = ImageDraw.Draw(record_img)
-        footer_y = size
         difficulties = ["basic", "advanced", "expert", "master"]
-        gap = 2  # 色块间距
+        gap = 2
         total_gap = gap * (len(difficulties) - 1)
         block_width = (img_width - total_gap) / len(difficulties)
 
@@ -1497,21 +1479,21 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
                 color = (255, 255, 255, 255)
             x1 = int(i * (block_width + gap))
             x2 = int(x1 + block_width)
-            draw.rectangle([x1, footer_y, x2, img_height], fill=color)
+            draw.rectangle([x1, size, x2, img_height], fill=color)
+            if i > 0:
+                divider_x = x1 - gap // 2
+                draw.line([(divider_x, size), (divider_x, img_height - 1)], fill=outline_color, width=2)
+
     elif is_progress_mode:
-        # 进度模式：单色块，达成 = 难度颜色，未达成 = 白色
         record_img = record_img.convert("RGBA")
         draw = ImageDraw.Draw(record_img)
-        footer_y = size
-
         if achieved is True:
             diff_color = _get_difficulty_color(difficulty)
             color = diff_color + (255,) if len(diff_color) == 3 else diff_color
         else:
             color = (255, 255, 255, 255)
-        draw.rectangle([0, footer_y, img_width, img_height], fill=color)
+        draw.rectangle([0, size, img_width, img_height], fill=color)
 
-        # 在 footer 中绘制歌曲标题（水平和垂直居中）
         if song_title:
             text_margin = 5
             max_text_width = img_width - text_margin * 2
@@ -1520,7 +1502,7 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
             text_w = bbox[2] - bbox[0]
             text_h = bbox[3] - bbox[1]
             text_x = (img_width - text_w) // 2
-            text_y = footer_y + (footer_height - text_h) // 2 - 7
+            text_y = size + (footer_height - text_h) // 2 - 7
             if achieved is True and difficulty == "remaster":
                 text_color = (114, 20, 141)
             elif achieved is True:
@@ -1529,14 +1511,13 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
                 text_color = (60, 60, 60)
             draw.text((text_x, text_y), title_text, fill=text_color, font=font_stadium)
 
-    # 有 footer 的模式：整体圆角矩形灰色边框
+    # Footer modes need one frame around the cover and footer together.
     if has_footer:
         record_img = record_img.convert("RGBA")
-        border_color = _get_difficulty_color(difficulty) if difficulty else (255, 255, 255, 0)
+        border_color = outline_color if is_plate_mode else _get_difficulty_color(difficulty) + (255,)
         border_thickness = 3
         corner_radius = 10
 
-        # 使用圆角遮罩裁剪图像
         mask = Image.new("L", (img_width, img_height), 0)
         mask_draw = ImageDraw.Draw(mask)
         mask_draw.rounded_rectangle(
@@ -1547,7 +1528,6 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
         background = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
         record_img = Image.composite(record_img, background, mask)
 
-        # 绘制圆角边框
         border_layer = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
         border_draw = ImageDraw.Draw(border_layer)
         border_draw.rounded_rectangle(
