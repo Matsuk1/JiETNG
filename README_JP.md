@@ -36,7 +36,6 @@
 - **バージョン進捗**: 各バージョンの達成状況追跡（極/将/神/舞舞）
 - **楽曲推薦**: 難易度定数によるランダム楽曲推薦
 - **位置情報サービス**: 近くの Maimai 設置店舗を検索
-- **データセキュリティ**: SEGA アカウント情報を Fernet 暗号化で保存
 - **管理パネル**: 完全な Web 管理インターフェース
 - **パフォーマンス最適化**: デュアルキューアーキテクチャ（画像キュー/ネットワークキュー）と頻度制限
 - **多言語対応**: 日本語/英語/中国語インターフェース、多言語ドキュメント
@@ -199,9 +198,7 @@ mysql -u jietng -p maimai_records < records_db.sql
         ]
     },
     "keys": {
-        "user_data": "",
-        "bind_token": "",
-        "imgur_client_id": ""
+        "bind_token": ""
     }
 }
 ```
@@ -574,9 +571,7 @@ GET      /admin/get_logs           # ログ取得
         "secret": "YOUR_SECRET"
     },
     "keys": {
-        "user_data": "AUTO_GENERATED_KEY",     // 自動生成 Fernet キー
-        "bind_token": "AUTO_GENERATED_TOKEN",  // 自動生成バインドトークン
-        "imgur_client_id": "YOUR_IMGUR_CLIENT_ID"  // Imgur API Client ID（オプション）
+        "bind_token": "AUTO_GENERATED_TOKEN"  // 自動生成バインドトークン
     },
     "cloudflare_r2": {
         "enabled": false,                      // Cloudflare R2 画像ストレージを使用するか

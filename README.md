@@ -36,7 +36,6 @@
 - **版本进度**: 追踪各版本达成情况（极/将/神/舞舞）
 - **推歌功能**: 按难度定数随机推荐歌曲
 - **位置服务**: 查找附近的 Maimai 游戏厅
-- **数据安全**: SEGA 账户信息使用 Fernet 加密存储
 - **管理后台**: 功能完善的 Web 管理界面
 - **性能优化**: 双队列架构（图片队列/网络队列）配合频率限制
 - **多语言支持**: 日语/英语/中文交互界面，多语言文档
@@ -199,9 +198,7 @@ mysql -u jietng -p maimai_records < records_db.sql
         ]
     },
     "keys": {
-        "user_data": "",
-        "bind_token": "",
-        "imgur_client_id": ""
+        "bind_token": ""
     }
 }
 ```
@@ -574,9 +571,7 @@ GET      /admin/get_logs           # 获取日志
         "secret": "YOUR_SECRET"
     },
     "keys": {
-        "user_data": "AUTO_GENERATED_KEY",     // 自动生成的 Fernet 密钥
-        "bind_token": "AUTO_GENERATED_TOKEN",  // 自动生成的绑定令牌
-        "imgur_client_id": "YOUR_IMGUR_CLIENT_ID"  // Imgur API Client ID（可选）
+        "bind_token": "AUTO_GENERATED_TOKEN"  // 自动生成的绑定令牌
     },
     "cloudflare_r2": {
         "enabled": false,                      // 是否启用 R2 图床

@@ -7,8 +7,6 @@ import secrets
 import csv
 import threading
 
-from cryptography.fernet import Fernet
-
 CONFIG_PATH = "./config.json"
 
 DEFAULT_CONFIG = {
@@ -53,7 +51,6 @@ DEFAULT_CONFIG = {
         "aliases": {}
     },
     "keys": {
-        "user_data": "",
         "bind_token": ""
     },
     "cloudflare_r2": {
@@ -84,17 +81,6 @@ def _generate_vapid_keys():
         base64.urlsafe_b64encode(priv_bytes).rstrip(b'=').decode(),
         base64.urlsafe_b64encode(pub_bytes).rstrip(b'=').decode()
     )
-
-def _ensure_fernet_key(value: str) -> str:
-    if not isinstance(value, str):
-        value = ""
-
-    try:
-        Fernet(value.encode())
-    except (ValueError, TypeError):
-        value = Fernet.generate_key().decode()
-
-    return value
 
 def _ensure_bind_token(value: str) -> str:
     if not isinstance(value, str) or not value:
@@ -136,7 +122,8 @@ def _load_config():
 
     _merge_defaults(config, DEFAULT_CONFIG)
     keys = config["keys"]
-    keys["user_data"] = _ensure_fernet_key(keys.get("user_data", ""))
+    keys.pop("user_data", None)
+    keys.pop("imgur_client_id", None)
     keys["bind_token"] = _ensure_bind_token(keys.get("bind_token", ""))
     web_push = config["web_push"]
     if not web_push.get("vapid_private_key") or not web_push.get("vapid_public_key"):
@@ -210,8 +197,7 @@ RICH_MENU_BOUND_ID = RICH_MENU.get("bound_id", "")
 RICH_MENU_DEFAULT_LANGUAGE = RICH_MENU.get("default_language", "zh")
 RICH_MENU_MENUS = RICH_MENU.get("menus", {})
 
-KEYS = _config["keys"]
-BIND_TOKEN_KEY = KEYS["bind_token"].encode()
+BIND_TOKEN_KEY = _config["keys"]["bind_token"].encode()
 
 R2_CONFIG = _config.get("cloudflare_r2", {})
 R2_ENABLED = R2_CONFIG.get("enabled", False)

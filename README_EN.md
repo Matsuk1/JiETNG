@@ -36,7 +36,6 @@ Supports Japanese and International servers
 - **Version Progress**: Track completion status for version-specific achievements
 - **Song Recommendations**: Random song selection by difficulty rating
 - **Location Services**: Find nearby Maimai arcade locations
-- **Data Security**: SEGA account information encrypted using Fernet encryption
 - **Admin Dashboard**: Comprehensive web-based management interface
 - **Performance Optimization**: Dual-queue architecture (image/network queues) with rate limiting
 - **Multi-language Support**: Japanese/English/Chinese interface with multilingual documentation
@@ -184,9 +183,7 @@ Edit `config.json` (see [Configuration Reference](#complete-configjson) for full
         ]
     },
     "keys": {
-        "user_data": "",
-        "bind_token": "",
-        "imgur_client_id": ""
+        "bind_token": ""
     }
 }
 ```
@@ -559,9 +556,7 @@ GET      /admin/get_logs           # Get logs
         "secret": "YOUR_SECRET"
     },
     "keys": {
-        "user_data": "AUTO_GENERATED_KEY",     // Auto-generated Fernet key
-        "bind_token": "AUTO_GENERATED_TOKEN",  // Auto-generated bind token
-        "imgur_client_id": "YOUR_IMGUR_CLIENT_ID"  // Imgur API Client ID (optional)
+        "bind_token": "AUTO_GENERATED_TOKEN"  // Auto-generated bind token
     },
     "cloudflare_r2": {
         "enabled": false,                      // Enable Cloudflare R2 image storage
