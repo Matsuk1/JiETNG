@@ -284,9 +284,9 @@ def generate_version_list(songs_json, version_info=None, ver="jp"):
     title_h = logo_img.height + 28 if logo_img else (
         draw_probe.textbbox((0, 0), title_text, font=font_song_title)[3] + 24 if title_text else 0
     )
-    plate_w = 700
-    plate_h = 113
-    plate_gap_x = 28
+    plate_w = 811
+    plate_h = 131
+    plate_gap_x = 16
     plate_gap_y = 20
     shown_plate_count = min(4, len(plate_imgs))
     plate_rows = (shown_plate_count + 1) // 2
