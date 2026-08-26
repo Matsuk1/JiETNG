@@ -117,7 +117,7 @@ def wrap_in_rounded_background(content_img, padding=20, radius=30,
 
     return bg
 
-def compose_images(images, timezone_offset=9, bg_filter=None):
+def compose_images(images, timezone_offset=9, bg_filter=None, outer_margin=40, image_y_offset=10):
     """
     将多张图片垂直拼接，并添加页脚（RGB / RGBA 自适应）。
 
@@ -134,7 +134,6 @@ def compose_images(images, timezone_offset=9, bg_filter=None):
         组合后的 PIL.Image 对象（RGB 或 RGBA）
     """
     spacing = 5
-    outer_margin = 40
     footer_height = 150
     if not images:
         raise ValueError("图片列表不能为空")
@@ -173,7 +172,7 @@ def compose_images(images, timezone_offset=9, bg_filter=None):
     combined = Image.new("RGBA", (inner_width, inner_height), (0, 0, 0, 0))
 
     # 5. 粘贴图片（统一使用 alpha）
-    y_offset = 10
+    y_offset = image_y_offset
     for img in images_with_bg:
         x_offset = (inner_width - img.width) // 2
         combined.paste(img, (x_offset, y_offset), img)

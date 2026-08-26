@@ -3389,7 +3389,13 @@ async def generate_version_songs(user_id, version_title, ver="jp"):
     )
 
     try:
-        img = _compose_user_images([version_list_img], user_id)
+        img = compose_generated_images(
+            [version_list_img],
+            timezone_offset=get_user_timezone(user_id),
+            bg_filter=_get_user_bg_filter(user_id),
+            outer_margin=0,
+            image_y_offset=0,
+        )
     finally:
         version_list_img.close()
 
