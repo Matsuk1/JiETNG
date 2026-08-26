@@ -15,11 +15,8 @@ TOKEN_PREFIX = "jit_"
 TOKEN_BYTES = 32
 MAX_TOKENS_PER_USER = 5
 INDEX_FILE = "./data/import_tokens.json"
+TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 _token_lock = threading.RLock()
-
-
-def _now():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _hash_token(token):
@@ -74,7 +71,7 @@ def create_import_token(user_id, note=""):
         token_id = _new_token_id(tokens)
         token = f"{TOKEN_PREFIX}{token_id}.{secrets.token_urlsafe(TOKEN_BYTES)}"
         token_hash = _hash_token(token)
-        created_at = _now()
+        created_at = datetime.now().strftime(TIMESTAMP_FORMAT)
         note = str(note or "")[:120]
 
         active_tokens = [item for item in tokens if not item.get("revoked")]
@@ -140,7 +137,7 @@ def revoke_import_token(user_id, token_id=None):
             return 0
 
         tokens = _user_tokens(user_data)
-        revoked_at = _now()
+        revoked_at = datetime.now().strftime(TIMESTAMP_FORMAT)
         changed = [
             item
             for item in tokens
@@ -219,6 +216,6 @@ def verify_import_token(token):
         ):
             return None
 
-        item["last_used"] = _now()
+        item["last_used"] = datetime.now().strftime(TIMESTAMP_FORMAT)
         save_user(user_id, user_data)
         return {"user_id": user_id, "token_id": token_id, "note": item.get("note", "")}

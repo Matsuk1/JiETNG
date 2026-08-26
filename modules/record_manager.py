@@ -237,7 +237,7 @@ def delete_record(user_id, recent=False):
         cursor.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
 
 
-def _achievement_value(value: Any) -> float:
+def achievement_value(value: Any) -> float:
     try:
         return float(str(value or 0).rstrip("%"))
     except (TypeError, ValueError):
@@ -271,7 +271,7 @@ def get_detailed_info(song_record, ver="jp", recent_type=False):
         record["version"] = song["version"]
         record["ra"] = get_single_ra(
             float(record["internalLevelValue"]),
-            _achievement_value(record.get("score")),
+            achievement_value(record.get("score")),
             "ap" in str(record.get("combo_icon") or ""),
             recent_type,
         )

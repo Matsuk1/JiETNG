@@ -5,6 +5,7 @@ import queue
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from types import SimpleNamespace
 from typing import Callable
 
 from flask import (
@@ -136,10 +137,6 @@ def _json_body():
     return data if isinstance(data, dict) else {}
 
 
-def _is_user_custom_bg(filename):
-    return filename.startswith("jietnguser_")
-
-
 @admin_api.route("/admin/panel", methods=["GET", "POST"])
 def admin_panel():
     if request.method == "POST":
@@ -216,12 +213,7 @@ def admin_trigger_update():
         return jsonify({'error': 'User ID required'}), 400
 
     try:
-        class MockEvent:
-            def __init__(self, user_id):
-                self.source = type('obj', (object,), {'user_id': user_id})()
-                self.reply_token = None
-
-        mock_event = MockEvent(user_id)
+        mock_event = SimpleNamespace(source=SimpleNamespace(user_id=user_id), reply_token=None)
 
         task_id = f"admin_update_{user_id}_{datetime.now().timestamp()}"
 
@@ -620,7 +612,7 @@ def admin_backgrounds():
                 files.append({
                     'name': f,
                     'size': size_str,
-                    'is_user': _is_user_custom_bg(f),
+                    'is_user': f.startswith("jietnguser_"),
                 })
             return jsonify({'success': True, 'files': files})
         except Exception as e:

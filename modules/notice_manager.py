@@ -8,10 +8,7 @@ from modules.i18n import language_codes
 
 
 _notice_lock = threading.RLock()
-
-
-def _now():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 def _normalize_content(content):
@@ -33,7 +30,7 @@ def _normalize_notice(notice, index):
         "status": "published",
         "voting_enabled": False,
         "created_by": "system",
-        "updated_at": notice.get("date") or _now(),
+        "updated_at": notice.get("date") or datetime.now().strftime(TIMESTAMP_FORMAT),
     }
     for key, value in defaults.items():
         if key not in notice:
@@ -107,14 +104,15 @@ def upload_notice(
     with _notice_lock:
         notices = _load_notices()
         notice_id = _generate_unique_id(notices)
+        timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
         notice = {
             "id": notice_id,
             "content": _normalize_content(content),
-            "date": date or _now(),
+            "date": date or timestamp,
             "status": status,
             "voting_enabled": voting_enabled,
             "created_by": created_by,
-            "updated_at": _now(),
+            "updated_at": timestamp,
         }
         button = _build_button(button_type, button_label, button_value)
         if button:
@@ -159,7 +157,7 @@ def update_notice(
             return False
 
         notice["content"] = _normalize_content(content)
-        notice["updated_at"] = _now()
+        notice["updated_at"] = datetime.now().strftime(TIMESTAMP_FORMAT)
         if remove_button:
             notice.pop("button", None)
         else:
@@ -176,7 +174,7 @@ def publish_notice(notice_id):
         notice = next((item for item in notices if item.get("id") == notice_id), None)
         if not notice or notice.get("status") != "draft":
             return False
-        notice.update(status="published", updated_at=_now())
+        notice.update(status="published", updated_at=datetime.now().strftime(TIMESTAMP_FORMAT))
         _save_notices(notices)
         return True
 

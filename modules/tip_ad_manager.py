@@ -15,10 +15,7 @@ TIP_AD_DATA = []
 _enabled_items = {"tip": [], "ad": []}
 _data_lock = threading.RLock()
 _loaded = False
-
-
-def _now():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 def _rebuild_cache():
@@ -135,7 +132,7 @@ def create_tip_ad(
 ):
     with _data_lock:
         _ensure_loaded()
-        timestamp = _now()
+        timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
         item = {
             "id": _new_id(),
             "type": tip_type,
@@ -179,7 +176,7 @@ def update_tip_ad(
             button = _button(button_type, button_value, button_labels)
             if button:
                 item["button"] = button
-        item["updated_at"] = _now()
+        item["updated_at"] = datetime.now().strftime(TIMESTAMP_FORMAT)
         return item if save_tip_ad_data() else None
 
 

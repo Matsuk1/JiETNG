@@ -36,11 +36,6 @@ _periodic_cleanup_lock = threading.Lock()
 _cleanup_stop_event = threading.Event()
 
 
-def _ensure_dir():
-    """仅在写文件时确保目录存在，避免 import 时副作用。"""
-    os.makedirs(EXPORT_DIR, exist_ok=True)
-
-
 # ----------------------------------------------------------------------------
 # 友好文件名 / Friendly download filename
 # ----------------------------------------------------------------------------
@@ -371,7 +366,7 @@ def _save_export(content: bytes, ext: str, friendly_name: str) -> Optional[str]:
         )
         return None
     try:
-        _ensure_dir()
+        os.makedirs(EXPORT_DIR, exist_ok=True)
         file_id = secrets.token_urlsafe(16)
         path = os.path.join(EXPORT_DIR, f"{file_id}.{ext}")
         with open(path, "wb") as f:

@@ -104,16 +104,6 @@ def _jp_login_headers(user_agent):
     }
 
 
-def _cookie_value(cookie):
-    if cookie is None:
-        return ""
-    return getattr(cookie, "value", str(cookie)).strip()
-
-
-def _looks_like_login_token(value):
-    return bool(re.fullmatch(r"[0-9a-fA-F]{16,64}", value or ""))
-
-
 def _describe_jp_login_page(html):
     if not html:
         return "empty"
@@ -144,8 +134,9 @@ def _extract_jp_login_token(session, html, dom=None):
         return token_match.group(1), "regex"
 
     cookies = session.cookie_jar.filter_cookies("https://maimaidx.jp")
-    token_cookie = _cookie_value(cookies.get("_t"))
-    if _looks_like_login_token(token_cookie):
+    cookie = cookies.get("_t")
+    token_cookie = getattr(cookie, "value", str(cookie)).strip() if cookie is not None else ""
+    if re.fullmatch(r"[0-9a-fA-F]{16,64}", token_cookie or ""):
         return token_cookie, "cookie"
 
     return None, None

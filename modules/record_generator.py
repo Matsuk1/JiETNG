@@ -625,17 +625,6 @@ def _has_score_loss(value):
         return False
 
 
-def _has_judgement_count(value):
-    try:
-        return int(value or 0) != 0
-    except (TypeError, ValueError):
-        return False
-
-
-def _has_weighted_score_loss(count, loss):
-    return _has_judgement_count(count) and _has_score_loss(loss)
-
-
 def _draw_score_section_title(draw, x, y, title, accent, font):
     draw.rounded_rectangle((x, y + 5, x + 10, y + 42), radius=5, fill=accent)
     draw.text((x + 20, y), title, font=font, fill=(20, 24, 32))
@@ -1091,7 +1080,7 @@ def generate_score_recognition_picture(
                     fg, bg = color_map.get(label, ((154, 91, 18), (255, 240, 199)))
                 cell_right = min(cell_x + cell_w - 8, detail_right - 8)
                 _draw_score_card(draw, (cell_x, y + 10, cell_right, y + 72), radius=10, fill=bg)
-                loss_fill = (192, 57, 43) if _has_weighted_score_loss(count, loss) else (105, 110, 120)
+                loss_fill = (192, 57, 43) if count and _has_score_loss(loss) else (105, 110, 120)
                 draw.text(((cell_x + cell_right) / 2, y + 27), _format_score_loss(loss), font=font_small_detail, fill=loss_fill, anchor="mm")
                 draw.text(((cell_x + cell_right) / 2, y + 54), str(count), font=font_table_bold, fill=count_text_fill(count, fg), anchor="mm")
                 cell_x += cell_w
@@ -1397,28 +1386,29 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
 
     border_width = 3 if difficulty else 0
     inner_size = size - border_width * 2
+    base_size = inner_size if difficulty else size
+    difficulty_color = _get_difficulty_color(difficulty) if difficulty else None
 
     # Base cover area
-    if difficulty:
-        difficulty_color = _get_difficulty_color(difficulty)
-        record_img = Image.new("RGBA", (img_width, img_height), difficulty_color + (255,))
-    else:
-        record_img = Image.new("RGBA", (img_width, img_height), (0, 0, 0, 0))
+    record_img = Image.new(
+        "RGBA",
+        (img_width, img_height),
+        difficulty_color + (255,) if difficulty_color else (0, 0, 0, 0),
+    )
 
     cover_img = get_cover_image(cover_url=cover_url, cover_name=cover_name)
     if cover_img:
+        cover_img = cover_img.resize((base_size, base_size), Image.Resampling.LANCZOS)
         if difficulty:
-            cover_img = cover_img.resize((inner_size, inner_size), Image.Resampling.LANCZOS)
             record_img.paste(cover_img, (border_width, border_width))
         else:
-            cover_img = cover_img.resize((size, size), Image.Resampling.LANCZOS)
             record_img.alpha_composite(cover_img, (0, 0))
     else:
         record_img = Image.new("RGBA", (img_width, img_height), (114, 51, 4, 255))
 
     # std / dx badge
-    type_width = int(inner_size * 0.5) if difficulty else int(size * 0.5)
-    type_height = int(inner_size * 0.15) if difficulty else int(size * 0.15)
+    type_width = int(base_size * 0.5)
+    type_height = int(base_size * 0.15)
     type_position = (img_width - type_width - border_width, size - type_height - border_width)
     paste_icon_optimized(
         record_img,
@@ -1443,7 +1433,6 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
             icon_img = download_and_cache_icon(url, file_path)
             if icon_img:
                 record_img = record_img.convert("RGBA")
-                base_size = inner_size if difficulty else size
                 icon_width = int(base_size * 0.75)
                 aspect_ratio = icon_img.height / icon_img.width
                 new_height = int(icon_width * aspect_ratio)
@@ -1472,11 +1461,9 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
 
         for i, diff in enumerate(difficulties):
             completed = complete_info.get(diff, False) if complete_info else False
-            if completed:
-                diff_color = _get_difficulty_color(diff)
-                color = diff_color + (255,) if len(diff_color) == 3 else diff_color
-            else:
-                color = (255, 255, 255, 255)
+            diff_color = _get_difficulty_color(diff)
+            color = diff_color + (255,) if len(diff_color) == 3 else diff_color
+            color = color if completed else (255, 255, 255, 255)
             x1 = int(i * (block_width + gap))
             x2 = int(x1 + block_width)
             draw.rectangle([x1, size, x2, img_height], fill=color)
@@ -1487,11 +1474,7 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
     elif is_progress_mode:
         record_img = record_img.convert("RGBA")
         draw = ImageDraw.Draw(record_img)
-        if achieved is True:
-            diff_color = _get_difficulty_color(difficulty)
-            color = diff_color + (255,) if len(diff_color) == 3 else diff_color
-        else:
-            color = (255, 255, 255, 255)
+        color = difficulty_color + (255,) if achieved is True else (255, 255, 255, 255)
         draw.rectangle([0, size, img_width, img_height], fill=color)
 
         if song_title:
@@ -1503,18 +1486,15 @@ def generate_cover(cover_url, type, icon=None, icon_type=None, cover_name=None, 
             text_h = bbox[3] - bbox[1]
             text_x = (img_width - text_w) // 2
             text_y = size + (footer_height - text_h) // 2 - 7
-            if achieved is True and difficulty == "remaster":
-                text_color = (114, 20, 141)
-            elif achieved is True:
-                text_color = (255, 255, 255)
-            else:
-                text_color = (60, 60, 60)
+            text_color = (60, 60, 60) if achieved is not True else (
+                (114, 20, 141) if difficulty == "remaster" else (255, 255, 255)
+            )
             draw.text((text_x, text_y), title_text, fill=text_color, font=font_stadium)
 
     # Footer modes need one frame around the cover and footer together.
     if has_footer:
         record_img = record_img.convert("RGBA")
-        border_color = outline_color if is_plate_mode else _get_difficulty_color(difficulty) + (255,)
+        border_color = outline_color if is_plate_mode else difficulty_color + (255,)
         border_thickness = 3
         corner_radius = 10
 

@@ -13,11 +13,8 @@ logger = logging.getLogger(__name__)
 
 _tokens = None
 _dirty = False
+TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 _lock = threading.RLock()
-
-
-def _now():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _mark_dirty():
@@ -81,7 +78,7 @@ def create_dev_token(note, created_by):
             token_id = f"jt_{secrets.token_hex(8)}"
 
         token = secrets.token_urlsafe(32)
-        created_at = _now()
+        created_at = datetime.now().strftime(TIMESTAMP_FORMAT)
         tokens[token_id] = {
             "token": token,
             "note": note,
@@ -132,7 +129,7 @@ def verify_dev_token(token):
         for token_id, data in load_dev_tokens().items():
             if data.get("token") != token or data.get("revoked", False):
                 continue
-            data["last_used"] = _now()
+            data["last_used"] = datetime.now().strftime(TIMESTAMP_FORMAT)
             _mark_dirty()
             return {
                 "token_id": token_id,

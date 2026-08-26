@@ -344,13 +344,9 @@ def _help_body_row(desc):
     }
 
 
-def _support_page_uri():
-    separator = "&" if "?" in SUPPORT_PAGE else "?"
-    return f"{SUPPORT_PAGE}{separator}openExternalBrowser=1"
-
-
 def _help_docs_footer(user_id=None):
     label = _help_ui("docs_button", user_id)
+    support_page_uri = f"{SUPPORT_PAGE}{'&' if '?' in SUPPORT_PAGE else '?'}openExternalBrowser=1"
     return {
         "type": "box",
         "layout": "vertical",
@@ -370,7 +366,7 @@ def _help_docs_footer(user_id=None):
                 "action": {
                     "type": "uri",
                     "label": label,
-                    "uri": _support_page_uri(),
+                    "uri": support_page_uri,
                 },
                 "contents": [
                     _help_flex_text(label, size="sm", color="#FFFFFF", weight="bold", align="center", wrap=False),
@@ -737,14 +733,10 @@ def create_text_message(msg_text_dict, user_id=None):
     return TextMessage(text=text)
 
 
-def _clean_help_text(text):
-    return str(text or "").replace("`", "").strip()
-
-
 def _parse_plain_help(text):
     fields = {"命令": "", "说明": "", "参数": "", "示例": "", "注意": ""}
     current_key = None
-    for raw_line in _clean_help_text(text).splitlines():
+    for raw_line in str(text or "").replace("`", "").strip().splitlines():
         line = raw_line.strip()
         if not line:
             continue
@@ -767,18 +759,12 @@ def _split_help_lines(text):
     return [line.strip() for line in str(text or "").splitlines() if line.strip()]
 
 
-def _detail_line_label(line):
-    if ":" not in line:
-        return None
-    head, tail = line.split(":", 1)
-    return head.strip() if head.strip() and tail.strip() else None
-
-
 def _partition_help_detail_lines(text, note_labels):
     detail_lines = []
     note_lines = []
     for line in _split_help_lines(text):
-        label = _detail_line_label(line)
+        head, tail = line.split(":", 1) if ":" in line else ("", "")
+        label = head.strip() if head.strip() and tail.strip() else None
         if label in note_labels:
             note_lines.append(line)
         else:
@@ -804,10 +790,6 @@ def _help_detail_rows(text, fallback_label, none_text):
     return rows
 
 
-def _format_help_command_title(command):
-    return "\n".join(part.strip() for part in str(command or "").split("/") if part.strip())
-
-
 def generate_standard_help_flex(help_data, user_id=None):
     fields = get_multilingual_text(help_data, user_id) if isinstance(help_data, dict) else help_data
     if not isinstance(fields, dict):
@@ -830,7 +812,7 @@ def generate_standard_help_flex(help_data, user_id=None):
     if note_lines:
         sections.append((_help_ui("notes", user_id), _help_detail_rows(note_lines, None, none_text)))
     return _standard_help_bubble(
-        title=_format_help_command_title(command),
+        title="\n".join(part.strip() for part in str(command or "").split("/") if part.strip()),
         subtitle=_help_ui("help_title", user_id),
         sections=sections,
         alt_text=f"{command} {_help_ui('help_title', user_id)}",
@@ -1025,12 +1007,6 @@ def _help_command_summary(help_key, category, user_id):
     return fields.get("说明") or fields.get("function") or _help_category_desc(category, user_id)
 
 
-def _help_index_action_key(category):
-    if category["key"] == "scores" or len(category["items"]) == 1:
-        return category["items"][0][1]
-    return category["key"]
-
-
 def generate_help_index_flex(user_id=None):
     sections = [
         (_help_ui("categories", user_id), [
@@ -1038,7 +1014,7 @@ def generate_help_index_flex(user_id=None):
                 _help_category_title(category, user_id),
                 _help_category_desc(category, user_id),
                 category["commands"],
-                f"help {_help_index_action_key(category)}",
+                f"help {category['items'][0][1] if category['key'] == 'scores' or len(category['items']) == 1 else category['key']}",
                 category["color"],
             )
             for category in HELP_DIRECTORY_CATEGORIES

@@ -279,13 +279,6 @@ _dxdata_cache: dict = {}
 _dxdata_cache_lock = threading.Lock()
 
 
-def _file_mtime(path: str) -> float:
-    try:
-        return os.path.getmtime(path)
-    except OSError:
-        return 0.0
-
-
 def read_dxdata(ver="jp"):
     """
     读取歌曲数据（带 mtime 失效缓存）
@@ -299,7 +292,13 @@ def read_dxdata(ver="jp"):
     files = [DXDATA_FILE, OVERRIDE_FILE]
     if ver == "intl":
         files.append(INTL_OVERRIDE_FILE)
-    mtimes = tuple(_file_mtime(f) for f in files)
+    mtimes = []
+    for path in files:
+        try:
+            mtimes.append(os.path.getmtime(path))
+        except OSError:
+            mtimes.append(0.0)
+    mtimes = tuple(mtimes)
 
     with _dxdata_cache_lock:
         cached = _dxdata_cache.get(ver)

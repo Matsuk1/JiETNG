@@ -32,20 +32,6 @@ def _build_session() -> requests.Session:
 _SESSION = _build_session()
 
 
-def _get_session():
-    return _SESSION
-
-
-def _decode_rgba(content):
-    with Image.open(BytesIO(content)) as image:
-        return image.convert("RGBA")
-
-
-def _load_rgba(path):
-    with Image.open(path) as image:
-        return image.convert("RGBA")
-
-
 def _write_cache(path, content):
     directory = os.path.dirname(path)
     os.makedirs(directory, exist_ok=True)
@@ -63,9 +49,10 @@ def _write_cache(path, content):
 def _download_rgba(url, *, timeout, label):
     for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
         try:
-            response = _get_session().get(url, timeout=timeout)
+            response = _SESSION.get(url, timeout=timeout)
             response.raise_for_status()
-            return _decode_rgba(response.content), response.content
+            with Image.open(BytesIO(response.content)) as image:
+                return image.convert("RGBA"), response.content
         except requests.HTTPError as exc:
             status = exc.response.status_code if exc.response is not None else None
             if status is not None and status < 500:
@@ -94,7 +81,8 @@ def _download_rgba(url, *, timeout, label):
 def _cached_or_downloaded_image(url, path, *, timeout, label):
     if path and os.path.isfile(path):
         try:
-            return _load_rgba(path)
+            with Image.open(path) as image:
+                return image.convert("RGBA")
         except (OSError, UnidentifiedImageError) as exc:
             logger.warning("[ImageCache] Replacing invalid cache: path=%s, error=%s", path, exc)
 

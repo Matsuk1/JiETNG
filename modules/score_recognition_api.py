@@ -42,6 +42,16 @@ SONG_TYPE_ICON_URLS = {
     "dx": "https://maimaidx.jp/maimai-mobile/img/music_dx.png",
     "utage": "https://maimaidx.jp/maimai-mobile/img/diff_utage.png",
 }
+RANK_ICON_URLS = {
+    rank: f"{PLAYLOG_ICON_BASE_URL}/{rank.replace('+', 'plus')}.png"
+    for rank in ("sss+", "sss", "ss+", "ss", "s+", "s", "aaa", "aa", "a", "bbb", "bb", "b", "c", "d")
+}
+COMBO_ICON_URLS = {
+    "fc": f"{PLAYLOG_ICON_BASE_URL}/fc.png",
+    "fc+": f"{PLAYLOG_ICON_BASE_URL}/fcplus.png",
+    "ap": f"{PLAYLOG_ICON_BASE_URL}/ap.png",
+    "ap+": f"{PLAYLOG_ICON_BASE_URL}/applus.png",
+}
 DIFFICULTY_LABELS = {
     "basic": "BASIC",
     "advanced": "ADVANCED",
@@ -147,13 +157,6 @@ def _score_rank(achievement: Any) -> str | None:
     return "d"
 
 
-def _rank_icon_url(rank: str | None) -> str | None:
-    if not rank:
-        return None
-    filename = rank.lower().replace("+", "plus")
-    return f"{PLAYLOG_ICON_BASE_URL}/{filename}.png"
-
-
 def _combo_status(achievement: Any, judgements: dict[str, dict[str, int]]) -> str | None:
     if any(row_name not in judgements for row_name in JUDGEMENT_ROWS):
         return None
@@ -161,26 +164,13 @@ def _combo_status(achievement: Any, judgements: dict[str, dict[str, int]]) -> st
     for row in judgements.values():
         for field_name in totals:
             totals[field_name] += _loss_count(row.get(field_name))
-    if isinstance(achievement, (int, float)) and achievement >= 100.99995:
-        return "ap+"
-    if totals["great"] == 0 and totals["good"] == 0 and totals["miss"] == 0:
-        return "ap"
-    if totals["good"] == 0 and totals["miss"] == 0:
-        return "fc+"
-    if totals["miss"] == 0:
-        return "fc"
-    return None
-
-
-def _combo_icon_url(combo: str | None) -> str | None:
-    filenames = {
-        "fc": "fc.png",
-        "fc+": "fcplus.png",
-        "ap": "ap.png",
-        "ap+": "applus.png",
-    }
-    filename = filenames.get(str(combo or "").lower())
-    return f"{PLAYLOG_ICON_BASE_URL}/{filename}" if filename else None
+    rules = (
+        ("ap+", isinstance(achievement, (int, float)) and achievement >= 100.99995),
+        ("ap", totals["great"] == 0 and totals["good"] == 0 and totals["miss"] == 0),
+        ("fc+", totals["good"] == 0 and totals["miss"] == 0),
+        ("fc", totals["miss"] == 0),
+    )
+    return next((status for status, matched in rules if matched), None)
 
 
 def _build_loss_detail(
@@ -344,9 +334,9 @@ def build_score_recognition_response(result: Any) -> dict[str, Any]:
             "combo": combo,
             "status": {
                 "rank": rank,
-                "rank_icon_url": _rank_icon_url(rank),
+                "rank_icon_url": RANK_ICON_URLS.get(str(rank or "").lower()),
                 "combo": combo,
-                "combo_icon_url": _combo_icon_url(combo),
+                "combo_icon_url": COMBO_ICON_URLS.get(str(combo or "").lower()),
             },
             "judgements": judgements,
             "loss_detail": loss_detail,

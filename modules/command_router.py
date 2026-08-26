@@ -42,16 +42,6 @@ class Prefix(Matcher):
         return text if candidate.startswith(self.prefixes) else None
 
 
-class Suffix(Matcher):
-    __slots__ = ("suffixes",)
-
-    def __init__(self, *suffixes: str):
-        self.suffixes = suffixes
-
-    def match(self, text):
-        return text if text.endswith(self.suffixes) else None
-
-
 class Regex(Matcher):
     __slots__ = ("pattern",)
 

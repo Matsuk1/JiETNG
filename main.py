@@ -23,6 +23,7 @@ import math
 import base64 as b64mod
 
 from datetime import datetime
+from types import SimpleNamespace
 
 from PIL import Image, ImageDraw
 from io import BytesIO
@@ -118,6 +119,7 @@ from modules.maimai_manager import (
 from modules.score_calculator import get_note_score
 from modules.dxdata_manager import start_weekly_update_scheduler as start_dxdata_weekly_update
 from modules.record_manager import (
+    achievement_value,
     get_detailed_info,
     get_ideal_score,
     get_single_ra,
@@ -222,7 +224,7 @@ from modules.web_i18n import (
     register_web_i18n,
 )
 from modules.command_router import (
-    Exact, Prefix, Suffix, Regex, FirstWord,
+    Exact, Prefix, Regex, FirstWord,
     Command, CommandContext,
     QUEUE_SYNC, QUEUE_IMAGE, QUEUE_WEB,
 )
@@ -974,7 +976,7 @@ def website_settings():
         other_bg_files = sorted([
             f for f in os.listdir(BG_DIR)
             if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
-            and not _is_user_custom_bg(f)
+            and not f.startswith('jietnguser_')
         ])
         # 自定义背景排在最前
         if os.path.exists(os.path.join(BG_DIR, custom_bg_filename)):
@@ -1159,11 +1161,6 @@ def manage_custom_bg():
         return jsonify({"success": False, "message": "Invalid image"}), 400
 
     return jsonify({"success": True, "filename": custom_bg_filename}), 201
-
-
-def _is_user_custom_bg(filename):
-    """判断文件名是否为用户自定义背景图（格式: jietnguser_{user_id}.webp）"""
-    return filename.startswith('jietnguser_')
 
 
 def _get_user_bg_filter(user_id):
@@ -2027,24 +2024,24 @@ async def search_song_by_id(user_id, song_id, ver="jp"):
     original_url, preview_url = await upload_generated_image(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='info')
 
-def _ranking_enabled(data, field):
-    return data.get(field, True) is not False
-
-
 def get_ranking(user_id, id_use, ver=None, source_type="user", group_key=None):
     user_ver = ver or (get_user(id_use) or {}).get('version', 'jp')
     is_group_ranking = source_type in ('group', 'room') and bool(group_key)
     ranking_field = "participate_group_ranking" if is_group_ranking else "participate_global_ranking"
     group_member_ids = _get_line_member_ids(source_type, group_key) if is_group_ranking else None
     if is_group_ranking and group_member_ids is None:
-        group_member_ids = _fallback_group_member_ids(group_key)
+        group_member_ids = {
+            uid for uid, data in load_all_users().items()
+            if isinstance(data.get("ranking_group_ids", []), list)
+            and group_key in data.get("ranking_group_ids", [])
+        }
 
     # 收集同版本且有 rating 的用户
     ranked_users = []
     for uid, data in load_all_users().items():
         if data.get('version', 'jp') != user_ver:
             continue
-        if not _ranking_enabled(data, ranking_field):
+        if data.get(ranking_field, True) is False:
             continue
         if is_group_ranking and (group_member_ids is None or uid not in group_member_ids):
             continue
@@ -2941,30 +2938,6 @@ def generate_profile(user_info, scale=1, user_id=None):
     info_img = info_img.resize((int(img_width * scale), int(img_height * scale)), Image.Resampling.LANCZOS)
     return info_img
 
-def _achievement_value(record):
-    return float(str(record.get("score", "0")).replace("%", ""))
-
-
-def _sun50_target(score):
-    if 100.4000 <= score <= 100.4999:
-        return 100.5000
-    if 99.9000 <= score <= 99.9999:
-        return 100.0000
-    return None
-
-
-def _sun50_sort_key(record):
-    score = _achievement_value(record)
-    target = _sun50_target(score) or 0
-    return (
-        round(target - score, 4),
-        -float(record.get("internalLevelValue", 0) or 0),
-        str(record.get("name", "")),
-        str(record.get("difficulty", "")),
-        str(record.get("type", "")),
-    )
-
-
 def _record_level_value(record):
     try:
         return float(record.get("internalLevelValue", 0) or 0)
@@ -3156,39 +3129,42 @@ def select_records(song_record, type="best50", command="", ver="jp"):
     num_25 = math.ceil(25 * times / 5) * 5
     num_15 = math.ceil(15 * times / 5) * 5
 
-    if type == "best50":
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*num_35 : page*num_35]
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*num_15 : page*num_15]
+    if type == "idlb50":
+        for rcd in up_songs_data + down_songs_data:
+            ideal_score, score_icon = get_ideal_score(float(rcd['score'][:-1]))
+            rcd['score'] = f"{ideal_score:.4f}%"
+            if score_icon:
+                rcd['score_icon'] = score_icon
+            if ideal_score == 101:
+                rcd['combo_icon'] = "app"
+            rcd['ra'] = get_single_ra(rcd['internalLevelValue'], ideal_score, ideal_score == 101)
 
-    elif type == "best40":
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*num_25 : page*num_25]
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*num_15 : page*num_15]
+    selection_type = "best50" if type == "idlb50" else type
+    selection_rules = {
+        "best50": (("up", num_35, None, None), ("down", num_15, None, None)),
+        "best40": (("up", num_25, None, None), ("down", num_15, None, None)),
+        "best35": (("up", num_35, None, None),),
+        "best15": (("down", num_15, None, None),),
+        "allb35": (("all", num_35, None, None),),
+        "allb50": (("all", num_50, None, None),),
+        "apb50": (("up", num_35, "combo_icon", {"ap", "app"}), ("down", num_15, "combo_icon", {"ap", "app"})),
+        "fdxb50": (("up", num_35, "sync_icon", {"fdx", "fdxp"}), ("down", num_15, "sync_icon", {"fdx", "fdxp"})),
+    }
 
-    elif type == "best35":
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*num_35 : page*num_35]
-
-    elif type == "best15":
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*num_15 : page*num_15]
-
-    elif type == "allb35":
-        up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*num_35 : page*num_35]
-
-    elif type == "allb50":
-        up_songs = sorted(song_record, key=sort_rule, reverse=True)[(page-1)*num_50 : page*num_50]
-
-    elif type == "apb50":
-        up_songs_data = [x for x in up_songs_data if x.get("combo_icon") in ("ap", "app")]
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*num_35 : page*num_35]
-
-        down_songs_data = [x for x in down_songs_data if x.get("combo_icon") in ("ap", "app")]
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*num_15 : page*num_15]
-
-    elif type == "fdxb50":
-        up_songs_data = [x for x in up_songs_data if x.get("sync_icon") in ("fdx", "fdxp")]
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*num_35 : page*num_35]
-
-        down_songs_data = [x for x in down_songs_data if x.get("sync_icon") in ("fdx", "fdxp")]
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*num_15 : page*num_15]
+    if selection_type in selection_rules:
+        song_sources = {"up": up_songs_data, "down": down_songs_data, "all": song_record}
+        selected_songs = {"up": [], "down": []}
+        target_side = {"up": "up", "down": "down", "all": "up"}
+        for source_key, count, field, allowed_values in selection_rules[selection_type]:
+            source = song_sources[source_key]
+            filtered_source = source if field is None else [x for x in source if x.get(field) in allowed_values]
+            selected_songs[target_side[source_key]] = sorted(
+                filtered_source,
+                key=sort_rule,
+                reverse=True,
+            )[(page-1)*count : page*count]
+        up_songs = selected_songs["up"]
+        down_songs = selected_songs["down"]
 
     elif type == "unknown":
         up_songs = list(filter(lambda x: x['version'] == "UNKNOWN", song_record))
@@ -3196,36 +3172,35 @@ def select_records(song_record, type="best50", command="", ver="jp"):
     elif type == "rct50":
         up_songs = song_record
 
-    elif type == "idlb50":
-        for rcd in up_songs_data:
-            ideal_score, score_icon = get_ideal_score(float(rcd['score'][:-1]))
-            rcd['score'] = f"{ideal_score:.4f}%"
-            if score_icon:
-                rcd['score_icon'] = score_icon
-            if ideal_score == 101:
-                rcd['combo_icon'] = "app"
-            rcd['ra'] = get_single_ra(rcd['internalLevelValue'], ideal_score, ideal_score == 101)
-
-        for rcd in down_songs_data:
-            ideal_score, score_icon = get_ideal_score(float(rcd['score'][:-1]))
-            rcd['score'] = f"{ideal_score:.4f}%"
-            if score_icon:
-                rcd['score_icon'] = score_icon
-            if ideal_score == 101:
-                rcd['combo_icon'] = "app"
-            rcd['ra'] = get_single_ra(rcd['internalLevelValue'], ideal_score, ideal_score == 101)
-
-        up_songs = sorted(up_songs_data, key=sort_rule, reverse=True)[(page-1)*num_35 : page*num_35]
-        down_songs = sorted(down_songs_data, key=sort_rule, reverse=True)[(page-1)*num_15 : page*num_15]
-
     elif type == "sun50":
-        sun_songs_data = [
-            x for x in song_record
-            if _sun50_target(_achievement_value(x)) is not None
-        ]
-        sun_songs = sorted(sun_songs_data, key=_sun50_sort_key)[(page-1)*num_50 : page*num_50]
-        up_songs = [x for x in sun_songs if _sun50_target(_achievement_value(x)) == 100.5000]
-        down_songs = [x for x in sun_songs if _sun50_target(_achievement_value(x)) == 100.0000]
+        sun_targets = (
+            (100.4000, 100.4999, 100.5000),
+            (99.9000, 99.9999, 100.0000),
+        )
+        sun_candidates = []
+        for song in song_record:
+            score = achievement_value(song.get("score"))
+            target = next(
+                (target for low, high, target in sun_targets if low <= score <= high),
+                None,
+            )
+            if target is not None:
+                sun_candidates.append((song, score, target))
+        selected_sun_candidates = sorted(
+            sun_candidates,
+            key=lambda item: (
+                round(item[2] - item[1], 4),
+                -float(item[0].get("internalLevelValue", 0) or 0),
+                str(item[0].get("name", "")),
+                str(item[0].get("difficulty", "")),
+                str(item[0].get("type", "")),
+            ),
+        )[(page-1)*num_50 : page*num_50]
+        sun_groups = {target: [] for _, _, target in sun_targets}
+        for song, _, target in selected_sun_candidates:
+            sun_groups[target].append(song)
+        up_songs = sun_groups[100.5000]
+        down_songs = sun_groups[100.0000]
 
     else:
         return select_records(song_record, "best50", command, ver)
@@ -3900,15 +3875,6 @@ def _handle_recognize_command(event, cleaned_text: str) -> bool:
     return True
 
 
-def _fallback_group_member_ids(group_key):
-    member_ids = set()
-    for uid, data in load_all_users().items():
-        group_ids = data.get("ranking_group_ids", [])
-        if isinstance(group_ids, list) and group_key in group_ids:
-            member_ids.add(uid)
-    return member_ids
-
-
 def _bump_stats():
     with stats_lock:
         STATS['tasks_processed'] += 1
@@ -4552,24 +4518,11 @@ def handle_postback(event):
         if handle_postback_command(event, postback_data):
             return
 
-        # 其他Postback事件：走原有的文本命令逻辑
-        # 创建一个模拟的 TextMessageContent 对象
-        class MockTextMessage:
-            def __init__(self, text):
-                self.text = text
-                self.type = 'text'
-
-        # 创建一个模拟的 MessageEvent 对象
-        class MockMessageEvent:
-            def __init__(self, original_event, text):
-                self.source = original_event.source
-                self.reply_token = original_event.reply_token
-                self.message = MockTextMessage(text)
-
-        # 创建模拟事件，使用 postback data 作为消息文本
-        mock_event = MockMessageEvent(event, postback_data)
-
-        # 走和 MessageEvent 相同的派发逻辑
+        mock_event = SimpleNamespace(
+            source=event.source,
+            reply_token=event.reply_token,
+            message=SimpleNamespace(text=postback_data, type='text'),
+        )
         dispatch_command(_build_command_context(mock_event, postback_data))
 
     except Exception as e:
@@ -4641,18 +4594,8 @@ task_tracking = {
 }
 task_tracking_lock = threading.Lock()
 MAX_COMPLETED_TASKS = 20  # 最多保留20个已完成任务
-# ==================== 辅助函数 ====================
-
-def check_admin_auth():
-    """检查管理员是否已登录"""
-    return session.get('admin_authenticated', False)
-
 def _fallback_user_nickname(user_id):
     return f"User {user_id[:8]}..."
-
-
-def _is_line_nickname_error(nickname):
-    return bool(nickname and ("Unknown" in nickname or "API Error" in nickname or "Blocked" in nickname))
 
 
 def get_user_nickname_wrapper(user_id, use_cache=True):
@@ -4669,7 +4612,7 @@ def get_user_nickname_wrapper(user_id, use_cache=True):
             nickname = get_user_nickname(user_id, line_bot_api, use_cache)
 
             # 检查是否为错误消息
-            if _is_line_nickname_error(nickname):
+            if nickname and ("Unknown" in nickname or "API Error" in nickname or "Blocked" in nickname):
                 nickname = None
             elif nickname:
                 edit_user_value(user_id, 'nickname', nickname)

@@ -12,10 +12,6 @@ logger = logging.getLogger(__name__)
 song_api = Blueprint("song_api", __name__)
 
 
-def _error(message, status=400):
-    return jsonify({"error": "Invalid parameter", "message": message}), status
-
-
 @song_api.get("/api/v2/songs/search")
 @require_dev_token
 def search_songs():
@@ -23,9 +19,9 @@ def search_songs():
     try:
         limit = request.args.get("max_results", MAX_SEARCH_RESULTS, type=int)
         if limit < 1:
-            return _error("Parameter 'max_results' must be at least 1")
+            return jsonify({"error": "Invalid parameter", "message": "Parameter 'max_results' must be at least 1"}), 400
         if limit > API_MAX_SEARCH_RESULTS:
-            return _error(f"Parameter 'max_results' must be <= {API_MAX_SEARCH_RESULTS}")
+            return jsonify({"error": "Invalid parameter", "message": f"Parameter 'max_results' must be <= {API_MAX_SEARCH_RESULTS}"}), 400
 
         user_id = request.args.get("user_id")
         requested_version = request.args.get("ver")
@@ -40,7 +36,7 @@ def search_songs():
             version = "jp"
 
         if version not in ("jp", "intl"):
-            return _error("Parameter 'ver' must be 'jp' or 'intl'")
+            return jsonify({"error": "Invalid parameter", "message": "Parameter 'ver' must be 'jp' or 'intl'"}), 400
         if query == "__empty__":
             query = ""
 
