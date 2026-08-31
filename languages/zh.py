@@ -261,9 +261,10 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                 'random 13+ dx\n'
                 'random 14 mas',
  'ranking': '命令: rank [jp|intl]\n'
-            '说明: 查看 DX Rating 排行榜。私聊显示总体榜，群聊显示当前 LINE 群内榜。\n'
+            '说明: 查看 DX Rating 总体排行榜。\n'
             '参数: 可选: [服务器]，支持 jp、intl；省略时使用当前用户绑定的服务器。\n'
             '格式: 服务器参数写在 rank 后面，用空格分隔。\n'
+            'Mention: 可 @ 已注册用户，查看对方在总体榜中的位置；需对方允许 @ 查询成绩。\n'
             '示例: rank\n'
             'rank intl',
  'rc': '命令: rc <定数>\n'
@@ -381,11 +382,12 @@ TEXTS["web"]["settings"] = {
     "languagePlatformHint": "语言设置可能不会作用于 LINE 以外的第三方平台。",
     "labelTimezone": "时区",
     "labelBgEnabled": "背景图片",
+    "privacyPanelTitle": "隐私设置",
     "rankingPanelTitle": "排行榜设置",
+    "labelMentionScoreQuery": "允许他人 @ 我查询成绩",
+    "metaMentionScoreQuery": "开启后，其他用户可以通过 LINE mention 查看你的成绩图和成绩进度。",
     "labelGlobalRanking": "参与总体排行榜",
-    "metaGlobalRanking": "会显示在私聊的 rank / ranking 中。",
-    "labelGroupRanking": "参与群内排行榜",
-    "metaGroupRanking": "会显示在同一个 LINE 群内的 rank / ranking 中。",
+    "metaGlobalRanking": "会显示在 rank / ranking 的总体榜中。",
     "labelBgBlur": "背景模糊",
     "labelBgOverlay": "背景淡化",
     "bgHint": "不选择则从所有背景中随机。",
@@ -477,6 +479,7 @@ MESSAGE_TEXTS = {'access_error_text': '🙇 现在访问量很大…请稍后再
  'level_record_page_hint_text': '这是第 {page} 页的数据！',
  'maintenance_error_text': '🔧 咦？官方网站好像在维护中！\n维护时间无法访问，请稍后再试~',
  'mention_error_text': '被提到的用户尚未注册 JiETNG。',
+ 'mention_not_allowed_text': '被提到的用户已关闭 @ 查询成绩。',
  'mention_no_matching_data_text': '被提到的用户没有符合条件的成绩数据。',
  'mention_record_error_text': '被提到的用户还没有 maimai 成绩数据。',
  'nearby_stores_alt_text': '附近的 maimai 机厅',

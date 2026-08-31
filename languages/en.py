@@ -308,10 +308,10 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                 'random 13+ dx\n'
                 'random 14 mas',
  'ranking': '命令: rank [jp|intl]\n'
-            '说明: Show the DX Rating ranking. Private chat shows the global ranking; group chat '
-            'shows the current LINE group ranking.\n'
+            '说明: Show the global DX Rating ranking.\n'
             '参数: Optional: [server], supports jp and intl; omitted value uses your linked server.\n'
             'Format: put the server after rank, separated by a space.\n'
+            'Mention: mention a registered user to show their position in the global ranking. The user must allow record lookup by mention.\n'
             '示例: rank\n'
             'rank intl',
  'rc': '命令: rc <constant>\n'
@@ -444,11 +444,12 @@ TEXTS["web"]["settings"] = {
     "languagePlatformHint": "Language settings may not apply to third-party platforms outside LINE.",
     "labelTimezone": "Timezone",
     "labelBgEnabled": "Background Image",
+    "privacyPanelTitle": "Privacy Settings",
     "rankingPanelTitle": "Ranking Settings",
+    "labelMentionScoreQuery": "Allow Mention Record Lookup",
+    "metaMentionScoreQuery": "When enabled, other users can mention you on LINE to view your record images and progress.",
     "labelGlobalRanking": "Join Global Ranking",
-    "metaGlobalRanking": "Shown in rank / ranking from private chat.",
-    "labelGroupRanking": "Join Group Ranking",
-    "metaGroupRanking": "Shown in rank / ranking inside the same LINE group.",
+    "metaGlobalRanking": "Shown in the global rank / ranking list.",
     "labelBgBlur": "Background Blur",
     "labelBgOverlay": "Background Fade",
     "bgHint": "If none selected, a random background will be used.",
@@ -546,6 +547,7 @@ MESSAGE_TEXTS = {'access_error_text': "🙇 There's a lot of traffic right now..
                            "It's not accessible during maintenance hours, so please try again "
                            'later~',
  'mention_error_text': 'The mentioned user is not registered with JiETNG yet.',
+ 'mention_not_allowed_text': 'The mentioned user has disabled record lookup by mention.',
  'mention_no_matching_data_text': 'The mentioned user has no records matching the criteria.',
  'mention_record_error_text': 'The mentioned user does not have maimai records yet.',
  'nearby_stores_alt_text': 'Nearby maimai Arcade Stores',

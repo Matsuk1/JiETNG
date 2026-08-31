@@ -588,24 +588,28 @@
       </div>
 
       <div class="list-panel" style="margin-bottom: 20px;">
+        <div class="list-panel-header" id="privacy-panel-title">プライバシー設定</div>
+        <div class="list-item">
+          <div class="list-item-info">
+            <span class="list-item-label" id="label-mention-score-query">メンションでの成績参照を許可</span>
+            <span class="list-item-meta" id="meta-mention-score-query">他のユーザーがあなたをメンションして成績を表示できます。</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" name="allow_mention_score_query" value="1" {% if allow_mention_score_query %}checked{% endif %}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="list-panel" style="margin-bottom: 20px;">
         <div class="list-panel-header" id="ranking-panel-title">ランキング設定</div>
         <div class="list-item">
           <div class="list-item-info">
             <span class="list-item-label" id="label-global-ranking">総合ランキングに参加</span>
-            <span class="list-item-meta" id="meta-global-ranking">個人チャットの rank / ranking に表示されます。</span>
+            <span class="list-item-meta" id="meta-global-ranking">rank / ranking の総合ランキングに表示されます。</span>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" name="participate_global_ranking" value="1" {% if participate_global_ranking %}checked{% endif %}>
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div class="list-item">
-          <div class="list-item-info">
-            <span class="list-item-label" id="label-group-ranking">グループ内ランキングに参加</span>
-            <span class="list-item-meta" id="meta-group-ranking">同じ LINE グループ内の rank / ranking に表示されます。</span>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" name="participate_group_ranking" value="1" {% if participate_group_ranking %}checked{% endif %}>
             <span class="toggle-slider"></span>
           </label>
         </div>
@@ -844,11 +848,12 @@
       document.getElementById('language-platform-hint').textContent = t.languagePlatformHint;
       document.getElementById('label-timezone').textContent = t.labelTimezone;
       document.getElementById('label-bg-enabled').textContent = t.labelBgEnabled;
+      document.getElementById('privacy-panel-title').textContent = t.privacyPanelTitle;
       document.getElementById('ranking-panel-title').textContent = t.rankingPanelTitle;
+      document.getElementById('label-mention-score-query').textContent = t.labelMentionScoreQuery;
+      document.getElementById('meta-mention-score-query').textContent = t.metaMentionScoreQuery;
       document.getElementById('label-global-ranking').textContent = t.labelGlobalRanking;
       document.getElementById('meta-global-ranking').textContent = t.metaGlobalRanking;
-      document.getElementById('label-group-ranking').textContent = t.labelGroupRanking;
-      document.getElementById('meta-group-ranking').textContent = t.metaGroupRanking;
       document.getElementById('label-bg-blur').textContent = t.labelBgBlur;
       document.getElementById('label-bg-overlay').textContent = t.labelBgOverlay;
       document.getElementById('bg-hint-text').textContent = t.bgHint;

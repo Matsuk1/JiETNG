@@ -263,9 +263,10 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                 'random 13+ dx\n'
                 'random 14 mas',
  'ranking': '命令: rank [jp|intl]\n'
-            '说明: DX Rating ランキングを表示します。個人チャットでは総合、グループでは現在の LINE グループ内ランキングを表示します。\n'
+            '说明: DX Rating の総合ランキングを表示します。\n'
             '参数: 任意: [サーバー]。jp、intl に対応。省略時はユーザーの連携サーバーを使います。\n'
             '形式: rank の後ろに空白区切りで指定します。\n'
+            'Mention: 登録済みユーザーをメンションすると、そのユーザーの総合ランキング上の位置を表示します。相手がメンションでの成績参照を許可している必要があります。\n'
             '示例: rank\n'
             'rank intl',
  'rc': '命令: rc <定数>\n'
@@ -386,11 +387,12 @@ TEXTS["web"]["settings"] = {
     "languagePlatformHint": "言語設定は LINE 以外の外部プラットフォームには反映されない場合があります。",
     "labelTimezone": "タイムゾーン",
     "labelBgEnabled": "背景画像",
+    "privacyPanelTitle": "プライバシー設定",
     "rankingPanelTitle": "ランキング設定",
+    "labelMentionScoreQuery": "メンションでの成績参照を許可",
+    "metaMentionScoreQuery": "有効にすると、他のユーザーが LINE メンションであなたの成績画像や進捗を表示できます。",
     "labelGlobalRanking": "総合ランキングに参加",
-    "metaGlobalRanking": "個人チャットの rank / ranking に表示されます。",
-    "labelGroupRanking": "グループ内ランキングに参加",
-    "metaGroupRanking": "同じ LINE グループ内の rank / ranking に表示されます。",
+    "metaGlobalRanking": "rank / ranking の総合ランキングに表示されます。",
     "labelBgBlur": "背景ぼかし",
     "labelBgOverlay": "背景フェード",
     "bgHint": "選択しない場合、すべての背景からランダムに選ばれます。",
@@ -482,6 +484,7 @@ MESSAGE_TEXTS = {'access_error_text': '🙇 今めっちゃアクセス多いん
  'level_record_page_hint_text': 'これは{page}ページ目のデータだよ！',
  'maintenance_error_text': '🔧 あれ？公式サイトがメンテナンス中みたい！\n夜間とかメンテナンス時間はアクセスできないから、またあとで試してみてね〜',
  'mention_error_text': 'メンションされたユーザーはまだ JiETNG に登録されていません。',
+ 'mention_not_allowed_text': 'メンションされたユーザーは、メンションによる成績参照を無効にしています。',
  'mention_no_matching_data_text': 'メンションされたユーザーには、条件に合う成績データがありません。',
  'mention_record_error_text': 'メンションされたユーザーには、まだ maimai 成績データがありません。',
  'nearby_stores_alt_text': '最寄りの maimai 設置店舗',

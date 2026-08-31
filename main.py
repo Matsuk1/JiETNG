@@ -89,7 +89,7 @@ from modules.user_manager import (
 )
 from modules.user_db import (
     save_user, get_user, user_exists,
-    get_user_field, update_user_field, load_all_users,
+    get_user_field, load_all_users,
 )
 from modules.bindtoken_manager import (
     generate_bind_token, get_user_id_from_token,
@@ -185,6 +185,7 @@ from modules.message_manager import (
     level_record_page_hint,
     maintenance_error,
     mention_error,
+    mention_not_allowed,
     mention_no_matching_data,
     mention_record_error,
     no_matching_data,
@@ -925,7 +926,7 @@ def website_settings():
         bg_blur_raw = request.form.get("bg_blur", user_data.get("bg_blur", 20))
         bg_overlay_raw = request.form.get("bg_overlay", user_data.get("bg_overlay", 40))
         participate_global_ranking = request.form.get("participate_global_ranking") == "1"
-        participate_group_ranking = request.form.get("participate_group_ranking") == "1"
+        allow_mention_score_query = request.form.get("allow_mention_score_query") == "1"
 
         # 转换时区为整数
         try:
@@ -962,7 +963,7 @@ def website_settings():
         edit_user_value(user_id, "bg_blur", bg_blur)
         edit_user_value(user_id, "bg_overlay", bg_overlay)
         edit_user_value(user_id, "participate_global_ranking", participate_global_ranking)
-        edit_user_value(user_id, "participate_group_ranking", participate_group_ranking)
+        edit_user_value(user_id, "allow_mention_score_query", allow_mention_score_query)
         link_bound_rich_menu(user_id, get_user(user_id))
 
         return render_template("success.html", language=user_language, mode="settings")
@@ -1027,7 +1028,7 @@ def website_settings():
         bg_blur=bg_blur,
         bg_overlay=bg_overlay,
         participate_global_ranking=user_data.get("participate_global_ranking", True) is not False,
-        participate_group_ranking=user_data.get("participate_group_ranking", True) is not False,
+        allow_mention_score_query=user_data.get("allow_mention_score_query", True) is not False,
         custom_bg_filenames=existing_custom_bg_files,
         perm_token=generate_perm_token(user_id),
         perm_list=perm_list,
@@ -2049,26 +2050,15 @@ async def search_song_by_id(user_id, song_id, ver="jp"):
     original_url, preview_url = await upload_generated_image(song_img, user_id)
     return generate_song_info_flex(song_id, original_url, img_w, img_h, user_id, mode='info')
 
-def get_ranking(user_id, id_use, ver=None, source_type="user", group_key=None):
+def get_ranking(user_id, id_use, ver=None):
     user_ver = ver or (get_user(id_use) or {}).get('version', 'jp')
-    is_group_ranking = source_type in ('group', 'room') and bool(group_key)
-    ranking_field = "participate_group_ranking" if is_group_ranking else "participate_global_ranking"
-    group_member_ids = _get_line_member_ids(source_type, group_key) if is_group_ranking else None
-    if is_group_ranking and group_member_ids is None:
-        group_member_ids = {
-            uid for uid, data in load_all_users().items()
-            if isinstance(data.get("ranking_group_ids", []), list)
-            and group_key in data.get("ranking_group_ids", [])
-        }
 
     # 收集同版本且有 rating 的用户
     ranked_users = []
     for uid, data in load_all_users().items():
         if data.get('version', 'jp') != user_ver:
             continue
-        if data.get(ranking_field, True) is False:
-            continue
-        if is_group_ranking and (group_member_ids is None or uid not in group_member_ids):
+        if data.get("participate_global_ranking", True) is False:
             continue
         info = data.get('personal_info')
         if info and info.get('rating') and info['rating'] != 'ERROR':
@@ -2105,7 +2095,6 @@ def get_ranking(user_id, id_use, ver=None, source_type="user", group_key=None):
             top15.append({"rank": u["rank"], "name": u["name"], "rating": u["rating"]})
         return generate_ranking_flex(
             user_id, top15, nearby_entries=None, ver=user_ver,
-            scope="group" if is_group_ranking else "global",
         )
 
     # 找到当前用户在排名列表中的索引
@@ -2141,7 +2130,6 @@ def get_ranking(user_id, id_use, ver=None, source_type="user", group_key=None):
 
     return generate_ranking_flex(
         user_id, top5, nearby_entries=nearby_entries, ver=user_ver,
-        scope="group" if is_group_ranking else "global",
     )
 
 
@@ -3542,6 +3530,7 @@ def _build_command_context(event, cleaned_text):
         id_use = user_id
         mai_ver = "jp"
         mai_ver_use = "jp"
+        _target_user = None
 
     return CommandContext(
         event=event, text=cleaned_text, user_id=user_id,
@@ -3549,84 +3538,8 @@ def _build_command_context(event, cleaned_text):
         mentioned_user_id=mentioned_user_id,
         has_other_mention=has_other, id_use=id_use,
         mai_ver=mai_ver, mai_ver_use=mai_ver_use,
+        target_user=_target_user,
     )
-
-
-_ranking_member_cache = {}
-_ranking_member_cache_lock = threading.Lock()
-_ranking_member_api_blocked_until = {}
-_RANKING_MEMBER_CACHE_TTL = 300
-_RANKING_MEMBER_API_BLOCK_TTL = 600
-
-
-def _ranking_group_key(event):
-    source_type = getattr(event.source, 'type', 'user')
-    if source_type == 'group':
-        return getattr(event.source, 'group_id', None)
-    if source_type == 'room':
-        return getattr(event.source, 'room_id', None)
-    return None
-
-
-def _get_line_member_ids(source_type, group_key):
-    if source_type not in ('group', 'room') or not group_key:
-        return None
-    cache_key = (source_type, group_key)
-    now = time.time()
-    blocked_until = _ranking_member_api_blocked_until.get(source_type, 0)
-    if blocked_until > now:
-        return None
-    with _ranking_member_cache_lock:
-        for key, cached_item in list(_ranking_member_cache.items()):
-            if now - cached_item.get("time", 0) >= _RANKING_MEMBER_CACHE_TTL:
-                _ranking_member_cache.pop(key, None)
-        cached = _ranking_member_cache.get(cache_key)
-        if cached:
-            return cached["member_ids"]
-
-    try:
-        member_ids = []
-        start = None
-        with ApiClient(configuration) as api_client:
-            api = MessagingApi(api_client)
-            while True:
-                if source_type == 'group':
-                    response = api.get_group_members_ids(group_key, start=start)
-                else:
-                    response = api.get_room_members_ids(group_key, start=start)
-                member_ids.extend(getattr(response, "member_ids", []) or [])
-                start = getattr(response, "next", None)
-                if not start:
-                    break
-        member_ids = set(member_ids)
-        with _ranking_member_cache_lock:
-            _ranking_member_cache[cache_key] = {"time": now, "member_ids": member_ids}
-        return member_ids
-    except Exception as e:
-        logger.warning("[Ranking] failed to fetch LINE members: source=%s id=%s error=%s",
-                       source_type, group_key, e)
-        if "Access to this API is not available" in str(e) or "Forbidden" in str(e):
-            _ranking_member_api_blocked_until[source_type] = now + _RANKING_MEMBER_API_BLOCK_TTL
-        return None
-
-
-def _remember_ranking_group_member(event):
-    group_key = _ranking_group_key(event)
-    user_id = getattr(event.source, 'user_id', None)
-    if not group_key or not user_id:
-        return
-    try:
-        if not user_exists(user_id):
-            add_user(user_id)
-        group_ids = get_user_field(user_id, "ranking_group_ids", [])
-        if not isinstance(group_ids, list):
-            group_ids = []
-        if group_key not in group_ids:
-            group_ids.append(group_key)
-            update_user_field(user_id, "ranking_group_ids", group_ids)
-    except Exception as e:
-        logger.debug("[Ranking] fallback member tracking skipped: user_id=%s group=%s error=%s",
-                     user_id, group_key, e)
 
 
 def _download_line_message_content(message_id: str) -> bytes:
@@ -4022,6 +3935,15 @@ def dispatch_command(ctx):
                         source_type=ctx.source_type)
             return True
 
+        # 拦截 3：目标用户关闭了被 @ 查询成绩
+        if cmd.mention_queryable and ctx.is_mention:
+            if (ctx.target_user or {}).get("allow_mention_score_query", True) is False:
+                _bump_stats()
+                smart_reply(ctx.user_id, ctx.reply_token,
+                            mention_not_allowed(ctx.user_id), configuration,
+                            source_type=ctx.source_type)
+                return True
+
         # 频率限制
         if cmd.rate_limit_key is not None:
             if check_rate_limit(ctx.user_id, cmd.rate_limit_key):
@@ -4080,8 +4002,6 @@ def cmd_ranking(ctx):
         ctx.user_id,
         ctx.id_use,
         ver_arg,
-        source_type=ctx.source_type,
-        group_key=_ranking_group_key(ctx.event),
     )
 
 def handle_postback_command(event, text):
@@ -4397,7 +4317,7 @@ COMMANDS = [
             self_only=True, addition=False, name="refreshmenu"),
 
     Command(Regex(r"^(rank|ranking)(\s+(jp|intl))?$"),
-            cmd_ranking, name="ranking"),
+            cmd_ranking, mention_queryable=True, name="ranking"),
     Command(Prefix("artist "), cmd_artist, name="search_by_artist"),
     Command(Prefix("designer "), cmd_designer, name="search_by_designer"),
     Command(Prefix("bpm "), cmd_bpm, name="search_by_bpm"),
@@ -4415,7 +4335,6 @@ COMMANDS = [
 def handle_text_message(event):
     mark_message_as_read(getattr(event.message, 'mark_as_read_token', None),
                          event.source.user_id)
-    _remember_ranking_group_member(event)
 
     # @ALL / 3+ mention → 忽略
     if check_mention_filter(event):

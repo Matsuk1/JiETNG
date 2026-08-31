@@ -265,9 +265,10 @@ TEXTS["command_help"] = {'bind': '命令: bind\n'
                 'random 13+ dx\n'
                 'random 14 mas',
  'ranking': '命令: rank [jp|intl]\n'
-            '說明: 查看 DX Rating 排行榜。私聊顯示總體榜，群聊顯示目前 LINE 群內榜。\n'
+            '說明: 查看 DX Rating 總體排行榜。\n'
             '參數: 可選: [伺服器]，支持 jp、intl；省略時使用目前使用者綁定的伺服器。\n'
             '格式: 伺服器參數寫在 rank 後面，用空格分隔。\n'
+            'Mention: 可 @ 已註冊使用者，查看對方在總體榜中的位置；需對方允許 @ 查詢成績。\n'
             '示例: rank\n'
             'rank intl',
  'rc': '命令: rc <定數>\n'
@@ -385,11 +386,12 @@ TEXTS["web"]["settings"] = {
     "languagePlatformHint": "語言設定可能不會套用到 LINE 以外的第三方平台。",
     "labelTimezone": "時區",
     "labelBgEnabled": "背景圖片",
+    "privacyPanelTitle": "隱私設定",
     "rankingPanelTitle": "排行榜設定",
+    "labelMentionScoreQuery": "允許他人 @ 我查詢成績",
+    "metaMentionScoreQuery": "開啟後，其他使用者可以透過 LINE mention 查看你的成績圖和成績進度。",
     "labelGlobalRanking": "參與總體排行榜",
-    "metaGlobalRanking": "會顯示在私聊的 rank / ranking 中。",
-    "labelGroupRanking": "參與群內排行榜",
-    "metaGroupRanking": "會顯示在同一個 LINE 群內的 rank / ranking 中。",
+    "metaGlobalRanking": "會顯示在 rank / ranking 的總體榜中。",
     "labelBgBlur": "背景模糊",
     "labelBgOverlay": "背景淡化",
     "bgHint": "不選擇時，會從所有背景中隨機使用。",
@@ -481,6 +483,7 @@ MESSAGE_TEXTS = {'access_error_text': '🙇 現在訪問量很大…請稍後再
  'level_record_page_hint_text': '這是第 {page} 頁的資料！',
  'maintenance_error_text': '🔧 咦？官方網站好像在維護中！\n維護時間無法訪問，請稍後再試~',
  'mention_error_text': '被提到的使用者尚未註冊 JiETNG。',
+ 'mention_not_allowed_text': '被提到的使用者已關閉 @ 查詢成績。',
  'mention_no_matching_data_text': '被提到的使用者沒有符合條件的成績資料。',
  'mention_record_error_text': '被提到的使用者還沒有 maimai 成績資料。',
  'nearby_stores_alt_text': '附近的 maimai 機廳',

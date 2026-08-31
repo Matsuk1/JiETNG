@@ -103,6 +103,7 @@ class CommandContext:
     id_use: str
     mai_ver: str
     mai_ver_use: str
+    target_user: dict[str, Any] | None = None
     match: Any = None
 
     @property

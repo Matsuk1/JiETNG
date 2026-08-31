@@ -58,6 +58,7 @@ from modules.message_texts import (
     level_record_page_hint_text,
     maintenance_error_text,
     mention_error_text,
+    mention_not_allowed_text,
     mention_no_matching_data_text,
     mention_record_error_text,
     nearby_stores_alt_text,
@@ -1098,6 +1099,7 @@ maintenance_error = _message_factory(maintenance_error_text)
 friend_error = _message_factory(friend_error_text)
 friend_rcd_error = _message_factory(friend_rcd_error_text)
 mention_error = _message_factory(mention_error_text)
+mention_not_allowed = _message_factory(mention_not_allowed_text)
 mention_record_error = _message_factory(mention_record_error_text)
 cannot_do_for_others = _message_factory(cannot_do_for_others_text)
 no_matching_data = _message_factory(no_matching_data_text)
@@ -2991,7 +2993,7 @@ def generate_search_results_flex(user_id, matching_songs, search_type='song', id
     )
 
 
-def generate_ranking_flex(user_id, top5, nearby_entries=None, ver="jp", scope="global"):
+def generate_ranking_flex(user_id, top5, nearby_entries=None, ver="jp"):
     """
     生成 Rating 排行榜 Flex Message（5+7 布局）
 
@@ -3006,8 +3008,6 @@ def generate_ranking_flex(user_id, top5, nearby_entries=None, ver="jp", scope="g
     """
     title_text = get_multilingual_text(ranking_title_text, user_id)
     ver_label = "JP" if ver == "jp" else "INTL"
-    if scope == "group":
-        ver_label = f"GROUP {ver_label}"
 
     header = _standard_header_box(title_text, ver_label)
 
