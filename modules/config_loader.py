@@ -65,6 +65,10 @@ DEFAULT_CONFIG = {
         "vapid_private_key": "",
         "vapid_public_key": "",
         "contact": "mailto:admin@example.com"
+    },
+    "plugins": {
+        "enabled": True,
+        "directories": ["./plugins"]
     }
 }
 
@@ -209,6 +213,8 @@ WEB_PUSH_CONFIG = _config.get("web_push", {})
 VAPID_PRIVATE_KEY = WEB_PUSH_CONFIG.get("vapid_private_key", "")
 VAPID_PUBLIC_KEY = WEB_PUSH_CONFIG.get("vapid_public_key", "")
 VAPID_CONTACT = WEB_PUSH_CONFIG.get("contact", "mailto:admin@example.com")
+
+PLUGIN_CONFIG = _config.get("plugins", {})
 
 
 def apply_override(songs, override_file):

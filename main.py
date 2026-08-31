@@ -147,6 +147,7 @@ from modules.config_loader import (
     LOGO_FILE,
     LOG_FILE,
     MAIMAI_VERSION,
+    PLUGIN_CONFIG,
     PORT,
     TEMP_VERSION,
     load_user,
@@ -227,6 +228,7 @@ from modules.command_router import (
     Command, CommandContext,
     QUEUE_SYNC, QUEUE_IMAGE, QUEUE_WEB,
 )
+from modules.plugin_manager import dispatch_plugin_session, load_plugin_commands
 from modules.command_parsers import (
     format_bpm_number,
     parse_bpm_number,
@@ -4330,6 +4332,13 @@ COMMANDS = [
     Command(Prefix("calc "), cmd_calc_notes, name="calc_notes"),
 ]
 
+_plugin_commands = load_plugin_commands(PLUGIN_CONFIG)
+COMMANDS = [
+    *_plugin_commands.before_core,
+    *COMMANDS,
+    *_plugin_commands.after_core,
+]
+
 
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_text_message(event):
@@ -4352,7 +4361,24 @@ def handle_text_message(event):
     if _handle_recognize_command(event, cleaned_text):
         return
 
-    dispatch_command(_build_command_context(event, cleaned_text))
+    ctx = _build_command_context(event, cleaned_text)
+    plugin_session_reply = dispatch_plugin_session(ctx)
+    if plugin_session_reply is not None:
+        _bump_stats()
+        smart_reply(
+            ctx.user_id,
+            ctx.reply_token,
+            plugin_session_reply,
+            configuration,
+            source_type=ctx.source_type,
+        )
+        return
+
+    if ctx.text.startswith("/"):
+        ctx.text = ctx.text[1:].lstrip()
+        event.message.text = ctx.text
+
+    dispatch_command(ctx)
 
 # ==================== 任务处理函数 ====================
 
