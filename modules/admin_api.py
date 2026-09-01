@@ -152,15 +152,6 @@ def admin_panel():
     if not check_admin_auth():
         return render_template("admin_login.html")
 
-    all_users = load_all_users()
-    users_data = {}
-    for user_id, user_info in all_users.items():
-        nickname = user_info.get('nickname') or _services.fallback_nickname(user_id)
-        users_data[user_id] = {
-            'nickname': nickname,
-            'json_str': json.dumps(user_info, indent=2, ensure_ascii=False)
-        }
-
     force_refresh = bool(request.args.get('refresh'))
     stats = _services.overview(force_refresh=force_refresh)
 
@@ -173,7 +164,6 @@ def admin_panel():
 
     return render_template(
         "admin_panel.html",
-        users_data=users_data,
         total_users=stats['total_users'],
         stats=stats,
         logs=logs
@@ -186,6 +176,7 @@ def admin_api_overview():
         return jsonify({"error": "Unauthorized"}), 401
     force_refresh = bool(request.args.get("refresh"))
     return jsonify({"success": True, "stats": _services.overview(force_refresh=force_refresh)})
+
 
 @admin_api.route("/admin/logout", methods=["GET"])
 def admin_logout():
@@ -200,6 +191,43 @@ def admin_api_hourly():
     if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
         return jsonify({"error": "Invalid date format, use YYYY-MM-DD"}), 400
     return jsonify(get_hourly_stats(date_str))
+
+
+@admin_api.route("/admin/api/users", methods=["GET"])
+def admin_api_users():
+    if not check_admin_auth():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        limit = max(1, min(100, int(request.args.get("limit", 50))))
+        offset = max(0, int(request.args.get("offset", 0)))
+    except ValueError:
+        return jsonify({"success": False, "message": "Invalid pagination"}), 400
+
+    query = request.args.get("q", "").strip().lower()
+    all_users = load_all_users()
+    rows = []
+    for user_id, user_info in all_users.items():
+        nickname = user_info.get("nickname") or _services.fallback_nickname(user_id)
+        if query and query not in user_id.lower() and query not in str(nickname).lower():
+            continue
+        rows.append({
+            "user_id": user_id,
+            "nickname": nickname,
+            "json_str": json.dumps(user_info, indent=2, ensure_ascii=False),
+        })
+
+    rows.sort(key=lambda item: item["user_id"])
+    page = rows[offset:offset + limit]
+    return jsonify({
+        "success": True,
+        "users": page,
+        "total": len(rows),
+        "offset": offset,
+        "limit": limit,
+        "has_more": offset + limit < len(rows),
+    })
+
 
 @admin_api.route("/admin/trigger_update", methods=["POST"])
 def admin_trigger_update():

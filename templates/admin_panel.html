@@ -647,7 +647,7 @@
     }
 
     .side-section-label {
-      margin: 18px 6px 8px;
+      margin: 18px 4px 8px;
       color: var(--text-tertiary);
       font-size: 11px;
       font-weight: 700;
@@ -657,7 +657,7 @@
 
     .nav-stack {
       display: grid;
-      gap: 6px;
+      gap: 8px;
     }
 
     .tabs {
@@ -678,20 +678,24 @@
       width: 100%;
       justify-content: flex-start;
       display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: 14px;
+      align-items: flex-start;
+      gap: 11px;
+      min-height: 58px;
+      padding: 11px 12px;
+      border: 1px solid transparent;
+      border-radius: 10px;
       text-align: left;
+      line-height: 1.2;
     }
 
     .tab-icon {
       width: 22px;
       height: 22px;
+      margin-top: 1px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border-radius: 8px;
+      border-radius: 6px;
       color: var(--text-secondary);
       background: rgba(118, 118, 128, 0.1);
       font-size: 12px;
@@ -699,15 +703,43 @@
       flex: 0 0 auto;
     }
 
+    .tab-copy {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .tab-label {
+      color: inherit;
+      font-size: 13px;
+      font-weight: 720;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tab-desc {
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.25;
+      white-space: normal;
+    }
+
     .tab.active {
       color: var(--text-color);
       background: var(--accent-light);
+      border-color: rgba(0, 113, 227, 0.24);
       box-shadow: none;
     }
 
     .tab.active .tab-icon {
       color: #fff;
       background: var(--accent-color);
+    }
+
+    .tab.active .tab-desc {
+      color: var(--text-secondary);
     }
 
     .admin-main {
@@ -872,11 +904,69 @@
       display: grid;
       grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.9fr);
       gap: 18px;
+      align-items: start;
+    }
+
+    .operations-section {
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .operations-section .section-title {
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .operations-section .section-title > span:first-child {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .operations-actions {
+      display: flex;
+      gap: 8px;
+      flex: 0 0 auto;
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
 
     .notification-stack {
       display: grid;
       gap: 10px;
+      max-height: 520px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .log-module-summary {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin: -4px 0 12px;
+      min-width: 0;
+    }
+
+    .log-module-chip {
+      max-width: 180px;
+      padding: 5px 9px;
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      background: rgba(118, 118, 128, 0.08);
+      color: var(--text-secondary);
+      font-size: 11px;
+      line-height: 1.2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .log-module-chip.active {
+      border-color: var(--accent-color);
+      color: var(--accent-color);
+      background: var(--accent-light);
     }
 
     .notification-card {
@@ -922,6 +1012,161 @@
       color: var(--text-secondary);
       font-size: 12px;
       line-height: 1.45;
+    }
+
+    .notice-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .notice-card {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      background: var(--surface-bg);
+      min-width: 0;
+    }
+
+    .notice-card-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .notice-card-title {
+      color: var(--text-color);
+      font-size: 14px;
+      font-weight: 740;
+    }
+
+    .notice-card-meta {
+      margin-top: 3px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      word-break: break-word;
+    }
+
+    .notice-badges,
+    .notice-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .notice-actions {
+      padding-top: 10px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .notice-content-grid {
+      display: grid;
+      gap: 6px;
+    }
+
+    .notice-content-row {
+      display: grid;
+      grid-template-columns: 84px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 8px 0;
+      border-top: 1px solid rgba(118, 118, 128, 0.14);
+    }
+
+    .notice-content-row:first-child {
+      border-top: 0;
+    }
+
+    .notice-lang {
+      color: var(--text-tertiary);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .notice-text {
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-width: 0;
+    }
+
+    .notice-button-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      min-width: 0;
+      padding: 9px 10px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: rgba(118, 118, 128, 0.06);
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .tipad-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .tipad-card {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      background: var(--surface-bg);
+    }
+
+    .tipad-card-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .tipad-title {
+      color: var(--text-color);
+      font-size: 14px;
+      font-weight: 740;
+    }
+
+    .tipad-meta {
+      margin-top: 3px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      word-break: break-word;
+    }
+
+    .tipad-status,
+    .tipad-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .tipad-actions {
+      padding-top: 10px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .tipad-button-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      min-width: 0;
+      padding: 9px 10px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: rgba(118, 118, 128, 0.06);
+      color: var(--text-secondary);
+      font-size: 12px;
     }
 
     .monitor-board {
@@ -1348,7 +1593,7 @@
 
       .tabs {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         overflow: visible;
       }
 
@@ -1356,9 +1601,18 @@
         width: 100%;
         min-width: 0;
         justify-content: flex-start;
-        white-space: nowrap;
+        min-height: 62px;
+        white-space: normal;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+
+      .tab-label {
+        white-space: nowrap;
+      }
+
+      .tab-desc {
+        display: block;
       }
 
       .topbar {
@@ -1425,6 +1679,95 @@
 
       .operations-grid {
         grid-template-columns: 1fr;
+      }
+
+      .operations-section {
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .operations-section .section-title {
+        align-items: flex-start !important;
+        flex-direction: column;
+      }
+
+      .operations-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .operations-actions select,
+      .operations-actions .btn {
+        flex: 1 1 120px;
+        min-width: 0;
+      }
+
+      .notification-stack {
+        max-height: 360px;
+      }
+
+      .log-module-summary {
+        max-height: 78px;
+        overflow: auto;
+      }
+
+      .log-module-chip {
+        max-width: 100%;
+      }
+
+      .notice-card {
+        padding: 12px;
+      }
+
+      .notice-card-head {
+        grid-template-columns: 1fr;
+      }
+
+      .notice-badges,
+      .notice-actions {
+        justify-content: flex-start;
+      }
+
+      .notice-actions .btn {
+        flex: 1 1 96px;
+      }
+
+      .notice-content-row {
+        grid-template-columns: 1fr;
+        gap: 3px;
+      }
+
+      .notice-button-meta {
+        display: grid;
+        gap: 4px;
+      }
+
+      .tipad-card {
+        padding: 12px;
+      }
+
+      .tipad-card-head {
+        grid-template-columns: 1fr;
+      }
+
+      .tipad-status,
+      .tipad-actions {
+        justify-content: flex-start;
+      }
+
+      .tipad-actions .btn {
+        flex: 1 1 96px;
+      }
+
+      .tipad-button-meta {
+        display: grid;
+        gap: 4px;
+      }
+
+      #tipadFormModal .modal-content {
+        width: calc(100% - 20px);
+        max-height: calc(100vh - 28px);
+        padding: 16px;
       }
 
       .monitor-hero,
@@ -2330,6 +2673,7 @@
       .tab.active,
       .tab.active:hover {
         background: var(--accent-light);
+        border-color: var(--accent-color);
         box-shadow: inset 3px 0 0 var(--accent-color);
       }
 
@@ -2466,23 +2810,34 @@
       <div class="mobile-nav-content" id="mobile-nav-content">
         <div class="side-section-label">Monitor</div>
         <div class="tabs nav-stack">
-          <button class="tab active" data-tab="stats" onclick="switchTab('stats', this)"><span class="tab-icon">▦</span>Overview</button>
-          <button class="tab" data-tab="operations" onclick="switchTab('operations', this)"><span class="tab-icon">≋</span>Operations <span id="notification-badge" style="display:none; background:#ff3b30; color:#fff; border-radius:999px; padding:1px 6px; font-size:11px; margin-left:auto;"></span></button>
+          <button class="tab active" data-tab="stats" onclick="switchTab('stats', this)">
+            <span class="tab-icon">▦</span>
+            <span class="tab-copy"><span class="tab-label">Overview</span><span class="tab-desc">health, traffic, queues</span></span>
+          </button>
+          <button class="tab" data-tab="operations" onclick="switchTab('operations', this)">
+            <span class="tab-icon">≋</span>
+            <span class="tab-copy"><span class="tab-label">Operations <span id="notification-badge" style="display:none; background:#ff3b30; color:#fff; border-radius:999px; padding:1px 6px; font-size:11px; margin-left:4px;"></span></span><span class="tab-desc">logs and alerts</span></span>
+          </button>
         </div>
 
         <div class="side-section-label">Manage</div>
         <div class="tabs nav-stack">
-          <button class="tab" data-tab="users" onclick="switchTab('users', this)"><span class="tab-icon">◎</span>Users</button>
-          <button class="tab" data-tab="notices" onclick="switchTab('notices', this)"><span class="tab-icon">!</span>Notices</button>
-          <button class="tab" data-tab="tipad" onclick="switchTab('tipad', this)"><span class="tab-icon">i</span>Tip / Ad</button>
+          <button class="tab" data-tab="users" onclick="switchTab('users', this)">
+            <span class="tab-icon">◎</span>
+            <span class="tab-copy"><span class="tab-label">Users</span><span class="tab-desc">accounts, sync, JSON edit</span></span>
+          </button>
+          <button class="tab" data-tab="content" onclick="switchTab('content', this)">
+            <span class="tab-icon">!</span>
+            <span class="tab-copy"><span class="tab-label">Content</span><span class="tab-desc">notices, tip/ad</span></span>
+          </button>
         </div>
 
         <div class="side-section-label">Maintain</div>
         <div class="tabs nav-stack">
-          <button class="tab" data-tab="dxdata" onclick="switchTab('dxdata', this)"><span class="tab-icon">↻</span>DxData</button>
-          <button class="tab" data-tab="backups" onclick="switchTab('backups', this)"><span class="tab-icon">↓</span>Backups</button>
-          <button class="tab" data-tab="backgrounds" onclick="switchTab('backgrounds', this)"><span class="tab-icon">▧</span>Backgrounds</button>
-          <button class="tab" data-tab="devtoken" onclick="switchTab('devtoken', this)"><span class="tab-icon">#</span>Dev Tokens</button>
+          <button class="tab" data-tab="maintenance" onclick="switchTab('maintenance', this)">
+            <span class="tab-icon">&gt;</span>
+            <span class="tab-copy"><span class="tab-label">Maintenance</span><span class="tab-desc">data, backups, assets, tokens</span></span>
+          </button>
         </div>
       </div>
     </aside>
@@ -2523,33 +2878,13 @@
           <span style="color: var(--text-color); opacity: 0.7;">Refreshing user nicknames...</span>
         </div>
 
-        <input type="text" class="search-box" id="user-search" placeholder="Search by User ID or Nickname..." onkeyup="filterUsers()">
+        <input type="text" class="search-box" id="user-search" placeholder="Search by User ID or Nickname..." oninput="scheduleUserSearch()">
 
         <div class="user-list" id="user-list">
-          {% if users_data %}
-            {% for user_id, user_data in users_data.items() %}
-            <div class="user-item" data-user-id="{{ user_id }}" data-nickname="{{ user_data.nickname|lower }}">
-              <div class="list-item user-header" onclick="toggleUserData('{{ user_id }}')">
-                <div class="list-item-info">
-                  <span class="list-item-label" style="font-family: 'Courier New', monospace; color: var(--accent-color);">{{ user_id }}</span>
-                  <span class="list-item-meta user-nickname" style="font-family: inherit;">{{ user_data.nickname }}</span>
-                </div>
-                <div class="user-actions" onclick="event.stopPropagation()">
-                  <button class="btn btn-primary" onclick="triggerUpdate('{{ user_id }}')">Update</button>
-                  <button class="btn btn-success" onclick="refreshUserData('{{ user_id }}')">Refresh</button>
-                  <button class="btn btn-warning" onclick="editUser('{{ user_id }}')">Edit</button>
-                  <button class="btn btn-danger" onclick="deleteUser('{{ user_id }}')">Delete</button>
-                  <span class="toggle-icon" id="toggle-{{ user_id }}">▼</span>
-                </div>
-              </div>
-              <div class="user-data" id="data-{{ user_id }}">
-                <div class="json-viewer"><pre>{{ user_data.json_str }}</pre></div>
-              </div>
-            </div>
-            {% endfor %}
-          {% else %}
-            <div class="empty-state">No users found</div>
-          {% endif %}
+          <div class="empty-state">Open Users to load accounts</div>
+        </div>
+        <div style="margin-top:12px; display:flex; justify-content:center;">
+          <button class="btn btn-primary" id="load-more-users-btn" onclick="loadUsers({append:true})" style="display:none;">Load More</button>
         </div>
       </div>
     </div>
@@ -2892,18 +3227,21 @@
     <!-- Operations Tab -->
     <div id="operations-tab" class="tab-content">
       <div class="operations-grid">
-        <div class="section" style="margin-bottom:0;">
+        <div class="section operations-section" style="margin-bottom:0;">
           <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
             <span>Runtime Logs</span>
-            <button class="btn btn-primary" onclick="refreshLogs()">Refresh</button>
+            <div class="operations-actions">
+              <button class="btn btn-primary" onclick="refreshLogs()">Refresh</button>
+            </div>
           </div>
+          <div id="log-module-summary" class="log-module-summary"></div>
           <div class="log-viewer" id="log-viewer">{{ logs }}</div>
         </div>
 
-        <div class="section" style="margin-bottom:0;">
+        <div class="section operations-section" style="margin-bottom:0;">
           <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
             <span>Notifications</span>
-            <div style="display:flex; gap:8px;">
+            <div class="operations-actions">
               <button class="btn btn-primary" onclick="refreshNotifications()">Refresh</button>
               <button class="btn btn-danger" onclick="clearNotifications()">Clear</button>
             </div>
@@ -2912,6 +3250,7 @@
             <div style="text-align:center; opacity:0.5; padding:20px;">Loading...</div>
           </div>
         </div>
+
       </div>
     </div>
 
@@ -3301,17 +3640,60 @@
       stats: 'Overview',
       operations: 'Operations',
       users: 'Users',
-      notices: 'Notices',
-      tipad: 'Tip / Ad',
-      dxdata: 'DxData',
-      backups: 'Backups',
-      backgrounds: 'Backgrounds',
-      devtoken: 'Developer Tokens'
+      content: 'Content',
+      maintenance: 'Maintenance'
+    };
+
+    const adminTabGroups = {
+      stats: ['stats'],
+      operations: ['operations'],
+      users: ['users'],
+      content: ['notices', 'tipad'],
+      maintenance: ['dxdata', 'backups', 'backgrounds', 'devtoken']
     };
 
     function normalizeAdminTab(tabName) {
       if (tabName === 'logs' || tabName === 'notifications') return 'operations';
+      if (['notices', 'tipad'].includes(tabName)) return 'content';
+      if (['dxdata', 'backups', 'backgrounds', 'devtoken'].includes(tabName)) return 'maintenance';
       return tabName || 'stats';
+    }
+
+    function activateAdminTab(tabName, tabButton) {
+      const panes = adminTabGroups[tabName] || [tabName];
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      panes.forEach(pane => {
+        document.getElementById(pane + '-tab')?.classList.add('active');
+      });
+      const activeButton = tabButton || document.querySelector('.tab[data-tab="' + tabName + '"]');
+      if (activeButton) activeButton.classList.add('active');
+      const pageTitle = document.getElementById('admin-page-title');
+      if (pageTitle) pageTitle.textContent = adminPageTitles[tabName] || 'Admin Console';
+    }
+
+    function loadAdminTabData(tabName) {
+      if (tabName === 'operations') {
+        refreshNotifications();
+        setTimeout(scrollLogsToBottom, 100);
+      }
+      if (tabName === 'content') {
+        loadNotices();
+        loadTipAds();
+      }
+      if (tabName === 'users') {
+        loadUsers();
+      }
+      if (tabName === 'maintenance') {
+        loadDXDataStatus();
+        loadBackups();
+        loadBackgrounds();
+        loadDevTokens();
+      }
     }
 
     function isMobileAdminLayout() {
@@ -3354,62 +3736,12 @@
 
     function switchTab(tabName, tabButton) {
       tabName = normalizeAdminTab(tabName);
-      // Hide all tabs
-      document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-      });
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.classList.remove('active');
-      });
-
-      // Show selected tab
-      document.getElementById(tabName + '-tab').classList.add('active');
-      const activeButton = tabButton || document.querySelector('.tab[data-tab="' + tabName + '"]');
-      if (activeButton) activeButton.classList.add('active');
-      const pageTitle = document.getElementById('admin-page-title');
-      if (pageTitle) pageTitle.textContent = adminPageTitles[tabName] || 'Admin Console';
-
-      // Save to localStorage
+      activateAdminTab(tabName, tabButton);
       localStorage.setItem('admin_active_tab', tabName);
       if (isMobileAdminLayout()) {
         setMobileNavCollapsed(true);
       }
-
-      // Operations 整合日志和通知
-      if (tabName === 'operations') {
-        refreshNotifications();
-        setTimeout(scrollLogsToBottom, 100);
-      }
-
-      // 如果切换到notices标签，加载公告
-      if (tabName === 'notices') {
-        loadNotices();
-      }
-
-      // 如果切换到tipad标签，加载tip/ad
-      if (tabName === 'tipad') {
-        loadTipAds();
-      }
-
-      // 如果切换到backups标签，加载备份列表
-      if (tabName === 'backups') {
-        loadBackups();
-      }
-
-      // 如果切换到dxdata标签，加载DXData状态
-      if (tabName === 'dxdata') {
-        loadDXDataStatus();
-      }
-
-      // 如果切换到devtoken标签，加载token列表
-      if (tabName === 'devtoken') {
-        loadDevTokens();
-      }
-
-      // 如果切换到backgrounds标签，加载背景图列表
-      if (tabName === 'backgrounds') {
-        loadBackgrounds();
-      }
+      loadAdminTabData(tabName);
     }
 
     // Restore tab on page load
@@ -3425,42 +3757,16 @@
       }
 
       const savedTab = normalizeAdminTab(localStorage.getItem('admin_active_tab'));
-      if (savedTab && document.getElementById(savedTab + '-tab')) {
-        // Hide all tabs first
-        document.querySelectorAll('.tab-content').forEach(tab => {
-          tab.classList.remove('active');
-        });
-        document.querySelectorAll('.tab').forEach(tab => {
-          tab.classList.remove('active');
-        });
-
-        // Show saved tab
-        document.getElementById(savedTab + '-tab').classList.add('active');
-        const savedButton = document.querySelector('.tab[data-tab="' + savedTab + '"]');
-        if (savedButton) savedButton.classList.add('active');
-        const pageTitle = document.getElementById('admin-page-title');
-        if (pageTitle) pageTitle.textContent = adminPageTitles[savedTab] || 'Admin Console';
-
-        // 恢复标签时触发对应的数据加载
-        if (savedTab === 'operations') {
-          refreshNotifications();
-          setTimeout(scrollLogsToBottom, 100);
-        } else if (savedTab === 'notices') {
-          loadNotices();
-        } else if (savedTab === 'tipad') {
-          loadTipAds();
-        } else if (savedTab === 'backups') {
-          loadBackups();
-        } else if (savedTab === 'backgrounds') {
-          loadBackgrounds();
-        }
+      if (savedTab && adminTabGroups[savedTab]) {
+        activateAdminTab(savedTab);
+        loadAdminTabData(savedTab);
       }
 
       // 转换日志中的 ANSI 颜色代码
       const logViewer = document.getElementById('log-viewer');
       if (logViewer && logViewer.textContent) {
         const logText = logViewer.textContent;
-        logViewer.innerHTML = ansiToHtml(logText);
+        setRawLogs(logText);
       }
 
       // 如果当前显示的是 Operations，滚动日志到底部
@@ -3670,12 +3976,12 @@
     }
 
     // Close modal when clicking outside
-    window.onclick = function(event) {
+    window.addEventListener('click', function(event) {
       const modal = document.getElementById('editUserModal');
       if (event.target === modal) {
         closeEditModal();
       }
-    }
+    });
 
     function deleteUser(userId) {
       if (confirm('⚠️ Are you sure you want to delete this user?\n\nUser ID: ' + userId + '\n\nThis action CANNOT be undone!')) {
@@ -3713,20 +4019,81 @@
       }
     }
 
-    function filterUsers() {
-      const searchTerm = document.getElementById('user-search').value.toLowerCase();
-      const userItems = document.querySelectorAll('.user-item');
+    let _usersLoading = false;
+    let _usersOffset = 0;
+    let _usersHasMore = false;
+    let _usersSearchTimer = null;
+    const USERS_PAGE_SIZE = 50;
 
-      userItems.forEach(item => {
-        const userId = item.dataset.userId.toLowerCase();
-        const nickname = item.dataset.nickname;
+    function userCardHtml(user) {
+      const userId = escapeHtml(user.user_id);
+      const nickname = escapeHtml(user.nickname || '');
+      return `
+        <div class="user-item" data-user-id="${userId}" data-nickname="${nickname.toLowerCase()}">
+          <div class="list-item user-header" onclick="toggleUserData('${userId}')">
+            <div class="list-item-info">
+              <span class="list-item-label" style="font-family: 'Courier New', monospace; color: var(--accent-color);">${userId}</span>
+              <span class="list-item-meta user-nickname" style="font-family: inherit;">${nickname}</span>
+            </div>
+            <div class="user-actions" onclick="event.stopPropagation()">
+              <button class="btn btn-primary" onclick="triggerUpdate('${userId}')">Update</button>
+              <button class="btn btn-success" onclick="refreshUserData('${userId}')">Refresh</button>
+              <button class="btn btn-warning" onclick="editUser('${userId}')">Edit</button>
+              <button class="btn btn-danger" onclick="deleteUser('${userId}')">Delete</button>
+              <span class="toggle-icon" id="toggle-${userId}">▼</span>
+            </div>
+          </div>
+          <div class="user-data" id="data-${userId}">
+            <div class="json-viewer"><pre>${escapeHtml(user.json_str || '{}')}</pre></div>
+          </div>
+        </div>`;
+    }
 
-        if (userId.includes(searchTerm) || nickname.includes(searchTerm)) {
-          item.style.display = '';
-        } else {
-          item.style.display = 'none';
-        }
-      });
+    function loadUsers({append = false} = {}) {
+      if (_usersLoading) return Promise.resolve(null);
+      _usersLoading = true;
+      const list = document.getElementById('user-list');
+      const moreBtn = document.getElementById('load-more-users-btn');
+      const query = document.getElementById('user-search')?.value.trim() || '';
+      const offset = append ? _usersOffset : 0;
+      if (!append) {
+        list.innerHTML = '<div class="empty-state">Loading users...</div>';
+        _usersOffset = 0;
+      }
+      if (moreBtn) {
+        moreBtn.disabled = true;
+        moreBtn.textContent = 'Loading...';
+      }
+      return fetch(`/admin/api/users?offset=${offset}&limit=${USERS_PAGE_SIZE}&q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.success) throw new Error(data.message || 'Failed to load users');
+          const html = (data.users || []).map(userCardHtml).join('');
+          if (append) {
+            list.insertAdjacentHTML('beforeend', html);
+          } else {
+            list.innerHTML = html || '<div class="empty-state">No users found</div>';
+          }
+          _usersOffset = data.offset + data.users.length;
+          _usersHasMore = data.has_more;
+          if (moreBtn) {
+            moreBtn.style.display = _usersHasMore ? 'inline-flex' : 'none';
+            moreBtn.disabled = false;
+            moreBtn.textContent = 'Load More';
+          }
+        })
+        .catch(err => {
+          if (!append) list.innerHTML = `<div class="empty-state">Failed to load users: ${escapeHtml(err.message)}</div>`;
+          showToast('✗ ' + err.message, 'error');
+        })
+        .finally(() => {
+          _usersLoading = false;
+        });
+    }
+
+    function scheduleUserSearch() {
+      clearTimeout(_usersSearchTimer);
+      _usersSearchTimer = setTimeout(() => loadUsers(), 250);
     }
 
     function scrollLogsToBottom() {
@@ -3798,6 +4165,72 @@
       }
 
       return html;
+    }
+
+    let _rawLogs = '';
+    let _logModules = [];
+    let _activeLogModule = 'all';
+
+    function parseLogModule(line) {
+      const match = line.match(/\[([^\]\s][^\]]{0,40})\]/);
+      return match ? match[1] : 'General';
+    }
+
+    function groupedLogLines() {
+      const groups = new Map();
+      for (const line of (_rawLogs || '').split('\n')) {
+        const moduleName = parseLogModule(line);
+        if (!groups.has(moduleName)) groups.set(moduleName, []);
+        groups.get(moduleName).push(line);
+      }
+      return groups;
+    }
+
+    function setRawLogs(logText) {
+      _rawLogs = logText || '';
+      const groups = groupedLogLines();
+      _logModules = [...groups.entries()]
+        .map(([name, lines]) => ({name, count: lines.filter(Boolean).length}))
+        .filter(item => item.count > 0)
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+      if (_activeLogModule !== 'all' && !_logModules.some(item => item.name === _activeLogModule)) {
+        _activeLogModule = 'all';
+      }
+      renderLogs();
+    }
+
+    function selectLogModule(moduleName) {
+      _activeLogModule = moduleName || 'all';
+      renderLogs();
+    }
+
+    function renderLogModuleSummary(activeModule) {
+      const summary = document.getElementById('log-module-summary');
+      if (!summary) return;
+      if (!_logModules.length) {
+        summary.innerHTML = '';
+        return;
+      }
+      summary.innerHTML = [
+        `<button class="log-module-chip ${activeModule === 'all' ? 'active' : ''}" onclick="selectLogModule('all')">All ${_logModules.reduce((total, item) => total + item.count, 0)}</button>`,
+        ..._logModules.map(item => `
+          <button class="log-module-chip ${activeModule === item.name ? 'active' : ''}" data-log-module="${escapeHtml(item.name)}" onclick="selectLogModule(this.dataset.logModule)" title="${escapeHtml(item.name)}">
+            ${escapeHtml(item.name)} ${item.count}
+          </button>`)
+      ].join('');
+    }
+
+    function renderLogs() {
+      const logViewer = document.getElementById('log-viewer');
+      if (!logViewer) return;
+      const activeModule = _activeLogModule || 'all';
+      const groups = groupedLogLines();
+      const lines = activeModule === 'all'
+        ? (_rawLogs || '').split('\n')
+        : (groups.get(activeModule) || []);
+      renderLogModuleSummary(activeModule);
+      logViewer.innerHTML = ansiToHtml(lines.join('\n'));
+      scrollLogsToBottom();
     }
 
     let _notificationsLoading = false;
@@ -4181,7 +4614,9 @@
     }, 30000);
 
     document.addEventListener('visibilitychange', function() {
-      if (!document.hidden) pollNotificationBadge();
+      if (!document.hidden) {
+        pollNotificationBadge();
+      }
     });
 
     window.addEventListener('pagehide', function() {
@@ -4192,11 +4627,7 @@
       fetch('/admin/get_logs')
         .then(res => res.json())
         .then(data => {
-          const logViewer = document.getElementById('log-viewer');
-          // 使用 innerHTML 而不是 textContent 来支持 HTML
-          logViewer.innerHTML = ansiToHtml(data.logs);
-          // 滚动到底部
-          scrollLogsToBottom();
+          setRawLogs(data.logs);
         })
         .catch(err => alert('Error refreshing logs: ' + err));
     }
@@ -4398,8 +4829,7 @@
         return;
       }
 
-      let html = '';
-      for (const notice of notices) {
+      const html = notices.map(notice => {
         const content = typeof notice.content === 'string'
           ? {[defaultLanguage]: notice.content}
           : (notice.content || {});
@@ -4419,27 +4849,33 @@
         ].filter(Boolean).join('');
 
         const buttonRow = notice.button ? `
-          <div class="list-item">
-            <span style="color:var(--text-secondary);font-size:13px;">Button</span>
-            <span style="font-size:12px;font-family:monospace;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(notice.button.value || '')}">${escapeHtml(notice.button.type || '')} · ${escapeHtml(notice.button.value || '')}</span>
+          <div class="notice-button-meta">
+            <span>Button</span>
+            <span style="font-family:monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(notice.button.value || '')}">${escapeHtml(notice.button.type || '')} · ${escapeHtml(notice.button.value || '')}</span>
           </div>` : '';
 
-        html += `
-          <div class="list-panel" style="margin-bottom:12px;">
-            <div class="list-item">
-              <div class="list-item-info">
-                <span class="list-item-label">📢 Notice</span>
-                <span class="list-item-meta">${escapeHtml(notice.id)} · ${escapeHtml(notice.date)}</span>
+        const contentRows = languageOptions.map(({code, label}) => `
+          <div class="notice-content-row">
+            <div class="notice-lang">${escapeHtml(label)}</div>
+            <div class="notice-text">${escapeHtml(content[code] || '—')}</div>
+          </div>`).join('');
+
+        return `
+          <article class="notice-card">
+            <div class="notice-card-head">
+              <div>
+                <div class="notice-card-title">Notice</div>
+                <div class="notice-card-meta">${escapeHtml(notice.id)} · ${escapeHtml(notice.date || '')}</div>
               </div>
-              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+              <div class="notice-badges">
                 ${statusBadge}${votingBadge}
-                ${actionBtns}
               </div>
             </div>
-            ${localizedRows(content)}
+            <div class="notice-content-grid">${contentRows}</div>
             ${buttonRow}
-          </div>`;
-      }
+            <div class="notice-actions">${actionBtns}</div>
+          </article>`;
+      }).join('');
       container.innerHTML = html;
     }
 
@@ -4707,12 +5143,12 @@
     }
 
     // Close modals when clicking outside
-    window.onclick = function(event) {
+    window.addEventListener('click', function(event) {
       const noticeModal = document.getElementById('noticeModal');
       if (event.target === noticeModal) {
         closeNoticeModal();
       }
-    }
+    });
 
     // Load notices when notices tab is opened
     document.addEventListener('DOMContentLoaded', function() {
@@ -4949,37 +5385,43 @@
         return;
       }
 
-      let html = '<div style="display: grid; gap: 12px;">';
-      tipads.forEach(tipad => {
-        const typeIcon = tipad.type === 'ad' ? '📢' : '💡';
+      const html = '<div class="tipad-list">' + tipads.map(tipad => {
+        const typeLabel = tipad.type === 'ad' ? 'AD' : 'TIP';
         const enabledBadge = tipad.enabled
           ? '<span class="badge badge-success">ON</span>'
           : '<span class="badge badge-secondary">OFF</span>';
 
         const buttonRow = tipad.button ? `
-          <div class="list-item">
-            <span style="color: var(--text-secondary); font-size: 13px;">Button</span>
-            <span style="font-size: 12px; font-family: monospace; color: var(--text-color); max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(tipad.button.value)}">${escapeHtml(tipad.button.type)} · ${escapeHtml(tipad.button.value)}</span>
+          <div class="tipad-button-meta">
+            <span>Button</span>
+            <span style="font-family:monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(tipad.button.value)}">${escapeHtml(tipad.button.type)} · ${escapeHtml(tipad.button.value)}</span>
           </div>` : '';
 
-        html += `
-          <div class="list-panel">
-            <div class="list-item">
-              <div class="list-item-info">
-                <span class="list-item-label">${typeIcon} ${escapeHtml(tipad.type.toUpperCase())}</span>
-                <span class="list-item-meta">${escapeHtml(tipad.id)} · ${escapeHtml(tipad.created_at)}</span>
+        return `
+          <article class="tipad-card">
+            <div class="tipad-card-head">
+              <div>
+                <div class="tipad-title">${typeLabel}</div>
+                <div class="tipad-meta">${escapeHtml(tipad.id)} · ${escapeHtml(tipad.created_at || '')}</div>
               </div>
-              <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+              <div class="tipad-status">
                 ${enabledBadge}
-                <button class="btn btn-warning" onclick="editTipAd('${tipad.id}')">Edit</button>
-                <button class="btn btn-danger" onclick="deleteTipAd('${tipad.id}')">Delete</button>
               </div>
             </div>
-            ${localizedRows(tipad.text)}
+            <div class="notice-content-grid">
+              ${languageOptions.map(({code, label}) => `
+                <div class="notice-content-row">
+                  <div class="notice-lang">${escapeHtml(label)}</div>
+                  <div class="notice-text">${escapeHtml((tipad.text || {})[code] || '—')}</div>
+                </div>`).join('')}
+            </div>
             ${buttonRow}
-          </div>`;
-      });
-      html += '</div>';
+            <div class="tipad-actions">
+              <button class="btn btn-warning" onclick="editTipAd('${tipad.id}')">Edit</button>
+              <button class="btn btn-danger" onclick="deleteTipAd('${tipad.id}')">Delete</button>
+            </div>
+          </article>`;
+      }).join('') + '</div>';
       container.innerHTML = html;
     }
 
