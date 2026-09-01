@@ -112,7 +112,7 @@ def _start_table_model_process() -> subprocess.Popen[str]:
     if process is not None and process.poll() is None:
         if _TABLE_MODEL_HELPER_MTIME_NS == helper_mtime_ns:
             return process
-        logger.info("Restarting table OCR worker after helper file update")
+        logger.info("[Recognize] Restarting table OCR worker after helper file update")
         _stop_table_model_process()
 
     env = os.environ.copy()
@@ -156,7 +156,7 @@ def _start_table_model_process() -> subprocess.Popen[str]:
     except psutil.Error:
         rss_mb = 0.0
     logger.info(
-        "Table OCR worker ready: startup=%.3fs pid=%s rss=%.1fMB "
+        "[Recognize] Table OCR worker ready: startup=%.3fs pid=%s rss=%.1fMB "
         "threads=%s onednn=%s",
         time.perf_counter() - started_at,
         process.pid,
@@ -231,8 +231,8 @@ def recognize_judgement_with_table_model(
                 rss_mb = psutil.Process(process.pid).memory_info().rss / (1024**2)
             except psutil.Error:
                 rss_mb = 0.0
-            logger.info(
-                "Table OCR request: reused=%s startup=%.3fs inference=%.3fs "
+            logger.debug(
+                "[Recognize] Table OCR request: reused=%s startup=%.3fs inference=%.3fs "
                 "pid=%s rss=%.1fMB requests=%s mode=%s",
                 reused_worker,
                 startup_seconds,
@@ -247,7 +247,7 @@ def recognize_judgement_with_table_model(
                 or _TABLE_MODEL_REQUEST_COUNT >= TABLE_MODEL_MAX_REQUESTS
             ):
                 logger.info(
-                    "Restarting table model worker: rss=%.1fMB requests=%s",
+                    "[Recognize] Restarting table model worker: rss=%.1fMB requests=%s",
                     rss_mb,
                     _TABLE_MODEL_REQUEST_COUNT,
                 )
@@ -256,7 +256,7 @@ def recognize_judgement_with_table_model(
             if isinstance(result, dict) and len(result) == 5:
                 return result
             logger.warning(
-                "Table model returned no complete result: partial_rows=%s error=%s",
+                "[Recognize] Table model returned no complete result: partial_rows=%s error=%s",
                 sorted(partial_out) if partial_out else [],
                 payload.get("error") or "incomplete table",
             )
@@ -268,7 +268,7 @@ def recognize_judgement_with_table_model(
             subprocess.TimeoutExpired,
         ) as exc:
             _stop_table_model_process()
-            logger.warning("Table model failed; using column OCR: %s", exc)
+            logger.warning("[Recognize] Table model failed; using column OCR: %s", exc)
     return None
 
 
@@ -482,7 +482,7 @@ class PaddleOcrEngine:
         except Exception as exc:
             if not self._direct_recognition_error_logged:
                 logger.warning(
-                    "Direct cropped-text recognition unavailable; using detector fallback: %s",
+                    "[Recognize] Direct cropped-text recognition unavailable; using detector fallback: %s",
                     exc,
                 )
                 self._direct_recognition_error_logged = True
@@ -2698,8 +2698,8 @@ def process_image_data(
                         }
                     table_backend = "hybrid_table_column_fallback"
             column_values = normalize_judgement_table_values(column_values)
-            logger.info(
-                "Judgement OCR result: backend=%s values=%s",
+            logger.debug(
+                "[Recognize] Judgement OCR result: backend=%s values=%s",
                 table_backend,
                 column_values,
             )
@@ -2720,8 +2720,8 @@ def process_image_data(
         }
         field_seconds[field] = time.perf_counter() - field_started_at
 
-    logger.info(
-        "Score OCR timing: layout=%s crop=%.3fs fields=%s total=%.3fs",
+    logger.debug(
+        "[Recognize] Score OCR timing: layout=%s crop=%.3fs fields=%s total=%.3fs",
         metadata.get("layout", "arcade"),
         crop_seconds,
         ", ".join(
@@ -2811,8 +2811,8 @@ def process_image(
                         }
                     table_backend = "hybrid_table_column_fallback"
             column_values = normalize_judgement_table_values(column_values)
-            logger.info(
-                "Judgement OCR result: backend=%s values=%s",
+            logger.debug(
+                "[Recognize] Judgement OCR result: backend=%s values=%s",
                 table_backend,
                 column_values,
             )

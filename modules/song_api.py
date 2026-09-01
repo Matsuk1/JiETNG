@@ -41,7 +41,7 @@ def search_songs():
             query = ""
 
         token = request.token_info
-        logger.info(
+        logger.debug(
             "[API] Search songs: query=%r, ver=%s, user_id=%s, token_id=%s, note=%s",
             query, version, user_id, token["token_id"], token["note"],
         )
@@ -78,7 +78,7 @@ def search_songs():
 def get_versions():
     try:
         token = request.token_info
-        logger.info("[API] Get versions: token_id=%s, note=%s", token["token_id"], token["note"])
+        logger.debug("[API] Get versions: token_id=%s, note=%s", token["token_id"], token["note"])
         return jsonify({"success": True, "versions": read_dxdata()[1]})
     except Exception as exc:
         logger.exception("[API] Get versions failed")

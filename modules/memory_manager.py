@@ -72,7 +72,7 @@ class MemoryManager:
             "elapsed_ms": int((time.perf_counter() - started) * 1000),
         }
         self.last_cleanup_stats = stats
-        logger.info(
+        logger.debug(
             "[Memory] Cleanup completed: collected=%s, elapsed=%sms",
             stats["collected_objects"],
             stats["elapsed_ms"],
@@ -120,7 +120,7 @@ def cleanup_user_caches(user_manager_module=None):
         for user_id in expired:
             cache.pop(user_id, None)
     if expired:
-        logger.info("[Memory] Cleaned nickname cache: count=%s", len(expired))
+        logger.debug("[Memory] Cleaned nickname cache: count=%s", len(expired))
     return len(expired)
 
 
@@ -144,7 +144,7 @@ def cleanup_rate_limiter_tracking(rate_limiter_module=None):
                 tracking.pop(user_id, None)
                 cleaned += 1
     if cleaned:
-        logger.info("[Memory] Cleaned rate-limit tracking: count=%s", cleaned)
+        logger.debug("[Memory] Cleaned rate-limit tracking: count=%s", cleaned)
     return cleaned
 
 

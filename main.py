@@ -506,7 +506,6 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 def linebot_reply():
     signature = request.headers.get('X-Line-Signature', '')
     body = request.get_data(as_text=True)
-    logger.info("[Webhook] → Received request")
 
     try:
         json_data = json.loads(body)
@@ -606,7 +605,6 @@ def serve_image(image_id):
         logger.warning(f"[ImageHost] ⚠ Image not found: id={image_id}")
         return send_from_directory('assets/pics', '404.png', mimetype='image/png'), 404
 
-    logger.info(f"[ImageHost] → Serving image: id={image_id}")
     return send_from_directory(IMG_DIR, filename, mimetype='image/jpeg' if filename.endswith(".jpg") else 'image/png')
 
 
@@ -631,7 +629,6 @@ def serve_export(file_id, friendly_name):
         return ("Gone", 410)
 
     mimetype = 'application/json' if ext == 'json' else 'application/xml'
-    logger.info(f"[Export] → Serving: disk={disk_name}, name={friendly_name}")
     # download_name 走 friendly_name，浏览器另存为时直接是这个名字（含 CJK）
     return send_from_directory(
         EXPORT_DIR, disk_name, mimetype=mimetype,
@@ -3492,7 +3489,7 @@ def mark_message_as_read(mark_as_read_token: str, user_id: str = None):
                 mark_as_read_token=mark_as_read_token
             )
             line_bot_api.mark_messages_as_read_by_token(mark_request)
-            logger.info(f"[MarkAsRead] ✓ Marked messages as read: user_id={user_id}")
+            logger.debug(f"[MarkAsRead] ✓ Marked messages as read: user_id={user_id}")
     except Exception as e:
         logger.error(f"[MarkAsRead] ✗ Failed to mark as read: user_id={user_id}, error={e}")
 
@@ -4425,7 +4422,7 @@ def handle_postback(event):
     user_id = event.source.user_id
     postback_data = event.postback.data
 
-    logger.info(f"[Postback] user_id={user_id}, data={postback_data}")
+    logger.debug(f"[Postback] user_id={user_id}, data={postback_data}")
 
     try:
         # 处理公告投票
@@ -4489,7 +4486,7 @@ def handle_postback(event):
 
     except Exception as e:
         logger.error(f"[Postback] ✗ Error processing postback: user_id={user_id}, data={postback_data}, error={e}")
-        logger.error(traceback.format_exc())
+        logger.debug("[Postback] traceback:\n%s", traceback.format_exc())
 
 
 # Follow 事件处理
@@ -4700,9 +4697,7 @@ def start_runtime():
 
     # ==================== 系统启动自检 ====================
     # 在启动 worker 线程之前执行系统自检
-    logger.info("=" * 60)
     logger.info("[System] → Starting JiETNG Maimai DX LINE Bot...")
-    logger.info("=" * 60)
 
     try:
         # 读取用户数据

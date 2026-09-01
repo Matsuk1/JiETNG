@@ -79,14 +79,14 @@ def create_score_api(max_image_bytes):
                 response = send_file(buffer, mimetype="image/png", download_name=f"jietng-ocr-{song_id}.png")
                 response.headers["X-JiETNG-OCR-Candidate-Index"] = "1"
                 response.headers["X-JiETNG-OCR-Candidate-Count"] = str(count)
-                logger.info(
+                logger.debug(
                     "[API] Score image completed: token_id=%s ver=%s song_id=%s candidates=%s elapsed=%.3fs",
                     token_id, version, song_id, count, time.perf_counter() - started_at,
                 )
                 return response
 
             response = build_score_recognition_response(result)
-            logger.info(
+            logger.debug(
                 "[API] Score recognition completed: token_id=%s ver=%s song_id=%s elapsed=%.3fs",
                 token_id, version, response["song"]["id"], time.perf_counter() - started_at,
             )
@@ -96,7 +96,7 @@ def create_score_api(max_image_bytes):
         except InvalidScoreImageError as exc:
             return error("Invalid image", str(exc), 400)
         except (ScoreRecognitionResultError, ValueError) as exc:
-            logger.info(
+            logger.debug(
                 "[API] Score recognition rejected: token_id=%s ver=%s reason=%s elapsed=%.3fs",
                 token_id, version, exc, time.perf_counter() - started_at,
             )

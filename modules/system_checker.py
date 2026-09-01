@@ -221,9 +221,7 @@ def run_system_check() -> Dict[str, Any]:
     Returns:
         所有检查结果的汇总字典
     """
-    logger.info("=" * 60)
     logger.info("[SystemCheck] → Starting system check...")
-    logger.info("=" * 60)
 
     results = {
         "timestamp": None,
@@ -250,9 +248,7 @@ def run_system_check() -> Dict[str, Any]:
     results["checks"]["deprecated_fields"] = clean_deprecated_user_fields()
 
     # 生成报告
-    logger.info("=" * 60)
     logger.info("[SystemCheck] ✓ System check completed")
-    logger.info("=" * 60)
 
     # 统计结果
     cleanup = results["checks"]["cleanup"]
@@ -268,8 +264,6 @@ def run_system_check() -> Dict[str, Any]:
         logger.info("[SystemCheck] ✓ All critical checks passed")
     else:
         logger.warning("[SystemCheck] ⚠ Some checks failed, please review logs")
-
-    logger.info("=" * 60)
 
     # 添加时间戳
     results["timestamp"] = datetime.now().isoformat()

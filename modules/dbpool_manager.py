@@ -78,18 +78,18 @@ def database_cursor(*, write: bool = False) -> Iterator[tuple[object, object]]:
                 connection.rollback()
             except Exception:
                 logger.warning(
-                    "Failed to roll back database transaction", exc_info=True
+                    "[DBPool] Failed to roll back database transaction", exc_info=True
                 )
         raise
     finally:
         try:
             cursor.close()
         except Exception:
-            logger.warning("Failed to close database cursor", exc_info=True)
+            logger.warning("[DBPool] Failed to close database cursor", exc_info=True)
         try:
             connection.close()
         except Exception:
-            logger.warning("Failed to return database connection", exc_info=True)
+            logger.warning("[DBPool] Failed to return database connection", exc_info=True)
 
 
 def close_pool() -> None:

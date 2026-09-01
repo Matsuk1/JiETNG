@@ -98,7 +98,7 @@ def api_v2_song_info(song_id):
             song_info_generate(matching_song, ver=ver)
         )
 
-        logger.info(
+        logger.debug(
             "[API] Song info generated: song_id=%s, ver=%s, token_id=%s",
             song_id, ver, token_info["token_id"],
         )
@@ -153,7 +153,7 @@ def api_v2_song_record(user_id, song_id):
         )
         buf = _png_buffer(song_img)
 
-        logger.info(
+        logger.debug(
             "[API] Song record generated: user_id=%s, song_id=%s, token_id=%s",
             user_id, song_id, token_info["token_id"],
         )
@@ -232,7 +232,7 @@ def api_v2_generate_record_image(user_id):
 
         buf = _png_buffer(img)
 
-        logger.info(
+        logger.debug(
             "[API] Record image generated: user_id=%s, command=%s, token_id=%s",
             user_id, command, token_info["token_id"],
         )
@@ -367,7 +367,7 @@ def api_v2_generate_plate(user_id):
 
         buf = _png_buffer(img)
 
-        logger.info(
+        logger.debug(
             "[API] Plate generated: user_id=%s, title=%s, token_id=%s",
             user_id, title, token_info["token_id"],
         )
@@ -530,7 +530,7 @@ def api_v2_generate_achievement(user_id):
 
         buf = _png_buffer(img)
 
-        logger.info(
+        logger.debug(
             "[API] Achievement generated: user_id=%s, level=%s, rank=%s, token_id=%s",
             user_id, level, rank, token_info["token_id"],
         )

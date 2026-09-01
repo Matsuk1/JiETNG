@@ -58,7 +58,7 @@ def load_tip_ad_data():
                 _save_locked()
             _loaded = True
         except (OSError, json.JSONDecodeError) as exc:
-            logger.error("Failed to load tip/ad data: %s", exc, exc_info=True)
+            logger.error("[TipAd] Failed to load data: %s", exc, exc_info=True)
             TIP_AD_DATA = []
             _loaded = True
         _rebuild_cache()
@@ -76,7 +76,7 @@ def save_tip_ad_data():
             _save_locked()
             return True
         except OSError as exc:
-            logger.error("Failed to save tip/ad data: %s", exc, exc_info=True)
+            logger.error("[TipAd] Failed to save data: %s", exc, exc_info=True)
             return False
 
 

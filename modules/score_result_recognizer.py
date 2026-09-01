@@ -101,8 +101,8 @@ def _line_like_ocr_image(image: Image.Image, image_format: str) -> Image.Image:
     with Image.open(buffer) as compressed:
         result = compressed.convert("RGB").copy()
 
-    logger.info(
-        "Score OCR API line-like image preprocessing: format=%s original=%sx%s "
+    logger.debug(
+        "[Recognize] API line-like image preprocessing: format=%s original=%sx%s "
         "processed=%sx%s max_edge=%s jpeg_quality=%s bytes=%s",
         image_format,
         original_size[0],
@@ -695,8 +695,8 @@ def _find_calc_completion_candidates(
         if gap <= 0:
             continue
         if gap > MAX_CALC_COMPLETION_ROW_GAP:
-            logger.info(
-                "Skip calc completion for %s: unmatched note gap too large (%s)",
+            logger.debug(
+                "[Recognize] Skip calc completion for %s: unmatched note gap too large (%s)",
                 row_name,
                 gap,
             )
@@ -2081,7 +2081,7 @@ def _reset_ocr_engine(reason: str, rss_mb: float | None = None) -> bool:
         _ENGINE_LAST_RESET_RSS_MB = rss_mb
     collected = gc.collect()
     logger.info(
-        "Score OCR engine reset: reason=%s rss=%sMB collected=%s",
+        "[Recognize] OCR engine reset: reason=%s rss=%sMB collected=%s",
         reason,
         rss_mb,
         collected,
@@ -2114,7 +2114,7 @@ def initialize_score_recognizer() -> None:
         warm_table_model()
     except Exception as exc:
         logger.warning(
-            "Table OCR warmup failed; column OCR fallback remains available: %s",
+            "[Recognize] Table OCR warmup failed; column OCR fallback remains available: %s",
             exc,
         )
 
@@ -2232,7 +2232,7 @@ def recognize_score_image_bytes(
     with _OCR_LOCK:
         lock_wait_seconds = time.perf_counter() - lock_started_at
         if lock_wait_seconds >= 0.01:
-            logger.info("Score OCR lock wait: %.3fs", lock_wait_seconds)
+            logger.debug("[Recognize] OCR lock wait: %.3fs", lock_wait_seconds)
         rss_before = _process_rss_mb()
         ocr_fields, _, process_image_data = _load_ocr_module()
         result = process_image_data(
@@ -2243,8 +2243,8 @@ def recognize_score_image_bytes(
         _ENGINE_REQUEST_COUNT += 1
         rss_after = _process_rss_mb()
         if rss_before is not None or rss_after is not None:
-            logger.info(
-                "Score OCR memory: rss_before=%sMB rss_after=%sMB requests=%s",
+            logger.debug(
+                "[Recognize] OCR memory: rss_before=%sMB rss_after=%sMB requests=%s",
                 rss_before,
                 rss_after,
                 _ENGINE_REQUEST_COUNT,

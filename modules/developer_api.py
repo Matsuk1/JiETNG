@@ -88,7 +88,7 @@ def api_list_users():
                     "access_type": access_type
                 })
 
-        logger.info(f"[API] List users: token_id={token_id}, note={token_info['note']}, count={len(users_list)}")
+        logger.debug(f"[API] List users: token_id={token_id}, note={token_info['note']}, count={len(users_list)}")
 
         return jsonify({
             "success": True,
@@ -176,7 +176,7 @@ def api_get_user(user_id):
         nickname = _services.nickname(user_id, use_cache=True)
 
         token_info = request.token_info
-        logger.info(f"[API] Get user: user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
+        logger.debug(f"[API] Get user: user_id={user_id}, token_id={token_info['token_id']}, note={token_info['note']}")
 
         sensitive_keys = {'sega_id', 'sega_pwd', 'perm_requests', 'registered_via_token'}
         safe_data = {k: v for k, v in user_data.items() if k not in sensitive_keys}

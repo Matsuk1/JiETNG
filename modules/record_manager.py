@@ -164,7 +164,6 @@ def read_record(
         成绩记录列表,每条记录为字典,包含详细信息
     """
     table = "recent_records" if recent else "best_records"
-    logger.info("[Record] Reading records: table=%s user_id=%s", table, user_id)
 
     with database_cursor() as (_, cursor):
         cursor.execute(f"SELECT * FROM {table} WHERE user_id = %s", (user_id,))
@@ -222,7 +221,6 @@ def write_record(
     cursor: Any = None,
 ) -> None:
     table = "recent_records" if recent else "best_records"
-    logger.info("[Record] Writing records: table=%s user_id=%s", table, user_id)
     if cursor is not None:
         _write_record(cursor, user_id, record_json, recent)
         return
@@ -232,7 +230,6 @@ def write_record(
 
 def delete_record(user_id, recent=False):
     table = "recent_records" if recent else "best_records"
-    logger.info("[Record] Deleting records: table=%s user_id=%s", table, user_id)
     with database_cursor(write=True) as (_, cursor):
         cursor.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
 

@@ -53,11 +53,11 @@ def cleanup_expired_images(expiry_seconds=LOCAL_EXPIRY_SECONDS):
                 continue
             os.remove(path)
             deleted += 1
-            logger.info("[ImageCleanup] Deleted expired image: id=%s, age=%ss", filename[:-4], int(age))
+            logger.debug("[ImageCleanup] Deleted expired image: id=%s, age=%ss", filename[:-4], int(age))
         except OSError:
             logger.exception("[ImageCleanup] Failed to process file: %s", filename)
     if deleted:
-        logger.info("[ImageCleanup] Cleanup complete: deleted=%s", deleted)
+        logger.debug("[ImageCleanup] Cleanup complete: deleted=%s", deleted)
 
 
 def _start_periodic_cleanup():
@@ -95,7 +95,6 @@ def _save_to_local(image_bytes):
         with open(os.path.join(IMG_DIR, f"{image_id}.jpg"), "wb") as file:
             file.write(image_bytes)
         url = f"https://{DOMAIN}/linebot/img/{image_id}"
-        logger.info("[LocalImageHost] Image saved: id=%s, url=%s", image_id, url)
         return url
     except OSError:
         logger.exception("[LocalImageHost] Failed to save image")
@@ -136,7 +135,6 @@ async def _upload_to_r2(image_bytes, user_id=None):
             )
         base_url = R2_PUBLIC_URL.rstrip("/") if R2_PUBLIC_URL else f"https://pub-{R2_ACCOUNT_ID}.r2.dev"
         url = f"{base_url}/{file_name}"
-        logger.info("[R2] Image uploaded: id=%s, url=%s", image_id, url)
         return url
     except Exception:
         logger.exception("[R2] Upload failed")
@@ -156,7 +154,7 @@ async def smart_upload(image, user_id=None):
         if url:
             return url, url
     elif R2_ENABLED:
-        logger.info("[ImageUploader] Image too large for R2: %.1fMB", len(image_bytes) / 1024 / 1024)
+        logger.debug("[ImageUploader] Image too large for R2: %.1fMB", len(image_bytes) / 1024 / 1024)
 
     url = await asyncio.to_thread(_save_to_local, image_bytes)
     return (url, url) if url else (None, None)
