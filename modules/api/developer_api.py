@@ -9,7 +9,7 @@ from typing import Callable
 
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 
-from modules.api_auth import (
+from modules.api.api_auth import (
     require_dev_token,
     require_owner_permission,
     require_user_permission,

@@ -8,8 +8,8 @@ from typing import Callable
 
 from flask import Blueprint, jsonify, request, send_file
 
-from modules.api_auth import check_user_permission, require_dev_token
-from modules.command_config import RANK_COMMANDS
+from modules.api.api_auth import check_user_permission, require_dev_token
+from modules.commands.command_config import RANK_COMMANDS
 from modules.config_loader import TEMP_VERSION, read_dxdata
 from modules.event_tracker import track_event
 from modules.image_manager import compose_generated_images

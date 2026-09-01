@@ -1,8 +1,8 @@
 """
 maimai result-photo OCR integration.
 
-This module wraps the standalone scripts under scripts/ so main.py can call the
-recognizer without importing CLI code directly.
+This module wraps the runtime OCR package so main.py can call the recognizer
+without shelling out.
 """
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ import unicodedata
 import difflib
 import gc
 import os
-import sys
 import threading
 import time
 from io import BytesIO
@@ -35,9 +34,6 @@ from modules.song_matcher import find_matching_songs, normalize_text
 
 logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS_DIR = PROJECT_ROOT / "scripts"
-if str(SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_DIR))
 
 _ENGINE: Any | None = None
 _ENGINE_LOCK = threading.Lock()
@@ -2051,13 +2047,13 @@ class UnsupportedScoreImageError(InvalidScoreImageError):
 def _load_ocr_module() -> tuple[tuple[str, ...], Any, Any]:
     global _OCR_FIELDS, _PROCESS_IMAGE_DATA
     if _OCR_FIELDS is None or _PROCESS_IMAGE_DATA is None:
-        from score_result_ocr import OCR_FIELDS, PaddleOcrEngine, process_image_data
+        from modules.score_recognition.ocr import OCR_FIELDS, PaddleOcrEngine, process_image_data
 
         _OCR_FIELDS = OCR_FIELDS
         _PROCESS_IMAGE_DATA = process_image_data
         return OCR_FIELDS, PaddleOcrEngine, process_image_data
 
-    from score_result_ocr import PaddleOcrEngine
+    from modules.score_recognition.ocr import PaddleOcrEngine
 
     return _OCR_FIELDS, PaddleOcrEngine, _PROCESS_IMAGE_DATA
 
@@ -2109,7 +2105,7 @@ def cleanup_score_recognizer_memory() -> bool:
 def initialize_score_recognizer() -> None:
     _engine()
     try:
-        from score_result_ocr import warm_table_model
+        from modules.score_recognition.ocr import warm_table_model
 
         warm_table_model()
     except Exception as exc:
@@ -2138,7 +2134,7 @@ def build_score_crop_preview_image(image_bytes: bytes) -> Image.Image:
     except (UnidentifiedImageError, OSError) as exc:
         raise InvalidScoreImageError("Uploaded data is not a valid image") from exc
 
-    from score_result_cropper import crop_result_fields_in_memory
+    from modules.score_recognition.cropper import crop_result_fields_in_memory
 
     metadata = crop_result_fields_in_memory(image)
     field_order = (

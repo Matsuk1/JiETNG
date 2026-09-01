@@ -3,7 +3,7 @@ from urllib.parse import quote
 
 from flask import Blueprint, Response, current_app, jsonify, request
 
-from modules.api_auth import (
+from modules.api.api_auth import (
     check_user_permission,
     maimai_session_cors,
     require_dev_token,

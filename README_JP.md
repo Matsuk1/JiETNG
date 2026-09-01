@@ -366,8 +366,10 @@ JiETNG/
 ├── requirements.txt           # Python 依存関係
 ├── records_db.sql             # データベーススキーマ
 ├── modules/                   # 機能モジュール
+│   ├── api/                   # Flask API Blueprint と開発者認証
 │   ├── backup_manager.py      # バックアップ管理
 │   ├── bindtoken_manager.py   # バインドトークン管理
+│   ├── commands/              # コマンドルーティング、解析、ヘルプ、設定
 │   ├── config_loader.py       # 設定ローダー
 │   ├── dbpool_manager.py      # データベース接続プール
 │   ├── devtoken_manager.py    # 開発者トークン管理
@@ -390,6 +392,7 @@ JiETNG/
 │   ├── rate_limiter.py        # 頻度制限 + リクエスト追跡
 │   ├── record_generator.py    # スコアチャート生成
 │   ├── record_manager.py      # データベース操作
+│   ├── score_recognition/     # スコア OCR ランタイムパイプラインとモデル
 │   ├── song_generator.py      # 楽曲チャート生成
 │   ├── song_matcher.py        # 楽曲検索（あいまい一致対応）
 │   ├── storelist_generator.py # 設置店舗リスト生成（Flex Message）

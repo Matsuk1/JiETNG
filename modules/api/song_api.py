@@ -2,8 +2,8 @@ import logging
 
 from flask import Blueprint, jsonify, request
 
-from modules.api_auth import check_user_permission, require_dev_token
-from modules.command_config import API_MAX_SEARCH_RESULTS, MAX_SEARCH_RESULTS
+from modules.api.api_auth import check_user_permission, require_dev_token
+from modules.commands.command_config import API_MAX_SEARCH_RESULTS, MAX_SEARCH_RESULTS
 from modules.config_loader import read_dxdata
 from modules.song_matcher import find_matching_songs
 

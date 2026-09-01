@@ -4,7 +4,7 @@ from io import BytesIO
 
 from flask import Blueprint, jsonify, request, send_file
 
-from modules.api_auth import require_dev_token
+from modules.api.api_auth import require_dev_token
 from modules.rate_limiter import check_rate_limit
 from modules.record_generator import generate_score_recognition_picture
 from modules.score_recognition_api import ScoreRecognitionResultError, build_score_recognition_response

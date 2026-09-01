@@ -26,14 +26,21 @@ import numpy as np
 import psutil
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
-from score_result_cropper import (
-    crop_result_fields,
-    crop_result_fields_in_memory,
-    iter_images,
-)
+try:
+    from .cropper import (
+        crop_result_fields,
+        crop_result_fields_in_memory,
+        iter_images,
+    )
+except ImportError:  # Allows direct CLI execution of this file.
+    from cropper import (
+        crop_result_fields,
+        crop_result_fields_in_memory,
+        iter_images,
+    )
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 logger = logging.getLogger(__name__)
 os.environ.setdefault("PADDLE_PDX_CACHE_HOME", str(PROJECT_ROOT / ".paddle-home" / "paddlex"))
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/jietng-matplotlib")
@@ -106,7 +113,7 @@ def _read_table_model_line(
 
 def _start_table_model_process() -> subprocess.Popen[str]:
     global _TABLE_MODEL_PROCESS, _TABLE_MODEL_HELPER_MTIME_NS
-    helper = Path(__file__).with_name("score_result_table_model.py")
+    helper = Path(__file__).with_name("table_model.py")
     helper_mtime_ns = helper.stat().st_mtime_ns
     process = _TABLE_MODEL_PROCESS
     if process is not None and process.poll() is None:

@@ -351,8 +351,10 @@ JiETNG/
 ├── requirements.txt           # Python dependencies
 ├── records_db.sql             # Database schema
 ├── modules/                   # Functional modules
+│   ├── api/                   # Flask API blueprints and developer auth
 │   ├── backup_manager.py      # Backup management
 │   ├── bindtoken_manager.py   # Bind token management
+│   ├── commands/              # Command routing, parsing, help, and config
 │   ├── config_loader.py       # Configuration loader
 │   ├── dbpool_manager.py      # Database connection pool
 │   ├── devtoken_manager.py    # Developer token management
@@ -375,6 +377,7 @@ JiETNG/
 │   ├── rate_limiter.py        # Rate limiting + request tracking
 │   ├── record_generator.py    # Score chart generation
 │   ├── record_manager.py      # Database operations
+│   ├── score_recognition/     # Score OCR runtime pipeline and models
 │   ├── song_generator.py      # Song chart generation
 │   ├── song_matcher.py        # Song search with fuzzy matching
 │   ├── storelist_generator.py # Arcade store list generation (Flex Message)

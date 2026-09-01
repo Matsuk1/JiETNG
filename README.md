@@ -366,8 +366,10 @@ JiETNG/
 ├── requirements.txt           # Python 依赖
 ├── records_db.sql             # 数据库结构
 ├── modules/                   # 功能模块
+│   ├── api/                   # Flask API 蓝图与开发者认证
 │   ├── backup_manager.py      # 备份管理
 │   ├── bindtoken_manager.py   # 绑定 Token 管理
+│   ├── commands/              # 命令路由、解析、帮助与配置
 │   ├── config_loader.py       # 配置加载器
 │   ├── dbpool_manager.py      # 数据库连接池
 │   ├── devtoken_manager.py    # 开发者 Token 管理
@@ -390,6 +392,7 @@ JiETNG/
 │   ├── rate_limiter.py        # 频率限制 + 请求追踪
 │   ├── record_generator.py    # 成绩图生成
 │   ├── record_manager.py      # 数据库操作
+│   ├── score_recognition/     # 成绩图 OCR 运行时管线与模型
 │   ├── song_generator.py      # 歌曲图生成
 │   ├── song_matcher.py        # 歌曲搜索（支持模糊匹配）
 │   ├── storelist_generator.py # 机厅列表生成（Flex Message）

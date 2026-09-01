@@ -17,7 +17,7 @@ from typing import Any, Callable
 
 from linebot.v3.messaging import TextMessage
 
-from modules.command_router import Command, CommandContext, Exact, Matcher, Prefix, Regex
+from modules.commands.command_router import Command, CommandContext, Exact, Matcher, Prefix, Regex
 
 logger = logging.getLogger(__name__)
 

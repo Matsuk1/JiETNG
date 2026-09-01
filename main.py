@@ -215,7 +215,7 @@ from modules.import_token_manager import (
     list_import_tokens,
     revoke_import_token,
 )
-from modules.api_auth import (
+from modules.api.api_auth import (
     maimai_session_cors as _maimai_session_cors,
 )
 from modules.logging_config import configure_logging
@@ -223,13 +223,13 @@ from modules.web_i18n import (
     error_page as _error_page,
     register_web_i18n,
 )
-from modules.command_router import (
+from modules.commands.command_router import (
     Exact, Prefix, Regex, FirstWord,
     Command, CommandContext,
     QUEUE_SYNC, QUEUE_IMAGE, QUEUE_WEB,
 )
 from modules.plugin_manager import dispatch_plugin_session, load_plugin_commands
-from modules.command_parsers import (
+from modules.commands.command_parsers import (
     format_bpm_number,
     parse_bpm_number,
     parse_bpm_query,
@@ -284,19 +284,19 @@ from modules.score_result_recognizer import (
     score_recognition_needs_manual_fix,
     validate_recognized_judgement,
 )
-from modules.command_config import (
+from modules.commands.command_config import (
     MAX_SEARCH_RESULTS,
     RANK_COMMANDS,
     rank_command_words,
 )
-from modules.command_help import (
+from modules.commands.command_help import (
     HELP_INDEX_WORDS,
     HIDDEN_HELP_COMMAND_WORDS,
     command_help_message as _command_help_message,
     detect_command_help_key,
     detect_missing_param_help_key as _detect_missing_param_help_key,
 )
-from modules.progress_parser import (
+from modules.commands.progress_parser import (
     PROGRESS_RANK_PATTERN,
     parse_level_rank_progress as _parse_level_rank_progress_text,
     resolve_progress_category as _resolve_progress_category,
@@ -308,13 +308,13 @@ from modules.task_runtime import (
     queue_worker,
     track_queued,
 )
-from modules.song_api import song_api
-from modules.image_api import configure_image_api, image_api
-from modules.record_transfer_api import record_transfer_api
-from modules.developer_api import cleanup_api_sync_locks, configure_developer_api, developer_api
-from modules.score_api import create_score_api
-from modules.admin_api import CSRF_EXEMPT_ENDPOINTS, admin_api, configure_admin_api
-from modules.mention_parser import (
+from modules.api.song_api import song_api
+from modules.api.image_api import configure_image_api, image_api
+from modules.api.record_transfer_api import record_transfer_api
+from modules.api.developer_api import cleanup_api_sync_locks, configure_developer_api, developer_api
+from modules.api.score_api import create_score_api
+from modules.api.admin_api import CSRF_EXEMPT_ENDPOINTS, admin_api, configure_admin_api
+from modules.commands.mention_parser import (
     clean_message_text,
     has_non_bot_mention,
     registered_mentioned_user_id as extract_single_mention,
@@ -3498,7 +3498,7 @@ def mark_message_as_read(mark_as_read_token: str, user_id: str = None):
 # 命令派发 / Command Dispatch
 # 替代散落在 main.py 的 6 个分发表：WEB_TASK_ROUTES / IMAGE_TASK_ROUTES /
 # RANK_COMMANDS（仍保留为数据）/ COMMAND_MAP / SPECIAL_RULES / 内联 if-block
-# 设计：modules/command_router.py
+# 设计：modules/commands/command_router.py
 # ============================================================
 
 def show_loading(user_id):
